@@ -24,6 +24,29 @@ class HomeController extends Controller
             ->with('galleryImages', $data_COLLECTIONS);
     }
 
+    public function films()
+    {
+        $data_web = DB::table('website_settings')->first();
+        $data_links = $data_web ? json_decode($data_web->links, true) : [];
+
+        $films = DB::table('collections')
+            ->where('is_active', true)
+            ->where('media_type', 'FILM')
+            ->where(function ($query): void {
+                $query->whereNotNull('video')
+                    ->orWhereNotNull('image');
+            })
+            ->orderByDesc('is_featured')
+            ->orderBy('urut')
+            ->get();
+
+        return view('landingpage.films', [
+            'data_web' => $data_web,
+            'data_links' => $data_links ?? [],
+            'films' => $films,
+        ]);
+    }
+
     public function index_product()
     {
         $data_konten = DB::table('contents')

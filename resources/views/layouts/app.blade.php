@@ -53,6 +53,7 @@
 
 @php
     $isHome = request()->routeIs('home.index');
+    $isFilms = request()->routeIs('home.films');
     $isPreview = request()->routeIs('home.index_product');
     $isAbout = request()->routeIs('home.about');
     $isContact = request()->routeIs('home.contact');
@@ -69,10 +70,20 @@
 
 <body @class([
     'page-home' => $isHome,
+    'page-films' => $isFilms,
     'page-preview' => $isPreview,
     'page-about' => $isAbout,
     'page-contact' => $isContact,
 ])>
+    <div class="site-preloader" id="site-preloader" aria-hidden="true">
+        <div class="site-preloader__brand">
+            <img src="{{ $logoPath }}" alt="" width="174" height="24">
+        </div>
+        <div class="site-preloader__line" aria-hidden="true">
+            <span></span>
+        </div>
+    </div>
+
     <a class="skip-link" href="#main-content">Skip to content</a>
 
     <header class="site-header {{ $isPreview ? 'site-header--preview' : 'site-header--home' }}">
@@ -90,7 +101,8 @@
         <nav class="site-nav" id="primary-navigation" aria-label="Primary navigation">
             <a href="{{ route('home.index') }}" data-nav-section="work"
                 @class(['is-active' => request()->routeIs('home.index')])>WORK</a>
-            <a href="{{ route('home.index') }}#films" data-nav-section="films">FILMS</a>
+            <a href="{{ route('home.films') }}" @class(['is-active' => $isFilms])
+                @if ($isFilms) aria-current="page" @endif>FILMS</a>
             <a href="{{ route('home.index_product') }}" @class(['is-active' => $isPreview])
                 @if ($isPreview) aria-current="page" @endif>PREVIEW</a>
             <a href="{{ route('home.about') }}" @class(['is-active' => request()->routeIs('home.about')])
@@ -114,19 +126,55 @@
     @yield('scripts')
     <script>
         (() => {
+            const preloader = document.querySelector('#site-preloader');
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const preloaderStartedAt = performance.now();
+            const minimumPreloaderDuration = 1100;
+            let preloaderFinished = false;
+
+            const finishLoading = () => {
+                if (!preloader || preloaderFinished) {
+                    return;
+                }
+
+                preloaderFinished = true;
+
+                const elapsed = performance.now() - preloaderStartedAt;
+                const remaining = reduceMotion
+                    ? 0
+                    : Math.max(0, minimumPreloaderDuration - elapsed);
+
+                window.setTimeout(() => {
+                    preloader.classList.add('is-loaded');
+                    window.setTimeout(() => preloader.remove(), reduceMotion ? 0 : 700);
+                }, remaining);
+            };
+
+            if (document.readyState === 'complete') {
+                finishLoading();
+            } else {
+                window.addEventListener('load', finishLoading, { once: true });
+            }
+
+            window.addEventListener('pageshow', (event) => {
+                if (event.persisted) {
+                    finishLoading();
+                }
+            }, { once: true });
+
+            window.setTimeout(finishLoading, 5000);
 
             const revealGroups = [
                 {
-                    selector: '.home-featured-grid, .preview-intro, .about-hero, .contact-hero',
+                    selector: '.home-featured-grid, .film-hero, .preview-intro, .about-hero, .contact-hero',
                     className: 'reveal-cinematic',
                 },
                 {
-                    selector: '.home-filter-bar, .discovery-bar, .about-story, .about-section-heading, .contact-details__heading',
+                    selector: '.home-filter-bar, .film-discovery, .film-section-heading, .discovery-bar, .about-story, .about-section-heading, .contact-details__heading',
                     className: 'reveal-up',
                 },
                 {
-                    selector: '.home-portfolio-card, .event-card, .about-capability-list > li, .contact-details__list > div, .contact-socials li',
+                    selector: '.home-portfolio-card, .film-card, .event-card, .about-capability-list > li, .contact-details__list > div, .contact-socials li',
                     className: 'reveal-up',
                     stagger: true,
                 },

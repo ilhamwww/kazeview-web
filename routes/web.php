@@ -10,6 +10,7 @@ use Spatie\GoogleCalendar\Event;
 
 Route::controller(HomeController::class)->group(function () {
     Route::get('/', 'index')->name('home.index');
+    Route::get('/films', 'films')->name('home.films');
     Route::get('/about', 'about')->name('home.about');
     Route::get('/contact', 'contact')->name('home.contact');
     Route::get('/preview', 'index_product')->name('home.index_product');
