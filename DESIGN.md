@@ -1,4 +1,4 @@
----
+----
 name: KAZEVIEW Website — Cinematic Portfolio and Event Gallery
 version: 2.0.0
 status: implementation-ready
