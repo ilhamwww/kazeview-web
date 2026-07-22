@@ -79,10 +79,29 @@ class CollectionResource extends Resource
                 ->columns(2)
                 ->columnSpan('full'),
             Forms\Components\FileUpload::make('image')
-                ->label('Image')
+                ->label('Thumbnail / Poster')
+                ->helperText('Wajib berupa gambar. Digunakan sebagai cover dan fallback video.')
                 ->directory($sequence)
+                ->image()
+                ->acceptedFileTypes([
+                    'image/jpeg',
+                    'image/png',
+                    'image/webp',
+                ])
                 ->imageEditor()
                 ->required(),
+            Forms\Components\FileUpload::make('video')
+                ->label('Video')
+                ->helperText('Format: MP4, WebM, atau MOV. Maksimal 200 MB.')
+                ->directory('collection-videos')
+                ->acceptedFileTypes([
+                    'video/mp4',
+                    'video/webm',
+                    'video/quicktime',
+                ])
+                ->maxSize(204800)
+                ->downloadable()
+                ->visible(fn ($get) => $get('media_type') === 'FILM'),
         ]);
     }
 
@@ -100,6 +119,9 @@ class CollectionResource extends Resource
                 Tables\Columns\TextColumn::make('title')->label('Judul')->placeholder('-'),
                 Tables\Columns\TextColumn::make('category')->label('Kategori')->badge(),
                 Tables\Columns\TextColumn::make('media_type')->label('Tipe')->badge(),
+                Tables\Columns\IconColumn::make('video')
+                    ->label('Video')
+                    ->boolean(fn ($state): bool => filled($state)),
                 Tables\Columns\IconColumn::make('is_featured')->label('Featured')->boolean(),
                 Tables\Columns\IconColumn::make('is_active')->label('Aktif')->boolean(),
                 Tables\Columns\TextColumn::make('created_at')->label('Created At')->dateTime(),

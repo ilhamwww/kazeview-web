@@ -47,32 +47,41 @@ class Collection extends Model
         });
 
         static::deleting(function ($collection) {
-            if ($collection->image) {
-                Storage::disk('public')->delete($collection->image);
+            foreach (['image', 'video'] as $fileColumn) {
+                if ($collection->{$fileColumn}) {
+                    Storage::disk('public')->delete($collection->{$fileColumn});
+                }
             }
         });
 
         static::updating(function ($collection) {
-            if ($collection->isDirty('image')) {
-                $originalImage = $collection->getOriginal('image');
-                if ($originalImage) {
-                    Storage::disk('public')->delete($originalImage);
+            foreach (['image', 'video'] as $fileColumn) {
+                if ($collection->isDirty($fileColumn)) {
+                    $originalFile = $collection->getOriginal($fileColumn);
+
+                    if ($originalFile) {
+                        Storage::disk('public')->delete($originalFile);
+                    }
                 }
             }
         });
 
         static::saved(function ($collection) {
-            if ($collection->image) {
-                $path = Storage::disk('public')->path($collection->image);
-                $manager = new ImageManager(new Driver());
-
-                if (file_exists($path)) {
-                    $image = $manager->read($path);
-                    $image->scale(height: 2500);
-                    $encoded = $image->encode(new \Intervention\Image\Encoders\JpegEncoder(quality: 75));
-                    file_put_contents($path, (string) $encoded);
-                }
+            if (! $collection->image) {
+                return;
             }
+
+            $path = Storage::disk('public')->path($collection->image);
+
+            if (! is_file($path)) {
+                return;
+            }
+
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($path);
+            $image->scale(height: 2500);
+            $encoded = $image->encode(new JpegEncoder(quality: 75));
+            file_put_contents($path, (string) $encoded);
         });
     }
 }
