@@ -19,6 +19,7 @@ class Content extends Model
     {
         return [
             'event_date' => 'date',
+            'is_active' => 'boolean',
             'is_new' => 'boolean',
             'is_price_enabled' => 'boolean',
             'price' => 'decimal:0',

@@ -40,6 +40,7 @@
                     : '',
                 'type' => $type,
                 'category' => $category,
+                'is_active' => (bool) ($item->is_active ?? true),
                 'is_new' => (bool) ($item->is_new ?? false),
                 'position' => $position,
                 'duration' => $item->film_duration ?? null,
@@ -146,11 +147,22 @@
 
     <section class="event-grid" id="event-grid" aria-label="Event galleries" aria-live="polite">
         @foreach ($events as $event)
-            <a class="event-card" href="{{ $event['link'] }}"
-                data-title="{{ strtolower($event['title']) }}" data-location="{{ strtolower($event['location']) }}"
-                data-date="{{ $event['date'] }}" data-formatted-date="{{ strtolower($event['formatted_date']) }}"
-                data-category="{{ $event['category'] }}" data-is-new="{{ $event['is_new'] ? 'true' : 'false' }}"
-                aria-label="View {{ $event['title'] }} gallery at {{ $event['location'] }}">
+            @if ($event['is_active'])
+                <a class="event-card" href="{{ $event['link'] }}"
+                    data-title="{{ strtolower($event['title']) }}"
+                    data-location="{{ strtolower($event['location']) }}" data-date="{{ $event['date'] }}"
+                    data-formatted-date="{{ strtolower($event['formatted_date']) }}"
+                    data-category="{{ $event['category'] }}"
+                    data-is-new="{{ $event['is_new'] ? 'true' : 'false' }}"
+                    aria-label="View {{ $event['title'] }} gallery at {{ $event['location'] }}">
+            @else
+                <article class="event-card event-card--closed" data-title="{{ strtolower($event['title']) }}"
+                    data-location="{{ strtolower($event['location']) }}" data-date="{{ $event['date'] }}"
+                    data-formatted-date="{{ strtolower($event['formatted_date']) }}"
+                    data-category="{{ $event['category'] }}"
+                    data-is-new="{{ $event['is_new'] ? 'true' : 'false' }}" aria-disabled="true"
+                    aria-label="{{ $event['title'] }} gallery at {{ $event['location'] }} is closed">
+            @endif
                 <img class="event-card__media" src="{{ $event['image'] }}"
                     alt="{{ $event['title'] }} at {{ $event['location'] }}"
                     style="object-position: {{ $event['position'] }}"
@@ -158,7 +170,9 @@
                     @if ($loop->first) fetchpriority="high" @endif>
                 <span class="event-card__overlay" aria-hidden="true"></span>
 
-                @if ($event['is_new'])
+                @if (!$event['is_active'])
+                    <span class="event-card__closed-badge">CLOSED</span>
+                @elseif ($event['is_new'])
                     <span class="event-card__new" aria-hidden="true">NEW</span>
                 @endif
 
@@ -189,13 +203,27 @@
                     <span class="event-card__price">{{ $event['price'] }}</span>
                 </span>
 
-                <span class="event-card__cta" aria-hidden="true">
-                    VIEW GALLERY
-                    <svg class="icon-outline" viewBox="0 0 24 24">
-                        <path d="M5 12h14M14 7l5 5-5 5" />
-                    </svg>
-                </span>
-            </a>
+                @if ($event['is_active'])
+                    <span class="event-card__cta" aria-hidden="true">
+                        VIEW GALLERY
+                        <svg class="icon-outline" viewBox="0 0 24 24">
+                            <path d="M5 12h14M14 7l5 5-5 5" />
+                        </svg>
+                    </span>
+                @else
+                    <span class="event-card__closed-message" aria-hidden="true">
+                        GALLERY CLOSED
+                        <svg class="icon-outline" viewBox="0 0 24 24">
+                            <rect x="5" y="10" width="14" height="10" rx="1" />
+                            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                        </svg>
+                    </span>
+                @endif
+            @if ($event['is_active'])
+                </a>
+            @else
+                </article>
+            @endif
         @endforeach
     </section>
 

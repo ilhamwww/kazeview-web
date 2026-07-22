@@ -2390,17 +2390,28 @@ button {
     background: linear-gradient(to bottom, rgba(5, 5, 6, 0) 48%, rgba(5, 5, 6, .18) 61%, rgba(5, 5, 6, .78) 78%, rgba(5, 5, 6, .98) 100%);
 }
 
-.event-card__new {
+.event-card__new,
+.event-card__closed-badge {
     position: absolute;
+    z-index: 2;
     top: 14px;
     left: 14px;
     padding: 6px 9px;
     color: #fff;
-    background: var(--color-accent);
     border-radius: 2px;
     font-size: 12px;
-    font-weight: 600;
-    letter-spacing: .025em;
+    font-weight: 700;
+    letter-spacing: .08em;
+}
+
+.event-card__new {
+    background: var(--color-accent);
+}
+
+.event-card__closed-badge {
+    color: #111;
+    background: #d7d7d9;
+    border: 1px solid rgba(255, 255, 255, .4);
 }
 
 .event-card__content {
@@ -2519,6 +2530,86 @@ button {
 }
 
 .event-card__cta svg {
+    width: 17px;
+    height: 17px;
+}
+
+.event-card--closed {
+    cursor: not-allowed;
+    color: #b8b8bb;
+    border-color: #303034;
+}
+
+.event-card--closed:hover,
+.event-card--closed:focus-visible,
+.event-card--closed.is-active {
+    border-color: #3a3a3e;
+}
+
+.event-card--closed .event-card__media {
+    filter: grayscale(1) brightness(.48) contrast(.9);
+}
+
+.event-card--closed:hover .event-card__media,
+.event-card--closed:focus-visible .event-card__media {
+    filter: grayscale(1) brightness(.48) contrast(.9);
+    transform: none;
+}
+
+.event-card--closed .event-card__overlay {
+    background:
+        linear-gradient(to bottom, rgba(5, 5, 6, .2) 0%, rgba(5, 5, 6, .58) 62%, rgba(5, 5, 6, .98) 100%);
+}
+
+.event-card--closed .event-card__content,
+.event-card--closed:hover .event-card__content,
+.event-card--closed:focus-visible .event-card__content {
+    bottom: 63px;
+}
+
+.event-card--closed .event-card__type-text {
+    color: #b8b8bb;
+    background: rgba(30, 30, 32, .88);
+}
+
+.event-card--closed .event-card__mini-play {
+    color: #929296;
+    border-color: #929296;
+}
+
+.event-card--closed .event-card__mini-play svg {
+    fill: #929296;
+}
+
+.event-card--closed .event-card__title,
+.event-card--closed .event-card__location {
+    color: #c5c5c8;
+}
+
+.event-card--closed .event-card__price {
+    color: #77777b;
+}
+
+.event-card__closed-message {
+    position: absolute;
+    z-index: 2;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    height: 43px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #aaa9ad;
+    background: rgba(8, 8, 9, .72);
+    border-top: 1px solid #414146;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .1em;
+}
+
+.event-card__closed-message svg {
     width: 17px;
     height: 17px;
 }

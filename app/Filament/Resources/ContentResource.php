@@ -65,6 +65,13 @@ class ContentResource extends Resource
                             ->placeholder('Contoh: motorcycle film')
                             ->helperText('Gunakan kata: motorcycle, automotive, atau film.')
                             ->maxLength(50),
+                        Toggle::make('is_active')
+                            ->label('Event Aktif / Dibuka')
+                            ->helperText('Jika dimatikan, event tetap tampil abu-abu di Preview dengan badge CLOSED dan tidak bisa dibuka.')
+                            ->onIcon('heroicon-o-lock-open')
+                            ->offIcon('heroicon-o-lock-closed')
+                            ->onColor('success')
+                            ->default(true),
                         Toggle::make('is_new')
                             ->label('Tampilkan badge NEW')
                             ->default(false),
@@ -135,6 +142,13 @@ class ContentResource extends Resource
                 TextColumn::make('event_location')->label('Lokasi')->placeholder('-'),
                 TextColumn::make('event_date')->label('Tanggal')->date('d M Y')->sortable(),
                 TextColumn::make('preview_type')->label('Tipe')->badge(),
+                Tables\Columns\ToggleColumn::make('is_active')
+                    ->label('Aktif')
+                    ->onIcon('heroicon-o-lock-open')
+                    ->offIcon('heroicon-o-lock-closed')
+                    ->onColor('success')
+                    ->offColor('danger')
+                    ->sortable(),
                 IconColumn::make('is_new')->label('NEW')->boolean(),
                 TextColumn::make('body')->label('Isi')->limit(50),
                 TextColumn::make('user.name')->label('Pemilik Konten'),
