@@ -45,18 +45,14 @@ class CreateContent extends CreateRecord
             'created_at' => now('Asia/Jakarta'),
             'updated_at' => now('Asia/Jakarta'),
         ]);
-        $maxUrut = DB::table('contents')->max('urut');
+        $maxUrut = (int) DB::table('contents')->max('urut');
+
+        if (! ($data['is_price_enabled'] ?? false)) {
+            $data['price'] = null;
+        }
 
         $record = new \App\Models\Content();
-        $record->link = $data['link'];
-        $record->title = $data['title'];
-        $record->body = $data['body'];
-        $record->price = $data['is_price_enabled'] ? $data['price'] : null;
-        $record->is_price_enabled = $data['is_price_enabled'];
-        $record->image = $data['image'] ?? null;
-        $record->user_id = $data['user_id'];
-        $record->created_at = now('Asia/Jakarta');
-        $record->updated_at = now('Asia/Jakarta');
+        $record->fill($data);
         $record->urut = $maxUrut + 1;
         $record->save();
 

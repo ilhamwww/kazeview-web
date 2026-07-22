@@ -15,6 +15,16 @@ class Content extends Model
     protected $table = 'contents';
     protected $guarded = [];
 
+    protected function casts(): array
+    {
+        return [
+            'event_date' => 'date',
+            'is_new' => 'boolean',
+            'is_price_enabled' => 'boolean',
+            'price' => 'decimal:0',
+        ];
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');

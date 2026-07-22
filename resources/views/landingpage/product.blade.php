@@ -4,121 +4,51 @@
 @section('meta_description', 'Find your KAZEVIEW event gallery, preview your photos and films, then pay and download.')
 
 @php
-    $sourceItems = collect($data_konten ?? [])->filter(fn($item) => !empty($item->image))->values();
     $fallbackImage = !empty($data_web->hero_image)
         ? asset('storage/' . $data_web->hero_image)
         : asset('KAZE_icon.png');
 
-    $getSource = function (int $index) use ($sourceItems, $fallbackImage) {
-        if ($sourceItems->isEmpty()) {
+    $events = collect($data_konten ?? [])
+        ->filter(fn($item) => !empty($item->image))
+        ->map(function ($item) use ($fallbackImage) {
+            $type = in_array($item->preview_type ?? null, ['PHOTOGRAPHY', 'PHOTO + FILM'], true)
+                ? $item->preview_type
+                : 'PHOTOGRAPHY';
+            $category = strtolower(trim((string) ($item->preview_category ?? '')));
+            if ($type === 'PHOTO + FILM' && !str_contains($category, 'film')) {
+                $category = trim($category . ' film');
+            }
+
+            $rawPosition = trim((string) ($item->image_position ?? '50% 50%'));
+            $position = preg_match('/^(left|center|right|\d{1,3}%)(\s+(top|center|bottom|\d{1,3}%))?$/', $rawPosition)
+                ? $rawPosition
+                : '50% 50%';
+
+            $price = !empty($item->is_price_enabled) && is_numeric($item->price ?? null)
+                ? 'Rp ' . number_format((float) $item->price, 0, ',', '.') . ' / PHOTO'
+                : 'FREE DOWNLOAD';
+
             return [
-                'image' => $fallbackImage,
-                'link' => '#',
+                'id' => $item->id,
+                'title' => strtoupper(trim((string) ($item->title ?? 'UNTITLED EVENT'))),
+                'location' => strtoupper(trim((string) ($item->event_location ?? 'LOCATION TBA'))),
+                'date' => !empty($item->event_date)
+                    ? \Illuminate\Support\Carbon::parse($item->event_date)->format('Y-m-d')
+                    : optional($item->created_at ? \Illuminate\Support\Carbon::parse($item->created_at) : null)->format('Y-m-d'),
+                'formatted_date' => !empty($item->event_date)
+                    ? \Illuminate\Support\Carbon::parse($item->event_date)->format('d M Y')
+                    : '',
+                'type' => $type,
+                'category' => $category,
+                'is_new' => (bool) ($item->is_new ?? false),
+                'position' => $position,
+                'duration' => $item->film_duration ?? null,
+                'price' => $price,
+                'image' => !empty($item->image) ? asset('storage/' . $item->image) : $fallbackImage,
+                'link' => !empty($item->link) ? $item->link : '#',
             ];
-        }
-
-        $item = $sourceItems[$index % $sourceItems->count()];
-
-        return [
-            'image' => asset('storage/' . $item->image),
-            'link' => !empty($item->link) ? $item->link : '#',
-        ];
-    };
-
-    $eventDefinitions = [
-        [
-            'id' => 'ysquad-2026-07-19',
-            'title' => 'YSQUAD — 19 JUL 2026',
-            'location' => 'TETRA CAFE',
-            'date' => '2026-07-19',
-            'type' => 'PHOTO + FILM',
-            'category' => 'motorcycle film',
-            'is_new' => true,
-            'is_featured' => true,
-            'position' => '50% 42%',
-        ],
-        [
-            'id' => 'nyoride-suncity',
-            'title' => 'NYORIDE SUNCITY',
-            'location' => 'SUN CITY',
-            'date' => '2026-07-12',
-            'type' => 'PHOTOGRAPHY',
-            'category' => 'motorcycle',
-            'is_new' => false,
-            'is_featured' => false,
-            'position' => '50% 46%',
-        ],
-        [
-            'id' => 'kaliurang-2026-06-14',
-            'title' => 'KALIURANG — 14 JUN 2026',
-            'location' => 'KALIURANG',
-            'date' => '2026-06-14',
-            'type' => 'PHOTO + FILM',
-            'category' => 'automotive film',
-            'is_new' => false,
-            'is_featured' => false,
-            'position' => '54% 50%',
-        ],
-        [
-            'id' => 'suncity-mcd-2026-06-07',
-            'title' => 'SUNCITY MCD — 07 JUN',
-            'location' => 'MCD SUN CITY',
-            'date' => '2026-06-07',
-            'type' => 'PHOTOGRAPHY',
-            'category' => 'automotive',
-            'is_new' => false,
-            'is_featured' => false,
-            'position' => '50% 42%',
-        ],
-        [
-            'id' => 'night-ride-2026-05-24',
-            'title' => 'NIGHT RIDE — 24 MAY 2026',
-            'location' => 'YOGYAKARTA',
-            'date' => '2026-05-24',
-            'type' => 'PHOTO + FILM',
-            'category' => 'motorcycle film',
-            'is_new' => false,
-            'is_featured' => false,
-            'position' => '50% 48%',
-        ],
-        [
-            'id' => 'trackday-2026-05-10',
-            'title' => 'TRACKDAY — 10 MAY 2026',
-            'location' => 'MANDALIKA',
-            'date' => '2026-05-10',
-            'type' => 'PHOTOGRAPHY',
-            'category' => 'automotive',
-            'is_new' => false,
-            'is_featured' => false,
-            'position' => '50% 50%',
-        ],
-        [
-            'id' => 'sunday-morning-2026-04-19',
-            'title' => 'SUNDAY MORNING — 19 APR',
-            'location' => 'KALIURANG',
-            'date' => '2026-04-19',
-            'type' => 'PHOTOGRAPHY',
-            'category' => 'motorcycle',
-            'is_new' => false,
-            'is_featured' => false,
-            'position' => '50% 45%',
-        ],
-        [
-            'id' => 'after-dark-2026-04-04',
-            'title' => 'AFTER DARK — 04 APR 2026',
-            'location' => 'SUN CITY',
-            'date' => '2026-04-04',
-            'type' => 'PHOTO + FILM',
-            'category' => 'automotive film',
-            'is_new' => false,
-            'is_featured' => false,
-            'position' => '50% 50%',
-        ],
-    ];
-
-    $events = collect($eventDefinitions)->map(function ($event, $index) use ($getSource) {
-        return array_merge($event, $getSource($index), ['price' => 'Rp 6.000 / PHOTO']);
-    });
+        })
+        ->values();
 
     $whatsAppNumber = preg_replace('/\D+/', '', (string) ($data_web->wa ?? ''));
     if ($whatsAppNumber !== '' && str_starts_with($whatsAppNumber, '0')) {
@@ -212,7 +142,8 @@
         @foreach ($events as $event)
             <a class="event-card" href="{{ $event['link'] }}"
                 data-title="{{ strtolower($event['title']) }}" data-location="{{ strtolower($event['location']) }}"
-                data-date="{{ $event['date'] }}" data-category="{{ $event['category'] }}"
+                data-date="{{ $event['date'] }}" data-formatted-date="{{ strtolower($event['formatted_date']) }}"
+                data-category="{{ $event['category'] }}" data-is-new="{{ $event['is_new'] ? 'true' : 'false' }}"
                 aria-label="View {{ $event['title'] }} gallery at {{ $event['location'] }}">
                 <img class="event-card__media" src="{{ $event['image'] }}"
                     alt="{{ $event['title'] }} at {{ $event['location'] }}"
@@ -233,7 +164,12 @@
                                 </svg>
                             </span>
                         @endif
-                        <span class="event-card__type-text">{{ $event['type'] }}</span>
+                        <span class="event-card__type-text">
+                            {{ $event['type'] }}
+                            @if ($event['type'] === 'PHOTO + FILM' && $event['duration'])
+                                · {{ $event['duration'] }}
+                            @endif
+                        </span>
                     </span>
                     <span class="event-card__title">{{ $event['title'] }}</span>
                     <span class="event-card__location">
@@ -300,7 +236,7 @@
             const matchesFilter = (card) => {
                 const category = card.dataset.category;
                 if (activeFilter === 'all') return true;
-                if (activeFilter === 'latest') return card.dataset.date >= '2026-07-01';
+                if (activeFilter === 'latest') return card.dataset.isNew === 'true';
                 return category.split(' ').includes(activeFilter);
             };
 
@@ -312,7 +248,8 @@
 
                 window.setTimeout(() => {
                     cards().forEach((card) => {
-                        const haystack = `${card.dataset.title} ${card.dataset.location} ${card.dataset.date}`;
+                        const haystack =
+                            `${card.dataset.title} ${card.dataset.location} ${card.dataset.date} ${card.dataset.formattedDate}`;
                         const visible = haystack.includes(term) && matchesFilter(card);
                         card.classList.toggle('is-hidden', !visible);
                         card.classList.remove('is-filtering');
