@@ -60,18 +60,34 @@
         $media = collect([$fallback]);
     }
 
-    $featured = $media->firstWhere('is_featured', true) ?? $media->first();
-    $secondaryTiles = $media
-        ->reject(fn($item) => $item['id'] === $featured['id'])
-        ->take(4)
+    $featuredMedia = $media
+        ->filter(fn($item) => $item['is_featured'])
+        ->take(5)
         ->values();
 
-    while ($secondaryTiles->count() < 4) {
-        $secondaryTiles->push($fallback);
+    $featuredIds = $featuredMedia
+        ->pluck('id')
+        ->filter()
+        ->all();
+
+    if ($featuredMedia->count() < 5) {
+        $featuredMedia = $featuredMedia
+            ->concat(
+                $media
+                    ->reject(fn($item) => $item['is_featured'] || in_array($item['id'], $featuredIds, true))
+                    ->take(5 - $featuredMedia->count()),
+            )
+            ->values();
     }
 
+    while ($featuredMedia->count() < 5) {
+        $featuredMedia->push($fallback);
+    }
+
+    $featured = $featuredMedia->first();
+    $secondaryTiles = $featuredMedia->slice(1, 4)->values();
+
     $portfolioMedia = $media->reject(fn($item) => $item['id'] === $featured['id'])->values();
-    $portfolioCount = $portfolioMedia->count();
 @endphp
 
 @section('content')
