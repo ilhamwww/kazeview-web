@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AboutSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -38,6 +39,32 @@ class HomeController extends Controller
             ->with('data_konten', $data_konten)
             ->with('data_web', $data_web)
             ->with('data_links', $data_links);
+    }
+
+    public function about()
+    {
+        $data_web = DB::table('website_settings')->first();
+        $data_links = $data_web ? json_decode($data_web->links, true) : [];
+        $about = AboutSetting::current();
+
+        abort_unless($about->is_active, 404);
+
+        $fallbackImages = DB::table('collections')
+            ->whereNotNull('image')
+            ->where('is_active', true)
+            ->orderByDesc('is_featured')
+            ->orderBy('urut')
+            ->limit(2)
+            ->pluck('image')
+            ->values();
+
+        return view('landingpage.about', [
+            'data_web' => $data_web,
+            'data_links' => $data_links ?? [],
+            'about' => $about,
+            'fallbackHeroImage' => $fallbackImages->get(0),
+            'fallbackStoryImage' => $fallbackImages->get(1) ?? $fallbackImages->get(0),
+        ]);
     }
 
     public function index_preview()

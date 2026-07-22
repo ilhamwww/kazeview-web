@@ -73,7 +73,8 @@
             <a href="{{ route('home.index') }}#films">FILMS</a>
             <a href="{{ route('home.index_product') }}" @class(['is-active' => $isPreview])
                 @if ($isPreview) aria-current="page" @endif>PREVIEW</a>
-            <a href="{{ route('home.index') }}#about">ABOUT</a>
+            <a href="{{ route('home.about') }}" @class(['is-active' => request()->routeIs('home.about')])
+                @if (request()->routeIs('home.about')) aria-current="page" @endif>ABOUT</a>
             <a href="{{ route('home.index') }}#contact">CONTACT</a>
             <a class="site-nav__book" href="{{ $whatsAppUrl }}" @if ($whatsAppNumber !== '') target="_blank"
                 rel="noopener noreferrer" @endif>BOOK A SHOOT</a>
