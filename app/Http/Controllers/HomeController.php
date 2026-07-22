@@ -9,7 +9,6 @@ class HomeController extends Controller
 {
     public function index()
     {
-        $data_konten = DB::table('contents')->orderBy('urut', 'asc')->get();
         $data_web = DB::table('website_settings')->get()->first();
         $data_links = $data_web ? json_decode($data_web->links, true) : null;
         $data_COLLECTIONS = DB::table('collections')->orderBy('urut', 'asc')->get();
@@ -18,7 +17,6 @@ class HomeController extends Controller
         }
 
         return view(view: 'landingpage.index')
-            ->with('data_konten', $data_konten)
             ->with('data_web', $data_web)
             ->with('data_links', $data_links)
             ->with('galleryImages', $data_COLLECTIONS);

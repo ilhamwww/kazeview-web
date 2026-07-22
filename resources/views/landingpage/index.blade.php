@@ -14,23 +14,11 @@
             ],
         );
 
-    $contentMedia = collect($data_konten ?? [])
-        ->filter(fn($item) => !empty($item->image))
-        ->map(
-            fn($item) => [
-                'image' => asset('storage/' . $item->image),
-                'title' => $item->title ?? 'KAZEVIEW Project',
-                'link' => !empty($item->link) ? $item->link : '#work',
-            ],
-        );
-
     $fallbackImage = !empty($data_web->hero_image)
         ? asset('storage/' . $data_web->hero_image)
         : asset('KAZE_icon.png');
 
-    $media = $collectionMedia
-        ->concat($contentMedia)
-        ->values();
+    $media = $collectionMedia->values();
 
     if ($media->isEmpty()) {
         $media = collect([
@@ -61,8 +49,8 @@
     <section class="home-featured-grid" id="films" aria-label="Featured KAZEVIEW work">
         <a class="media-tile featured-film" href="{{ $featured['link'] }}"
             aria-label="Play Night Run — Surabaya, duration 1 minute 24 seconds">
-            <img class="media-tile__image" src="{{ $featured['image'] }}"
-                alt="Night automotive film by KAZEVIEW" fetchpriority="high">
+            <img class="media-tile__image" src="{{ $featured['image'] }}" alt="Night automotive film by KAZEVIEW"
+                fetchpriority="high">
 
             <span class="featured-film__play-cluster" aria-hidden="true">
                 <span class="play-circle">
@@ -124,8 +112,8 @@
                 $filterTags = $isFilm ? 'films' : 'photography ' . $category;
                 $title = $index === 0 ? 'TRACKSIDE — REDLINE' : strtoupper($item['title']);
             @endphp
-            <a class="home-portfolio-card {{ $isFilm ? 'home-portfolio-card--film' : '' }}"
-                href="{{ $item['link'] }}" data-home-category="{{ $filterTags }}"
+            <a class="home-portfolio-card {{ $isFilm ? 'home-portfolio-card--film' : '' }}" href="{{ $item['link'] }}"
+                data-home-category="{{ $filterTags }}"
                 aria-label="{{ $isFilm ? 'Film' : 'Photography' }}, {{ $title }}, {{ $categoryLabel }}">
                 <img src="{{ $item['image'] }}" alt="{{ $title }} — {{ strtolower($categoryLabel) }} by KAZEVIEW"
                     loading="{{ $index < 4 ? 'eager' : 'lazy' }}">
