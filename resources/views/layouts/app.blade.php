@@ -6,27 +6,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', $data_web->name ?? 'KAZEVIEW')</title>
-    <meta name="description"
-        content="@yield('meta_description', $data_web->description ?? 'KAZEVIEW — Automotive, portrait, and event photography and films.')">
-    <meta name="keywords"
-        content="photography, film, automotive, motorsport, portrait, event, KAZEVIEW, Yogyakarta">
-    <meta name="author" content="{{ $data_web->name ?? 'KAZEVIEW' }}">
-    <meta name="robots" content="index, follow">
+    @php
+        $seoDefaults = \App\Models\WebsiteSetting::seoDefaults();
+        $storedSeo = $data_web->seo_settings ?? [];
+        if (is_string($storedSeo)) {
+            $storedSeo = json_decode($storedSeo, true) ?: [];
+        }
+        $seo = array_replace_recursive($seoDefaults, is_array($storedSeo) ? $storedSeo : []);
+
+        $siteName = trim((string) ($data_web->name ?? 'KAZEVIEW')) ?: 'KAZEVIEW';
+        $defaultDescription = trim((string) ($data_web->description ?? ''))
+            ?: 'KAZEVIEW — Automotive, portrait, and event photography and films.';
+        $pageTitle = trim($__env->yieldContent('title'))
+            ?: (trim((string) $seo['title']) ?: $siteName);
+        $pageDescription = trim($__env->yieldContent('meta_description'))
+            ?: (trim((string) $seo['description']) ?: $defaultDescription);
+        $seoKeywords = trim((string) $seo['keywords'])
+            ?: 'photography, film, automotive, motorsport, portrait, event, KAZEVIEW, Yogyakarta';
+        $seoAuthor = trim((string) $seo['author']) ?: $siteName;
+        $seoRobots = trim((string) $seo['robots']) ?: 'index, follow';
+
+        $canonicalBase = rtrim(trim((string) $seo['canonical_url']) ?: config('app.url'), '/');
+        $requestPath = request()->getPathInfo();
+        $canonicalUrl = $canonicalBase . ($requestPath === '/' ? '/' : $requestPath);
+
+        $seoImagePath = $data_web->seo_image ?? null;
+        $socialImage = $seoImagePath
+            ? asset('storage/' . $seoImagePath)
+            : (!empty($data_web->hero_image)
+                ? asset('storage/' . $data_web->hero_image)
+                : asset('KAZE_icon.png'));
+
+        $ogTitle = trim((string) $seo['og_title']) ?: $pageTitle;
+        $ogDescription = trim((string) $seo['og_description']) ?: $pageDescription;
+        $twitterTitle = trim((string) $seo['twitter_title']) ?: $ogTitle;
+        $twitterDescription = trim((string) $seo['twitter_description']) ?: $ogDescription;
+        $themeColor = trim((string) $seo['theme_color']) ?: '#050506';
+
+        $rawSameAs = $seo['same_as'] ?? [];
+        $sameAs = collect(is_array($rawSameAs) ? $rawSameAs : [])
+            ->map(fn ($item) => is_array($item) ? ($item['url'] ?? null) : $item)
+            ->filter(fn ($url) => is_string($url) && filter_var($url, FILTER_VALIDATE_URL))
+            ->values()
+            ->all();
+
+        $organizationId = $canonicalBase . '/#organization';
+        $websiteId = $canonicalBase . '/#website';
+        $schemaGraph = [
+            [
+                '@type' => $seo['organization_type'] ?: 'ProfessionalService',
+                '@id' => $organizationId,
+                'name' => $siteName,
+                'url' => $canonicalBase . '/',
+                'logo' => [
+                    '@type' => 'ImageObject',
+                    'url' => !empty($data_web->logo)
+                        ? asset('storage/' . $data_web->logo)
+                        : asset('KAZE_logo.png'),
+                ],
+                'image' => $socialImage,
+                'description' => trim((string) $seo['organization_description']) ?: $defaultDescription,
+                'sameAs' => $sameAs,
+            ],
+            [
+                '@type' => 'WebSite',
+                '@id' => $websiteId,
+                'url' => $canonicalBase . '/',
+                'name' => $siteName,
+                'description' => $defaultDescription,
+                'publisher' => ['@id' => $organizationId],
+                'inLanguage' => str_replace('_', '-', app()->getLocale()),
+            ],
+            [
+                '@type' => 'WebPage',
+                '@id' => $canonicalUrl . '#webpage',
+                'url' => $canonicalUrl,
+                'name' => $pageTitle,
+                'description' => $pageDescription,
+                'isPartOf' => ['@id' => $websiteId],
+                'about' => ['@id' => $organizationId],
+                'primaryImageOfPage' => [
+                    '@type' => 'ImageObject',
+                    'url' => $socialImage,
+                ],
+                'inLanguage' => str_replace('_', '-', app()->getLocale()),
+            ],
+        ];
+    @endphp
+
+    <title>{{ $pageTitle }}</title>
+    <meta name="description" content="{{ $pageDescription }}">
+    <meta name="keywords" content="{{ $seoKeywords }}">
+    <meta name="author" content="{{ $seoAuthor }}">
+    <meta name="robots" content="{{ $seoRobots }}">
+    <meta name="googlebot" content="{{ $seoRobots }}">
+    <meta name="bingbot" content="{{ $seoRobots }}">
+    <meta name="theme-color" content="{{ $themeColor }}">
+    <link rel="canonical" href="{{ $canonicalUrl }}">
+
+    @if (filled($seo['google_verification']))
+        <meta name="google-site-verification" content="{{ $seo['google_verification'] }}">
+    @endif
+    @if (filled($seo['bing_verification']))
+        <meta name="msvalidate.01" content="{{ $seo['bing_verification'] }}">
+    @endif
 
     <meta property="og:type" content="website">
-    <meta property="og:title" content="@yield('title', $data_web->name ?? 'KAZEVIEW')">
-    <meta property="og:description"
-        content="@yield('meta_description', $data_web->description ?? 'KAZEVIEW — Automotive, portrait, and event photography and films.')">
-    <meta property="og:image" content="{{ asset('KAZE_icon.png') }}">
-    <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:site_name" content="{{ $data_web->name ?? 'KAZEVIEW' }}">
+    <meta property="og:title" content="{{ $ogTitle }}">
+    <meta property="og:description" content="{{ $ogDescription }}">
+    <meta property="og:image" content="{{ $socialImage }}">
+    <meta property="og:image:alt" content="{{ $ogTitle }}">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    <meta property="og:site_name" content="{{ $siteName }}">
+    <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}">
 
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="@yield('title', $data_web->name ?? 'KAZEVIEW')">
-    <meta name="twitter:description"
-        content="@yield('meta_description', $data_web->description ?? 'KAZEVIEW — Automotive, portrait, and event photography and films.')">
-    <meta name="twitter:image" content="{{ asset('KAZE_icon.png') }}">
+    <meta name="twitter:card" content="{{ $seo['twitter_card'] }}">
+    <meta name="twitter:title" content="{{ $twitterTitle }}">
+    <meta name="twitter:description" content="{{ $twitterDescription }}">
+    <meta name="twitter:image" content="{{ $socialImage }}">
+    <meta name="twitter:image:alt" content="{{ $twitterTitle }}">
+
+    <script type="application/ld+json">
+        @json(['@context' => 'https://schema.org', '@graph' => $schemaGraph], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+    </script>
 
     <link rel="icon" type="image/png" href="{{ asset('KAZE_icon.png') }}">
 

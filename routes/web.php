@@ -474,6 +474,50 @@ Route::get('/api/proxy-subtitle', function (\Illuminate\Http\Request $request) {
     ]);
 })->name('api.proxy-subtitle');
 
+Route::get('/sitemap.xml', function () {
+    $setting = \App\Models\WebsiteSetting::first();
+    $seo = array_replace_recursive(
+        \App\Models\WebsiteSetting::seoDefaults(),
+        $setting?->seo_settings ?? [],
+    );
+    $baseUrl = rtrim(trim((string) ($seo['canonical_url'] ?? '')) ?: config('app.url'), '/');
+
+    $urls = [
+        ['loc' => $baseUrl . '/', 'changefreq' => 'weekly', 'priority' => '1.0'],
+        ['loc' => $baseUrl . '/films', 'changefreq' => 'weekly', 'priority' => '0.9'],
+        ['loc' => $baseUrl . '/preview', 'changefreq' => 'weekly', 'priority' => '0.8'],
+        ['loc' => $baseUrl . '/about', 'changefreq' => 'monthly', 'priority' => '0.7'],
+        ['loc' => $baseUrl . '/contact', 'changefreq' => 'monthly', 'priority' => '0.7'],
+    ];
+
+    $xml = view('seo.sitemap', ['urls' => $urls])->render();
+
+    return response($xml, 200, [
+        'Content-Type' => 'application/xml; charset=UTF-8',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+})->name('seo.sitemap');
+
+Route::get('/robots.txt', function () {
+    $setting = \App\Models\WebsiteSetting::first();
+    $seo = array_replace_recursive(
+        \App\Models\WebsiteSetting::seoDefaults(),
+        $setting?->seo_settings ?? [],
+    );
+    $baseUrl = rtrim(trim((string) ($seo['canonical_url'] ?? '')) ?: config('app.url'), '/');
+
+    return response(
+        "User-agent: *\n"
+        . "Allow: /\n"
+        . "Disallow: /admin\n"
+        . "Disallow: /streaming\n"
+        . "Disallow: /api/\n"
+        . "Sitemap: {$baseUrl}/sitemap.xml\n",
+        200,
+        ['Content-Type' => 'text/plain; charset=UTF-8'],
+    );
+})->name('seo.robots');
+
 Route::get('/register-success', function () {
     return view('auth.register-success');
 })->name('register.success');
