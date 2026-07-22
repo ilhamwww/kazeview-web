@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AboutSetting;
+use App\Models\ContactSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -64,6 +65,37 @@ class HomeController extends Controller
             'about' => $about,
             'fallbackHeroImage' => $fallbackImages->get(0),
             'fallbackStoryImage' => $fallbackImages->get(1) ?? $fallbackImages->get(0),
+        ]);
+    }
+
+    public function contact()
+    {
+        $data_web = DB::table('website_settings')->first();
+        $data_links = $data_web ? json_decode($data_web->links, true) : [];
+        $contact = ContactSetting::current();
+
+        abort_unless($contact->is_active, 404);
+
+        if (! $contact->whatsapp && ! empty($data_web->wa)) {
+            $contact->whatsapp = $data_web->wa;
+        }
+
+        if (empty($contact->social_links) && ! empty($data_links)) {
+            $contact->social_links = $data_links;
+        }
+
+        $fallbackImage = DB::table('collections')
+            ->whereNotNull('image')
+            ->where('is_active', true)
+            ->orderByDesc('is_featured')
+            ->orderBy('urut')
+            ->value('image');
+
+        return view('landingpage.contact', [
+            'data_web' => $data_web,
+            'data_links' => $data_links ?? [],
+            'contact' => $contact,
+            'fallbackImage' => $fallbackImage,
         ]);
     }
 

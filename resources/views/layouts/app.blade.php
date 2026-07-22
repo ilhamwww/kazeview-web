@@ -44,6 +44,7 @@
     $isHome = request()->routeIs('home.index');
     $isPreview = request()->routeIs('home.index_product');
     $isAbout = request()->routeIs('home.about');
+    $isContact = request()->routeIs('home.contact');
     $whatsAppNumber = preg_replace('/\D+/', '', (string) ($data_web->wa ?? ''));
     if ($whatsAppNumber !== '' && str_starts_with($whatsAppNumber, '0')) {
         $whatsAppNumber = '62' . substr($whatsAppNumber, 1);
@@ -59,6 +60,7 @@
     'page-home' => $isHome,
     'page-preview' => $isPreview,
     'page-about' => $isAbout,
+    'page-contact' => $isContact,
 ])>
     <a class="skip-link" href="#main-content">Skip to content</a>
 
@@ -82,7 +84,8 @@
                 @if ($isPreview) aria-current="page" @endif>PREVIEW</a>
             <a href="{{ route('home.about') }}" @class(['is-active' => request()->routeIs('home.about')])
                 @if (request()->routeIs('home.about')) aria-current="page" @endif>ABOUT</a>
-            <a href="{{ route('home.index') }}#contact" data-nav-section="contact">CONTACT</a>
+            <a href="{{ route('home.contact') }}" @class(['is-active' => $isContact])
+                @if ($isContact) aria-current="page" @endif>CONTACT</a>
             <a class="site-nav__book" href="{{ $whatsAppUrl }}" @if ($whatsAppNumber !== '') target="_blank"
                 rel="noopener noreferrer" @endif>BOOK A SHOOT</a>
         </nav>
