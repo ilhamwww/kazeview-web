@@ -125,11 +125,13 @@ button {
 }
 
 .site-logo {
+    position: relative;
     display: flex;
     flex: 0 0 auto;
     align-items: center;
     width: 174px;
     height: 44px;
+    overflow: hidden;
 }
 
 .site-logo img {
@@ -139,6 +141,17 @@ button {
     object-position: left center;
 }
 
+.site-logo--custom img {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 174px;
+    max-width: none;
+    height: 174px;
+    object-fit: contain;
+    transform: translateY(-50%);
+}
+
 .site-header--home .site-logo,
 .site-header--home .site-logo img {
     width: 168px;
@@ -146,6 +159,11 @@ button {
 
 .site-header--home .site-logo img {
     height: 22px;
+}
+
+.site-header--home .site-logo--custom img {
+    width: 168px;
+    height: 168px;
 }
 
 .site-nav {
@@ -1324,6 +1342,12 @@ button {
     .site-header--home .site-logo img {
         width: 158px;
         height: 22px;
+    }
+
+    .site-logo--custom img,
+    .site-header--home .site-logo--custom img {
+        width: 158px;
+        height: 158px;
     }
 
     .menu-toggle {

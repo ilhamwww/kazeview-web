@@ -49,14 +49,16 @@
         $whatsAppNumber = '62' . $whatsAppNumber;
     }
     $whatsAppUrl = $whatsAppNumber !== '' ? 'https://wa.me/' . $whatsAppNumber : '#contact';
-    $logoPath = !empty($data_web->logo) ? asset('storage/' . $data_web->logo) : asset('KAZE.png');
+    $hasCustomLogo = !empty($data_web->logo);
+    $logoPath = $hasCustomLogo ? asset('storage/' . $data_web->logo) : asset('KAZE_logo.png');
 @endphp
 
 <body class="{{ $isPreview ? 'page-preview' : 'page-home' }}">
     <a class="skip-link" href="#main-content">Skip to content</a>
 
     <header class="site-header {{ $isPreview ? 'site-header--preview' : 'site-header--home' }}">
-        <a class="site-logo" href="{{ route('home.index') }}" aria-label="KAZEVIEW home">
+        <a class="site-logo {{ $hasCustomLogo ? 'site-logo--custom' : '' }}" href="{{ route('home.index') }}"
+            aria-label="KAZEVIEW home">
             <img src="{{ $logoPath }}" alt="KAZEVIEW" width="174" height="24">
         </a>
 
