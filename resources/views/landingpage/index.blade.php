@@ -4,53 +4,82 @@
 @section('meta_description', 'KAZEVIEW captures motion in every frame through automotive, portrait, and event photography and film.')
 
 @php
-    $collectionMedia = collect($galleryImages ?? [])
-        ->filter(fn($item) => !empty($item->image))
-        ->map(
-            fn($item) => [
-                'image' => asset('storage/' . $item->image),
-                'title' => $item->title ?? 'KAZEVIEW Project',
-                'link' => '#work',
-            ],
-        );
-
     $fallbackImage = !empty($data_web->hero_image)
         ? asset('storage/' . $data_web->hero_image)
         : asset('KAZE_icon.png');
 
-    $media = $collectionMedia->values();
+    $media = collect($galleryImages ?? [])
+        ->filter(fn($item) => !empty($item->image) && (bool) ($item->is_active ?? true))
+        ->map(function ($item) {
+            $category = strtoupper(trim((string) ($item->category ?? 'PHOTOGRAPHY')));
+            $category = in_array($category, ['PHOTOGRAPHY', 'AUTOMOTIVE', 'PORTRAITS', 'EVENTS'], true)
+                ? $category
+                : 'PHOTOGRAPHY';
+            $mediaType = strtoupper(trim((string) ($item->media_type ?? 'PHOTOGRAPHY')));
+            $mediaType = in_array($mediaType, ['PHOTOGRAPHY', 'FILM'], true) ? $mediaType : 'PHOTOGRAPHY';
 
-    if ($media->isEmpty()) {
-        $media = collect([
-            [
-                'image' => $fallbackImage,
-                'title' => 'KAZEVIEW Project',
-                'link' => '#work',
-            ],
-        ]);
-    }
+            $position = trim((string) ($item->image_position ?? '50% 50%'));
+            if (! preg_match('/^(left|center|right|\d{1,3}%)(\s+(top|center|bottom|\d{1,3}%))?$/', $position)) {
+                $position = '50% 50%';
+            }
 
-    $getMedia = fn(int $index) => $media[$index % $media->count()];
-    $featured = $getMedia(0);
+            return [
+                'id' => $item->id,
+                'image' => asset('storage/' . $item->image),
+                'title' => strtoupper(trim((string) ($item->title ?? 'KAZEVIEW PROJECT'))),
+                'link' => !empty($item->link) ? $item->link : '#work',
+                'category' => $category,
+                'category_slug' => strtolower($category),
+                'media_type' => $mediaType,
+                'duration' => $item->duration ?? null,
+                'year' => $item->project_year
+                    ?? (!empty($item->created_at)
+                        ? \Illuminate\Support\Carbon::parse($item->created_at)->format('Y')
+                        : now()->year),
+                'position' => $position,
+                'is_featured' => (bool) ($item->is_featured ?? false),
+            ];
+        })
+        ->values();
 
-    $secondaryTiles = [
-        ['media' => $getMedia(1), 'category' => 'AUTOMOTIVE', 'year' => '2024', 'position' => '50% 48%'],
-        ['media' => $getMedia(2), 'category' => 'PORTRAITS', 'year' => '2024', 'position' => '50% 30%'],
-        ['media' => $getMedia(3), 'category' => 'EVENTS', 'year' => '2024', 'position' => '50% 55%'],
-        ['media' => $getMedia(4), 'category' => 'AUTOMOTIVE', 'year' => '2024', 'position' => '56% 52%'],
+    $fallback = [
+        'id' => null,
+        'image' => $fallbackImage,
+        'title' => 'KAZEVIEW PROJECT',
+        'link' => '#work',
+        'category' => 'PHOTOGRAPHY',
+        'category_slug' => 'photography',
+        'media_type' => 'PHOTOGRAPHY',
+        'duration' => null,
+        'year' => now()->year,
+        'position' => '50% 50%',
+        'is_featured' => false,
     ];
 
-    $portfolioCategories = ['films', 'portraits', 'automotive', 'events', 'automotive', 'portraits', 'events', 'photography'];
-    $portfolioLabels = ['FILM', 'PORTRAITS', 'AUTOMOTIVE', 'EVENTS', 'AUTOMOTIVE', 'PORTRAITS', 'EVENTS', 'PHOTOGRAPHY'];
-    $portfolioCount = max(8, $media->count());
+    if ($media->isEmpty()) {
+        $media = collect([$fallback]);
+    }
+
+    $featured = $media->firstWhere('is_featured', true) ?? $media->first();
+    $secondaryTiles = $media
+        ->reject(fn($item) => $item['id'] === $featured['id'])
+        ->take(4)
+        ->values();
+
+    while ($secondaryTiles->count() < 4) {
+        $secondaryTiles->push($fallback);
+    }
+
+    $portfolioMedia = $media->reject(fn($item) => $item['id'] === $featured['id'])->values();
+    $portfolioCount = $portfolioMedia->count();
 @endphp
 
 @section('content')
     <section class="home-featured-grid" id="films" aria-label="Featured KAZEVIEW work">
         <a class="media-tile featured-film" href="{{ $featured['link'] }}"
-            aria-label="Play Night Run — Surabaya, duration 1 minute 24 seconds">
-            <img class="media-tile__image" src="{{ $featured['image'] }}" alt="Night automotive film by KAZEVIEW"
-                fetchpriority="high">
+            aria-label="View {{ $featured['title'] }} project">
+            <img class="media-tile__image" src="{{ $featured['image'] }}" alt="{{ $featured['title'] }} by KAZEVIEW"
+                style="object-position: {{ $featured['position'] }}" fetchpriority="high">
 
             <span class="featured-film__play-cluster" aria-hidden="true">
                 <span class="play-circle">
@@ -59,9 +88,11 @@
                     </svg>
                 </span>
                 <span class="featured-film__meta">
-                    <span class="featured-film__label">FEATURED FILM</span>
-                    <span class="featured-film__title">NIGHT RUN — SURABAYA</span>
-                    <span class="featured-film__duration">01:24</span>
+                    <span class="featured-film__label">{{ $featured['media_type'] }}</span>
+                    <span class="featured-film__title">{{ $featured['title'] }}</span>
+                    @if ($featured['duration'])
+                        <span class="featured-film__duration">{{ $featured['duration'] }}</span>
+                    @endif
                 </span>
             </span>
 
@@ -75,10 +106,10 @@
 
         <div class="home-featured-grid__secondary">
             @foreach ($secondaryTiles as $tile)
-                <a class="media-tile secondary-tile" href="{{ $tile['media']['link'] }}"
-                    aria-label="View {{ strtolower($tile['category']) }} photography from {{ $tile['year'] }}">
-                    <img class="media-tile__image" src="{{ $tile['media']['image'] }}"
-                        alt="{{ ucfirst(strtolower($tile['category'])) }} photography by KAZEVIEW"
+                <a class="media-tile secondary-tile" href="{{ $tile['link'] }}"
+                    aria-label="View {{ strtolower($tile['category']) }} {{ strtolower($tile['media_type']) }}">
+                    <img class="media-tile__image" src="{{ $tile['image'] }}"
+                        alt="{{ $tile['title'] }} by KAZEVIEW"
                         style="object-position: {{ $tile['position'] }}" loading="eager">
                     <span class="secondary-tile__label" aria-hidden="true">
                         <span class="secondary-tile__category">{{ $tile['category'] }}</span>
@@ -103,20 +134,20 @@
     </nav>
 
     <section class="home-portfolio-grid" id="work" aria-label="KAZEVIEW portfolio">
-        @for ($index = 0; $index < $portfolioCount; $index++)
+        @foreach ($portfolioMedia as $item)
             @php
-                $item = $getMedia($index + 5);
-                $category = $portfolioCategories[$index % count($portfolioCategories)];
-                $categoryLabel = $portfolioLabels[$index % count($portfolioLabels)];
-                $isFilm = $index === 0 || $category === 'films';
-                $filterTags = $isFilm ? 'films' : 'photography ' . $category;
-                $title = $index === 0 ? 'TRACKSIDE — REDLINE' : strtoupper($item['title']);
+                $isFilm = $item['media_type'] === 'FILM';
+                $filterTags = $isFilm
+                    ? 'films ' . $item['category_slug']
+                    : 'photography ' . $item['category_slug'];
             @endphp
-            <a class="home-portfolio-card {{ $isFilm ? 'home-portfolio-card--film' : '' }}" href="{{ $item['link'] }}"
-                data-home-category="{{ $filterTags }}"
-                aria-label="{{ $isFilm ? 'Film' : 'Photography' }}, {{ $title }}, {{ $categoryLabel }}">
-                <img src="{{ $item['image'] }}" alt="{{ $title }} — {{ strtolower($categoryLabel) }} by KAZEVIEW"
-                    loading="{{ $index < 4 ? 'eager' : 'lazy' }}">
+            <a class="home-portfolio-card {{ $isFilm ? 'home-portfolio-card--film' : '' }}"
+                href="{{ $item['link'] }}" data-home-category="{{ $filterTags }}"
+                aria-label="{{ $item['media_type'] }}, {{ $item['title'] }}, {{ $item['category'] }}">
+                <img src="{{ $item['image'] }}"
+                    alt="{{ $item['title'] }} — {{ strtolower($item['category']) }} by KAZEVIEW"
+                    style="object-position: {{ $item['position'] }}"
+                    loading="{{ $loop->index < 4 ? 'eager' : 'lazy' }}">
 
                 @if ($isFilm)
                     <span class="portfolio-play" aria-hidden="true">
@@ -124,15 +155,17 @@
                             <path d="M7 4.8v14.4L19 12 7 4.8Z" />
                         </svg>
                     </span>
-                    <span class="portfolio-duration" aria-hidden="true">{{ $index === 0 ? '01:37' : '01:24' }}</span>
+                    @if ($item['duration'])
+                        <span class="portfolio-duration" aria-hidden="true">{{ $item['duration'] }}</span>
+                    @endif
                 @endif
 
                 <span class="portfolio-card__meta" aria-hidden="true">
-                    <span class="portfolio-card__category">{{ $categoryLabel }}</span>
-                    <span class="portfolio-card__title">{{ $title }}</span>
+                    <span class="portfolio-card__category">{{ $item['category'] }}</span>
+                    <span class="portfolio-card__title">{{ $item['title'] }}</span>
                 </span>
             </a>
-        @endfor
+        @endforeach
     </section>
 
     <section id="about" class="sr-only" aria-label="About KAZEVIEW">

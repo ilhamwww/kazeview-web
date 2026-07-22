@@ -30,12 +30,10 @@ class CreateCollection extends CreateRecord
         $mimeType = Storage::disk('public')->mimeType($filePath);
         $fileSize = Storage::disk('public')->size(path: $filePath);
 
-        $maxUrut = DB::table('collections')->max('urut');
+        $maxUrut = (int) DB::table('collections')->max('urut');
         $collection = new Collection();
-        $collection->image = $filePath;
+        $collection->fill($data);
         $collection->urut = $maxUrut + 1;
-        $collection->created_at = now('Asia/Jakarta');
-        $collection->updated_at = now('Asia/Jakarta');
         $collection->save();
 
         $id = $collection->id;

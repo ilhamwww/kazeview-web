@@ -14,6 +14,15 @@ class Collection extends Model
     protected $table = 'collections';
     protected $guarded = [];
 
+    protected function casts(): array
+    {
+        return [
+            'project_year' => 'integer',
+            'is_featured' => 'boolean',
+            'is_active' => 'boolean',
+        ];
+    }
+
     protected static function booted()
     {
         static::saving(function ($collection) {
