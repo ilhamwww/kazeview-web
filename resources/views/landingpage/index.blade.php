@@ -95,6 +95,12 @@
     $portfolioMedia = $media->reject(fn($item) => $item['id'] === $featured['id'])->values();
 @endphp
 
+@section('preloads')
+    @if ($featured['image'])
+        <link rel="preload" href="{{ $featured['image'] }}" as="image" fetchpriority="high">
+    @endif
+@endsection
+
 @section('content')
     <section class="home-featured-grid" id="films" aria-label="Featured KAZEVIEW work">
         <a class="media-tile featured-film" href="{{ $featured['link'] }}"

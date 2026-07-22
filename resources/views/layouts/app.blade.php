@@ -29,6 +29,17 @@
     <meta name="twitter:image" content="{{ asset('KAZE_icon.png') }}">
 
     <link rel="icon" type="image/png" href="{{ asset('KAZE_icon.png') }}">
+
+    @php
+        $headLogoPath = !empty($data_web->logo)
+            ? asset('storage/' . $data_web->logo)
+            : asset('KAZE_logo.png');
+    @endphp
+    <link rel="preload" href="{{ $headLogoPath }}" as="image" fetchpriority="high">
+    @yield('preloads')
+
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link

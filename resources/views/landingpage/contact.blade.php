@@ -20,6 +20,10 @@
         ->values();
 @endphp
 
+@section('preloads')
+    <link rel="preload" href="{{ $contactImage }}" as="image" fetchpriority="high">
+@endsection
+
 @section('content')
     <article class="contact-page">
         <header class="contact-hero">

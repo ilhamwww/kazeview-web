@@ -24,6 +24,10 @@
     $isExternalCta = str_starts_with($ctaUrl, 'http');
 @endphp
 
+@section('preloads')
+    <link rel="preload" href="{{ $heroImage }}" as="image" fetchpriority="high">
+@endsection
+
 @section('content')
     <article class="about-page">
         <header class="about-hero">

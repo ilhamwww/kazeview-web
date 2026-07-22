@@ -59,6 +59,12 @@
     $helpUrl = $whatsAppNumber !== '' ? 'https://wa.me/' . $whatsAppNumber : '#contact';
 @endphp
 
+@section('preloads')
+    @if ($events->isNotEmpty())
+        <link rel="preload" href="{{ $events->first()['image'] }}" as="image" fetchpriority="high">
+    @endif
+@endsection
+
 @section('content')
     <section class="preview-intro" aria-labelledby="preview-heading">
         <div>
@@ -148,7 +154,8 @@
                 <img class="event-card__media" src="{{ $event['image'] }}"
                     alt="{{ $event['title'] }} at {{ $event['location'] }}"
                     style="object-position: {{ $event['position'] }}"
-                    loading="{{ $loop->index < 4 ? 'eager' : 'lazy' }}">
+                    loading="{{ $loop->index < 4 ? 'eager' : 'lazy' }}"
+                    @if ($loop->first) fetchpriority="high" @endif>
                 <span class="event-card__overlay" aria-hidden="true"></span>
 
                 @if ($event['is_new'])
