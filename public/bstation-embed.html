@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Bstation Embed Player</title>
+    <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+        }
+
+        video {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" autoplay playsinline preload="auto"></video>
+
+    <script>
+        const video = document.getElementById('video');
+
+        let player = null;
+        let playData = null;
+        let currentQualityIndex = 0;
+        let currentManifestUrl = null;
+        let currentSubtitleUrl = null;
+        let lastStateSentAt = 0;
+
+        const post = (payload) => {
+            window.parent.postMessage(payload, '*');
+        };
+
+        const postState = (force = false) => {
+            const now = Date.now();
+
+            if (!force && now - lastStateSentAt < 250) {
+                return;
+            }
+
+            lastStateSentAt = now;
+
+            post({
+                type: 'player-state',
+                currentTime: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+                duration: Number.isFinite(video.duration) ? video.duration : 0,
+                paused: video.paused,
+                muted: video.muted,
+                volume: video.volume,
+            });
+        };
+
+        const revokeManifestUrl = () => {
+            if (!currentManifestUrl) {
+                return;
+            }
+
+            URL.revokeObjectURL(currentManifestUrl);
+            currentManifestUrl = null;
+        };
+
+        const revokeSubtitleUrl = () => {
+            if (!currentSubtitleUrl) {
+                return;
+            }
+
+            URL.revokeObjectURL(currentSubtitleUrl);
+            currentSubtitleUrl = null;
+        };
+
+        video.addEventListener('loadedmetadata', () => {
+            post({
+                type: 'video-dimensions',
+                width: video.videoWidth,
+                height: video.videoHeight,
+                isPortrait: video.videoHeight > video.videoWidth,
+            });
+
+            postState(true);
+        });
+
+        video.addEventListener('timeupdate', () => postState());
+        video.addEventListener('durationchange', () => postState(true));
+        video.addEventListener('play', () => postState(true));
+        video.addEventListener('pause', () => postState(true));
+        video.addEventListener('volumechange', () => postState(true));
+        video.addEventListener('waiting', () => {
+            post({ type: 'player-loading', value: true });
+        });
+        video.addEventListener('canplay', () => {
+            post({ type: 'player-loading', value: false });
+            postState(true);
+        });
+        video.addEventListener('playing', () => {
+            post({ type: 'player-loading', value: false });
+            postState(true);
+        });
+        video.addEventListener('ended', () => {
+            postState(true);
+            post({ type: 'player-ended' });
+        });
+        video.addEventListener('error', () => {
+            post({ type: 'player-loading', value: false });
+            post({
+                type: 'player-error',
+                message: 'Media Bstation gagal diputar.',
+            });
+        });
+
+        function vttTime(time) {
+            const hours = Math.floor(time / 3600);
+            const minutes = Math.floor((time % 3600) / 60);
+            const seconds = (time % 60).toFixed(3).padStart(6, '0');
+
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${seconds}`;
+        }
+
+        function assTime(time) {
+            const [hours, minutes, seconds] = time.split(':');
+
+            return Number(hours) * 3600 + Number(minutes) * 60 + parseFloat(seconds);
+        }
+
+        function cleanText(text) {
+            return text
+                .replace(/\{[^}]*\}/g, '')
+                .replace(/\\N/gi, '\n')
+                .trim();
+        }
+
+        function assToVtt(content) {
+            let output = 'WEBVTT\n\n';
+
+            for (const line of content.split(/\r?\n/)) {
+                if (!line.startsWith('Dialogue:')) {
+                    continue;
+                }
+
+                const fields = line.slice(9).split(',');
+                const start = fields[1]?.trim();
+                const end = fields[2]?.trim();
+                const text = cleanText(fields.slice(9).join(','));
+
+                if (!start || !end || !text) {
+                    continue;
+                }
+
+                output += `${vttTime(assTime(start))} --> ${vttTime(assTime(end))}\n${text}\n\n`;
+            }
+
+            return output;
+        }
+
+        function jsonToVtt(payload) {
+            let output = 'WEBVTT\n\n';
+
+            for (const cue of payload.body || []) {
+                output += `${vttTime(cue.from)} --> ${vttTime(cue.to)}\n${String(cue.content || '').trim()}\n\n`;
+            }
+
+            return output;
+        }
+
+        function escapeXml(value) {
+            const ampersand = String.fromCharCode(38);
+
+            return String(value)
+                .replace(/&/g, ampersand + 'amp;')
+                .replace(/</g, ampersand + 'lt;')
+                .replace(/>/g, ampersand + 'gt;')
+                .replace(/"/g, ampersand + 'quot;')
+                .replace(/'/g, ampersand + 'apos;');
+        }
+
+        function buildMpd(data, quality) {
+            const duration = ((data.duration_ms || 0) / 1000).toFixed(3);
+            const audio = data.audios?.find(
+                (item) => item.id === quality.audio_quality,
+            ) || data.audios?.slice().sort(
+                (left, right) => right.bandwidth - left.bandwidth,
+            )[0] || null;
+
+            const videoSegment = quality.segment_base || {};
+            const audioSegment = audio?.segment_base || {};
+            const videoUrl = quality.url || quality.backup_urls?.[0] || '';
+            const audioUrl = audio
+                ? audio.url || audio.backup_urls?.[0] || ''
+                : '';
+
+            let height = Number(quality.height || 0);
+
+            if (!height) {
+                const match = quality.label?.match(/(\d+)P/i);
+                height = match ? Number(match[1]) : 720;
+            }
+
+            const width = Number(quality.width || Math.round(height * 16 / 9));
+
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" type="static" mediaPresentationDuration="PT${duration}S" minBufferTime="PT1.5S">
+ <Period>
+  <AdaptationSet mimeType="${escapeXml(quality.mime_type || 'video/mp4')}" segmentAlignment="true" startWithSAP="1">
+   <Representation id="v" codecs="${escapeXml(quality.codecs || '')}" bandwidth="${Number(quality.bandwidth || 0)}" width="${width}" height="${height}" frameRate="${escapeXml(quality.frame_rate || '')}">
+    <BaseURL>${escapeXml(videoUrl)}</BaseURL>
+    <SegmentBase indexRange="${escapeXml(videoSegment.index_range || '1000-2000')}"><Initialization range="${escapeXml(videoSegment.range || '0-999')}"/></SegmentBase>
+   </Representation>
+  </AdaptationSet>${audio ? `
+  <AdaptationSet mimeType="${escapeXml(audio.mime_type || 'audio/mp4')}" segmentAlignment="true" startWithSAP="1">
+   <Representation id="a" codecs="${escapeXml(audio.codecs || '')}" bandwidth="${Number(audio.bandwidth || 0)}">
+    <BaseURL>${escapeXml(audioUrl)}</BaseURL>
+    <SegmentBase indexRange="${escapeXml(audioSegment.index_range || '1000-2000')}"><Initialization range="${escapeXml(audioSegment.range || '0-999')}"/></SegmentBase>
+   </Representation>
+  </AdaptationSet>` : ''}
+ </Period>
+</MPD>`;
+        }
+
+        function attemptPlay() {
+            video.muted = false;
+
+            const promise = video.play();
+
+            if (promise === undefined) {
+                return;
+            }
+
+            promise.catch(() => {
+                video.muted = true;
+                post({ type: 'player-autoplay-muted', value: true });
+
+                video.play().catch((error) => {
+                    console.error('Muted autoplay Bstation juga ditolak:', error);
+                });
+            });
+        }
+
+        function createPlayer(manifestUrl) {
+            player = dashjs.MediaPlayer().create();
+            player.updateSettings({
+                streaming: {
+                    abr: {
+                        autoSwitchBitrate: {
+                            video: false,
+                            audio: false,
+                        },
+                    },
+                    buffer: {
+                        stableBufferTime: 30,
+                        bufferTimeAtTopQuality: 30,
+                        bufferTimeAtTopQualityLongForm: 60,
+                    },
+                    retryAttempts: {
+                        MPD: 3,
+                        MediaSegment: 5,
+                        InitializationSegment: 5,
+                    },
+                },
+            });
+
+            player.on(dashjs.MediaPlayer.events.ERROR, (event) => {
+                console.error('Dash.js Bstation error:', event);
+                post({
+                    type: 'player-error',
+                    message: 'Dash.js gagal memuat stream Bstation.',
+                });
+            });
+
+            player.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => {
+                post({ type: 'player-loading', value: false });
+            });
+
+            player.on(dashjs.MediaPlayer.events.PLAYBACK_WAITING, () => {
+                post({ type: 'player-loading', value: true });
+            });
+
+            player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+                attemptPlay();
+            });
+
+            player.initialize(video, manifestUrl, false);
+        }
+
+        function loadQuality(qualityIndex, keepTime = false) {
+            const quality = playData?.qualities?.[qualityIndex];
+
+            if (!quality) {
+                return;
+            }
+
+            const savedTime = keepTime && Number.isFinite(video.currentTime)
+                ? video.currentTime
+                : 0;
+            const wasPaused = video.paused;
+            const manifest = buildMpd(playData, quality);
+
+            revokeManifestUrl();
+            currentManifestUrl = URL.createObjectURL(
+                new Blob([manifest], { type: 'application/dash+xml' }),
+            );
+            currentQualityIndex = qualityIndex;
+
+            post({ type: 'player-loading', value: true });
+
+            if (!player) {
+                createPlayer(currentManifestUrl);
+
+                return;
+            }
+
+            const onStreamInitialized = () => {
+                if (savedTime > 0) {
+                    try {
+                        player.seek(savedTime);
+                    } catch (error) {
+                        console.warn('Gagal mengembalikan posisi Bstation:', error);
+                    }
+                }
+
+                if (!wasPaused) {
+                    attemptPlay();
+                }
+
+                player.off(
+                    dashjs.MediaPlayer.events.STREAM_INITIALIZED,
+                    onStreamInitialized,
+                );
+            };
+
+            player.on(
+                dashjs.MediaPlayer.events.STREAM_INITIALIZED,
+                onStreamInitialized,
+            );
+            player.attachSource(currentManifestUrl);
+        }
+
+        async function setSubtitle(subtitle) {
+            for (const track of video.querySelectorAll('track')) {
+                track.remove();
+            }
+
+            revokeSubtitleUrl();
+
+            if (!subtitle) {
+                for (const track of video.textTracks) {
+                    track.mode = 'disabled';
+                }
+
+                return;
+            }
+
+            try {
+                const response = await fetch(subtitle.url);
+
+                if (!response.ok) {
+                    throw new Error(`Subtitle HTTP ${response.status}`);
+                }
+
+                const raw = subtitle.type === 'json'
+                    ? await response.json()
+                    : await response.text();
+                const vtt = subtitle.type === 'json'
+                    ? jsonToVtt(raw)
+                    : assToVtt(raw);
+
+                currentSubtitleUrl = URL.createObjectURL(
+                    new Blob([vtt], { type: 'text/vtt' }),
+                );
+
+                const track = document.createElement('track');
+                track.kind = 'subtitles';
+                track.label = subtitle.label || subtitle.lang || 'Subtitle';
+                track.srclang = subtitle.lang || 'id';
+                track.src = currentSubtitleUrl;
+                track.default = true;
+                video.appendChild(track);
+
+                window.setTimeout(() => {
+                    const textTrack = video.textTracks[0];
+
+                    if (textTrack) {
+                        textTrack.mode = 'showing';
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Subtitle Bstation gagal dimuat:', error);
+                post({
+                    type: 'player-error',
+                    message: 'Subtitle gagal dimuat.',
+                });
+            }
+        }
+
+        function seekTo(time) {
+            const target = Number(time);
+
+            if (!Number.isFinite(target)) {
+                return;
+            }
+
+            const duration = Number.isFinite(video.duration)
+                ? video.duration
+                : target;
+
+            video.currentTime = Math.min(
+                Math.max(target, 0),
+                Math.max(duration, 0),
+            );
+            postState(true);
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.source !== window.parent) {
+                return;
+            }
+
+            const message = event.data;
+
+            if (!message || typeof message !== 'object') {
+                return;
+            }
+
+            switch (message.type) {
+                case 'ping':
+                    post({ type: 'player-ready' });
+                    break;
+
+                case 'init':
+                    playData = message.playData;
+                    currentQualityIndex = Number(message.qualityIndex || 0);
+                    loadQuality(currentQualityIndex, false);
+                    break;
+
+                case 'change-quality':
+                    loadQuality(Number(message.qualityIndex || 0), true);
+                    break;
+
+                case 'change-subtitle':
+                    setSubtitle(message.subtitle || null);
+                    break;
+
+                case 'toggle-play':
+                    if (video.paused) {
+                        attemptPlay();
+                    } else {
+                        video.pause();
+                    }
+                    break;
+
+                case 'play':
+                    attemptPlay();
+                    break;
+
+                case 'pause':
+                    video.pause();
+                    break;
+
+                case 'toggle-mute':
+                    video.muted = !video.muted;
+                    post({ type: 'player-autoplay-muted', value: false });
+                    postState(true);
+                    break;
+
+                case 'set-muted':
+                    video.muted = Boolean(message.value);
+                    post({ type: 'player-autoplay-muted', value: false });
+                    postState(true);
+
+                    if (!video.muted && video.paused) {
+                        attemptPlay();
+                    }
+                    break;
+
+                case 'seek':
+                    seekTo(message.time);
+                    break;
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            revokeManifestUrl();
+            revokeSubtitleUrl();
+
+            if (player) {
+                player.reset();
+                player = null;
+            }
+        });
+
+        post({ type: 'player-ready' });
+    </script>
+</body>
+</html>
