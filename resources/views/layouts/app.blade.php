@@ -2,158 +2,117 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $data_web->name ?? 'KAZEVIEW' }}</title>
+    <title>@yield('title', $data_web->name ?? 'KAZEVIEW')</title>
     <meta name="description"
-        content="{{ $data_web->description ?? 'Kazeview - Portofolio Fotografi, Cosplay, Otomotif, Potret, dan Momen Spesial.' }}">
+        content="@yield('meta_description', $data_web->description ?? 'KAZEVIEW — Automotive, portrait, and event photography and films.')">
     <meta name="keywords"
-        content="fotografi, photography, Kazeview, cosplay, otomotif, potret, jasa foto, Bantul, Yogyakarta">
+        content="photography, film, automotive, motorsport, portrait, event, KAZEVIEW, Yogyakarta">
     <meta name="author" content="{{ $data_web->name ?? 'KAZEVIEW' }}">
     <meta name="robots" content="index, follow">
 
-    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="{{ $data_web->name ?? 'KAZEVIEW' }}">
+    <meta property="og:title" content="@yield('title', $data_web->name ?? 'KAZEVIEW')">
     <meta property="og:description"
-        content="{{ $data_web->description ?? 'Kazeview - Portofolio Fotografi, Cosplay, Otomotif, Potret, dan Momen Spesial.' }}">
+        content="@yield('meta_description', $data_web->description ?? 'KAZEVIEW — Automotive, portrait, and event photography and films.')">
     <meta property="og:image" content="{{ asset('KAZE_icon.png') }}">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:site_name" content="{{ $data_web->name ?? 'KAZEVIEW' }}">
 
-    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $data_web->name ?? 'KAZEVIEW' }}">
+    <meta name="twitter:title" content="@yield('title', $data_web->name ?? 'KAZEVIEW')">
     <meta name="twitter:description"
-        content="{{ $data_web->description ?? 'Kazeview - Portofolio Fotografi, Cosplay, Otomotif, Potret, dan Momen Spesial.' }}">
+        content="@yield('meta_description', $data_web->description ?? 'KAZEVIEW — Automotive, portrait, and event photography and films.')">
     <meta name="twitter:image" content="{{ asset('KAZE_icon.png') }}">
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ asset('KAZE_icon.png') }}" />
-
-    <!-- Stylesheets -->
-    <link href="{{ asset('css/landingpage/style.css') }}" rel="stylesheet" />
-    <link href="{{ asset('css/landingpage/custom.css') }}?v={{ time() }}" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="icon" type="image/png" href="{{ asset('KAZE_icon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="{{ asset('css/landingpage/kazeview.css') }}?v={{ file_exists(public_path('css/landingpage/kazeview.css')) ? filemtime(public_path('css/landingpage/kazeview.css')) : time() }}"
         rel="stylesheet">
 
     @yield('styles')
-    <style>
-        html,
-        body {
-            height: 100%;
-        }
-
-        body {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        main {
-            flex: 1;
-        }
-
-        @media (max-width: 450px) {
-            .main-pages {
-                padding-top: 2rem !important;
-            }
-        }
-    </style>
 </head>
 
+@php
+    $isPreview = request()->routeIs('home.index_product');
+    $whatsAppNumber = preg_replace('/\D+/', '', (string) ($data_web->wa ?? ''));
+    if ($whatsAppNumber !== '' && str_starts_with($whatsAppNumber, '0')) {
+        $whatsAppNumber = '62' . substr($whatsAppNumber, 1);
+    } elseif ($whatsAppNumber !== '' && !str_starts_with($whatsAppNumber, '62')) {
+        $whatsAppNumber = '62' . $whatsAppNumber;
+    }
+    $whatsAppUrl = $whatsAppNumber !== '' ? 'https://wa.me/' . $whatsAppNumber : '#contact';
+    $logoPath = !empty($data_web->logo) ? asset('storage/' . $data_web->logo) : asset('KAZE.png');
+@endphp
 
-<body>
-    <script>
-        document.addEventListener('contextmenu', event => event.preventDefault());
+<body class="{{ $isPreview ? 'page-preview' : 'page-home' }}">
+    <a class="skip-link" href="#main-content">Skip to content</a>
 
-        document.addEventListener('touchstart', function(e) {
-            e.target.addEventListener('contextmenu', function(e) {
-                e.preventDefault();
-            });
-        }, {
-            passive: false
-        });
+    <header class="site-header {{ $isPreview ? 'site-header--preview' : 'site-header--home' }}">
+        <a class="site-logo" href="{{ route('home.index') }}" aria-label="KAZEVIEW home">
+            <img src="{{ $logoPath }}" alt="KAZEVIEW" width="174" height="24">
+        </a>
 
-        document.querySelectorAll('img').forEach(img => {
-            img.setAttribute('draggable', 'false');
-            img.addEventListener('dragstart', e => e.preventDefault());
-        });
-    </script>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
+            <span class="sr-only">Toggle navigation</span>
+            <span></span>
+            <span></span>
+        </button>
 
-    <div id="loading-screen">
-        <div class="loading-content wave-container">
-            <span class="">{{ $data_web->name ?? '' }}...</span>
-        </div>
-    </div>
+        <nav class="site-nav" id="primary-navigation" aria-label="Primary navigation">
+            <a href="{{ route('home.index') }}#work">WORK</a>
+            <a href="{{ route('home.index') }}#films">FILMS</a>
+            <a href="{{ route('home.index_product') }}" @class(['is-active' => $isPreview])
+                @if ($isPreview) aria-current="page" @endif>PREVIEW</a>
+            <a href="{{ route('home.index') }}#about">ABOUT</a>
+            <a href="{{ route('home.index') }}#contact">CONTACT</a>
+            <a class="site-nav__book" href="{{ $whatsAppUrl }}" @if ($whatsAppNumber !== '') target="_blank"
+                rel="noopener noreferrer" @endif>BOOK A SHOOT</a>
+        </nav>
+    </header>
 
-    <nav class="navbar navbar-expand-lg fixed-top">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <img src="{{ asset('storage/' . ($data_web->logo ?? '')) }}" alt="Logo"
-                    class="d-inline-block align-top" height="30rem">
-            </a>
-
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon" style="filter: invert(1)"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/preview">Preview</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <div class="main-pages" style="padding-top: 5rem;">
+    <main id="main-content">
         @yield('content')
-    </div>
-    <!-- Footer -->
-    <footer class="footer mt-auto bg-dark text-white py-3">
-        <div class="container text-center">
-            <p>&copy; {{ date('Y') }} {{ $data_web->name ?? '' }}. All rights reserved.</p>
-        </div>
+    </main>
+
+    <footer class="site-footer" id="contact">
+        <span>© {{ date('Y') }} {{ strtoupper($data_web->name ?? 'KAZEVIEW') }}</span>
+        <span>PHOTO + FILM / YOGYAKARTA</span>
     </footer>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
     @yield('scripts')
     <script>
-        $(window).on('load', function() {
-            $('#loading-screen').addClass('hide');
-        });
+        (() => {
+            const toggle = document.querySelector('.menu-toggle');
+            const nav = document.querySelector('.site-nav');
 
-        $(function() {
-            function isInViewport($el) {
-                var elementTop = $el.offset().top;
-                var elementBottom = elementTop + $el.outerHeight();
-                var viewportTop = $(window).scrollTop();
-                var viewportBottom = viewportTop + $(window).height();
-                return elementBottom > viewportTop + 100 && elementTop < viewportBottom - 100;
-            }
+            if (!toggle || !nav) return;
 
-            function checkCards() {
-                $('.product-card').each(function() {
-                    var $card = $(this);
-                    if ($card.hasClass('animate-in')) return;
-                    if (isInViewport($card)) {
-                        $card.addClass('animate-in');
-                    }
-                });
-            }
+            const closeMenu = () => {
+                document.body.classList.remove('menu-open');
+                toggle.setAttribute('aria-expanded', 'false');
+            };
 
-            $(window).on('scroll resize load', checkCards);
-        });
+            toggle.addEventListener('click', () => {
+                const open = document.body.classList.toggle('menu-open');
+                toggle.setAttribute('aria-expanded', String(open));
+            });
+
+            nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeMenu();
+                    toggle.focus();
+                }
+            });
+        })();
     </script>
 </body>
 

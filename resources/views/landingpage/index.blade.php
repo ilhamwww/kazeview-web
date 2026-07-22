@@ -1,245 +1,189 @@
 @extends('layouts.app')
 
-@section('styles')
-    <style>
-        .masonry-gallery {
-            display: flex;
-            flex-wrap: wrap;
-            margin: 0;
-            padding: 0;
-        }
+@section('title', 'KAZEVIEW — Photo + Film')
+@section('meta_description', 'KAZEVIEW captures motion in every frame through automotive, portrait, and event photography and film.')
 
-        .masonry-gallery-item {
-            overflow: hidden;
-            flex-grow: 1;
-            transition: opacity 1s ease, filter 1s ease, transform 1s ease;
-            opacity: 0;
-            filter: blur(10px);
-            transform: translateY(20px);
-        }
+@php
+    $collectionMedia = collect($galleryImages ?? [])
+        ->filter(fn($item) => !empty($item->image))
+        ->map(
+            fn($item) => [
+                'image' => asset('storage/' . $item->image),
+                'title' => $item->title ?? 'KAZEVIEW Project',
+                'link' => '#work',
+            ],
+        );
 
-        .masonry-gallery-item.animate-in {
-            opacity: 1;
-            filter: blur(0);
-            transform: translateY(0);
-        }
+    $contentMedia = collect($data_konten ?? [])
+        ->filter(fn($item) => !empty($item->image))
+        ->map(
+            fn($item) => [
+                'image' => asset('storage/' . $item->image),
+                'title' => $item->title ?? 'KAZEVIEW Project',
+                'link' => !empty($item->link) ? $item->link : '#work',
+            ],
+        );
 
-        .masonry-gallery-item img {
-            display: block;
-            width: 100%;
-            height: 301px;
-            /* sama rata tinggi baris */
-            object-fit: cover;
-            transition: transform 0.5s ease;
-        }
+    $fallbackImage = !empty($data_web->hero_image)
+        ? asset('storage/' . $data_web->hero_image)
+        : asset('KAZE_icon.png');
 
-        .masonry-gallery-item:hover img {
-            transform: scale(1.1);
-        }
+    $media = $collectionMedia
+        ->concat($contentMedia)
+        ->values();
 
-        /* Untuk menghilangkan gap antar foto */
-        .masonry-gallery-item {
-            margin: 0;
-            padding: 0;
-        }
+    if ($media->isEmpty()) {
+        $media = collect([
+            [
+                'image' => $fallbackImage,
+                'title' => 'KAZEVIEW Project',
+                'link' => '#work',
+            ],
+        ]);
+    }
 
-        @media (max-width: 450px) {
-            .masonry-gallery {
-                flex-direction: column;
-            }
+    $getMedia = fn(int $index) => $media[$index % $media->count()];
+    $featured = $getMedia(0);
 
-            .masonry-gallery-item img {
-                height: auto;
-                width: 100%;
-            }
-        }
+    $secondaryTiles = [
+        ['media' => $getMedia(1), 'category' => 'AUTOMOTIVE', 'year' => '2024', 'position' => '50% 48%'],
+        ['media' => $getMedia(2), 'category' => 'PORTRAITS', 'year' => '2024', 'position' => '50% 30%'],
+        ['media' => $getMedia(3), 'category' => 'EVENTS', 'year' => '2024', 'position' => '50% 55%'],
+        ['media' => $getMedia(4), 'category' => 'AUTOMOTIVE', 'year' => '2024', 'position' => '56% 52%'],
+    ];
 
-        .modal-backdrop {
-            background-color: rgb(255, 255, 255) !important;
-        }
-    </style>
-@endsection
+    $portfolioCategories = ['films', 'portraits', 'automotive', 'events', 'automotive', 'portraits', 'events', 'photography'];
+    $portfolioLabels = ['FILM', 'PORTRAITS', 'AUTOMOTIVE', 'EVENTS', 'AUTOMOTIVE', 'PORTRAITS', 'EVENTS', 'PHOTOGRAPHY'];
+    $portfolioCount = max(8, $media->count());
+@endphp
 
 @section('content')
+    <section class="home-featured-grid" id="films" aria-label="Featured KAZEVIEW work">
+        <a class="media-tile featured-film" href="{{ $featured['link'] }}"
+            aria-label="Play Night Run — Surabaya, duration 1 minute 24 seconds">
+            <img class="media-tile__image" src="{{ $featured['image'] }}"
+                alt="Night automotive film by KAZEVIEW" fetchpriority="high">
 
+            <span class="featured-film__play-cluster" aria-hidden="true">
+                <span class="play-circle">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 4.8v14.4L19 12 7 4.8Z" />
+                    </svg>
+                </span>
+                <span class="featured-film__meta">
+                    <span class="featured-film__label">FEATURED FILM</span>
+                    <span class="featured-film__title">NIGHT RUN — SURABAYA</span>
+                    <span class="featured-film__duration">01:24</span>
+                </span>
+            </span>
 
-    <!-- Section : Hero -->
-    <section class="container " id="home">
-        <div class="row align-items-center">
-            <div class="col-lg-6 order-2 order-lg-1">
-                <h6 class="text-uppercase"><span class="bg-black text-white px-1">Speed. Style. Story.</span></h6>
-                <h1><strong>{{ $data_web->first_name ?? '' }}</strong>{{ $data_web->last_name ?? '' }}</h1>
-                <p>Captures the thrill, emotion, and detail in every photograph.</p>
-                <div>
-                    <a href="http://wa.me/62{{ $data_web->wa ?? '' }}" target="_blank" class="btn btn-black border">
-                        <i class="bi bi-whatsapp me-2"></i>
-                        Whatsapp
-                    </a>
-                </div>
-                <div class="mt-3">
-                    <small>FOLLOW US:</small>
-                    @if (count($data_links) > 0)
-                        @foreach ($data_links as $item)
-                            <a href="{{ $item['url'] }}" target="_blank" class="text-black ms-2">{{ $item['label'] }}</a>
-                        @endforeach
-                    @endif
-                </div>
-            </div>
-            <div class="col-lg-6 order-1 order-lg-2 mb-4 mb-lg-0">
-                <div class="aspect-ratio-3-4">
-                    <img src="{{ $data_web ? asset('storage/' . $data_web->hero_image) : '' }}" alt="About Image"
-                        class="img-cover">
-                </div>
-            </div>
+            <span class="featured-film__statement" aria-hidden="true">
+                <h1>MOTION IN<br>EVERY FRAME<span class="accent">.</span></h1>
+                <p>Photo + Film / Automotive · Portrait · Event</p>
+            </span>
+
+            <span class="scroll-indicator" aria-hidden="true">SCROLL TO EXPLORE</span>
+        </a>
+
+        <div class="home-featured-grid__secondary">
+            @foreach ($secondaryTiles as $tile)
+                <a class="media-tile secondary-tile" href="{{ $tile['media']['link'] }}"
+                    aria-label="View {{ strtolower($tile['category']) }} photography from {{ $tile['year'] }}">
+                    <img class="media-tile__image" src="{{ $tile['media']['image'] }}"
+                        alt="{{ ucfirst(strtolower($tile['category'])) }} photography by KAZEVIEW"
+                        style="object-position: {{ $tile['position'] }}" loading="eager">
+                    <span class="secondary-tile__label" aria-hidden="true">
+                        <span class="secondary-tile__category">{{ $tile['category'] }}</span>
+                        <span class="secondary-tile__year">{{ $tile['year'] }}</span>
+                    </span>
+                </a>
+            @endforeach
         </div>
     </section>
 
+    <nav class="home-filter-bar" aria-label="Filter portfolio">
+        <ul class="home-filter-list">
+            @foreach (['all' => 'ALL', 'photography' => 'PHOTOGRAPHY', 'films' => 'FILMS', 'automotive' => 'AUTOMOTIVE', 'portraits' => 'PORTRAITS', 'events' => 'EVENTS'] as $value => $label)
+                <li>
+                    <button class="filter-button {{ $loop->first ? 'is-active' : '' }}" type="button"
+                        data-home-filter="{{ $value }}" aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
+                        {{ $label }}
+                    </button>
+                </li>
+            @endforeach
+        </ul>
+    </nav>
 
-    <section class="mt-5 mb-5 d-flex justify-content-center">
-        <h1 class="text-center"><strong>COLLECTIONS</strong></h1>
+    <section class="home-portfolio-grid" id="work" aria-label="KAZEVIEW portfolio">
+        @for ($index = 0; $index < $portfolioCount; $index++)
+            @php
+                $item = $getMedia($index + 5);
+                $category = $portfolioCategories[$index % count($portfolioCategories)];
+                $categoryLabel = $portfolioLabels[$index % count($portfolioLabels)];
+                $isFilm = $index === 0 || $category === 'films';
+                $filterTags = $isFilm ? 'films' : 'photography ' . $category;
+                $title = $index === 0 ? 'TRACKSIDE — REDLINE' : strtoupper($item['title']);
+            @endphp
+            <a class="home-portfolio-card {{ $isFilm ? 'home-portfolio-card--film' : '' }}"
+                href="{{ $item['link'] }}" data-home-category="{{ $filterTags }}"
+                aria-label="{{ $isFilm ? 'Film' : 'Photography' }}, {{ $title }}, {{ $categoryLabel }}">
+                <img src="{{ $item['image'] }}" alt="{{ $title }} — {{ strtolower($categoryLabel) }} by KAZEVIEW"
+                    loading="{{ $index < 4 ? 'eager' : 'lazy' }}">
+
+                @if ($isFilm)
+                    <span class="portfolio-play" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M7 4.8v14.4L19 12 7 4.8Z" />
+                        </svg>
+                    </span>
+                    <span class="portfolio-duration" aria-hidden="true">{{ $index === 0 ? '01:37' : '01:24' }}</span>
+                @endif
+
+                <span class="portfolio-card__meta" aria-hidden="true">
+                    <span class="portfolio-card__category">{{ $categoryLabel }}</span>
+                    <span class="portfolio-card__title">{{ $title }}</span>
+                </span>
+            </a>
+        @endfor
     </section>
 
-
-    <section class="container-fluid p-0">
-        <div class="masonry-gallery">
-            @if (isset($galleryImages))
-                @foreach ($galleryImages as $index => $image)
-                    <div class="masonry-gallery-item" data-index="{{ $index }}">
-                        <img src="{{ asset('storage/' . $image->image) }}" alt="Gallery Image"
-                            data-index="{{ $index }}" class="gallery-image" />
-                    </div>
-                @endforeach
-            @endif
-        </div>
+    <section id="about" class="sr-only" aria-label="About KAZEVIEW">
+        <h2>About KAZEVIEW</h2>
+        <p>Automotive, portrait, and event photography and films.</p>
     </section>
-
-<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
-        <div class="modal-content bg-transparent border-0">
-            <div class="modal-body position-relative d-flex flex-column justify-content-center align-items-center p-3" style="overflow: hidden;">
-                <!-- Tombol close -->
-                <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"
-                    aria-label="Close" style="width: 3rem; height: 3rem; aspect-ratio: 1; border-radius: 50%; background-color: #fff; color: #000;"></button>
-
-                <!-- Tombol prev -->
-                <button class="btn btn-light rounded-circle position-absolute start-0 top-50 translate-middle-y d-none d-md-block"
-                    id="prevImage" style="width: 3rem; height: 3rem;">&larr;</button>
-
-                <!-- Gambar -->
-                <img id="modalImage" src="" class="img-fluid rounded mx-auto d-block" style="max-height: 90vh; object-fit: contain;">
-
-                <!-- Tombol next -->
-                <button class="btn btn-light rounded-circle position-absolute end-0 top-50 translate-middle-y d-none d-md-block"
-                    id="nextImage" style="width: 3rem; height: 3rem;">&rarr;</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
 @endsection
+
 @section('scripts')
     <script>
-        $(document).ready(function() {
-            $('.gallery-item img').on('click', function() {
-                var imgSrc = $(this).attr('src');
-                $('#modalImage').attr('src', imgSrc);
-                $('#imageModal').modal('show');
-            });
-        });
-    </script>
-    <script>
-        $(document).ready(function() {
-            const $galleryImages = $('.gallery-image');
-            let currentIndex = 0;
+        (() => {
+            const buttons = [...document.querySelectorAll('[data-home-filter]')];
+            const cards = [...document.querySelectorAll('[data-home-category]')];
+            let filterTimer;
 
-            function showModal(index) {
-                const src = $galleryImages.eq(index).attr('src');
-                $('#modalImage').attr('src', src);
-                $('#imageModal').modal('show');
-                currentIndex = index;
-            }
+            const applyFilter = (filter) => {
+                window.clearTimeout(filterTimer);
+                cards.forEach((card) => card.classList.add('is-filtering'));
 
-            $galleryImages.on('click', function() {
-                const index = $(this).data('index');
-                showModal(index);
-            });
-
-            $('#prevImage').on('click', function() {
-                currentIndex = (currentIndex - 1 + $galleryImages.length) % $galleryImages.length;
-                showModal(currentIndex);
-            });
-
-            $('#nextImage').on('click', function() {
-                currentIndex = (currentIndex + 1) % $galleryImages.length;
-                showModal(currentIndex);
-            });
-
-            $(document).keydown(function(e) {
-                if (!$('#imageModal').hasClass('show')) return;
-
-                if (e.key === "ArrowLeft") {
-                    $('#prevImage').click();
-                } else if (e.key === "ArrowRight") {
-                    $('#nextImage').click();
-                }
-            });
-        });
-    </script>
-
-    <script>
-        $(function() {
-            $('.filter-btn').click(function() {
-                var filter = $(this).data('filter');
-
-                $('.filter-btn').removeClass('active');
-                $(this).addClass('active');
-
-                if (filter === 'all') {
-                    $('.gallery-item').removeClass('hide');
-                } else {
-                    $('.gallery-item').each(function() {
-                        if ($(this).hasClass(filter)) {
-                            $(this).removeClass('hide');
-                        } else {
-                            $(this).addClass('hide');
-                        }
+                filterTimer = window.setTimeout(() => {
+                    cards.forEach((card) => {
+                        const categories = card.dataset.homeCategory.split(' ');
+                        const visible = filter === 'all' || categories.includes(filter);
+                        card.classList.toggle('is-hidden', !visible);
+                        card.classList.remove('is-filtering');
                     });
-                }
-            });
-        });
-    </script>
-    <script>
-        $(document).ready(function() {
-            const $items = $('.masonry-gallery-item');
+                }, 160);
+            };
 
-            $items.each(function(index) {
-                const $item = $(this);
-                if (index < 5) {
-                    setTimeout(() => {
-                        $item.addClass('animate-in');
-                    }, index * 100);
-                }
-            });
-
-            function isInViewport($el) {
-                const rect = $el[0].getBoundingClientRect();
-                return rect.top < window.innerHeight - 100;
-            }
-
-            function checkAnimation() {
-                $items.each(function(index) {
-                    if (index < 5) return;
-
-                    const $item = $(this);
-                    if (!$item.hasClass('animate-in') && isInViewport($item)) {
-                        $item.addClass('animate-in');
-                    }
+            buttons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    buttons.forEach((item) => {
+                        const active = item === button;
+                        item.classList.toggle('is-active', active);
+                        item.setAttribute('aria-pressed', String(active));
+                    });
+                    applyFilter(button.dataset.homeFilter);
                 });
-            }
-
-            $(window).on('scroll resize load', checkAnimation);
-        });
+            });
+        })();
     </script>
 @endsection
