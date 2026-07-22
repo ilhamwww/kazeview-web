@@ -9,7 +9,10 @@
         : asset('KAZE_icon.png');
 
     $media = collect($galleryImages ?? [])
-        ->filter(fn($item) => !empty($item->image) && (bool) ($item->is_active ?? true))
+        ->filter(
+            fn($item) => (!empty($item->image) || !empty($item->video))
+                && (bool) ($item->is_active ?? true),
+        )
         ->map(function ($item) {
             $category = strtoupper(trim((string) ($item->category ?? 'PHOTOGRAPHY')));
             $category = in_array($category, ['PHOTOGRAPHY', 'AUTOMOTIVE', 'PORTRAITS', 'EVENTS'], true)
@@ -25,8 +28,9 @@
 
             return [
                 'id' => $item->id,
-                'image' => asset('storage/' . $item->image),
-                'title' => strtoupper(trim((string) ($item->title ?? 'KAZEVIEW PROJECT'))),
+                'image' => !empty($item->image) ? asset('storage/' . $item->image) : null,
+                'video' => !empty($item->video) ? asset('storage/' . $item->video) : null,
+                'title' => strtoupper(trim((string) ($item->title ?? 'KAZEVIEW'))),
                 'link' => !empty($item->link) ? $item->link : '#work',
                 'category' => $category,
                 'category_slug' => strtolower($category),
@@ -45,7 +49,8 @@
     $fallback = [
         'id' => null,
         'image' => $fallbackImage,
-        'title' => 'KAZEVIEW PROJECT',
+        'video' => null,
+        'title' => 'KAZEVIEW',
         'link' => '#work',
         'category' => 'PHOTOGRAPHY',
         'category_slug' => 'photography',
@@ -94,27 +99,21 @@
     <section class="home-featured-grid" id="films" aria-label="Featured KAZEVIEW work">
         <a class="media-tile featured-film" href="{{ $featured['link'] }}"
             aria-label="View {{ $featured['title'] }} project">
-            <img class="media-tile__image" src="{{ $featured['image'] }}" alt="{{ $featured['title'] }} by KAZEVIEW"
-                style="object-position: {{ $featured['position'] }}" fetchpriority="high">
-
-            <span class="featured-film__play-cluster" aria-hidden="true">
-                <span class="play-circle">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M7 4.8v14.4L19 12 7 4.8Z" />
-                    </svg>
-                </span>
-                <span class="featured-film__meta">
-                    <span class="featured-film__label">{{ $featured['media_type'] }}</span>
-                    <span class="featured-film__title">{{ $featured['title'] }}</span>
-                    @if ($featured['duration'])
-                        <span class="featured-film__duration">{{ $featured['duration'] }}</span>
-                    @endif
-                </span>
-            </span>
+            @if ($featured['video'])
+                <video class="media-tile__image" autoplay muted loop playsinline
+                    @if ($featured['image']) poster="{{ $featured['image'] }}" @endif
+                    aria-label="{{ $featured['title'] }} by KAZEVIEW">
+                    <source src="{{ $featured['video'] }}">
+                </video>
+            @elseif ($featured['image'])
+                <img class="media-tile__image" src="{{ $featured['image'] }}"
+                    alt="{{ $featured['title'] }} by KAZEVIEW"
+                    style="object-position: {{ $featured['position'] }}" fetchpriority="high">
+            @endif
 
             <span class="featured-film__statement" aria-hidden="true">
                 <h1>MOTION IN<br>EVERY FRAME<span class="accent">.</span></h1>
-                <p>Photo + Film / Automotive · Portrait · Event</p>
+                <p>Automotive · Portrait · Event</p>
             </span>
 
             <span class="scroll-indicator" aria-hidden="true">SCROLL TO EXPLORE</span>
@@ -124,9 +123,17 @@
             @foreach ($secondaryTiles as $tile)
                 <a class="media-tile secondary-tile" href="{{ $tile['link'] }}"
                     aria-label="View {{ strtolower($tile['category']) }} {{ strtolower($tile['media_type']) }}">
-                    <img class="media-tile__image" src="{{ $tile['image'] }}"
-                        alt="{{ $tile['title'] }} by KAZEVIEW"
-                        style="object-position: {{ $tile['position'] }}" loading="eager">
+                    @if ($tile['video'])
+                        <video class="media-tile__image" autoplay muted loop playsinline
+                            @if ($tile['image']) poster="{{ $tile['image'] }}" @endif
+                            aria-label="{{ $tile['title'] }} by KAZEVIEW">
+                            <source src="{{ $tile['video'] }}">
+                        </video>
+                    @elseif ($tile['image'])
+                        <img class="media-tile__image" src="{{ $tile['image'] }}"
+                            alt="{{ $tile['title'] }} by KAZEVIEW"
+                            style="object-position: {{ $tile['position'] }}" loading="eager">
+                    @endif
                     <span class="secondary-tile__label" aria-hidden="true">
                         <span class="secondary-tile__category">{{ $tile['category'] }}</span>
                         <span class="secondary-tile__year">{{ $tile['year'] }}</span>
@@ -160,10 +167,18 @@
             <a class="home-portfolio-card {{ $isFilm ? 'home-portfolio-card--film' : '' }}"
                 href="{{ $item['link'] }}" data-home-category="{{ $filterTags }}"
                 aria-label="{{ $item['media_type'] }}, {{ $item['title'] }}, {{ $item['category'] }}">
-                <img src="{{ $item['image'] }}"
-                    alt="{{ $item['title'] }} — {{ strtolower($item['category']) }} by KAZEVIEW"
-                    style="object-position: {{ $item['position'] }}"
-                    loading="{{ $loop->index < 4 ? 'eager' : 'lazy' }}">
+                @if ($item['video'])
+                    <video class="portfolio-card__video" autoplay muted loop playsinline
+                        @if ($item['image']) poster="{{ $item['image'] }}" @endif
+                        aria-label="{{ $item['title'] }} — {{ strtolower($item['category']) }} by KAZEVIEW">
+                        <source src="{{ $item['video'] }}">
+                    </video>
+                @elseif ($item['image'])
+                    <img src="{{ $item['image'] }}"
+                        alt="{{ $item['title'] }} — {{ strtolower($item['category']) }} by KAZEVIEW"
+                        style="object-position: {{ $item['position'] }}"
+                        loading="{{ $loop->index < 4 ? 'eager' : 'lazy' }}">
+                @endif
 
                 @if ($isFilm)
                     <span class="portfolio-play" aria-hidden="true">

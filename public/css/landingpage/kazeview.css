@@ -575,10 +575,12 @@ button {
     opacity: 0;
 }
 
-.home-portfolio-card img {
+.home-portfolio-card img,
+.portfolio-card__video {
     display: block;
     width: 100%;
     height: auto;
+    object-fit: contain;
     transition: transform var(--transition-media), filter var(--transition-media);
 }
 
@@ -592,7 +594,9 @@ button {
 }
 
 .home-portfolio-card:hover img,
-.home-portfolio-card:focus-visible img {
+.home-portfolio-card:focus-visible img,
+.home-portfolio-card:hover .portfolio-card__video,
+.home-portfolio-card:focus-visible .portfolio-card__video {
     transform: scale(1.025);
 }
 

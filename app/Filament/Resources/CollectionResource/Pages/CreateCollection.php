@@ -25,10 +25,7 @@ class CreateCollection extends CreateRecord
 
     protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
     {
-        $filePath = $data['image'];
-        $fileName = basename($filePath);
-        $mimeType = Storage::disk('public')->mimeType($filePath);
-        $fileSize = Storage::disk('public')->size(path: $filePath);
+        $filePath = $data['image'] ?? null;
 
         $maxUrut = (int) DB::table('collections')->max('urut');
         $collection = new Collection();
@@ -38,25 +35,31 @@ class CreateCollection extends CreateRecord
 
         $id = $collection->id;
 
-        DB::table('media')->insert([
-            'model_type' => 'TomatoPHP\FilamentMediaManager\Models\Folder',
-            'model_id' => 1,
-            'uuid' => (string) Str::uuid(),
-            'collection_name' => 'collections',
-            'name' => $fileName,
-            'file_name' => $fileName,
-            'mime_type' => $mimeType,
-            'disk' => 'public',
-            'conversions_disk' => 'public',
-            'size' => $fileSize,
-            'manipulations' => '[]',
-            'custom_properties' => '{"title": null, "description": null}',
-            'generated_conversions' => '[]',
-            'responsive_images' => '[]',
-            'order_column' => 1,
-            'created_at' => now('Asia/Jakarta'),
-            'updated_at' => now('Asia/Jakarta'),
-        ]);
+        if ($filePath) {
+            $fileName = basename($filePath);
+            $mimeType = Storage::disk('public')->mimeType($filePath);
+            $fileSize = Storage::disk('public')->size($filePath);
+
+            DB::table('media')->insert([
+                'model_type' => 'TomatoPHP\FilamentMediaManager\Models\Folder',
+                'model_id' => 1,
+                'uuid' => (string) Str::uuid(),
+                'collection_name' => 'collections',
+                'name' => $fileName,
+                'file_name' => $fileName,
+                'mime_type' => $mimeType,
+                'disk' => 'public',
+                'conversions_disk' => 'public',
+                'size' => $fileSize,
+                'manipulations' => '[]',
+                'custom_properties' => '{"title": null, "description": null}',
+                'generated_conversions' => '[]',
+                'responsive_images' => '[]',
+                'order_column' => 1,
+                'created_at' => now('Asia/Jakarta'),
+                'updated_at' => now('Asia/Jakarta'),
+            ]);
+        }
 
         $record = CollectionResource::getModel()::findOrFail($id);
 

@@ -89,7 +89,8 @@ class CollectionResource extends Resource
                     'image/webp',
                 ])
                 ->imageEditor()
-                ->required(),
+                ->required(fn ($get): bool => $get('media_type') !== 'FILM')
+                ->visible(fn ($get): bool => $get('media_type') !== 'FILM'),
             Forms\Components\FileUpload::make('video')
                 ->label('Video')
                 ->helperText('Format: MP4, WebM, atau MOV. Maksimal 200 MB.')
@@ -101,7 +102,8 @@ class CollectionResource extends Resource
                 ])
                 ->maxSize(204800)
                 ->downloadable()
-                ->visible(fn ($get) => $get('media_type') === 'FILM'),
+                ->required(fn ($get): bool => $get('media_type') === 'FILM')
+                ->visible(fn ($get): bool => $get('media_type') === 'FILM'),
         ]);
     }
 
