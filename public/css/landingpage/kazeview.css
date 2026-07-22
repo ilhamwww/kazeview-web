@@ -115,12 +115,12 @@ button {
 }
 
 .site-header--home {
-    height: 50px;
+    height: 58px;
     padding: 0 30px;
 }
 
 .site-header--preview {
-    height: 60px;
+    height: 64px;
     padding: 0 40px;
 }
 
@@ -196,7 +196,7 @@ button {
 .site-nav>a:not(.site-nav__book)::after {
     position: absolute;
     right: 0;
-    bottom: -8px;
+    bottom: -3px;
     left: 0;
     height: 2px;
     content: "";
@@ -207,7 +207,7 @@ button {
 }
 
 .site-nav>a.is-active::after {
-    bottom: -8px;
+    bottom: -3px;
     opacity: 1;
     transform: scaleX(1);
 }

@@ -41,7 +41,9 @@
 </head>
 
 @php
+    $isHome = request()->routeIs('home.index');
     $isPreview = request()->routeIs('home.index_product');
+    $isAbout = request()->routeIs('home.about');
     $whatsAppNumber = preg_replace('/\D+/', '', (string) ($data_web->wa ?? ''));
     if ($whatsAppNumber !== '' && str_starts_with($whatsAppNumber, '0')) {
         $whatsAppNumber = '62' . substr($whatsAppNumber, 1);
@@ -53,7 +55,11 @@
     $logoPath = $hasCustomLogo ? asset('storage/' . $data_web->logo) : asset('KAZE_logo.png');
 @endphp
 
-<body class="{{ $isPreview ? 'page-preview' : 'page-home' }}">
+<body @class([
+    'page-home' => $isHome,
+    'page-preview' => $isPreview,
+    'page-about' => $isAbout,
+])>
     <a class="skip-link" href="#main-content">Skip to content</a>
 
     <header class="site-header {{ $isPreview ? 'site-header--preview' : 'site-header--home' }}">
@@ -69,13 +75,14 @@
         </button>
 
         <nav class="site-nav" id="primary-navigation" aria-label="Primary navigation">
-            <a href="{{ route('home.index') }}#work">WORK</a>
-            <a href="{{ route('home.index') }}#films">FILMS</a>
+            <a href="{{ route('home.index') }}#work" data-nav-section="work"
+                @class(['is-active' => request()->routeIs('home.index')])>WORK</a>
+            <a href="{{ route('home.index') }}#films" data-nav-section="films">FILMS</a>
             <a href="{{ route('home.index_product') }}" @class(['is-active' => $isPreview])
                 @if ($isPreview) aria-current="page" @endif>PREVIEW</a>
             <a href="{{ route('home.about') }}" @class(['is-active' => request()->routeIs('home.about')])
                 @if (request()->routeIs('home.about')) aria-current="page" @endif>ABOUT</a>
-            <a href="{{ route('home.index') }}#contact">CONTACT</a>
+            <a href="{{ route('home.index') }}#contact" data-nav-section="contact">CONTACT</a>
             <a class="site-nav__book" href="{{ $whatsAppUrl }}" @if ($whatsAppNumber !== '') target="_blank"
                 rel="noopener noreferrer" @endif>BOOK A SHOOT</a>
         </nav>
@@ -108,7 +115,35 @@
                 toggle.setAttribute('aria-expanded', String(open));
             });
 
-            nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+            const sectionLinks = [...nav.querySelectorAll('[data-nav-section]')];
+
+            const setActiveSection = () => {
+                if (!document.body.classList.contains('page-home') || sectionLinks.length === 0) {
+                    return;
+                }
+
+                const activeSection = window.location.hash.replace('#', '') || 'work';
+
+                sectionLinks.forEach((link) => {
+                    const active = link.dataset.navSection === activeSection;
+                    link.classList.toggle('is-active', active);
+
+                    if (active) {
+                        link.setAttribute('aria-current', 'page');
+                    } else {
+                        link.removeAttribute('aria-current');
+                    }
+                });
+            };
+
+            nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
+                closeMenu();
+                window.setTimeout(setActiveSection, 0);
+            }));
+
+            window.addEventListener('hashchange', setActiveSection);
+            setActiveSection();
+
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape') {
                     closeMenu();
