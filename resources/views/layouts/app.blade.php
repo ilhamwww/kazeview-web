@@ -77,7 +77,7 @@
         </button>
 
         <nav class="site-nav" id="primary-navigation" aria-label="Primary navigation">
-            <a href="{{ route('home.index') }}#work" data-nav-section="work"
+            <a href="{{ route('home.index') }}" data-nav-section="work"
                 @class(['is-active' => request()->routeIs('home.index')])>WORK</a>
             <a href="{{ route('home.index') }}#films" data-nav-section="films">FILMS</a>
             <a href="{{ route('home.index_product') }}" @class(['is-active' => $isPreview])
@@ -103,6 +103,70 @@
     @yield('scripts')
     <script>
         (() => {
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            const revealGroups = [
+                {
+                    selector: '.home-featured-grid, .preview-intro, .about-hero, .contact-hero',
+                    className: 'reveal-cinematic',
+                },
+                {
+                    selector: '.home-filter-bar, .discovery-bar, .about-story, .about-section-heading, .contact-details__heading',
+                    className: 'reveal-up',
+                },
+                {
+                    selector: '.home-portfolio-card, .event-card, .about-capability-list > li, .contact-details__list > div, .contact-socials li',
+                    className: 'reveal-up',
+                    stagger: true,
+                },
+                {
+                    selector: '.about-story__media, .about-hero__media, .contact-hero__media',
+                    className: 'reveal-media',
+                },
+                {
+                    selector: '.about-story__content, .about-cta, .contact-details, .contact-socials',
+                    className: 'reveal-up',
+                },
+            ];
+
+            const revealElements = [];
+
+            revealGroups.forEach((group) => {
+                document.querySelectorAll(group.selector).forEach((element, index) => {
+                    element.classList.add('reveal', group.className);
+
+                    if (group.stagger) {
+                        element.style.setProperty('--reveal-delay', `${Math.min(index % 8, 7) * 65}ms`);
+                    }
+
+                    revealElements.push(element);
+                });
+            });
+
+            if (reduceMotion || !('IntersectionObserver' in window)) {
+                revealElements.forEach((element) => element.classList.add('is-revealed'));
+            } else {
+                const observer = new IntersectionObserver((entries, activeObserver) => {
+                    entries.forEach((entry) => {
+                        if (!entry.isIntersecting) {
+                            return;
+                        }
+
+                        entry.target.classList.add('is-revealed');
+                        activeObserver.unobserve(entry.target);
+                    });
+                }, {
+                    rootMargin: '0px 0px -8% 0px',
+                    threshold: 0.08,
+                });
+
+                revealElements.forEach((element) => observer.observe(element));
+            }
+
+            requestAnimationFrame(() => {
+                document.body.classList.add('page-is-ready');
+            });
+
             const toggle = document.querySelector('.menu-toggle');
             const nav = document.querySelector('.site-nav');
 
