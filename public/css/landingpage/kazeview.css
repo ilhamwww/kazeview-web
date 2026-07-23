@@ -2850,28 +2850,43 @@ button {
 
     .site-nav {
         position: fixed;
-        z-index: -1;
+        z-index: 1;
         top: 56px;
         right: 0;
-        bottom: 0;
+        bottom: auto;
         left: 0;
         display: flex;
-        padding: 40px 20px;
+        width: 100%;
+        height: calc(100vh - 56px);
+        height: calc(100dvh - 56px);
+        min-height: calc(100svh - 56px);
+        padding: 40px 20px max(40px, env(safe-area-inset-bottom));
         align-items: stretch;
         flex-direction: column;
         justify-content: flex-start;
         gap: 0 !important;
-        background: var(--color-bg-deep);
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        color: var(--color-text);
+        background-color: var(--color-bg-deep);
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
         transform: translateY(-10px);
-        transition: opacity var(--transition-fast), transform var(--transition-fast);
+        transition:
+            opacity var(--transition-fast),
+            visibility 0s linear var(--transition-fast),
+            transform var(--transition-fast);
+        -webkit-overflow-scrolling: touch;
     }
 
     .menu-open .site-nav {
         opacity: 1;
+        visibility: visible;
         pointer-events: auto;
         transform: translateY(0);
+        transition-delay: 0s;
     }
 
     .site-nav>a {
