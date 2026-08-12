@@ -50,7 +50,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
-                // Pages\Dashboard::class,
+                    // Pages\Dashboard::class,
                 Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
@@ -72,24 +72,35 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+            ->navigationItems([
+                NavigationItem::make('Server Panel')
+                    ->icon('heroicon-o-server-stack')
+                    ->url('http://139.99.33.19:8090/', shouldOpenInNewTab: true)
+                    ->sort(999)
+                    ->visible(
+                        fn(): bool => auth()->user()?->hasRole(
+                            'super_admin',
+                        ) ?? false,
+                    ),
+            ])
             ->plugins([
                 FilamentShieldPlugin::make(),
                 ChangePasswordPlugin::make(),
                 FilamentCheckSslWidgetPlugin::make()
-                ->domains([
-                    'kazeview.site'
-                ]),
+                    ->domains([
+                        'kazeview.site'
+                    ]),
                 // \TomatoPHP\FilamentMediaManager\FilamentMediaManagerPlugin::make(),
                 FilamentWorldClockPlugin::make()
-        ->timezones([
-            'Asia/Jakarta',
-            'Asia/Tokyo',
-            'Asia/Shanghai',
-            'Europe/Moscow',
-            'America/New_York',
-            'Europe/Berlin',
-        ])
-              ]);
+                    ->timezones([
+                        'Asia/Jakarta',
+                        'Asia/Tokyo',
+                        'Asia/Shanghai',
+                        'Europe/Moscow',
+                        'America/New_York',
+                        'Europe/Berlin',
+                    ])
+            ]);
     }
 
 }
