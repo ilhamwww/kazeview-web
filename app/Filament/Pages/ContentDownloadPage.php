@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Content;
 use App\Models\DownloadData;
+use App\Models\ListDownloaded;
 use App\Services\GoogleDriveService;
 use Filament\Actions\Action as HeaderAction;
 use Filament\Forms\Components\TextInput;
@@ -170,14 +171,71 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                     ->label('Delete')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->action(function (DownloadData $record) {
-                        $folderPath = "downloads/{$record->id_folder}";
-                        if (Storage::disk('public')->exists($folderPath)) {
-                            Storage::disk('public')->deleteDirectory($folderPath);
+                    ->modalHeading('Hapus seluruh data download?')
+                    ->modalDescription(
+                        fn (DownloadData $record): string =>
+                            "Folder {$record->folder_name}, seluruh file di storage, dan data terkait akan dihapus permanen.",
+                    )
+                    ->modalSubmitActionLabel('Ya, hapus semua')
+                    ->action(function (
+                        Action $action,
+                        DownloadData $record,
+                    ): void {
+                        $folderId = (string) $record->id_folder;
+
+                        if (! preg_match('/^[A-Za-z0-9_-]+$/', $folderId)) {
+                            throw new \RuntimeException(
+                                'Folder ID tidak valid sehingga penghapusan storage dibatalkan.',
+                            );
                         }
-                        $record->delete();
-                        \App\Models\ListDownloaded::where('id_download', $record->id)->delete();
-                    }),
+
+                        $otherReferences = DownloadData::query()
+                            ->where('id_folder', $folderId)
+                            ->whereKeyNot($record->getKey())
+                            ->count();
+
+                        if ($otherReferences > 0) {
+                            throw new \RuntimeException(
+                                "Folder {$record->folder_name} masih digunakan oleh {$otherReferences} data download lain.",
+                            );
+                        }
+
+                        $folderPath = "downloads/{$folderId}";
+                        $disk = Storage::disk('public');
+
+                        if (
+                            $disk->exists($folderPath)
+                            && ! $disk->deleteDirectory($folderPath)
+                        ) {
+                            throw new \RuntimeException(
+                                "Folder {$record->folder_name} gagal dihapus dari storage.",
+                            );
+                        }
+
+                        if ($disk->exists($folderPath)) {
+                            throw new \RuntimeException(
+                                "Folder {$record->folder_name} masih tersisa di storage.",
+                            );
+                        }
+
+                        DB::transaction(function () use ($record): void {
+                            ListDownloaded::where(
+                                'id_download',
+                                $record->getKey(),
+                            )->delete();
+
+                            if (! $record->delete()) {
+                                throw new \RuntimeException(
+                                    'Data download gagal dihapus dari database.',
+                                );
+                            }
+                        });
+
+                        $action->success();
+                    })
+                    ->successNotificationTitle(
+                        'Folder, file storage, dan data download berhasil dihapus',
+                    ),
             ]);
     }
 }
