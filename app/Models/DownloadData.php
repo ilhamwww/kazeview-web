@@ -27,4 +27,11 @@ class DownloadData extends Model
     {
         return $this->hasMany(ListDownloaded::class, 'id_download');
     }
+
+    public function folders(): HasMany
+    {
+        return $this->hasMany(DownloadFolder::class, 'download_id')
+            ->orderBy('sort_order')
+            ->orderBy('name');
+    }
 }

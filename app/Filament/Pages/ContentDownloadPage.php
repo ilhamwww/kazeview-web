@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Content;
 use App\Models\DownloadData;
+use App\Models\DownloadFolder;
 use App\Models\ListDownloaded;
 use App\Services\GoogleDriveService;
 use Filament\Actions\Action as HeaderAction;
@@ -14,6 +15,7 @@ use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -65,6 +67,17 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                         ->autofocus(),
                 ])
                 ->action(function (array $data): void {
+                    if (! $this->hasFolderSchema()) {
+                        Notification::make()
+                            ->title('Database belum siap')
+                            ->body('Jalankan migration terbaru terlebih dahulu agar struktur subfolder Google Drive dapat disimpan.')
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
                     $folderId = $this->extractGoogleDriveFolderId(
                         $data['folder_input'],
                     );
@@ -102,29 +115,51 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
             return null;
         }
 
+        // Folder ID mentah tetap didukung.
+        if (preg_match('/^[A-Za-z0-9_-]+$/', $input)) {
+            return $input;
+        }
+
+        $url = parse_url($input);
+
+        if ($url === false) {
+            return null;
+        }
+
+        $host = strtolower((string) ($url['host'] ?? ''));
+
+        if ($host !== 'drive.google.com' && $host !== 'www.drive.google.com') {
+            return null;
+        }
+
+        $path = rawurldecode((string) ($url['path'] ?? ''));
+
+        // Mendukung:
+        // /drive/u/4/folders/{id}
+        // /drive/folders/{id}
+        // /folders/{id}
+        // Query string, fragment, dan trailing slash diabaikan oleh parse_url().
         if (preg_match(
-            '~^https?://(?:www\.)?drive\.google\.com/(?:drive/(?:u/\d+/)?folders|folders)/([A-Za-z0-9_-]+)(?:[/?#].*)?$~i',
-            $input,
+            '~/(?:drive/(?:u/\d+/)?folders|folders)/([A-Za-z0-9_-]+)(?:/|$)~i',
+            $path,
             $matches,
         )) {
             return $matches[1];
         }
 
-        if (preg_match('/^[A-Za-z0-9_-]+$/', $input)) {
-            return $input;
-        }
-
         return null;
+    }
+
+    protected function hasFolderSchema(): bool
+    {
+        return Schema::hasTable('download_folders')
+            && Schema::hasColumn('list_downloaded', 'download_folder_id')
+            && Schema::hasColumn('list_downloaded', 'relative_path');
     }
 
     public function table(Table $table): Table
     {
-        return $table
-            ->query(
-                DownloadData::query()
-                    ->where('id_content', $this->contentId)
-            )
-            ->columns([
+        $columns = [
                 Tables\Columns\TextColumn::make('no')
                     ->label('No')
                     ->rowIndex(), // fitur bawaan Filament untuk nomor urut
@@ -132,12 +167,18 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                 Tables\Columns\TextColumn::make('folder_name')->label(
                     'Folder Name'
                 )->sortable(),
+
+                Tables\Columns\TextColumn::make('total_files')
+                    ->label('Images')
+                    ->numeric()
+                    ->badge(),
+
                 Tables\Columns\TextColumn::make('created_at')->label('Created At')->dateTime(),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->getStateUsing(function ($record) {
                         $folderPath = 'downloads/' . $record->id_folder;
-                        $files = Storage::disk('public')->files($folderPath);
+                        $files = Storage::disk('public')->allFiles($folderPath);
                         $totalFiles = count($files);
 
                         $totalDownload = DB::table('download_data')
@@ -151,7 +192,23 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                         'success' => 'Sukses',
                         'warning' => 'Proses',
                     ]),
-            ])
+        ];
+
+        if ($this->hasFolderSchema()) {
+            array_splice($columns, 2, 0, [
+                Tables\Columns\TextColumn::make('folders_count')
+                    ->label('Subfolders')
+                    ->counts('folders')
+                    ->badge(),
+            ]);
+        }
+
+        return $table
+            ->query(
+                DownloadData::query()
+                    ->where('id_content', $this->contentId)
+            )
+            ->columns($columns)
             ->actions([
                 Action::make('viewFiles')
                     ->label('View Files')
@@ -223,6 +280,15 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                                 'id_download',
                                 $record->getKey(),
                             )->delete();
+
+                            if ($this->hasFolderSchema()) {
+                                DownloadFolder::where(
+                                    'download_id',
+                                    $record->getKey(),
+                                )
+                                    ->orderByDesc('depth')
+                                    ->delete();
+                            }
 
                             if (! $record->delete()) {
                                 throw new \RuntimeException(

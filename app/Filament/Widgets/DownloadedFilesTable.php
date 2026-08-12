@@ -33,7 +33,7 @@ class DownloadedFilesTable extends BaseWidget
                     ->label('Preview')
                     ->disk('public')
                     ->getStateUsing(function (ListDownloaded $record): ?string {
-                        $path = "downloads/{$record->id_folder}/{$record->id_file_in_gd}.jpg";
+                        $path = $record->storagePath();
 
                         return Storage::disk('public')->exists($path)
                             ? $path
@@ -42,6 +42,12 @@ class DownloadedFilesTable extends BaseWidget
                     ->height(80)
                     ->width(80)
                     ->square(),
+
+                Tables\Columns\TextColumn::make('folder.relative_path')
+                    ->label('Folder')
+                    ->default('Root / Uncategorized')
+                    ->searchable()
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('file_name')
                     ->label('File Name')
@@ -67,7 +73,7 @@ class DownloadedFilesTable extends BaseWidget
                         Tables\Actions\Action $action,
                         ListDownloaded $record,
                     ): void {
-                        $path = "downloads/{$record->id_folder}/{$record->id_file_in_gd}.jpg";
+                        $path = $record->storagePath();
                         $disk = Storage::disk('public');
 
                         if ($disk->exists($path) && ! $disk->delete($path)) {
@@ -96,6 +102,7 @@ class DownloadedFilesTable extends BaseWidget
     protected function getFilesQuery(): Builder
     {
         $query = ListDownloaded::query()
+            ->with('folder')
             ->where('id_download', $this->downloadId ?? 0);
 
         $driver = DB::connection()->getDriverName();
@@ -126,7 +133,7 @@ class DownloadedFilesTable extends BaseWidget
     protected function getDownloadSummary(): string
     {
         $downloadedFiles = $this->folderId
-            ? count(Storage::disk('public')->files("downloads/{$this->folderId}"))
+            ? count(Storage::disk('public')->allFiles("downloads/{$this->folderId}"))
             : 0;
 
         $totalFiles = $this->downloadId

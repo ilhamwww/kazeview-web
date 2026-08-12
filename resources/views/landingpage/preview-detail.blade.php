@@ -16,6 +16,10 @@
     $coverImage = $content->image
         ? asset('storage/' . $content->image)
         : asset('KAZE_icon.png');
+    $topLevelFolders = $folders->where('depth', 1);
+    $photoGroups = $photos->getCollection()->groupBy(
+        fn ($photo) => $photo->folder?->relative_path ?: 'ROOT / UNCATEGORIZED',
+    );
 @endphp
 
 @section('preloads')
@@ -36,9 +40,17 @@
         .gallery-title { margin:.75rem 0 1rem; font:800 clamp(2.3rem,7vw,6.5rem)/.9 "Inter Tight",sans-serif; letter-spacing:-.055em; }
         .gallery-meta { display:flex; flex-wrap:wrap; gap:.65rem 1.5rem; font:600 .8rem/1.4 Inter,sans-serif; letter-spacing:.08em; }
         .gallery-description { max-width:720px; margin:1.3rem 0 0; color:rgba(255,255,255,.76); line-height:1.7; }
-        .gallery-toolbar { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:clamp(3rem,7vw,6rem) 0 1.5rem; border-bottom:1px solid rgba(127,127,127,.32); padding-bottom:1rem; }
+        .gallery-folders { display:flex; flex-wrap:wrap; gap:.5rem; margin:clamp(3rem,7vw,6rem) 0 0; }
+        .gallery-folder { display:inline-flex; align-items:center; gap:.5rem; min-height:42px; padding:.7rem 1rem; border:1px solid rgba(127,127,127,.32); color:inherit; text-decoration:none; font:700 .72rem/1 Inter,sans-serif; letter-spacing:.09em; text-transform:uppercase; }
+        .gallery-folder:hover,.gallery-folder:focus-visible,.gallery-folder.is-active { border-color:#ff5a16; background:#ff5a16; color:#050506; outline:none; }
+        .gallery-folder small { opacity:.65; font:inherit; }
+        .gallery-toolbar { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:2rem 0 1.5rem; border-bottom:1px solid rgba(127,127,127,.32); padding-bottom:1rem; }
         .gallery-toolbar h2 { margin:0; font:800 clamp(1.7rem,4vw,3.2rem)/1 "Inter Tight",sans-serif; letter-spacing:-.04em; }
         .gallery-toolbar p { margin:0; font:700 .75rem/1 Inter,sans-serif; letter-spacing:.12em; opacity:.6; }
+        .photo-group + .photo-group { margin-top:3.5rem; }
+        .photo-group__heading { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:0 0 1rem; }
+        .photo-group__heading h3 { margin:0; font:800 clamp(1.25rem,3vw,2rem)/1 "Inter Tight",sans-serif; letter-spacing:-.03em; text-transform:uppercase; }
+        .photo-group__heading span { opacity:.55; font:700 .68rem/1 Inter,sans-serif; letter-spacing:.1em; }
         .photo-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:clamp(.5rem,1.2vw,1rem); }
         .photo-card { position:relative; border:0; padding:0; overflow:hidden; background:#151515; cursor:zoom-in; aspect-ratio:4/3; }
         .photo-card img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .45s ease,opacity .25s; }
@@ -93,23 +105,49 @@
         </section>
 
         <section aria-labelledby="photos-heading">
+            @if ($topLevelFolders->isNotEmpty())
+                <nav class="gallery-folders" aria-label="Kategori foto">
+                    <a class="gallery-folder {{ $selectedFolder === null ? 'is-active' : '' }}"
+                        href="{{ route('preview.show', $content) }}">
+                        ALL PHOTOS <small>{{ number_format($content->downloads()->sum('total_files')) }}</small>
+                    </a>
+                    @foreach ($topLevelFolders as $folder)
+                        <a class="gallery-folder {{ $selectedFolder?->id === $folder->id ? 'is-active' : '' }}"
+                            href="{{ route('preview.show', ['content' => $content, 'folder' => $folder->id]) }}">
+                            {{ $folder->name }} <small>{{ number_format($folder->total_image_count) }}</small>
+                        </a>
+                    @endforeach
+                </nav>
+            @endif
+
             <div class="gallery-toolbar">
                 <h2 id="photos-heading">EVENT PHOTOS<span class="accent">.</span></h2>
                 <p>{{ number_format($photos->total()) }} PHOTOS · PAGE {{ $photos->currentPage() }} / {{ max(1, $photos->lastPage()) }}</p>
             </div>
 
             @if ($photos->isNotEmpty())
-                <div class="photo-grid" data-photo-grid>
-                    @foreach ($photos as $photo)
-                        @php $number = $photos->firstItem() + $loop->index; @endphp
-                        <button class="photo-card" type="button"
-                            data-photo-src="{{ $photo->public_url }}"
-                            data-photo-name="{{ $photo->file_name }}"
-                            data-photo-number="{{ $number }}"
-                            aria-label="Buka foto {{ $number }}: {{ $photo->file_name }}">
-                            <img src="{{ $photo->public_url }}" alt="{{ $photo->file_name }}" loading="lazy" decoding="async">
-                            <span class="photo-card__number">#{{ str_pad((string) $number, 3, '0', STR_PAD_LEFT) }}</span>
-                        </button>
+                @php $photoOffset = 0; @endphp
+                <div data-photo-grid>
+                    @foreach ($photoGroups as $folderPath => $groupPhotos)
+                        <section class="photo-group" aria-labelledby="folder-{{ $loop->index }}">
+                            <div class="photo-group__heading">
+                                <h3 id="folder-{{ $loop->index }}">{{ $folderPath }}</h3>
+                                <span>{{ number_format($groupPhotos->count()) }} PHOTOS ON THIS PAGE</span>
+                            </div>
+                            <div class="photo-grid">
+                                @foreach ($groupPhotos as $photo)
+                                    @php $number = $photos->firstItem() + $photoOffset++; @endphp
+                                    <button class="photo-card" type="button"
+                                        data-photo-src="{{ $photo->public_url }}"
+                                        data-photo-name="{{ $photo->file_name }}"
+                                        data-photo-number="{{ $number }}"
+                                        aria-label="Buka foto {{ $number }}: {{ $photo->file_name }}">
+                                        <img src="{{ $photo->public_url }}" alt="{{ $photo->file_name }}" loading="lazy" decoding="async">
+                                        <span class="photo-card__number">#{{ str_pad((string) $number, 3, '0', STR_PAD_LEFT) }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </section>
                     @endforeach
                 </div>
                 @if ($photos->hasPages())

@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\AboutSetting;
 use App\Models\ContactSetting;
 use App\Models\Content;
+use App\Models\DownloadFolder;
 use App\Models\ListDownloaded;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class HomeController extends Controller
@@ -68,18 +70,71 @@ class HomeController extends Controller
             ->with('data_links', $data_links);
     }
 
-    public function showPreview(Content $content)
+    public function showPreview(Content $content, Request $request)
     {
         abort_unless($content->is_active, 404);
 
         $data_web = DB::table('website_settings')->first();
         $data_links = $data_web ? json_decode($data_web->links, true) : [];
 
-        $photos = ListDownloaded::query()
+        $hasFolderSchema = Schema::hasTable('download_folders')
+            && Schema::hasColumn('list_downloaded', 'download_folder_id')
+            && Schema::hasColumn('list_downloaded', 'relative_path');
+
+        $folders = $hasFolderSchema
+            ? DownloadFolder::query()
+                ->whereHas('download', function ($query) use ($content): void {
+                    $query->where('id_content', $content->getKey());
+                })
+                ->orderBy('depth')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get()
+            : collect();
+
+        $selectedFolder = null;
+        $folderId = $request->integer('folder');
+
+        if ($folderId > 0) {
+            abort_unless($hasFolderSchema, 404);
+
+            $selectedFolder = $folders->firstWhere('id', $folderId);
+            abort_unless($selectedFolder, 404);
+        }
+
+        $photosQuery = ListDownloaded::query()
             ->whereHas('download', function ($query) use ($content): void {
                 $query->where('id_content', $content->getKey());
             })
-            ->with('download:id,id_content,folder_name,id_folder')
+            ->with('download:id,id_content,folder_name,id_folder');
+
+        if ($hasFolderSchema) {
+            $photosQuery->with(
+                'folder:id,download_id,parent_id,name,relative_path,depth',
+            );
+        }
+
+        if ($selectedFolder) {
+            $folderIds = $folders
+                ->filter(function (DownloadFolder $folder) use (
+                    $selectedFolder,
+                ): bool {
+                    return $folder->getKey() === $selectedFolder->getKey()
+                        || str_starts_with(
+                            $folder->relative_path,
+                            "{$selectedFolder->relative_path}/",
+                        );
+                })
+                ->pluck('id');
+
+            $photosQuery->whereIn('download_folder_id', $folderIds);
+        }
+
+        $photos = $photosQuery
+            ->when(
+                $hasFolderSchema,
+                fn ($query) => $query->orderBy('download_folder_id'),
+            )
             ->orderBy('file_name')
             ->paginate(48)
             ->withQueryString();
@@ -90,14 +145,20 @@ class HomeController extends Controller
                     return preg_match('/^[A-Za-z0-9_-]+$/', (string) $photo->id_folder) === 1
                         && preg_match('/^[A-Za-z0-9_-]+$/', (string) $photo->id_file_in_gd) === 1
                         && Storage::disk('public')->exists(
-                            "downloads/{$photo->id_folder}/{$photo->id_file_in_gd}.jpg",
+                            $photo->storagePath(),
                         );
                 })
-                ->map(function (ListDownloaded $photo): ListDownloaded {
+                ->map(function (ListDownloaded $photo) use (
+                    $hasFolderSchema,
+                ): ListDownloaded {
+                    if (! $hasFolderSchema) {
+                        $photo->setRelation('folder', null);
+                    }
+
                     $photo->setAttribute(
                         'public_url',
                         Storage::disk('public')->url(
-                            "downloads/{$photo->id_folder}/{$photo->id_file_in_gd}.jpg",
+                            $photo->storagePath(),
                         ),
                     );
 
@@ -109,6 +170,9 @@ class HomeController extends Controller
         return view('landingpage.preview-detail', [
             'content' => $content,
             'photos' => $photos,
+            'folders' => $folders,
+            'selectedFolder' => $selectedFolder,
+            'hasFolderSchema' => $hasFolderSchema,
             'data_web' => $data_web,
             'data_links' => $data_links ?? [],
         ]);
