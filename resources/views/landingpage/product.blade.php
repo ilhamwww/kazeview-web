@@ -46,7 +46,7 @@
                 'duration' => $item->film_duration ?? null,
                 'price' => $price,
                 'image' => !empty($item->image) ? asset('storage/' . $item->image) : $fallbackImage,
-                'link' => !empty($item->link) ? $item->link : '#',
+                'link' => route('preview.show', ['content' => $item->id]),
             ];
         })
         ->values();

@@ -14,6 +14,7 @@ Route::controller(HomeController::class)->group(function () {
     Route::get('/about', 'about')->name('home.about');
     Route::get('/contact', 'contact')->name('home.contact');
     Route::get('/preview', 'index_product')->name('home.index_product');
+    Route::get('/preview/{content}', 'showPreview')->name('preview.show');
     // Route::get('/test', 'index_preview')->name('home.index_preview');
 });
 

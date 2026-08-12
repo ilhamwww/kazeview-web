@@ -156,7 +156,7 @@
 @php
     $isHome = request()->routeIs('home.index');
     $isFilms = request()->routeIs('home.films');
-    $isPreview = request()->routeIs('home.index_product');
+    $isPreview = request()->routeIs('home.index_product', 'preview.show');
     $isAbout = request()->routeIs('home.about');
     $isContact = request()->routeIs('home.contact');
     $whatsAppNumber = preg_replace('/\D+/', '', (string) ($data_web->wa ?? ''));

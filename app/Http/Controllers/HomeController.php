@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\AboutSetting;
 use App\Models\ContactSetting;
+use App\Models\Content;
+use App\Models\ListDownloaded;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class HomeController extends Controller
 {
@@ -63,6 +66,52 @@ class HomeController extends Controller
             ->with('data_konten', $data_konten)
             ->with('data_web', $data_web)
             ->with('data_links', $data_links);
+    }
+
+    public function showPreview(Content $content)
+    {
+        abort_unless($content->is_active, 404);
+
+        $data_web = DB::table('website_settings')->first();
+        $data_links = $data_web ? json_decode($data_web->links, true) : [];
+
+        $photos = ListDownloaded::query()
+            ->whereHas('download', function ($query) use ($content): void {
+                $query->where('id_content', $content->getKey());
+            })
+            ->with('download:id,id_content,folder_name,id_folder')
+            ->orderBy('file_name')
+            ->paginate(48)
+            ->withQueryString();
+
+        $photos->setCollection(
+            $photos->getCollection()
+                ->filter(function (ListDownloaded $photo): bool {
+                    return preg_match('/^[A-Za-z0-9_-]+$/', (string) $photo->id_folder) === 1
+                        && preg_match('/^[A-Za-z0-9_-]+$/', (string) $photo->id_file_in_gd) === 1
+                        && Storage::disk('public')->exists(
+                            "downloads/{$photo->id_folder}/{$photo->id_file_in_gd}.jpg",
+                        );
+                })
+                ->map(function (ListDownloaded $photo): ListDownloaded {
+                    $photo->setAttribute(
+                        'public_url',
+                        Storage::disk('public')->url(
+                            "downloads/{$photo->id_folder}/{$photo->id_file_in_gd}.jpg",
+                        ),
+                    );
+
+                    return $photo;
+                })
+                ->values(),
+        );
+
+        return view('landingpage.preview-detail', [
+            'content' => $content,
+            'photos' => $photos,
+            'data_web' => $data_web,
+            'data_links' => $data_links ?? [],
+        ]);
     }
 
     public function about()
