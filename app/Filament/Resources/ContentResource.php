@@ -158,10 +158,10 @@ class ContentResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
-                // Tables\Actions\Action::make('download')
-                //     ->label('Download')
-                //     ->color('success')
-                //     ->url(fn(Content $record): string => url('/admin/content-download-page/' . $record->id))
+                Tables\Actions\Action::make('download')
+                    ->label('Download')
+                    ->color('success')
+                    ->url(fn(Content $record): string => url('/admin/content-download-page/' . $record->id))
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

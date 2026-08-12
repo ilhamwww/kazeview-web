@@ -2,16 +2,19 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Content;
+use App\Models\DownloadData;
+use App\Services\GoogleDriveService;
+use Filament\Actions\Action as HeaderAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
-use Filament\Tables\Table;
-use Livewire\Attributes\On;
-use Illuminate\Support\Facades\Storage;
-use App\Models\DownloadData;
-use App\Models\Content;
-use App\Models\ListDownloaded;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
 {
@@ -21,8 +24,6 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
     protected static string $view = 'filament.pages.content-downloaded';
     protected static ?string $title = 'Downloaded';
 
-    public $selectedDownloadId = null;
-    public $selectedFolderId = null;
     public $contentId = null;
     public $content = null;
 
@@ -41,6 +42,78 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
     {
         $this->contentId = $id;
         $this->content = Content::findOrFail($id);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            HeaderAction::make('downloadData')
+                ->label('Download Data')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('warning')
+                ->modalHeading('Download dari Google Drive')
+                ->modalDescription('Masukkan URL folder Google Drive atau folder ID.')
+                ->modalSubmitActionLabel('Download')
+                ->form([
+                    TextInput::make('folder_input')
+                        ->label('URL atau Folder ID Google Drive')
+                        ->placeholder('https://drive.google.com/drive/folders/...')
+                        ->helperText('URL lengkap dan folder ID mentah sama-sama didukung.')
+                        ->required()
+                        ->maxLength(500)
+                        ->autofocus(),
+                ])
+                ->action(function (array $data): void {
+                    $folderId = $this->extractGoogleDriveFolderId(
+                        $data['folder_input'],
+                    );
+
+                    if ($folderId === null) {
+                        throw ValidationException::withMessages([
+                            'folder_input' => 'URL atau folder ID Google Drive tidak valid.',
+                        ]);
+                    }
+
+                    $result = app(GoogleDriveService::class)->downloadFolder(
+                        $folderId,
+                        (int) $this->contentId,
+                    );
+
+                    $notification = Notification::make()
+                        ->title($result['message']);
+
+                    match ($result['status']) {
+                        'success' => $notification->success(),
+                        'info' => $notification->info(),
+                        default => $notification->danger(),
+                    };
+
+                    $notification->send();
+                }),
+        ];
+    }
+
+    protected function extractGoogleDriveFolderId(string $input): ?string
+    {
+        $input = trim($input);
+
+        if ($input === '') {
+            return null;
+        }
+
+        if (preg_match(
+            '~^https?://(?:www\.)?drive\.google\.com/(?:drive/(?:u/\d+/)?folders|folders)/([A-Za-z0-9_-]+)(?:[/?#].*)?$~i',
+            $input,
+            $matches,
+        )) {
+            return $matches[1];
+        }
+
+        if (preg_match('/^[A-Za-z0-9_-]+$/', $input)) {
+            return $input;
+        }
+
+        return null;
     }
 
     public function table(Table $table): Table
@@ -82,11 +155,17 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                 Action::make('viewFiles')
                     ->label('View Files')
                     ->button()
-                    ->action(function (DownloadData $record) {
-                        $this->selectedDownloadId = $record->id;
-                        $this->selectedFolderId = $record->id_folder;
-                        $this->dispatch('open-modal', id: 'filesModal');
-                    }),
+                    ->modalHeading(fn(DownloadData $record): string => "Files — {$record->folder_name}")
+                    ->modalWidth('5xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close')
+                    ->modalContent(fn(DownloadData $record) => view(
+                        'filament.pages.actions.downloaded-files',
+                        [
+                            'downloadId' => $record->id,
+                            'folderId' => $record->id_folder,
+                        ],
+                    )),
                 Action::make('delete')
                     ->label('Delete')
                     ->color('danger')
@@ -100,31 +179,5 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                         \App\Models\ListDownloaded::where('id_download', $record->id)->delete();
                     }),
             ]);
-    }
-
-    #[On('getFiles')]
-    public function getFiles()
-    {
-        $q = ListDownloaded::where('id_download', $this->selectedDownloadId);
-
-        $driver = DB::connection()->getDriverName();
-        if ($driver === 'pgsql') {
-            // Ambil digit di akhir nama (sebelum ekstensi), cast ke int, default 0 jika tidak ada angka
-            $q->orderByRaw("
-            COALESCE(
-                CAST(substring(split_part(file_name, '.', 1) FROM '[0-9]+$') AS INT),
-                0
-            ) ASC, file_name ASC
-        ");
-        } else { // mysql
-            // MySQL 8+: REGEXP_SUBSTR tersedia
-            $q->orderByRaw("
-            CAST(
-                IFNULL(REGEXP_SUBSTR(SUBSTRING_INDEX(file_name, '.', 1), '[0-9]+$'), '0')
-            AS UNSIGNED) ASC, file_name ASC
-        ");
-        }
-
-        return $q->get();
     }
 }

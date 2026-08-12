@@ -63,13 +63,19 @@ class GoogleDriveService
 
 
 
-    public function download(Google_Service_Drive $drive, Request $request)
+    public function download(Request $request)
+    {
+        return $this->downloadFolder(
+            (string) $request->input('folder_id'),
+            (int) $request->input('id_content'),
+        );
+    }
+
+    public function downloadFolder(string $folderId, int $contentId): array
     {
         try {
-            $folderId = $request->input('folder_id');
-
             // Ambil data download_data (kalau ada)
-            $downloadData = DB::table('download_data')->where('id_folder', $folderId)->where('id_content', $request->input('id_content'))->first();
+            $downloadData = DB::table('download_data')->where('id_folder', $folderId)->where('id_content', $contentId)->first();
 
             // Query file dari Google Drive
             $query = "'$folderId' in parents and mimeType contains 'image/' and trashed = false";
@@ -95,7 +101,7 @@ class GoogleDriveService
                     'created_at' => now(),
                     'updated_at'=> now(),
                     'total_files' => count($files),
-                    'id_content' => $request->input('id_content'),
+                    'id_content' => $contentId,
                     'folder_name' => $folderName,
                 ]);
             } else {
