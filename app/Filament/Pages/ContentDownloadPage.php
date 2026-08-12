@@ -45,6 +45,8 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
     {
         $this->contentId = $id;
         $this->content = Content::findOrFail($id);
+
+        abort_unless($this->content->isPhotoContent(), 404);
     }
 
     protected function getHeaderActions(): array

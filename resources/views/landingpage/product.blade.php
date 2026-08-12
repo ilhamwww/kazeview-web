@@ -11,11 +11,21 @@
     $events = collect($data_konten ?? [])
         ->filter(fn($item) => !empty($item->image))
         ->map(function ($item) use ($fallbackImage) {
-            $type = in_array($item->preview_type ?? null, ['PHOTOGRAPHY', 'PHOTO + FILM'], true)
-                ? $item->preview_type
-                : 'PHOTOGRAPHY';
+            $mediaType = ($item->content_media_type ?? 'FOTO') === 'VIDEO'
+                ? 'VIDEO'
+                : 'FOTO';
+            $type = $mediaType === 'VIDEO'
+                ? 'VIDEO'
+                : (
+                    in_array($item->preview_type ?? null, ['PHOTOGRAPHY', 'PHOTO + FILM'], true)
+                        ? $item->preview_type
+                        : 'PHOTOGRAPHY'
+                );
             $category = strtolower(trim((string) ($item->preview_category ?? '')));
-            if ($type === 'PHOTO + FILM' && !str_contains($category, 'film')) {
+            if (
+                ($type === 'PHOTO + FILM' || $mediaType === 'VIDEO')
+                && !str_contains($category, 'film')
+            ) {
                 $category = trim($category . ' film');
             }
 
@@ -39,6 +49,7 @@
                     ? \Illuminate\Support\Carbon::parse($item->event_date)->format('d M Y')
                     : '',
                 'type' => $type,
+                'media_type' => $mediaType,
                 'category' => $category,
                 'is_active' => (bool) ($item->is_active ?? true),
                 'is_new' => (bool) ($item->is_new ?? false),
@@ -46,7 +57,9 @@
                 'duration' => $item->film_duration ?? null,
                 'price' => $price,
                 'image' => !empty($item->image) ? asset('storage/' . $item->image) : $fallbackImage,
-                'link' => route('preview.show', ['content' => $item->id]),
+                'link' => $mediaType === 'VIDEO'
+                    ? trim((string) ($item->link ?? ''))
+                    : route('preview.show', ['content' => $item->id]),
             ];
         })
         ->values();
@@ -125,7 +138,7 @@
         </label>
 
         <div class="discovery-filters" role="group" aria-label="Filter events">
-            @foreach (['all' => 'ALL EVENTS', 'latest' => 'LATEST', 'motorcycle' => 'MOTORCYCLE', 'automotive' => 'AUTOMOTIVE', 'film' => 'WITH FILM'] as $value => $label)
+            @foreach (['all' => 'ALL EVENTS', 'photo' => 'FOTO', 'video' => 'VIDEO', 'latest' => 'LATEST', 'motorcycle' => 'MOTORCYCLE', 'automotive' => 'AUTOMOTIVE'] as $value => $label)
                 <button class="discovery-filter {{ $loop->first ? 'is-active' : '' }}" type="button"
                     data-event-filter="{{ $value }}" aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
                     {{ $label }}
@@ -149,17 +162,20 @@
         @foreach ($events as $event)
             @if ($event['is_active'])
                 <a class="event-card" href="{{ $event['link'] }}"
+                    @if ($event['media_type'] === 'VIDEO') target="_blank" rel="noopener noreferrer" @endif
                     data-title="{{ strtolower($event['title']) }}"
                     data-location="{{ strtolower($event['location']) }}" data-date="{{ $event['date'] }}"
                     data-formatted-date="{{ strtolower($event['formatted_date']) }}"
                     data-category="{{ $event['category'] }}"
+                    data-media-type="{{ strtolower($event['media_type']) }}"
                     data-is-new="{{ $event['is_new'] ? 'true' : 'false' }}"
-                    aria-label="View {{ $event['title'] }} gallery at {{ $event['location'] }}">
+                    aria-label="{{ $event['media_type'] === 'VIDEO' ? 'Buka video' : 'Lihat galeri' }} {{ $event['title'] }} di {{ $event['location'] }}">
             @else
                 <article class="event-card event-card--closed" data-title="{{ strtolower($event['title']) }}"
                     data-location="{{ strtolower($event['location']) }}" data-date="{{ $event['date'] }}"
                     data-formatted-date="{{ strtolower($event['formatted_date']) }}"
                     data-category="{{ $event['category'] }}"
+                    data-media-type="{{ strtolower($event['media_type']) }}"
                     data-is-new="{{ $event['is_new'] ? 'true' : 'false' }}" aria-disabled="true"
                     aria-label="{{ $event['title'] }} gallery at {{ $event['location'] }} is closed">
             @endif
@@ -178,7 +194,7 @@
 
                 <span class="event-card__content" aria-hidden="true">
                     <span class="event-card__type">
-                        @if ($event['type'] === 'PHOTO + FILM')
+                        @if ($event['type'] === 'PHOTO + FILM' || $event['media_type'] === 'VIDEO')
                             <span class="event-card__mini-play">
                                 <svg viewBox="0 0 24 24">
                                     <path d="M7 4.8v14.4L19 12 7 4.8Z" />
@@ -187,7 +203,7 @@
                         @endif
                         <span class="event-card__type-text">
                             {{ $event['type'] }}
-                            @if ($event['type'] === 'PHOTO + FILM' && $event['duration'])
+                            @if (($event['type'] === 'PHOTO + FILM' || $event['media_type'] === 'VIDEO') && $event['duration'])
                                 · {{ $event['duration'] }}
                             @endif
                         </span>
@@ -205,7 +221,7 @@
 
                 @if ($event['is_active'])
                     <span class="event-card__cta" aria-hidden="true">
-                        VIEW GALLERY
+                        {{ $event['media_type'] === 'VIDEO' ? 'OPEN VIDEO' : 'VIEW GALLERY' }}
                         <svg class="icon-outline" viewBox="0 0 24 24">
                             <path d="M5 12h14M14 7l5 5-5 5" />
                         </svg>
@@ -271,6 +287,8 @@
             const matchesFilter = (card) => {
                 const category = card.dataset.category;
                 if (activeFilter === 'all') return true;
+                if (activeFilter === 'photo') return card.dataset.mediaType === 'foto';
+                if (activeFilter === 'video') return card.dataset.mediaType === 'video';
                 if (activeFilter === 'latest') return card.dataset.isNew === 'true';
                 return category.split(' ').includes(activeFilter);
             };

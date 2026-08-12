@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Content;
 use App\Models\DownloadData;
 use App\Models\DownloadFolder;
 use App\Models\ListDownloaded;
@@ -45,6 +46,18 @@ class GoogleDriveService
     public function downloadFolder(string $folderId, int $contentId): array
     {
         try {
+            $content = Content::query()->find($contentId);
+
+            if (! $content) {
+                throw new RuntimeException('Content tidak ditemukan.');
+            }
+
+            if (! $content->isPhotoContent()) {
+                throw new RuntimeException(
+                    'Content VIDEO hanya menggunakan link Google Drive dan tidak boleh diunduh ke server.',
+                );
+            }
+
             if (! preg_match('/^[A-Za-z0-9_-]+$/', $folderId)) {
                 throw new RuntimeException('Google Drive folder ID tidak valid.');
             }

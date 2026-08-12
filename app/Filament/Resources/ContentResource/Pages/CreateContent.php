@@ -60,10 +60,12 @@ class CreateContent extends CreateRecord
 
         $record = ContentResource::getModel()::findOrFail($id);
 
-        $hasDriveLink = \App\Support\GoogleDriveFolder::extractId(
-            $record->link,
-        ) !== null;
-        $queued = $hasDriveLink
+        $isPhoto = $record->isPhotoContent();
+        $hasDriveFolder = $isPhoto
+            && \App\Support\GoogleDriveFolder::extractId(
+                $record->link,
+            ) !== null;
+        $queued = $hasDriveFolder
             ? $record->queueDriveDownload()
             : false;
 
@@ -71,11 +73,29 @@ class CreateContent extends CreateRecord
             ->title('Konten berhasil dibuat')
             ->success();
 
-        if ($queued) {
+        if ($record->isVideoContent()) {
+            if (
+                \Illuminate\Support\Facades\Schema::hasColumn(
+                    'contents',
+                    'drive_download_status',
+                )
+            ) {
+                $record->update([
+                    'drive_download_status' => null,
+                    'drive_download_message' => 'Video menggunakan link Google Drive tanpa diunduh ke server.',
+                    'drive_download_started_at' => null,
+                    'drive_download_finished_at' => null,
+                ]);
+            }
+
+            $notification->body(
+                'Video akan dibuka langsung melalui Google Drive dan tidak diunduh ke storage server.',
+            );
+        } elseif ($queued) {
             $notification->body(
                 'Download Google Drive masuk antrean dan akan diproses di background.',
             );
-        } elseif ($hasDriveLink) {
+        } elseif ($hasDriveFolder) {
             $notification
                 ->body(
                     'Konten tersimpan, tetapi download belum dijadwalkan. Jalankan migration queue dan struktur folder terbaru.',

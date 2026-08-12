@@ -7,6 +7,7 @@ use App\Models\ContactSetting;
 use App\Models\Content;
 use App\Models\DownloadFolder;
 use App\Models\ListDownloaded;
+use App\Support\GoogleDriveFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -73,6 +74,15 @@ class HomeController extends Controller
     public function showPreview(Content $content, Request $request)
     {
         abort_unless($content->is_active, 404);
+
+        if ($content->isVideoContent()) {
+            abort_unless(
+                GoogleDriveFolder::isGoogleDriveUrl($content->link),
+                404,
+            );
+
+            return redirect()->away($content->link);
+        }
 
         $data_web = DB::table('website_settings')->first();
         $data_links = $data_web ? json_decode($data_web->links, true) : [];

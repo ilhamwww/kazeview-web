@@ -29,11 +29,46 @@ class EditContent extends EditRecord
         \Illuminate\Database\Eloquent\Model $record,
         array $data,
     ): \Illuminate\Database\Eloquent\Model {
+        $wasPhoto = $record->isPhotoContent();
         $oldFolderId = GoogleDriveFolder::extractId($record->link);
         $record->update($data);
-        $newFolderId = GoogleDriveFolder::extractId($record->link);
 
-        if ($newFolderId !== null && $newFolderId !== $oldFolderId) {
+        if ($record->isVideoContent()) {
+            if (
+                \Illuminate\Support\Facades\Schema::hasColumn(
+                    'contents',
+                    'drive_download_status',
+                )
+            ) {
+                $record->update([
+                    'drive_download_status' => null,
+                    'drive_download_message' => 'Video menggunakan link Google Drive tanpa diunduh ke server.',
+                    'drive_download_started_at' => null,
+                    'drive_download_finished_at' => null,
+                ]);
+            }
+
+            if ($wasPhoto) {
+                Notification::make()
+                    ->title('Kategori diubah menjadi VIDEO')
+                    ->body(
+                        'Video akan dibuka langsung melalui Google Drive dan tidak diunduh ke storage server.',
+                    )
+                    ->success()
+                    ->send();
+            }
+
+            return $record;
+        }
+
+        $newFolderId = GoogleDriveFolder::extractId($record->link);
+        $shouldQueue = $newFolderId !== null
+            && (
+                ! $wasPhoto
+                || $newFolderId !== $oldFolderId
+            );
+
+        if ($shouldQueue) {
             $queued = $record->queueDriveDownload();
 
             Notification::make()
@@ -44,7 +79,7 @@ class EditContent extends EditRecord
                 )
                 ->body(
                     $queued
-                        ? 'Link berubah dan akan diproses oleh queue worker di background.'
+                        ? 'Folder foto akan diproses oleh queue worker di background.'
                         : 'Jalankan migration queue dan struktur folder terbaru.',
                 )
                 ->when(

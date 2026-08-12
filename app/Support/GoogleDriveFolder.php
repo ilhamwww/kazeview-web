@@ -48,4 +48,29 @@ final class GoogleDriveFolder
     {
         return self::extractId($input) !== null;
     }
+
+    public static function isGoogleDriveUrl(?string $input): bool
+    {
+        $input = trim((string) $input);
+
+        if ($input === '') {
+            return false;
+        }
+
+        $url = parse_url($input);
+
+        if ($url === false) {
+            return false;
+        }
+
+        $scheme = strtolower((string) ($url['scheme'] ?? ''));
+        $host = strtolower((string) ($url['host'] ?? ''));
+
+        return $scheme === 'https'
+            && in_array($host, [
+                'drive.google.com',
+                'www.drive.google.com',
+            ], true)
+            && trim((string) ($url['path'] ?? ''), '/') !== '';
+    }
 }

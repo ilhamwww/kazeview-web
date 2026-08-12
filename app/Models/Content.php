@@ -53,8 +53,22 @@ class Content extends Model
             && Schema::hasColumn('list_downloaded', 'relative_path');
     }
 
+    public function isPhotoContent(): bool
+    {
+        return ($this->content_media_type ?: 'FOTO') === 'FOTO';
+    }
+
+    public function isVideoContent(): bool
+    {
+        return $this->content_media_type === 'VIDEO';
+    }
+
     public function queueDriveDownload(?string $link = null): bool
     {
+        if (! $this->isPhotoContent()) {
+            return false;
+        }
+
         $folderId = GoogleDriveFolder::extractId($link ?? $this->link);
 
         if (! $folderId || ! self::hasDriveDownloadSchema()) {

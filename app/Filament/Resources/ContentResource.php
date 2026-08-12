@@ -52,15 +52,29 @@ class ContentResource extends Resource
                             ->displayFormat('d M Y')
                             ->default(fn (): string => now('Asia/Jakarta')->toDateString())
                             ->required(),
+                        Select::make('content_media_type')
+                            ->label('Kategori Konten')
+                            ->options([
+                                'FOTO' => 'FOTO',
+                                'VIDEO' => 'VIDEO',
+                            ])
+                            ->default('FOTO')
+                            ->live()
+                            ->required(),
                         Select::make('preview_type')
-                            ->label('Tipe Preview')
+                            ->label('Tipe Preview Foto')
                             ->options([
                                 'PHOTOGRAPHY' => 'PHOTOGRAPHY',
                                 'PHOTO + FILM' => 'PHOTO + FILM',
                             ])
                             ->default('PHOTOGRAPHY')
                             ->live()
-                            ->required(),
+                            ->required()
+                            ->visible(
+                                fn ($get) =>
+                                    ($get('content_media_type') ?: 'FOTO')
+                                        === 'FOTO',
+                            ),
                         TextInput::make('preview_category')
                             ->label('Kategori Filter')
                             ->placeholder('Contoh: motorcycle film')
@@ -83,10 +97,15 @@ class ContentResource extends Resource
                             ->helperText('Format CSS object-position, misalnya 50% 42%.')
                             ->maxLength(30),
                         TextInput::make('film_duration')
-                            ->label('Durasi Film')
+                            ->label('Durasi Video')
                             ->placeholder('01:24')
                             ->maxLength(10)
-                            ->visible(fn ($get) => $get('preview_type') === 'PHOTO + FILM'),
+                            ->visible(
+                                fn ($get) =>
+                                    ($get('content_media_type') ?: 'FOTO')
+                                        === 'VIDEO'
+                                    || $get('preview_type') === 'PHOTO + FILM',
+                            ),
                     ])
                     ->columns(2)
                     ->columnSpan('full'),
@@ -111,23 +130,35 @@ class ContentResource extends Resource
                     ->label('Isi Konten'),
                 TextInput::make('link')
                     ->label('Link Google Drive')
-                    ->helperText('Masukkan URL folder Google Drive. Data akan diunduh otomatis di background setelah disimpan.')
-                    ->required(fn ($get) => $get('is_price_enabled'))
+                    ->helperText(
+                        fn ($get): string =>
+                            ($get('content_media_type') ?: 'FOTO') === 'VIDEO'
+                                ? 'URL video/folder Google Drive akan dibuka langsung tanpa diunduh ke server.'
+                                : 'URL folder Google Drive akan diunduh otomatis di background setelah disimpan.',
+                    )
+                    ->required()
                     ->maxLength(500)
-                    ->rule(function () {
+                    ->rule(function ($get) {
                         return function (
                             string $attribute,
                             mixed $value,
                             \Closure $fail,
-                        ): void {
-                            if (
-                                filled($value)
-                                && ! GoogleDriveFolder::isValid(
+                        ) use ($get): void {
+                            $mediaType = $get('content_media_type')
+                                ?: 'FOTO';
+                            $valid = $mediaType === 'VIDEO'
+                                ? GoogleDriveFolder::isGoogleDriveUrl(
                                     (string) $value,
                                 )
-                            ) {
+                                : GoogleDriveFolder::isValid(
+                                    (string) $value,
+                                );
+
+                            if (! $valid) {
                                 $fail(
-                                    'Link harus berupa URL folder Google Drive atau folder ID yang valid.',
+                                    $mediaType === 'VIDEO'
+                                        ? 'Video harus memakai URL HTTPS resmi Google Drive.'
+                                        : 'Foto harus memakai URL folder Google Drive atau folder ID yang valid.',
                                 );
                             }
                         };
@@ -162,32 +193,62 @@ class ContentResource extends Resource
                 TextColumn::make('title')->label('Judul'),
                 TextColumn::make('event_location')->label('Lokasi')->placeholder('-'),
                 TextColumn::make('event_date')->label('Tanggal')->date('d M Y')->sortable(),
+                TextColumn::make('content_media_type')
+                    ->label('Kategori')
+                    ->badge()
+                    ->formatStateUsing(
+                        fn (?string $state): string =>
+                            $state === 'VIDEO' ? 'VIDEO' : 'FOTO',
+                    )
+                    ->color(
+                        fn (?string $state): string =>
+                            $state === 'VIDEO' ? 'info' : 'success',
+                    ),
                 TextColumn::make('preview_type')->label('Tipe')->badge(),
                 TextColumn::make('drive_download_status')
                     ->label('Drive')
                     ->badge()
-                    ->placeholder('Belum dijadwalkan')
                     ->formatStateUsing(
-                        fn (?string $state): string => match ($state) {
-                            'pending' => 'Menunggu',
-                            'processing' => 'Diproses',
-                            'completed' => 'Selesai',
-                            'failed' => 'Gagal',
-                            default => 'Belum dijadwalkan',
+                        function (
+                            ?string $state,
+                            Content $record,
+                        ): string {
+                            if ($record->isVideoContent()) {
+                                return 'Link eksternal';
+                            }
+
+                            return match ($state) {
+                                'pending' => 'Menunggu',
+                                'processing' => 'Diproses',
+                                'completed' => 'Selesai',
+                                'failed' => 'Gagal',
+                                default => 'Belum dijadwalkan',
+                            };
                         },
                     )
                     ->color(
-                        fn (?string $state): string => match ($state) {
-                            'pending' => 'warning',
-                            'processing' => 'info',
-                            'completed' => 'success',
-                            'failed' => 'danger',
-                            default => 'gray',
+                        function (
+                            ?string $state,
+                            Content $record,
+                        ): string {
+                            if ($record->isVideoContent()) {
+                                return 'info';
+                            }
+
+                            return match ($state) {
+                                'pending' => 'warning',
+                                'processing' => 'info',
+                                'completed' => 'success',
+                                'failed' => 'danger',
+                                default => 'gray',
+                            };
                         },
                     )
                     ->tooltip(
                         fn (Content $record): ?string =>
-                            $record->drive_download_message,
+                            $record->isVideoContent()
+                                ? 'Video dibuka melalui Google Drive tanpa disimpan di server.'
+                                : $record->drive_download_message,
                     ),
                 Tables\Columns\ToggleColumn::make('is_active')
                     ->label('Aktif')
@@ -208,6 +269,11 @@ class ContentResource extends Resource
                 Tables\Actions\Action::make('download')
                     ->label('Download')
                     ->color('success')
+                    ->visible(
+                        fn (Content $record): bool =>
+                            ($record->content_media_type ?: 'FOTO')
+                                === 'FOTO',
+                    )
                     ->url(fn(Content $record): string => url('/admin/content-download-page/' . $record->id))
             ])
             ->bulkActions([

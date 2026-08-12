@@ -50,6 +50,17 @@ class DownloadGoogleDriveFolder implements ShouldQueue, ShouldBeUnique
             return;
         }
 
+        if (! $content->isPhotoContent()) {
+            $content->update([
+                'drive_download_status' => null,
+                'drive_download_message' => 'Video menggunakan link Google Drive tanpa diunduh ke server.',
+                'drive_download_started_at' => null,
+                'drive_download_finished_at' => null,
+            ]);
+
+            return;
+        }
+
         $content->update([
             'drive_download_status' => 'processing',
             'drive_download_message' => 'Google Drive sedang dipindai dan diunduh.',
@@ -77,13 +88,28 @@ class DownloadGoogleDriveFolder implements ShouldQueue, ShouldBeUnique
 
     public function failed(?Throwable $exception): void
     {
-        Content::query()
-            ->whereKey($this->contentId)
-            ->update([
-                'drive_download_status' => 'failed',
-                'drive_download_message' => $exception?->getMessage()
-                    ?? 'Download Google Drive gagal.',
-                'drive_download_finished_at' => now(),
+        $content = Content::query()->find($this->contentId);
+
+        if (! $content) {
+            return;
+        }
+
+        if ($content->isVideoContent()) {
+            $content->update([
+                'drive_download_status' => null,
+                'drive_download_message' => 'Video menggunakan link Google Drive tanpa diunduh ke server.',
+                'drive_download_started_at' => null,
+                'drive_download_finished_at' => null,
             ]);
+
+            return;
+        }
+
+        $content->update([
+            'drive_download_status' => 'failed',
+            'drive_download_message' => $exception?->getMessage()
+                ?? 'Download Google Drive gagal.',
+            'drive_download_finished_at' => now(),
+        ]);
     }
 }
