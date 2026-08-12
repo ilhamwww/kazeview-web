@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Models\Content;
 use App\Models\User;
+use App\Support\GoogleDriveFolder;
 
 use App\Filament\Resources\ContentResource\Pages;
 use App\Filament\Resources\ContentResource\RelationManagers;
@@ -109,8 +110,28 @@ class ContentResource extends Resource
                 Textarea::make('body')
                     ->label('Isi Konten'),
                 TextInput::make('link')
-                    ->label('Link')
-                    ->required(fn ($get) => $get('is_price_enabled')),
+                    ->label('Link Google Drive')
+                    ->helperText('Masukkan URL folder Google Drive. Data akan diunduh otomatis di background setelah disimpan.')
+                    ->required(fn ($get) => $get('is_price_enabled'))
+                    ->maxLength(500)
+                    ->rule(function () {
+                        return function (
+                            string $attribute,
+                            mixed $value,
+                            \Closure $fail,
+                        ): void {
+                            if (
+                                filled($value)
+                                && ! GoogleDriveFolder::isValid(
+                                    (string) $value,
+                                )
+                            ) {
+                                $fail(
+                                    'Link harus berupa URL folder Google Drive atau folder ID yang valid.',
+                                );
+                            }
+                        };
+                    }),
                 Select::make('user_id')
                     ->label('Pemilik Konten')
                     ->options(User::pluck('name', 'id'))
@@ -142,6 +163,32 @@ class ContentResource extends Resource
                 TextColumn::make('event_location')->label('Lokasi')->placeholder('-'),
                 TextColumn::make('event_date')->label('Tanggal')->date('d M Y')->sortable(),
                 TextColumn::make('preview_type')->label('Tipe')->badge(),
+                TextColumn::make('drive_download_status')
+                    ->label('Drive')
+                    ->badge()
+                    ->placeholder('Belum dijadwalkan')
+                    ->formatStateUsing(
+                        fn (?string $state): string => match ($state) {
+                            'pending' => 'Menunggu',
+                            'processing' => 'Diproses',
+                            'completed' => 'Selesai',
+                            'failed' => 'Gagal',
+                            default => 'Belum dijadwalkan',
+                        },
+                    )
+                    ->color(
+                        fn (?string $state): string => match ($state) {
+                            'pending' => 'warning',
+                            'processing' => 'info',
+                            'completed' => 'success',
+                            'failed' => 'danger',
+                            default => 'gray',
+                        },
+                    )
+                    ->tooltip(
+                        fn (Content $record): ?string =>
+                            $record->drive_download_message,
+                    ),
                 Tables\Columns\ToggleColumn::make('is_active')
                     ->label('Aktif')
                     ->onIcon('heroicon-o-lock-open')

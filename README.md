@@ -61,6 +61,53 @@ In order to ensure that the Laravel community is welcoming to all, please review
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
+## Google Drive background downloads
+
+Creating a Content with a valid Google Drive folder link automatically queues
+its recursive folder download. Editing a Content queues another download only
+when the Google Drive folder ID changes. The manual **Download Data** action
+also queues the same background job.
+
+Run the required migrations after deployment:
+
+```bash
+php artisan migrate --force
+```
+
+The application uses the database queue. Keep these environment values:
+
+```dotenv
+QUEUE_CONNECTION=database
+CACHE_STORE=database
+DB_QUEUE_RETRY_AFTER=3660
+```
+
+Run one Google Drive worker:
+
+```bash
+php artisan queue:work database --queue=google-drive,default --sleep=3 --tries=3 --timeout=3600
+```
+
+In production, manage this command with Supervisor, systemd, or another process
+manager using automatic restart. One worker is recommended initially to limit
+Google Drive API concurrency and server bandwidth usage.
+
+Restart long-running workers after every deployment:
+
+```bash
+php artisan queue:restart
+```
+
+Inspect and retry failed jobs with:
+
+```bash
+php artisan queue:failed
+php artisan queue:retry all
+```
+
+The Content table displays the lifecycle as **Menunggu**, **Diproses**,
+**Selesai**, or **Gagal**. Hovering the badge displays the latest job message.
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

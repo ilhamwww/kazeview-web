@@ -6,7 +6,7 @@ use App\Models\Content;
 use App\Models\DownloadData;
 use App\Models\DownloadFolder;
 use App\Models\ListDownloaded;
-use App\Services\GoogleDriveService;
+use App\Support\GoogleDriveFolder as GoogleDriveFolderInput;
 use Filament\Actions\Action as HeaderAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -88,66 +88,44 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                         ]);
                     }
 
-                    $result = app(GoogleDriveService::class)->downloadFolder(
-                        $folderId,
-                        (int) $this->contentId,
+                    $content = Content::query()->findOrFail(
+                        $this->contentId,
                     );
 
-                    $notification = Notification::make()
-                        ->title($result['message']);
+                    if ($content->link !== $data['folder_input']) {
+                        $content->update([
+                            'link' => trim($data['folder_input']),
+                        ]);
+                    }
 
-                    match ($result['status']) {
-                        'success' => $notification->success(),
-                        'info' => $notification->info(),
-                        default => $notification->danger(),
-                    };
+                    $queued = $content->queueDriveDownload(
+                        $data['folder_input'],
+                    );
 
-                    $notification->send();
+                    Notification::make()
+                        ->title(
+                            $queued
+                                ? 'Download masuk antrean'
+                                : 'Download belum dapat dijadwalkan',
+                        )
+                        ->body(
+                            $queued
+                                ? 'Google Drive akan diproses di background. Halaman ini tidak perlu ditunggu.'
+                                : 'Periksa URL dan pastikan migration queue terbaru sudah dijalankan.',
+                        )
+                        ->when(
+                            $queued,
+                            fn (Notification $notification) => $notification->success(),
+                            fn (Notification $notification) => $notification->danger(),
+                        )
+                        ->send();
                 }),
         ];
     }
 
     protected function extractGoogleDriveFolderId(string $input): ?string
     {
-        $input = trim($input);
-
-        if ($input === '') {
-            return null;
-        }
-
-        // Folder ID mentah tetap didukung.
-        if (preg_match('/^[A-Za-z0-9_-]+$/', $input)) {
-            return $input;
-        }
-
-        $url = parse_url($input);
-
-        if ($url === false) {
-            return null;
-        }
-
-        $host = strtolower((string) ($url['host'] ?? ''));
-
-        if ($host !== 'drive.google.com' && $host !== 'www.drive.google.com') {
-            return null;
-        }
-
-        $path = rawurldecode((string) ($url['path'] ?? ''));
-
-        // Mendukung:
-        // /drive/u/4/folders/{id}
-        // /drive/folders/{id}
-        // /folders/{id}
-        // Query string, fragment, dan trailing slash diabaikan oleh parse_url().
-        if (preg_match(
-            '~/(?:drive/(?:u/\d+/)?folders|folders)/([A-Za-z0-9_-]+)(?:/|$)~i',
-            $path,
-            $matches,
-        )) {
-            return $matches[1];
-        }
-
-        return null;
+        return GoogleDriveFolderInput::extractId($input);
     }
 
     protected function hasFolderSchema(): bool

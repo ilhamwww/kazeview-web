@@ -60,10 +60,30 @@ class CreateContent extends CreateRecord
 
         $record = ContentResource::getModel()::findOrFail($id);
 
-        Notification::make()
+        $hasDriveLink = \App\Support\GoogleDriveFolder::extractId(
+            $record->link,
+        ) !== null;
+        $queued = $hasDriveLink
+            ? $record->queueDriveDownload()
+            : false;
+
+        $notification = Notification::make()
             ->title('Konten berhasil dibuat')
-            ->success()
-            ->send();
+            ->success();
+
+        if ($queued) {
+            $notification->body(
+                'Download Google Drive masuk antrean dan akan diproses di background.',
+            );
+        } elseif ($hasDriveLink) {
+            $notification
+                ->body(
+                    'Konten tersimpan, tetapi download belum dijadwalkan. Jalankan migration queue dan struktur folder terbaru.',
+                )
+                ->warning();
+        }
+
+        $notification->send();
 
         return $record;
     }
