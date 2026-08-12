@@ -21,13 +21,15 @@
                         ? $item->preview_type
                         : 'PHOTOGRAPHY'
                 );
-            $category = strtolower(trim((string) ($item->preview_category ?? '')));
-            if (
-                ($type === 'PHOTO + FILM' || $mediaType === 'VIDEO')
-                && !str_contains($category, 'film')
-            ) {
-                $category = trim($category . ' film');
-            }
+            $categorySlugs = $item instanceof \App\Models\Content
+                && $item->relationLoaded('filterCategories')
+                    ? $item->filterCategories
+                        ->pluck('slug')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                    : collect();
+            $category = $categorySlugs->implode(' ');
 
             $rawPosition = trim((string) ($item->image_position ?? '50% 50%'));
             $position = preg_match('/^(left|center|right|\d{1,3}%)(\s+(top|center|bottom|\d{1,3}%))?$/', $rawPosition)
@@ -138,10 +140,17 @@
         </label>
 
         <div class="discovery-filters" role="group" aria-label="Filter events">
-            @foreach (['all' => 'ALL EVENTS', 'photo' => 'FOTO', 'video' => 'VIDEO', 'latest' => 'LATEST', 'motorcycle' => 'MOTORCYCLE', 'automotive' => 'AUTOMOTIVE'] as $value => $label)
+            @foreach (['all' => 'ALL EVENTS', 'photo' => 'FOTO', 'video' => 'VIDEO', 'latest' => 'LATEST'] as $value => $label)
                 <button class="discovery-filter {{ $loop->first ? 'is-active' : '' }}" type="button"
                     data-event-filter="{{ $value }}" aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
                     {{ $label }}
+                </button>
+            @endforeach
+
+            @foreach ($filterCategories ?? collect() as $filterCategory)
+                <button class="discovery-filter" type="button"
+                    data-event-filter="category:{{ $filterCategory->slug }}" aria-pressed="false">
+                    {{ strtoupper($filterCategory->name) }}
                 </button>
             @endforeach
         </div>
@@ -290,7 +299,11 @@
                 if (activeFilter === 'photo') return card.dataset.mediaType === 'foto';
                 if (activeFilter === 'video') return card.dataset.mediaType === 'video';
                 if (activeFilter === 'latest') return card.dataset.isNew === 'true';
-                return category.split(' ').includes(activeFilter);
+                if (activeFilter.startsWith('category:')) {
+                    const categorySlug = activeFilter.slice('category:'.length);
+                    return category.split(' ').includes(categorySlug);
+                }
+                return false;
             };
 
             const applyFilters = () => {

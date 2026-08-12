@@ -75,11 +75,22 @@ class ContentResource extends Resource
                                     ($get('content_media_type') ?: 'FOTO')
                                         === 'FOTO',
                             ),
-                        TextInput::make('preview_category')
+                        Select::make('filterCategories')
                             ->label('Kategori Filter')
-                            ->placeholder('Contoh: motorcycle film')
-                            ->helperText('Gunakan kata: motorcycle, automotive, atau film.')
-                            ->maxLength(50),
+                            ->relationship(
+                                name: 'filterCategories',
+                                titleAttribute: 'name',
+                                modifyQueryUsing: fn (Builder $query) =>
+                                    $query
+                                        ->orderBy('sort_order')
+                                        ->orderBy('name'),
+                            )
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->helperText(
+                                'Pilih satu atau beberapa kategori dari Master Kategori Filter.',
+                            ),
                         Toggle::make('is_active')
                             ->label('Event Aktif / Dibuka')
                             ->helperText('Jika dimatikan, event tetap tampil abu-abu di Preview dengan badge CLOSED dan tidak bisa dibuka.')
@@ -205,6 +216,10 @@ class ContentResource extends Resource
                             $state === 'VIDEO' ? 'info' : 'success',
                     ),
                 TextColumn::make('preview_type')->label('Tipe')->badge(),
+                TextColumn::make('filterCategories.name')
+                    ->label('Filter')
+                    ->badge()
+                    ->separator(','),
                 TextColumn::make('drive_download_status')
                     ->label('Drive')
                     ->badge()

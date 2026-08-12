@@ -6,6 +6,7 @@ use App\Jobs\DownloadGoogleDriveFolder;
 use App\Support\GoogleDriveFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -40,6 +41,14 @@ class Content extends Model
     public function downloads(): HasMany
     {
         return $this->hasMany(DownloadData::class, 'id_content');
+    }
+
+    public function filterCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ContentFilterCategory::class,
+            'content_content_filter_category',
+        );
     }
 
     public static function hasDriveDownloadSchema(): bool

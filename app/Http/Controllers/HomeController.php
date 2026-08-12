@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AboutSetting;
 use App\Models\ContactSetting;
 use App\Models\Content;
+use App\Models\ContentFilterCategory;
 use App\Models\DownloadFolder;
 use App\Models\ListDownloaded;
 use App\Support\GoogleDriveFolder;
@@ -55,20 +56,44 @@ class HomeController extends Controller
 
     public function index_product()
     {
-        $data_konten = DB::table('contents')
-            ->orderBy('urut', 'desc')
-            ->get();
-        $data_web = DB::table('website_settings')->get()->first();
-        $data_links = $data_web ? json_decode($data_web->links, true) : null;
+        $hasCategoryMaster = Schema::hasTable(
+            'content_filter_categories',
+        ) && Schema::hasTable('content_content_filter_category');
 
-        if ($data_links === null) {
-            $data_links = [];
-        }
+        $data_konten = $hasCategoryMaster
+            ? Content::query()
+                ->with([
+                    'filterCategories' => fn ($query) =>
+                        $query
+                            ->where('is_active', true)
+                            ->orderBy('sort_order')
+                            ->orderBy('name'),
+                ])
+                ->orderByDesc('urut')
+                ->get()
+            : DB::table('contents')
+                ->orderByDesc('urut')
+                ->get();
 
-        return view(view: 'landingpage.product')
-            ->with('data_konten', $data_konten)
-            ->with('data_web', $data_web)
-            ->with('data_links', $data_links);
+        $filterCategories = $hasCategoryMaster
+            ? ContentFilterCategory::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug'])
+            : collect();
+
+        $data_web = DB::table('website_settings')->first();
+        $data_links = $data_web
+            ? json_decode($data_web->links, true)
+            : [];
+
+        return view('landingpage.product', [
+            'data_konten' => $data_konten,
+            'filterCategories' => $filterCategories,
+            'data_web' => $data_web,
+            'data_links' => $data_links ?? [],
+        ]);
     }
 
     public function showPreview(Content $content, Request $request)

@@ -108,6 +108,52 @@ php artisan queue:retry all
 The Content table displays the lifecycle as **Menunggu**, **Diproses**,
 **Selesai**, or **Gagal**. Hovering the badge displays the latest job message.
 
+## Master kategori filter Preview
+
+Kategori filter halaman Preview dikelola dari menu Filament:
+
+```text
+Gallery → Master Kategori Filter
+```
+
+Setiap kategori memiliki:
+
+- Nama kategori yang tampil di frontend.
+- Slug unik sebagai kunci filter.
+- Status aktif/nonaktif.
+- Urutan tampil yang dapat diubah dengan drag-and-drop.
+- Relasi ke satu atau lebih Content.
+
+Pada form Content, gunakan field **Kategori Filter** untuk memilih satu atau
+beberapa kategori dari master. Filter tambahan pada halaman `/preview` dibuat
+otomatis dari master kategori aktif berdasarkan urutan yang diatur di admin.
+
+Filter sistem berikut tetap tersedia:
+
+```text
+ALL EVENTS
+FOTO
+VIDEO
+LATEST
+```
+
+Migration master kategori juga mengimpor nilai lama dari kolom
+`preview_category` menjadi master dan relasi Content secara otomatis.
+
+Setelah deployment jalankan:
+
+```bash
+php artisan migrate --force
+php artisan optimize:clear
+```
+
+Jika Filament Shield digunakan untuk pengguna selain super admin, perbarui
+permission resource setelah resource master kategori ditambahkan:
+
+```bash
+php artisan shield:generate --all
+```
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
