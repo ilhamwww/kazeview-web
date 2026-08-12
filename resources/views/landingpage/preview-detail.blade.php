@@ -169,12 +169,36 @@
                                 </a>
                             @endif
 
-                            @foreach ($photos->getUrlRange(max(1, $photos->currentPage() - 2), min($photos->lastPage(), $photos->currentPage() + 2)) as $page => $url)
-                                <a class="gallery-pagination__link {{ $page === $photos->currentPage() ? 'is-active' : '' }}"
-                                    href="{{ $url }}"
-                                    @if ($page === $photos->currentPage()) aria-current="page" @endif>
+                            @php
+                                $currentPage = $photos->currentPage();
+                                $lastPage = $photos->lastPage();
+                                $visiblePages = collect([
+                                    1,
+                                    $currentPage - 1,
+                                    $currentPage,
+                                    $currentPage + 1,
+                                    $lastPage,
+                                ])
+                                    ->filter(fn ($page) => $page >= 1 && $page <= $lastPage)
+                                    ->unique()
+                                    ->sort()
+                                    ->values();
+                                $previousVisiblePage = null;
+                            @endphp
+
+                            @foreach ($visiblePages as $page)
+                                @if ($previousVisiblePage !== null && $page - $previousVisiblePage > 1)
+                                    <span class="gallery-pagination__ellipsis" aria-hidden="true">…</span>
+                                @endif
+
+                                <a class="gallery-pagination__link {{ $page === $currentPage ? 'is-active' : '' }}"
+                                    href="{{ $photos->url($page) }}"
+                                    aria-label="Buka halaman {{ $page }}"
+                                    @if ($page === $currentPage) aria-current="page" @endif>
                                     {{ $page }}
                                 </a>
+
+                                @php $previousVisiblePage = $page; @endphp
                             @endforeach
 
                             @if ($photos->hasMorePages())
