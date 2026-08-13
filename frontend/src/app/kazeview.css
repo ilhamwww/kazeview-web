@@ -3437,9 +3437,9 @@ button {
 }
 
 .ai-photo-search__error {
-    color: #ffad8a;
-    border-left-color: #ff6b6b;
-    background: rgba(255, 107, 107, .1);
+    color: var(--color-accent-hover);
+    border-left-color: var(--color-accent);
+    background: var(--color-accent-soft);
 }
 
 .ai-photo-search__results {

@@ -17,9 +17,6 @@
         ? asset('storage/' . $content->image)
         : asset('KAZE_icon.png');
     $topLevelFolders = $folders->where('depth', 1);
-    $photoGroups = $photos->getCollection()->groupBy(
-        fn ($photo) => $photo->folder?->relative_path ?: 'ROOT / UNCATEGORIZED',
-    );
 @endphp
 
 @section('preloads')
@@ -30,34 +27,34 @@
     <style>
         .gallery-detail { padding: clamp(2rem, 5vw, 5rem) var(--page-gutter, 5vw) 6rem; }
         .gallery-back { display:inline-flex; align-items:center; gap:.6rem; color:inherit; text-decoration:none; font:700 .78rem/1 Inter,sans-serif; letter-spacing:.12em; margin-bottom:2rem; }
-        .gallery-back:hover { color:#ff4d00; }
+        .gallery-back:hover { color:var(--color-accent); }
         .gallery-hero { position:relative; min-height:min(68vh,680px); display:flex; align-items:flex-end; overflow:hidden; background:#111; }
         .gallery-hero__image,.gallery-hero__shade { position:absolute; inset:0; width:100%; height:100%; }
         .gallery-hero__image { object-fit:cover; }
         .gallery-hero__shade { background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.82)); }
         .gallery-hero__content { position:relative; z-index:1; color:#fff; padding:clamp(1.5rem,5vw,4.5rem); max-width:980px; }
-        .gallery-kicker { color:#ff5a16; font:800 .75rem/1 Inter,sans-serif; letter-spacing:.16em; }
+        .gallery-kicker { color:var(--color-accent); font:800 .75rem/1 Inter,sans-serif; letter-spacing:.16em; }
         .gallery-title { margin:.75rem 0 1rem; font:800 clamp(2.3rem,7vw,6.5rem)/.9 "Inter Tight",sans-serif; letter-spacing:-.055em; }
         .gallery-meta { display:flex; flex-wrap:wrap; gap:.65rem 1.5rem; font:600 .8rem/1.4 Inter,sans-serif; letter-spacing:.08em; }
         .gallery-description { max-width:720px; margin:1.3rem 0 0; color:rgba(255,255,255,.76); line-height:1.7; }
-        .ai-photo-search { margin:clamp(2rem,5vw,4.5rem) 0 0; padding:clamp(1.4rem,4vw,3.5rem); border:1px solid rgba(127,127,127,.32); background:radial-gradient(circle at 100% 0,rgba(255,90,22,.12),transparent 42%),#0c0c0d; }
+        .ai-photo-search { margin:clamp(2rem,5vw,4.5rem) 0 0; padding:clamp(1.4rem,4vw,3.5rem); border:1px solid rgba(127,127,127,.32); background:radial-gradient(circle at 100% 0,var(--color-accent-soft),transparent 42%),#0c0c0d; }
         .ai-photo-search__header { max-width:760px; }
         .ai-photo-search__header h2 { margin:.7rem 0 1rem; font:800 clamp(2rem,5vw,4.5rem)/.92 "Inter Tight",sans-serif; letter-spacing:-.05em; }
         .ai-photo-search__header > p:last-child { margin:0; opacity:.68; line-height:1.65; }
         .ai-photo-search__form { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1rem; align-items:center; margin-top:1.75rem; }
         .ai-photo-search__picker { min-width:0; min-height:54px; display:flex; align-items:center; padding:0 1rem; overflow:hidden; border:1px solid rgba(127,127,127,.42); cursor:pointer; font:700 .72rem/1 Inter,sans-serif; letter-spacing:.09em; }
-        .ai-photo-search__picker:hover { border-color:#ff5a16; }
+        .ai-photo-search__picker:hover { border-color:var(--color-accent); }
         .ai-photo-search__picker span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .ai-photo-search__picker input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
-        .ai-photo-search__submit { min-height:54px; padding:0 1.5rem; border:1px solid #ff5a16; color:#050506; background:#ff5a16; cursor:pointer; font:800 .72rem/1 Inter,sans-serif; letter-spacing:.09em; }
+        .ai-photo-search__submit { min-height:54px; padding:0 1.5rem; border:1px solid var(--color-accent); color:#fff; background:var(--color-accent); cursor:pointer; font:800 .72rem/1 Inter,sans-serif; letter-spacing:.09em; }
         .ai-photo-search__submit:hover:not(:disabled) { color:#fff; background:transparent; }
         .ai-photo-search__submit:disabled { opacity:.42; cursor:not-allowed; }
         .ai-photo-search__preview { display:none; width:min(100%,320px); max-height:280px; margin-top:1rem; object-fit:contain; background:#050506; }
         .ai-photo-search__preview.is-visible { display:block; }
         .ai-photo-search__privacy { margin:.8rem 0 0; opacity:.5; font-size:.75rem; line-height:1.5; }
-        .ai-photo-search__message { display:none; margin:1rem 0 0; padding:.85rem 1rem; border-left:3px solid #ff5a16; background:rgba(255,90,22,.08); line-height:1.5; }
+        .ai-photo-search__message { display:none; margin:1rem 0 0; padding:.85rem 1rem; border-left:3px solid var(--color-accent); background:var(--color-accent-soft); line-height:1.5; }
         .ai-photo-search__message.is-visible { display:block; }
-        .ai-photo-search__message.is-error { color:#ff9f78; border-left-color:#ff6b6b; background:rgba(255,107,107,.08); }
+        .ai-photo-search__message.is-error { color:var(--color-accent-hover); border-left-color:var(--color-accent); background:var(--color-accent-soft); }
         .ai-photo-search__results { display:none; margin-top:2.5rem; padding-top:2rem; border-top:1px solid rgba(127,127,127,.3); }
         .ai-photo-search__results.is-visible { display:block; }
         .ai-photo-search__results-heading { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin-bottom:1rem; }
@@ -70,7 +67,7 @@
         .ai-photo-search__match-meta { position:absolute; right:0; bottom:0; left:0; display:flex; justify-content:space-between; gap:.5rem; padding:.7rem; background:linear-gradient(transparent,rgba(0,0,0,.9)); font:700 .62rem/1.3 Inter,sans-serif; letter-spacing:.06em; text-transform:uppercase; }
         .gallery-folders { display:flex; flex-wrap:wrap; gap:.5rem; margin:clamp(3rem,7vw,6rem) 0 0; }
         .gallery-folder { display:inline-flex; align-items:center; gap:.5rem; min-height:42px; padding:.7rem 1rem; border:1px solid rgba(127,127,127,.32); color:inherit; text-decoration:none; font:700 .72rem/1 Inter,sans-serif; letter-spacing:.09em; text-transform:uppercase; }
-        .gallery-folder:hover,.gallery-folder:focus-visible,.gallery-folder.is-active { border-color:#ff5a16; background:#ff5a16; color:#050506; outline:none; }
+        .gallery-folder:hover,.gallery-folder:focus-visible,.gallery-folder.is-active { border-color:var(--color-accent); background:var(--color-accent); color:#fff; outline:none; }
         .gallery-folder small { opacity:.65; font:inherit; }
         .gallery-toolbar { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:2rem 0 1.5rem; border-bottom:1px solid rgba(127,127,127,.32); padding-bottom:1rem; }
         .gallery-toolbar h2 { margin:0; font:800 clamp(1.7rem,4vw,3.2rem)/1 "Inter Tight",sans-serif; letter-spacing:-.04em; }
@@ -87,15 +84,14 @@
         .gallery-empty { padding:5rem 1.5rem; text-align:center; border:1px solid rgba(127,127,127,.28); }
         .gallery-empty h2 { font:800 clamp(1.8rem,5vw,3.5rem)/1 "Inter Tight",sans-serif; margin:0 0 1rem; }
         .gallery-empty p { opacity:.65; margin:0; }
-        .gallery-pagination { display:flex; align-items:center; justify-content:space-between; gap:2rem; margin-top:3rem; padding-top:1.5rem; border-top:1px solid rgba(127,127,127,.28); }
-        .gallery-pagination__summary { margin:0; color:inherit; opacity:.65; font:600 .72rem/1.4 Inter,sans-serif; letter-spacing:.08em; text-transform:uppercase; }
-        .gallery-pagination__nav { display:flex; align-items:center; gap:.35rem; }
-        .gallery-pagination__link { min-width:42px; height:42px; display:inline-flex; align-items:center; justify-content:center; border:1px solid rgba(127,127,127,.32); color:inherit; background:transparent; text-decoration:none; font:700 .75rem/1 Inter,sans-serif; transition:background-color .2s,color .2s,border-color .2s; }
-        .gallery-pagination__link:hover,.gallery-pagination__link:focus-visible { border-color:#ff5a16; color:#ff5a16; outline:none; }
-        .gallery-pagination__link.is-active { border-color:#ff5a16; background:#ff5a16; color:#050506; }
-        .gallery-pagination__link.is-disabled { opacity:.28; cursor:not-allowed; pointer-events:none; }
-        .gallery-pagination__direction { min-width:96px; padding:0 .9rem; gap:.45rem; letter-spacing:.08em; }
-        .gallery-pagination__ellipsis { min-width:30px; text-align:center; opacity:.45; font-weight:700; }
+        .gallery-load-more { display:grid; min-height:110px; margin-top:2rem; padding-top:1.5rem; place-items:center; border-top:1px solid rgba(127,127,127,.28); text-align:center; }
+        .gallery-load-more__status { margin:0; opacity:.65; font:700 .72rem/1.5 Inter,sans-serif; letter-spacing:.1em; text-transform:uppercase; }
+        .gallery-load-more__status::before { display:inline-block; width:8px; height:8px; margin-right:.7rem; content:""; background:var(--color-accent); border-radius:50%; }
+        .gallery-load-more.is-loading .gallery-load-more__status::before { animation:gallery-load-pulse .8s ease-in-out infinite alternate; }
+        .gallery-load-more.is-complete .gallery-load-more__status::before { opacity:.35; }
+        .gallery-load-more__retry { display:none; min-height:42px; margin-top:1rem; padding:0 1rem; border:1px solid var(--color-accent); color:#fff; background:transparent; cursor:pointer; font:800 .72rem/1 Inter,sans-serif; letter-spacing:.09em; }
+        .gallery-load-more.has-error .gallery-load-more__retry { display:inline-flex; align-items:center; justify-content:center; }
+        @keyframes gallery-load-pulse { to { opacity:.25; transform:scale(.7); } }
         .photo-lightbox { position:fixed; inset:0; z-index:1000; display:none; background:rgba(0,0,0,.94); color:#fff; }
         .photo-lightbox.is-open { display:grid; grid-template-rows:auto 1fr auto; }
         .photo-lightbox__top { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; }
@@ -107,7 +103,7 @@
         .photo-lightbox__nav--prev { left:.75rem; } .photo-lightbox__nav--next { right:.75rem; }
         .photo-lightbox__caption { padding:1rem 1.25rem; text-align:center; font:.75rem/1.4 Inter,sans-serif; letter-spacing:.08em; }
         @media(max-width:900px){.photo-grid,.ai-photo-search__grid{grid-template-columns:repeat(3,1fr)}}
-        @media(max-width:640px){.gallery-detail{padding-left:1rem;padding-right:1rem}.gallery-hero{min-height:58vh}.photo-grid,.ai-photo-search__grid{grid-template-columns:repeat(2,1fr)}.ai-photo-search__form{grid-template-columns:1fr}.ai-photo-search__submit{width:100%}.ai-photo-search__results-heading{align-items:start;flex-direction:column}.gallery-toolbar{align-items:start;flex-direction:column}.photo-lightbox__stage{padding:0 2.75rem}.gallery-pagination{align-items:stretch;flex-direction:column;gap:1rem}.gallery-pagination__summary{text-align:center}.gallery-pagination__nav{justify-content:center;flex-wrap:wrap}.gallery-pagination__direction{min-width:42px}.gallery-pagination__direction span{display:none}}
+        @media(max-width:640px){.gallery-detail{padding-left:1rem;padding-right:1rem}.gallery-hero{min-height:58vh}.photo-grid,.ai-photo-search__grid{grid-template-columns:repeat(2,1fr)}.ai-photo-search__form{grid-template-columns:1fr}.ai-photo-search__submit{width:100%}.ai-photo-search__results-heading{align-items:start;flex-direction:column}.gallery-toolbar{align-items:start;flex-direction:column}.photo-lightbox__stage{padding:0 2.75rem}}
     </style>
 @endsection
 
@@ -188,103 +184,33 @@
 
             <div class="gallery-toolbar">
                 <h2 id="photos-heading">EVENT PHOTOS<span class="accent">.</span></h2>
-                <p>{{ number_format($photos->total()) }} PHOTOS · PAGE {{ $photos->currentPage() }} / {{ max(1, $photos->lastPage()) }}</p>
+                <p>{{ number_format($photos->total()) }} PHOTOS</p>
             </div>
 
             @if ($photos->isNotEmpty())
-                @php $photoOffset = 0; @endphp
                 <div data-photo-grid>
-                    @foreach ($photoGroups as $folderPath => $groupPhotos)
-                        <section class="photo-group" aria-labelledby="folder-{{ $loop->index }}">
-                            <div class="photo-group__heading">
-                                <h3 id="folder-{{ $loop->index }}">{{ $folderPath }}</h3>
-                                <span>{{ number_format($groupPhotos->count()) }} PHOTOS ON THIS PAGE</span>
-                            </div>
-                            <div class="photo-grid">
-                                @foreach ($groupPhotos as $photo)
-                                    @php $number = $photos->firstItem() + $photoOffset++; @endphp
-                                    <button class="photo-card" type="button"
-                                        data-photo-src="{{ $photo->public_url }}"
-                                        data-photo-name="{{ $photo->file_name }}"
-                                        data-photo-number="{{ $number }}"
-                                        aria-label="Buka foto {{ $number }}: {{ $photo->file_name }}">
-                                        <img src="{{ route('photos.thumbnail', ['photo' => $photo->getKey()]) }}"
-                                            alt="{{ $photo->file_name }}"
-                                            loading="lazy"
-                                            decoding="async"
-                                            fetchpriority="low"
-                                            onerror="this.onerror=null;this.src=@js($photo->public_url)">
-                                        <span class="photo-card__number">#{{ str_pad((string) $number, 3, '0', STR_PAD_LEFT) }}</span>
-                                    </button>
-                                @endforeach
-                            </div>
-                        </section>
-                    @endforeach
+                    @include('landingpage.partials.preview-photo-batch', ['photos' => $photos])
                 </div>
-                @if ($photos->hasPages())
-                    <nav class="gallery-pagination" aria-label="Navigasi halaman galeri">
-                        <p class="gallery-pagination__summary">
-                            Menampilkan {{ number_format($photos->firstItem()) }}–{{ number_format($photos->lastItem()) }}
-                            dari {{ number_format($photos->total()) }} foto
-                        </p>
 
-                        <div class="gallery-pagination__nav">
-                            @if ($photos->onFirstPage())
-                                <span class="gallery-pagination__link gallery-pagination__direction is-disabled" aria-disabled="true">
-                                    <b aria-hidden="true">←</b><span>PREVIOUS</span>
-                                </span>
-                            @else
-                                <a class="gallery-pagination__link gallery-pagination__direction"
-                                    href="{{ $photos->previousPageUrl() }}" rel="prev">
-                                    <b aria-hidden="true">←</b><span>PREVIOUS</span>
-                                </a>
-                            @endif
-
-                            @php
-                                $currentPage = $photos->currentPage();
-                                $lastPage = $photos->lastPage();
-                                $visiblePages = collect([
-                                    1,
-                                    $currentPage - 1,
-                                    $currentPage,
-                                    $currentPage + 1,
-                                    $lastPage,
-                                ])
-                                    ->filter(fn ($page) => $page >= 1 && $page <= $lastPage)
-                                    ->unique()
-                                    ->sort()
-                                    ->values();
-                                $previousVisiblePage = null;
-                            @endphp
-
-                            @foreach ($visiblePages as $page)
-                                @if ($previousVisiblePage !== null && $page - $previousVisiblePage > 1)
-                                    <span class="gallery-pagination__ellipsis" aria-hidden="true">…</span>
-                                @endif
-
-                                <a class="gallery-pagination__link {{ $page === $currentPage ? 'is-active' : '' }}"
-                                    href="{{ $photos->url($page) }}"
-                                    aria-label="Buka halaman {{ $page }}"
-                                    @if ($page === $currentPage) aria-current="page" @endif>
-                                    {{ $page }}
-                                </a>
-
-                                @php $previousVisiblePage = $page; @endphp
-                            @endforeach
-
+                <div class="gallery-load-more {{ $photos->hasMorePages() ? '' : 'is-complete' }}"
+                    data-infinite-scroll
+                    data-next-url="{{ $photos->hasMorePages() ? $photos->appends(['infinite' => 1])->nextPageUrl() : '' }}"
+                    data-loaded="{{ $photos->count() }}"
+                    data-total="{{ $photos->total() }}"
+                    aria-live="polite">
+                    <div>
+                        <p class="gallery-load-more__status" data-infinite-status>
                             @if ($photos->hasMorePages())
-                                <a class="gallery-pagination__link gallery-pagination__direction"
-                                    href="{{ $photos->nextPageUrl() }}" rel="next">
-                                    <span>NEXT</span><b aria-hidden="true">→</b>
-                                </a>
+                                SCROLL TO LOAD MORE · {{ number_format($photos->count()) }} / {{ number_format($photos->total()) }}
                             @else
-                                <span class="gallery-pagination__link gallery-pagination__direction is-disabled" aria-disabled="true">
-                                    <span>NEXT</span><b aria-hidden="true">→</b>
-                                </span>
+                                ALL {{ number_format($photos->total()) }} PHOTOS LOADED
                             @endif
-                        </div>
-                    </nav>
-                @endif
+                        </p>
+                        <button class="gallery-load-more__retry" type="button" data-infinite-retry>
+                            TRY AGAIN
+                        </button>
+                    </div>
+                </div>
             @else
                 <div class="gallery-empty">
                     <h2>PHOTOS ARE BEING PREPARED<span class="accent">.</span></h2>
@@ -477,9 +403,13 @@
 
     <script>
         (() => {
-            const cards = [...document.querySelectorAll('[data-photo-src]')];
+            const gallery = document.querySelector('[data-photo-grid]');
+            const sentinel = document.querySelector('[data-infinite-scroll]');
+            const status = sentinel?.querySelector('[data-infinite-status]');
+            const retry = sentinel?.querySelector('[data-infinite-retry]');
             const modal = document.querySelector('[data-lightbox]');
-            if (!cards.length || !modal) return;
+
+            if (!gallery || !sentinel || !modal) return;
 
             const image = modal.querySelector('[data-lightbox-image]');
             const caption = modal.querySelector('[data-lightbox-caption]');
@@ -487,20 +417,28 @@
             const close = modal.querySelector('[data-lightbox-close]');
             let active = 0;
             let previousFocus = null;
+            let loading = false;
+            let observer = null;
+
+            const cards = () => [...gallery.querySelectorAll('[data-photo-src]')];
 
             const show = (index) => {
-                active = (index + cards.length) % cards.length;
-                const card = cards[active];
+                const currentCards = cards();
+                if (!currentCards.length) return;
+
+                active = (index + currentCards.length) % currentCards.length;
+                const card = currentCards[active];
                 image.src = card.dataset.photoSrc;
-                image.alt = card.dataset.photoName;
-                caption.textContent = card.dataset.photoName;
-                count.textContent = `PHOTO ${card.dataset.photoNumber}`;
+                image.alt = card.dataset.photoName || '';
+                caption.textContent = card.dataset.photoName || '';
+                count.textContent = `PHOTO ${card.dataset.photoNumber} · ${active + 1} / ${currentCards.length}`;
             };
 
             const setOpen = (open, index = active) => {
                 modal.classList.toggle('is-open', open);
                 modal.setAttribute('aria-hidden', String(!open));
                 document.body.style.overflow = open ? 'hidden' : '';
+
                 if (open) {
                     previousFocus = document.activeElement;
                     show(index);
@@ -511,16 +449,90 @@
                 }
             };
 
-            cards.forEach((card, index) => card.addEventListener('click', () => setOpen(true, index)));
+            const setComplete = () => {
+                sentinel.dataset.nextUrl = '';
+                sentinel.classList.remove('is-loading', 'has-error');
+                sentinel.classList.add('is-complete');
+                status.textContent = `ALL ${Number(sentinel.dataset.total).toLocaleString()} PHOTOS LOADED`;
+                observer?.disconnect();
+            };
+
+            const loadNextBatch = async () => {
+                const nextUrl = sentinel.dataset.nextUrl;
+                if (loading || !nextUrl) return;
+
+                loading = true;
+                sentinel.classList.remove('has-error');
+                sentinel.classList.add('is-loading');
+                status.textContent = 'LOADING MORE PHOTOS…';
+
+                try {
+                    const response = await fetch(nextUrl, {
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const payload = await response.json();
+                    if (typeof payload.html !== 'string') {
+                        throw new Error('Invalid response');
+                    }
+
+                    gallery.insertAdjacentHTML('beforeend', payload.html);
+                    const loaded = cards().length;
+                    sentinel.dataset.loaded = String(loaded);
+                    sentinel.dataset.nextUrl = payload.next_url || '';
+                    sentinel.classList.remove('is-loading');
+
+                    if (payload.next_url) {
+                        status.textContent = `SCROLL TO LOAD MORE · ${loaded.toLocaleString()} / ${Number(payload.total).toLocaleString()}`;
+                    } else {
+                        setComplete();
+                    }
+                } catch (error) {
+                    sentinel.classList.remove('is-loading');
+                    sentinel.classList.add('has-error');
+                    status.textContent = 'COULD NOT LOAD MORE PHOTOS';
+                } finally {
+                    loading = false;
+                }
+            };
+
+            gallery.addEventListener('click', (event) => {
+                const card = event.target.closest('[data-photo-src]');
+                if (!card || !gallery.contains(card)) return;
+                setOpen(true, cards().indexOf(card));
+            });
+
             close.addEventListener('click', () => setOpen(false));
             modal.querySelector('[data-lightbox-prev]').addEventListener('click', () => show(active - 1));
             modal.querySelector('[data-lightbox-next]').addEventListener('click', () => show(active + 1));
-            modal.addEventListener('click', (event) => { if (event.target === modal) setOpen(false); });
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) setOpen(false);
+            });
             modal.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape') setOpen(false);
                 if (event.key === 'ArrowLeft') show(active - 1);
                 if (event.key === 'ArrowRight') show(active + 1);
             });
+            retry.addEventListener('click', loadNextBatch);
+
+            if (sentinel.dataset.nextUrl) {
+                observer = new IntersectionObserver(
+                    (entries) => {
+                        if (entries.some((entry) => entry.isIntersecting)) {
+                            loadNextBatch();
+                        }
+                    },
+                    { rootMargin: '600px 0px' },
+                );
+                observer.observe(sentinel);
+            }
         })();
     </script>
 @endsection

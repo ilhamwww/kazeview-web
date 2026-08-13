@@ -202,6 +202,22 @@ class HomeController extends Controller
                 ->values(),
         );
 
+        if ($request->boolean('infinite')) {
+            return response()->json([
+                'html' => view(
+                    'landingpage.partials.preview-photo-batch',
+                    ['photos' => $photos],
+                )->render(),
+                'next_url' => $photos->hasMorePages()
+                    ? $photos->appends(['infinite' => 1])->nextPageUrl()
+                    : null,
+                'loaded' => $photos->count(),
+                'from' => $photos->firstItem(),
+                'to' => $photos->lastItem(),
+                'total' => $photos->total(),
+            ]);
+        }
+
         return view('landingpage.preview-detail', [
             'content' => $content,
             'photos' => $photos,
