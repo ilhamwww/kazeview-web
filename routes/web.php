@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\PublicApiController;
 use App\Http\Controllers\HomeController;
 use App\Services\GoogleDriveService;
 use App\Services\AnoboyScraperService;
@@ -17,6 +18,23 @@ Route::controller(HomeController::class)->group(function () {
     Route::get('/preview/{content}', 'showPreview')->name('preview.show');
     // Route::get('/test', 'index_preview')->name('home.index_preview');
 });
+
+Route::prefix('api/v1/public')
+    ->middleware('throttle:120,1')
+    ->name('api.public.')
+    ->controller(PublicApiController::class)
+    ->group(function (): void {
+        Route::get('/bootstrap', 'bootstrap')->name('bootstrap');
+        Route::get('/home', 'home')->name('home');
+        Route::get('/films', 'films')->name('films');
+        Route::get('/about', 'about')->name('about');
+        Route::get('/contact', 'contact')->name('contact');
+        Route::get('/preview', 'preview')->name('preview.index');
+        Route::get(
+            '/preview/{content}',
+            'previewDetail',
+        )->name('preview.show');
+    });
 
 // Route::get('/drive-preview', function (GoogleDriveService $driveService) {
     // $folderId = '1KP-_LpsLn-yax1fYrQZqOh_IcEQOrxw0';
