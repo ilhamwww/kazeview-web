@@ -153,7 +153,7 @@
                 </form>
 
                 <img class="ai-photo-search__preview" data-ai-photo-search-preview src="" alt="Foto motor yang dipilih">
-                <p class="ai-photo-search__privacy">File diproses sementara dan tidak ditambahkan ke galeri event.</p>
+                <p class="ai-photo-search__privacy">Foto sumber hingga 20 MB akan dikompres di perangkat sebelum dikirim dan tidak ditambahkan ke galeri event.</p>
                 <p class="ai-photo-search__message" data-ai-photo-search-message role="status" aria-live="polite"></p>
 
                 <div class="ai-photo-search__results" data-ai-photo-search-results>
@@ -252,8 +252,83 @@
                 const grid = root.querySelector('[data-ai-photo-search-grid]');
                 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
                 const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-                const maxBytes = 8 * 1024 * 1024;
+                const maxSourceBytes = 20 * 1024 * 1024;
+                const maxUploadBytes = 7.5 * 1024 * 1024;
+                const maxDimension = 2048;
                 let previewUrl = null;
+                let compressedPhoto = null;
+
+                const canvasToBlob = (canvas, quality) => new Promise((resolve, reject) => {
+                    canvas.toBlob(
+                        (blob) => blob
+                            ? resolve(blob)
+                            : reject(new Error('Foto tidak dapat dikompres.')),
+                        'image/jpeg',
+                        quality,
+                    );
+                });
+
+                const loadBitmap = async (file) => {
+                    if ('createImageBitmap' in window) {
+                        return createImageBitmap(file, { imageOrientation: 'from-image' });
+                    }
+
+                    const sourceUrl = URL.createObjectURL(file);
+
+                    try {
+                        return await new Promise((resolve, reject) => {
+                            const sourceImage = new Image();
+                            sourceImage.onload = () => resolve(sourceImage);
+                            sourceImage.onerror = () => reject(new Error('Foto tidak dapat dibaca.'));
+                            sourceImage.src = sourceUrl;
+                        });
+                    } finally {
+                        URL.revokeObjectURL(sourceUrl);
+                    }
+                };
+
+                const compressPhoto = async (file) => {
+                    const bitmap = await loadBitmap(file);
+                    const sourceWidth = bitmap.width || bitmap.naturalWidth;
+                    const sourceHeight = bitmap.height || bitmap.naturalHeight;
+                    const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+                    const width = Math.max(1, Math.round(sourceWidth * scale));
+                    const height = Math.max(1, Math.round(sourceHeight * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const context = canvas.getContext('2d', { alpha: false });
+                    if (!context) {
+                        bitmap.close?.();
+                        throw new Error('Kompresi foto tidak didukung browser ini.');
+                    }
+
+                    context.fillStyle = '#ffffff';
+                    context.fillRect(0, 0, width, height);
+                    context.imageSmoothingEnabled = true;
+                    context.imageSmoothingQuality = 'high';
+                    context.drawImage(bitmap, 0, 0, width, height);
+                    bitmap.close?.();
+
+                    let quality = 0.86;
+                    let blob = await canvasToBlob(canvas, quality);
+
+                    while (blob.size > maxUploadBytes && quality > 0.48) {
+                        quality -= 0.08;
+                        blob = await canvasToBlob(canvas, quality);
+                    }
+
+                    if (blob.size > maxUploadBytes) {
+                        throw new Error('Foto tidak dapat diperkecil ke ukuran aman. Pilih foto lain.');
+                    }
+
+                    const baseName = file.name.replace(/\.[^.]+$/, '') || 'motorcycle';
+                    return new File([blob], `${baseName}-compressed.jpg`, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now(),
+                    });
+                };
 
                 const setMessage = (text = '', isError = false) => {
                     message.textContent = text;
@@ -275,8 +350,9 @@
                     return firstError || payload?.message || 'Pencarian foto gagal. Silakan coba kembali.';
                 };
 
-                input.addEventListener('change', () => {
+                input.addEventListener('change', async () => {
                     const file = input.files?.[0] || null;
+                    compressedPhoto = null;
 
                     if (previewUrl) {
                         URL.revokeObjectURL(previewUrl);
@@ -288,34 +364,47 @@
                     resetResults();
                     setMessage();
                     fileLabel.textContent = file?.name || 'CHOOSE MOTORCYCLE PHOTO';
-                    submit.disabled = !file;
+                    submit.disabled = true;
 
                     if (!file) return;
 
                     if (!allowedTypes.includes(file.type)) {
                         input.value = '';
                         fileLabel.textContent = 'CHOOSE MOTORCYCLE PHOTO';
-                        submit.disabled = true;
                         setMessage('Gunakan file JPEG, PNG, atau WebP.', true);
                         return;
                     }
 
-                    if (file.size > maxBytes) {
+                    if (file.size > maxSourceBytes) {
                         input.value = '';
                         fileLabel.textContent = 'CHOOSE MOTORCYCLE PHOTO';
-                        submit.disabled = true;
-                        setMessage('Ukuran foto maksimal 8 MB.', true);
+                        setMessage('Ukuran foto sumber maksimal 20 MB.', true);
                         return;
                     }
 
-                    previewUrl = URL.createObjectURL(file);
-                    preview.src = previewUrl;
-                    preview.classList.add('is-visible');
+                    setMessage('Menyiapkan dan mengompres foto di perangkat…');
+
+                    try {
+                        compressedPhoto = await compressPhoto(file);
+                        previewUrl = URL.createObjectURL(compressedPhoto);
+                        preview.src = previewUrl;
+                        preview.classList.add('is-visible');
+                        submit.disabled = false;
+
+                        const originalSize = (file.size / 1024 / 1024).toFixed(1);
+                        const compressedSize = (compressedPhoto.size / 1024 / 1024).toFixed(1);
+                        setMessage(`Foto siap dikirim · ${originalSize} MB → ${compressedSize} MB`);
+                    } catch (error) {
+                        compressedPhoto = null;
+                        input.value = '';
+                        fileLabel.textContent = 'CHOOSE MOTORCYCLE PHOTO';
+                        setMessage(error?.message || 'Foto gagal dikompres. Silakan pilih foto lain.', true);
+                    }
                 });
 
                 form.addEventListener('submit', async (event) => {
                     event.preventDefault();
-                    const file = input.files?.[0];
+                    const file = compressedPhoto;
 
                     if (!file || submit.disabled) return;
 
@@ -389,7 +478,7 @@
                             : error?.message || 'Pencarian foto gagal. Silakan coba kembali.';
                         setMessage(text, true);
                     } finally {
-                        submit.disabled = !input.files?.[0];
+                        submit.disabled = !compressedPhoto;
                         submit.textContent = 'FIND POSSIBLE MATCHES';
                     }
                 });
