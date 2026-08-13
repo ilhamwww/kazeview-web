@@ -9,7 +9,7 @@
     <section class="photo-group" data-photo-group="{{ $folderPath }}" aria-labelledby="folder-{{ $photos->currentPage() }}-{{ $loop->index }}">
         <div class="photo-group__heading">
             <h3 id="folder-{{ $photos->currentPage() }}-{{ $loop->index }}">{{ $folderPath }}</h3>
-            <span>{{ number_format($groupPhotos->count()) }} PHOTOS IN THIS BATCH</span>
+            <span data-photo-group-count>{{ number_format($groupPhotos->count()) }} PHOTOS LOADED</span>
         </div>
 
         <div class="photo-grid">

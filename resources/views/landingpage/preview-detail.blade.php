@@ -256,6 +256,84 @@
                 const maxDimension = 2048;
                 let previewUrl = null;
                 let compressedPhoto = null;
+                let photoFingerprint = null;
+                let searchCompleted = false;
+                const searchedPhotoStorageKey = `kazeview:ai-photo-search:${root.dataset.endpoint}:searched`;
+
+                const fingerprintPhoto = async (file) => {
+                    const bytes = await file.arrayBuffer();
+
+                    if (window.crypto?.subtle) {
+                        const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+
+                        return [...new Uint8Array(digest)]
+                            .map((byte) => byte.toString(16).padStart(2, '0'))
+                            .join('');
+                    }
+
+                    // Fallback is only used by older/insecure browser contexts.
+                    return `${file.size}:${file.lastModified}:${file.name}`;
+                };
+
+                const cachedSearch = (fingerprint) => {
+                    if (!fingerprint) return null;
+
+                    try {
+                        const searched = JSON.parse(
+                            localStorage.getItem(searchedPhotoStorageKey) || '[]',
+                        );
+
+                        if (!Array.isArray(searched)) return null;
+
+                        const entry = searched.find((value) => (
+                            typeof value === 'object'
+                            && value !== null
+                            && value.fingerprint === fingerprint
+                        ));
+
+                        // Old string-only entries are intentionally ignored
+                        // because they do not contain results that can be shown.
+                        return entry && Array.isArray(entry.matches) ? entry : null;
+                    } catch {
+                        return null;
+                    }
+                };
+
+                const rememberSearch = (fingerprint, matches) => {
+                    if (!fingerprint) return;
+
+                    try {
+                        const current = JSON.parse(
+                            localStorage.getItem(searchedPhotoStorageKey) || '[]',
+                        );
+                        const searched = Array.isArray(current) ? current : [];
+                        const cacheEntry = {
+                            fingerprint,
+                            cached_at: Date.now(),
+                            matches: matches.slice(0, 20).map((match) => ({
+                                id: match.id ?? null,
+                                name: match.name || 'MATCH',
+                                url: match.url,
+                                confidence: match.confidence || 'possible',
+                            })),
+                        };
+                        const updated = [
+                            cacheEntry,
+                            ...searched.filter((value) => (
+                                typeof value !== 'object'
+                                || value === null
+                                || value.fingerprint !== fingerprint
+                            )),
+                        ].slice(0, 20);
+
+                        localStorage.setItem(
+                            searchedPhotoStorageKey,
+                            JSON.stringify(updated),
+                        );
+                    } catch {
+                        // Privacy mode or a full storage quota must not break search.
+                    }
+                };
 
                 const canvasToBlob = (canvas, quality) => new Promise((resolve, reject) => {
                     canvas.toBlob(
@@ -341,6 +419,46 @@
                     results.classList.remove('is-visible');
                 };
 
+                const renderMatches = (matches) => {
+                    grid.replaceChildren();
+
+                    for (const match of matches) {
+                        if (!match?.url) continue;
+
+                        const link = document.createElement('a');
+                        link.className = 'ai-photo-search__match';
+                        link.href = match.url;
+                        link.target = '_blank';
+                        link.rel = 'noopener';
+                        link.setAttribute('aria-label', `Buka ${match.name || 'foto hasil pencarian'}`);
+
+                        const image = document.createElement('img');
+                        image.src = match.url;
+                        image.alt = match.name || 'Possible motorcycle match';
+                        image.loading = 'lazy';
+                        image.decoding = 'async';
+
+                        const meta = document.createElement('span');
+                        meta.className = 'ai-photo-search__match-meta';
+
+                        const name = document.createElement('span');
+                        name.textContent = match.name || 'MATCH';
+
+                        const confidence = document.createElement('span');
+                        confidence.textContent = String(match.confidence || 'possible');
+
+                        meta.append(name, confidence);
+                        link.append(image, meta);
+                        grid.append(link);
+                    }
+
+                    const renderedCount = grid.querySelectorAll('.ai-photo-search__match').length;
+                    count.textContent = `${renderedCount} PHOTOS`;
+                    results.classList.add('is-visible');
+
+                    return renderedCount;
+                };
+
                 const errorText = (payload) => {
                     const errors = payload && typeof payload === 'object' ? payload.errors : null;
                     const firstError = errors
@@ -352,6 +470,8 @@
                 input.addEventListener('change', async () => {
                     const file = input.files?.[0] || null;
                     compressedPhoto = null;
+                    photoFingerprint = null;
+                    searchCompleted = false;
 
                     if (previewUrl) {
                         URL.revokeObjectURL(previewUrl);
@@ -364,6 +484,7 @@
                     setMessage();
                     fileLabel.textContent = file?.name || 'CHOOSE MOTORCYCLE PHOTO';
                     submit.disabled = true;
+                    submit.textContent = 'FIND POSSIBLE MATCHES';
 
                     if (!file) return;
 
@@ -384,15 +505,27 @@
                     setMessage('Menyiapkan dan mengompres foto di perangkat…');
 
                     try {
+                        photoFingerprint = await fingerprintPhoto(file);
                         compressedPhoto = await compressPhoto(file);
                         previewUrl = URL.createObjectURL(compressedPhoto);
                         preview.src = previewUrl;
                         preview.classList.add('is-visible');
-                        submit.disabled = false;
 
                         const originalSize = (file.size / 1024 / 1024).toFixed(1);
                         const compressedSize = (compressedPhoto.size / 1024 / 1024).toFixed(1);
-                        setMessage(`Foto siap dikirim · ${originalSize} MB → ${compressedSize} MB`);
+
+                        const cached = cachedSearch(photoFingerprint);
+
+                        if (cached) {
+                            searchCompleted = true;
+                            submit.disabled = true;
+                            submit.textContent = 'PHOTO ALREADY SEARCHED';
+                            const renderedCount = renderMatches(cached.matches);
+                            setMessage(`${renderedCount} kemungkinan foto dari pencarian sebelumnya ditampilkan.`);
+                        } else {
+                            submit.disabled = false;
+                            setMessage(`Foto siap dikirim · ${originalSize} MB → ${compressedSize} MB`);
+                        }
                     } catch (error) {
                         compressedPhoto = null;
                         input.value = '';
@@ -405,7 +538,7 @@
                     event.preventDefault();
                     const file = compressedPhoto;
 
-                    if (!file || submit.disabled) return;
+                    if (!file || submit.disabled || searchCompleted) return;
 
                     submit.disabled = true;
                     submit.textContent = 'SEARCHING…';
@@ -436,39 +569,12 @@
                             ? payload.data.matches
                             : [];
 
-                        for (const match of matches) {
-                            const link = document.createElement('a');
-                            link.className = 'ai-photo-search__match';
-                            link.href = match.url;
-                            link.target = '_blank';
-                            link.rel = 'noopener';
-                            link.setAttribute('aria-label', `Buka ${match.name || 'foto hasil pencarian'}`);
-
-                            const image = document.createElement('img');
-                            image.src = match.url;
-                            image.alt = match.name || 'Possible motorcycle match';
-                            image.loading = 'lazy';
-                            image.decoding = 'async';
-
-                            const meta = document.createElement('span');
-                            meta.className = 'ai-photo-search__match-meta';
-
-                            const name = document.createElement('span');
-                            name.textContent = match.name || 'MATCH';
-
-                            const confidence = document.createElement('span');
-                            confidence.textContent = String(match.confidence || 'possible');
-
-                            meta.append(name, confidence);
-                            link.append(image, meta);
-                            grid.append(link);
-                        }
-
-                        count.textContent = `${matches.length} PHOTOS`;
-                        results.classList.add('is-visible');
+                        const renderedCount = renderMatches(matches);
+                        searchCompleted = true;
+                        rememberSearch(photoFingerprint, matches);
                         setMessage(
-                            matches.length
-                                ? `${matches.length} kemungkinan foto ditemukan.`
+                            renderedCount
+                                ? `${renderedCount} kemungkinan foto ditemukan.`
                                 : 'Tidak ada kemungkinan foto yang cocok.',
                         );
                     } catch (error) {
@@ -477,8 +583,10 @@
                             : error?.message || 'Pencarian foto gagal. Silakan coba kembali.';
                         setMessage(text, true);
                     } finally {
-                        submit.disabled = !compressedPhoto;
-                        submit.textContent = 'FIND POSSIBLE MATCHES';
+                        submit.disabled = !compressedPhoto || searchCompleted;
+                        submit.textContent = searchCompleted
+                            ? 'PHOTO ALREADY SEARCHED'
+                            : 'FIND POSSIBLE MATCHES';
                     }
                 });
 
@@ -571,7 +679,43 @@
                         throw new Error('Invalid response');
                     }
 
-                    gallery.insertAdjacentHTML('beforeend', payload.html);
+                    const batch = document.createElement('template');
+                    batch.innerHTML = payload.html;
+
+                    for (const incomingGroup of batch.content.querySelectorAll('[data-photo-group]')) {
+                        const folderPath = incomingGroup.dataset.photoGroup || '';
+                        const existingGroup = [...gallery.querySelectorAll('[data-photo-group]')]
+                            .find((group) => group.dataset.photoGroup === folderPath);
+
+                        if (!existingGroup) {
+                            gallery.append(incomingGroup);
+                            continue;
+                        }
+
+                        const existingGrid = existingGroup.querySelector('.photo-grid');
+                        const incomingGrid = incomingGroup.querySelector('.photo-grid');
+
+                        if (!existingGrid || !incomingGrid) {
+                            continue;
+                        }
+
+                        for (const incomingCard of [...incomingGrid.querySelectorAll('[data-photo-src]')]) {
+                            const duplicate = [...existingGrid.querySelectorAll('[data-photo-src]')]
+                                .some((card) => card.dataset.photoSrc === incomingCard.dataset.photoSrc);
+
+                            if (!duplicate) {
+                                existingGrid.append(incomingCard);
+                            }
+                        }
+
+                        const groupCount = existingGroup.querySelector('[data-photo-group-count]');
+                        const totalInGroup = existingGrid.querySelectorAll('[data-photo-src]').length;
+
+                        if (groupCount) {
+                            groupCount.textContent = `${totalInGroup.toLocaleString()} PHOTOS LOADED`;
+                        }
+                    }
+
                     const loaded = cards().length;
                     sentinel.dataset.loaded = String(loaded);
                     sentinel.dataset.nextUrl = payload.next_url || '';
