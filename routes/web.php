@@ -3,11 +3,17 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PublicApiController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\PhotoThumbnailController;
 use App\Services\GoogleDriveService;
 use App\Services\AnoboyScraperService;
 use Spatie\GoogleCalendar\Event;
 
 // Route::get('/admin/login')->name('login');
+
+Route::get(
+    '/media/photos/{photo}/thumbnail',
+    PhotoThumbnailController::class,
+)->whereNumber('photo')->name('photos.thumbnail');
 
 Route::controller(HomeController::class)->group(function () {
     Route::get('/', 'index')->name('home.index');
