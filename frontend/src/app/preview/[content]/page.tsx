@@ -111,7 +111,7 @@ export default async function PreviewDetailPage({
             ALL PHOTOS
           </Link>
           {data.folders
-            .filter((folder) => folder.depth === 0)
+            .filter((folder) => folder.depth === 1)
             .map((folder) => (
               <Link
                 key={folder.id}

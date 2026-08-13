@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { GalleryPhoto } from "@/lib/types";
 
 export default function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
@@ -8,15 +8,21 @@ export default function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
 
-  const close = () => setActive(null);
-  const previous = () =>
-    setActive((value) =>
-      value === null ? null : (value - 1 + photos.length) % photos.length,
-    );
-  const next = () =>
-    setActive((value) =>
-      value === null ? null : (value + 1) % photos.length,
-    );
+  const close = useCallback(() => setActive(null), []);
+  const previous = useCallback(
+    () =>
+      setActive((value) =>
+        value === null ? null : (value - 1 + photos.length) % photos.length,
+      ),
+    [photos.length],
+  );
+  const next = useCallback(
+    () =>
+      setActive((value) =>
+        value === null ? null : (value + 1) % photos.length,
+      ),
+    [photos.length],
+  );
 
   useEffect(() => {
     if (active === null) return;
@@ -36,7 +42,7 @@ export default function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
       document.removeEventListener("keydown", keydown);
       openerRef.current?.focus();
     };
-  }, [active]);
+  }, [active, close, next, previous]);
 
   const grouped = photos.reduce<Record<string, GalleryPhoto[]>>(
     (result, photo) => {

@@ -1,12 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import PhotoGallery from "@/components/PhotoGallery";
 import type { AiPhotoSearchData, ApiEnvelope } from "@/lib/types";
-
-const API_ORIGIN = (
-  process.env.NEXT_PUBLIC_LARAVEL_URL ?? "http://127.0.0.1:8000"
-).replace(/\/+$/, "");
 
 type ErrorPayload = {
   message?: string;
@@ -20,17 +16,25 @@ export default function AiPhotoSearch({ contentId }: { contentId: number }) {
   const [result, setResult] = useState<AiPhotoSearchData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const previewRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!photo) {
-      setPreview(null);
-      return;
-    }
+  useEffect(
+    () => () => {
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    },
+    [],
+  );
 
-    const url = URL.createObjectURL(photo);
+  function selectPhoto(file: File | null) {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+
+    const url = file ? URL.createObjectURL(file) : null;
+    previewRef.current = url;
+    setPhoto(file);
     setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [photo]);
+    setError(null);
+    setResult(null);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,7 +63,7 @@ export default function AiPhotoSearch({ contentId }: { contentId: number }) {
 
     try {
       const response = await fetch(
-        `${API_ORIGIN}/api/v1/public/preview/${contentId}/ai-photo-search`,
+        `/api/ai-photo-search/${contentId}`,
         {
           method: "POST",
           headers: { Accept: "application/json" },
@@ -117,7 +121,9 @@ export default function AiPhotoSearch({ contentId }: { contentId: number }) {
             type="file"
             accept="image/jpeg,image/png,image/webp"
             disabled={loading}
-            onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+            onChange={(event) =>
+              selectPhoto(event.target.files?.[0] ?? null)
+            }
           />
         </label>
 

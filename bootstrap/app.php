@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->validateCsrfTokens(except: [
+            'api/v1/public/preview/*/ai-photo-search',
+        ]);
+
         $middleware->alias([
             'api.key' => \App\Http\Middleware\VerifyApiKey::class,
         ]);
