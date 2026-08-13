@@ -397,6 +397,16 @@ class PublicApiController extends Controller
             'data' => [
                 'content_id' => $content->getKey(),
                 'label' => 'Possible matches',
+                'query_analysis' => $result['descriptor'],
+                'debug' => [
+                    'vision_model' => (string) config('services.ninerouter.vision_model'),
+                    'embedding_model' => (string) config('services.ninerouter.embedding_model'),
+                    'prompt_version' => (string) config('services.ninerouter.prompt_version'),
+                    'score_weights' => [
+                        'motor_identity_multiplier' => 0.16,
+                        'helmet_max_bonus' => 0.06,
+                    ],
+                ],
                 'matches' => $result['matches'],
             ],
         ])->header('Cache-Control', 'no-store');

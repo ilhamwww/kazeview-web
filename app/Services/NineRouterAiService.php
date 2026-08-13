@@ -172,11 +172,22 @@ You analyze event photographs for motorcycle retrieval. Return JSON only, with c
   "decals": ["string"],
   "accessories": ["string"],
   "visible_text": ["string"],
-  "rider_helmet": "string",
+  "helmet": {
+    "present": true,
+    "type": "full-face|modular|open-face|half-face|off-road|unknown",
+    "primary_color": "string or unknown",
+    "secondary_colors": ["string"],
+    "graphics": ["string"],
+    "visor": "string",
+    "brand_guess": "string or unknown",
+    "visible_text": ["string"],
+    "distinctive_features": ["string"]
+  },
+  "rider_helmet": "short legacy summary of the helmet",
   "rider_clothing": "string",
   "distinctive_features": ["string"]
 }
-If there is no motorcycle, set motorcycle_present false and keep uncertain fields as unknown or empty arrays. Describe visible evidence only. Keep every string short and lowercase.
+The motorcycle is the primary retrieval subject. Analyze the helmet separately as secondary matching evidence: its colors, graphics, visor, visible text, and distinctive pattern can help distinguish riders, but never use helmet similarity to override a clearly conflicting motorcycle brand or model. If there is no motorcycle or helmet, set the corresponding present field false and keep uncertain fields as unknown or empty arrays. Do not identify a person. Describe visible evidence only. Keep every string short and lowercase.
 PROMPT;
     }
 

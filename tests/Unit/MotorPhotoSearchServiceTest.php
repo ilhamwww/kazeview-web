@@ -86,4 +86,124 @@ class MotorPhotoSearchServiceTest extends TestCase
             $confidence->invoke($service, $genericScore, $genericEvidence),
         );
     }
+
+    public function test_helmet_is_secondary_bonus_and_cannot_override_motor_conflict(): void
+    {
+        $service = app(MotorPhotoSearchService::class);
+        $identityMethod = new ReflectionMethod($service, 'identityEvidence');
+        $helmetMethod = new ReflectionMethod($service, 'helmetEvidence');
+        $rankingMethod = new ReflectionMethod($service, 'rankingScore');
+
+        $query = [
+            'brand_guess' => 'kawasaki',
+            'model_guess' => 'ninja zx-6r',
+            'category' => 'sport',
+            'primary_color' => 'green',
+            'helmet' => [
+                'present' => true,
+                'type' => 'full-face',
+                'primary_color' => 'red',
+                'secondary_colors' => ['black'],
+                'graphics' => ['white lightning pattern'],
+                'visor' => 'dark smoke',
+                'brand_guess' => 'shoei',
+                'visible_text' => ['shoei'],
+                'distinctive_features' => ['red rear spoiler'],
+            ],
+            'rider_helmet' => 'red and black shoei full-face helmet',
+        ];
+
+        $sameMotorSameHelmet = $query;
+
+        $sameMotorDifferentHelmet = [
+            ...$query,
+            'helmet' => [
+                'present' => true,
+                'type' => 'open-face',
+                'primary_color' => 'white',
+                'secondary_colors' => [],
+                'graphics' => [],
+                'visor' => 'clear',
+                'brand_guess' => 'unknown',
+                'visible_text' => [],
+                'distinctive_features' => [],
+            ],
+            'rider_helmet' => 'plain white open-face helmet',
+        ];
+
+        $conflictingMotorSameHelmet = [
+            ...$query,
+            'model_guess' => 'ninja zx-25r',
+        ];
+
+        $sameIdentity = $identityMethod->invoke(
+            $service,
+            $query,
+            $sameMotorSameHelmet,
+        );
+        $differentHelmetIdentity = $identityMethod->invoke(
+            $service,
+            $query,
+            $sameMotorDifferentHelmet,
+        );
+        $conflictIdentity = $identityMethod->invoke(
+            $service,
+            $query,
+            $conflictingMotorSameHelmet,
+        );
+
+        $sameHelmet = $helmetMethod->invoke(
+            $service,
+            $query,
+            $sameMotorSameHelmet,
+        );
+        $differentHelmet = $helmetMethod->invoke(
+            $service,
+            $query,
+            $sameMotorDifferentHelmet,
+        );
+        $conflictHelmet = $helmetMethod->invoke(
+            $service,
+            $query,
+            $conflictingMotorSameHelmet,
+        );
+
+        $visualScore = 0.78;
+        $sameHelmetRank = $rankingMethod->invoke(
+            $service,
+            $visualScore,
+            $sameIdentity,
+            $sameHelmet['score'],
+        );
+        $differentHelmetRank = $rankingMethod->invoke(
+            $service,
+            $visualScore,
+            $differentHelmetIdentity,
+            $differentHelmet['score'],
+        );
+        $conflictRankWithHelmet = $rankingMethod->invoke(
+            $service,
+            $visualScore,
+            $conflictIdentity,
+            $conflictHelmet['score'],
+        );
+        $conflictRankWithoutHelmet = $rankingMethod->invoke(
+            $service,
+            $visualScore,
+            $conflictIdentity,
+            0.0,
+        );
+
+        $this->assertGreaterThan(
+            $differentHelmet['score'],
+            $sameHelmet['score'],
+        );
+        $this->assertGreaterThan($differentHelmetRank, $sameHelmetRank);
+        $this->assertSame('conflict', $conflictIdentity['model']);
+        $this->assertSame(
+            $conflictRankWithoutHelmet,
+            $conflictRankWithHelmet,
+        );
+        $this->assertGreaterThan($conflictRankWithHelmet, $sameHelmetRank);
+    }
 }

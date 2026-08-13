@@ -94,7 +94,15 @@ class MotorPhotoSearchService
                     $descriptor,
                     $candidateDescriptor,
                 );
-                $rankingScore = $this->rankingScore($score, $identity);
+                $helmet = $this->helmetEvidence(
+                    $descriptor,
+                    $candidateDescriptor,
+                );
+                $rankingScore = $this->rankingScore(
+                    $score,
+                    $identity,
+                    $helmet['score'],
+                );
 
                 return [
                     'id' => $photo->getKey(),
@@ -102,7 +110,15 @@ class MotorPhotoSearchService
                     'url' => $disk->url($photo->storagePath()),
                     'score' => round($rankingScore, 6),
                     'visual_score' => round($score, 6),
+                    'motor_identity_score' => round($identity['score'], 6),
                     'identity_score' => round($identity['score'], 6),
+                    'helmet_score' => round($helmet['score'], 6),
+                    'evidence' => [
+                        'motor_model' => $identity['model'],
+                        'motor_brand' => $identity['brand'],
+                        'helmet' => $helmet['evidence'],
+                    ],
+                    'candidate_analysis' => $candidateDescriptor,
                     'confidence' => $this->confidence(
                         $rankingScore,
                         $identity,
@@ -230,17 +246,137 @@ class MotorPhotoSearchService
     }
 
     /**
-     * Keep semantic similarity for broad recall, then rerank using motorcycle
-     * identity. Rider clothing, helmet, watermark, and background never add an
-     * explicit identity bonus here.
+     * Keep semantic similarity for broad recall, then rerank primarily using
+     * motorcycle identity. Helmet similarity is secondary; rider clothing,
+     * watermark, and background never add an explicit identity bonus.
      *
      * @param  array{score: float, model: string, brand: string}  $identity
      */
     private function rankingScore(
         float $visualScore,
         array $identity,
+        float $helmetScore = 0.0,
     ): float {
-        return $visualScore + ($identity['score'] * 0.16);
+        // Motorcycle identity remains dominant. Helmet evidence contributes
+        // at most 0.06 to the final rank and cannot cancel a model conflict.
+        $helmetBonus = $identity['model'] === 'conflict'
+            || $identity['brand'] === 'conflict'
+                ? 0.0
+                : max(0.0, min(1.0, $helmetScore)) * 0.06;
+
+        return $visualScore
+            + ($identity['score'] * 0.16)
+            + $helmetBonus;
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @param  array<string, mixed>  $candidate
+     * @return array{score: float, evidence: string}
+     */
+    private function helmetEvidence(array $query, array $candidate): array
+    {
+        $queryHelmet = $this->helmetDescriptor($query);
+        $candidateHelmet = $this->helmetDescriptor($candidate);
+
+        if ($queryHelmet === [] || $candidateHelmet === []) {
+            return ['score' => 0.0, 'evidence' => 'unknown'];
+        }
+
+        $score = 0.0;
+        $score += $this->equalValueScore(
+            $queryHelmet['type'] ?? null,
+            $candidateHelmet['type'] ?? null,
+            0.12,
+        );
+        $score += $this->equalValueScore(
+            $queryHelmet['primary_color'] ?? null,
+            $candidateHelmet['primary_color'] ?? null,
+            0.18,
+        );
+        $score += $this->equalValueScore(
+            $queryHelmet['brand_guess'] ?? null,
+            $candidateHelmet['brand_guess'] ?? null,
+            0.16,
+        );
+        $score += $this->tokenOverlapScore(
+            $queryHelmet['visor'] ?? null,
+            $candidateHelmet['visor'] ?? null,
+            0.12,
+        );
+        $score += $this->arrayOverlapScore(
+            $queryHelmet['secondary_colors'] ?? [],
+            $candidateHelmet['secondary_colors'] ?? [],
+            0.10,
+        );
+        $score += $this->arrayOverlapScore(
+            $queryHelmet['graphics'] ?? [],
+            $candidateHelmet['graphics'] ?? [],
+            0.16,
+        );
+        $score += $this->arrayOverlapScore(
+            $queryHelmet['visible_text'] ?? [],
+            $candidateHelmet['visible_text'] ?? [],
+            0.08,
+        );
+        $score += $this->arrayOverlapScore(
+            $queryHelmet['distinctive_features'] ?? [],
+            $candidateHelmet['distinctive_features'] ?? [],
+            0.08,
+        );
+
+        // Existing motor-v1 indexes only have rider_helmet. Keep them useful
+        // until a future reindex supplies the structured helmet object.
+        $score += $this->tokenOverlapScore(
+            $queryHelmet['legacy_summary'] ?? null,
+            $candidateHelmet['legacy_summary'] ?? null,
+            0.30,
+        );
+
+        $score = max(0.0, min(1.0, $score));
+
+        return [
+            'score' => $score,
+            'evidence' => $score >= 0.65
+                ? 'strong'
+                : ($score >= 0.30 ? 'partial' : 'weak'),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $descriptor
+     * @return array<string, mixed>
+     */
+    private function helmetDescriptor(array $descriptor): array
+    {
+        $helmet = is_array($descriptor['helmet'] ?? null)
+            ? $descriptor['helmet']
+            : [];
+
+        if (($helmet['present'] ?? true) === false) {
+            return [];
+        }
+
+        $legacy = $descriptor['rider_helmet'] ?? null;
+
+        if ($helmet === [] && $this->token($legacy) === null) {
+            return [];
+        }
+
+        $helmet['legacy_summary'] = $legacy;
+
+        return $helmet;
+    }
+
+    private function equalValueScore(
+        mixed $left,
+        mixed $right,
+        float $weight,
+    ): float {
+        $left = $this->token($left);
+        $right = $this->token($right);
+
+        return $left !== null && $left === $right ? $weight : 0.0;
     }
 
     /**
