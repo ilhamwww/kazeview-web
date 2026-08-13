@@ -153,7 +153,6 @@
                 </form>
 
                 <img class="ai-photo-search__preview" data-ai-photo-search-preview src="" alt="Foto motor yang dipilih">
-                <p class="ai-photo-search__privacy">Foto sumber hingga 20 MB akan dikompres di perangkat sebelum dikirim dan tidak ditambahkan ke galeri event.</p>
                 <p class="ai-photo-search__message" data-ai-photo-search-message role="status" aria-live="polite"></p>
 
                 <div class="ai-photo-search__results" data-ai-photo-search-results>
