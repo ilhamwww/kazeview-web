@@ -36,10 +36,19 @@ Route::prefix('api/v1/public')
         Route::get('/about', 'about')->name('about');
         Route::get('/contact', 'contact')->name('contact');
         Route::get('/preview', 'preview')->name('preview.index');
+        Route::post(
+            '/preview/{content}/ai-photo-search',
+            'searchMotorPhotos',
+        )
+            ->whereNumber('content')
+            ->middleware('throttle:10,1')
+            ->name('preview.ai-photo-search');
         Route::get(
             '/preview/{content}',
             'previewDetail',
-        )->name('preview.show');
+        )
+            ->whereNumber('content')
+            ->name('preview.show');
     });
 
 // Route::get('/drive-preview', function (GoogleDriveService $driveService) {

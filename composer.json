@@ -18,6 +18,7 @@
         "joaopaulolndev/filament-world-clock": "^1.0",
         "laravel/framework": "^11.31",
         "laravel/tinker": "^2.9",
+        "owenvoke/blade-fontawesome": "^2.9",
         "spatie/laravel-google-calendar": "^3.8",
         "stechstudio/filament-impersonate": "^3.16",
         "symfony/css-selector": "^7.4",

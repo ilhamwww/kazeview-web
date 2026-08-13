@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import AiPhotoSearch from "@/components/AiPhotoSearch";
 import PhotoGallery from "@/components/PhotoGallery";
 import { getPublicData, PublicApiError } from "@/lib/api";
 import type { PreviewDetailData } from "@/lib/types";
@@ -96,6 +97,10 @@ export default async function PreviewDetailPage({
           </div>
         </div>
       </header>
+
+      {event.ai_photo_search_enabled && (
+        <AiPhotoSearch contentId={event.id} />
+      )}
 
       {data.folders.length > 0 && (
         <nav className="preview-folder-nav" aria-label="Gallery folders">

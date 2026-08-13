@@ -75,6 +75,8 @@ export interface PreviewContent {
   is_active: boolean;
   is_new: boolean;
   is_price_enabled: boolean;
+  ai_photo_search_enabled: boolean;
+  ai_photo_search_status: string | null;
   price: number | null;
   redirect_url: string | null;
   categories: FilterCategory[];
@@ -159,6 +161,8 @@ export interface GalleryPhoto {
   id: number;
   name: string;
   url: string;
+  score?: number;
+  confidence?: "high" | "medium" | "low";
   folder: {
     id: number;
     name: string;
@@ -185,6 +189,12 @@ export interface RedirectDetailData {
   type: "redirect";
   redirect_url: string;
   content: PreviewContent;
+}
+
+export interface AiPhotoSearchData {
+  content_id: number;
+  label: string;
+  matches: GalleryPhoto[];
 }
 
 export type PreviewDetailData = GalleryDetailData | RedirectDetailData;

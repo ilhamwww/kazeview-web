@@ -30,6 +30,9 @@ class Content extends Model
             'price' => 'decimal:0',
             'drive_download_started_at' => 'datetime',
             'drive_download_finished_at' => 'datetime',
+            'ai_photo_search_enabled' => 'boolean',
+            'ai_index_started_at' => 'datetime',
+            'ai_index_finished_at' => 'datetime',
         ];
     }
 
@@ -41,6 +44,11 @@ class Content extends Model
     public function downloads(): HasMany
     {
         return $this->hasMany(DownloadData::class, 'id_content');
+    }
+
+    public function photoMotorSearchIndexes(): HasMany
+    {
+        return $this->hasMany(PhotoMotorSearchIndex::class);
     }
 
     public function filterCategories(): BelongsToMany

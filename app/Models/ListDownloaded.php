@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ListDownloaded extends Model
 {
@@ -35,6 +36,11 @@ class ListDownloaded extends Model
     public function folder(): BelongsTo
     {
         return $this->belongsTo(DownloadFolder::class, 'download_folder_id');
+    }
+
+    public function motorSearchIndex(): HasOne
+    {
+        return $this->hasOne(PhotoMotorSearchIndex::class, 'list_downloaded_id');
     }
 
     public function storagePath(): string

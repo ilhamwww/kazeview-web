@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Content;
+use App\Services\AiPhotoIndexDispatcher;
 use App\Services\GoogleDriveService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -42,7 +43,10 @@ class DownloadGoogleDriveFolder implements ShouldQueue, ShouldBeUnique
         return [60, 300, 900];
     }
 
-    public function handle(GoogleDriveService $driveService): void
+    public function handle(
+        GoogleDriveService $driveService,
+        AiPhotoIndexDispatcher $aiPhotoIndexDispatcher,
+    ): void
     {
         $content = Content::query()->find($this->contentId);
 
@@ -84,6 +88,8 @@ class DownloadGoogleDriveFolder implements ShouldQueue, ShouldBeUnique
             'drive_download_message' => $result['message'],
             'drive_download_finished_at' => now(),
         ]);
+
+        $aiPhotoIndexDispatcher->dispatchForContent($content);
     }
 
     public function failed(?Throwable $exception): void

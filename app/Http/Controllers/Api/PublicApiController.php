@@ -11,11 +11,15 @@ use App\Models\ContentFilterCategory;
 use App\Models\DownloadFolder;
 use App\Models\ListDownloaded;
 use App\Models\WebsiteSetting;
+use App\Services\MotorPhotoSearchService;
 use App\Support\GoogleDriveFolder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Throwable;
 
 class PublicApiController extends Controller
 {
@@ -342,6 +346,62 @@ class PublicApiController extends Controller
         ]);
     }
 
+    public function searchMotorPhotos(
+        Content $content,
+        Request $request,
+        MotorPhotoSearchService $searchService,
+    ): JsonResponse {
+        abort_unless(
+            $content->is_active && $content->isPhotoContent(),
+            404,
+        );
+
+        if (! $content->ai_photo_search_enabled) {
+            return response()->json([
+                'message' => 'AI Photo Search tidak aktif untuk Content ini.',
+            ], 409)->header('Cache-Control', 'no-store');
+        }
+
+        $validated = $request->validate([
+            'photo' => [
+                'required',
+                'file',
+                'image',
+                'mimes:jpeg,jpg,png,webp',
+                'max:8192',
+                'dimensions:min_width=128,min_height=128,max_width=12000,max_height=12000',
+            ],
+        ]);
+
+        try {
+            $result = $searchService->search(
+                $content,
+                $validated['photo'],
+            );
+        } catch (Throwable $exception) {
+            $reference = (string) Str::uuid();
+
+            Log::error('AI Photo Search request failed.', [
+                'reference' => $reference,
+                'content_id' => $content->getKey(),
+                'exception' => $exception,
+            ]);
+
+            return response()->json([
+                'message' => 'Pencarian foto sedang tidak tersedia. Silakan coba kembali.',
+                'reference' => $reference,
+            ], 503)->header('Cache-Control', 'no-store');
+        }
+
+        return response()->json([
+            'data' => [
+                'content_id' => $content->getKey(),
+                'label' => 'Possible matches',
+                'matches' => $result['matches'],
+            ],
+        ])->header('Cache-Control', 'no-store');
+    }
+
     private function site(): array
     {
         $settings = WebsiteSetting::query()->first();
@@ -437,6 +497,8 @@ class PublicApiController extends Controller
             'is_active' => (bool) $content->is_active,
             'is_new' => (bool) $content->is_new,
             'is_price_enabled' => (bool) $content->is_price_enabled,
+            'ai_photo_search_enabled' => (bool) $content->ai_photo_search_enabled,
+            'ai_photo_search_status' => $content->ai_index_status,
             'price' => $content->is_price_enabled
                 ? (float) $content->price
                 : null,
