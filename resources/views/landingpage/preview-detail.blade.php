@@ -253,7 +253,8 @@
                 const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
                 const maxSourceBytes = 20 * 1024 * 1024;
                 const maxUploadBytes = 7.5 * 1024 * 1024;
-                const maxDimension = 2048;
+                const targetSizeRatio = 0.5;
+                const maxDimension = 4096;
                 let previewUrl = null;
                 let compressedPhoto = null;
                 let photoFingerprint = null;
@@ -388,11 +389,15 @@
                     context.drawImage(bitmap, 0, 0, width, height);
                     bitmap.close?.();
 
-                    let quality = 0.86;
+                    const targetBytes = Math.min(
+                        maxUploadBytes,
+                        Math.max(1, Math.round(file.size * targetSizeRatio)),
+                    );
+                    let quality = 0.95;
                     let blob = await canvasToBlob(canvas, quality);
 
-                    while (blob.size > maxUploadBytes && quality > 0.48) {
-                        quality -= 0.08;
+                    while (blob.size > targetBytes && quality > 0.72) {
+                        quality = Math.max(0.72, quality - 0.03);
                         blob = await canvasToBlob(canvas, quality);
                     }
 
