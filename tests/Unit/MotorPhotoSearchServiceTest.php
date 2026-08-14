@@ -87,6 +87,89 @@ class MotorPhotoSearchServiceTest extends TestCase
         );
     }
 
+    public function test_model_format_variations_are_normalized_without_changing_descriptor(): void
+    {
+        $service = app(MotorPhotoSearchService::class);
+        $specificModel = new ReflectionMethod($service, 'specificModel');
+
+        $this->assertSame(
+            'cbr250rr',
+            $specificModel->invoke($service, 'Honda CBR 250 RR'),
+        );
+        $this->assertSame(
+            'cbr250rr',
+            $specificModel->invoke($service, 'cbr-250rr'),
+        );
+        $this->assertSame(
+            'v4s',
+            $specificModel->invoke($service, 'Ducati Panigale V4 S'),
+        );
+        $this->assertSame(
+            'v4s',
+            $specificModel->invoke($service, 'panigale v4s'),
+        );
+        $this->assertNull($specificModel->invoke($service, 'Ducati Panigale'));
+        $this->assertNull($specificModel->invoke($service, 'Kawasaki Ninja'));
+    }
+
+    public function test_model_difference_is_not_a_hard_conflict_when_brand_is_not_reliable(): void
+    {
+        $service = app(MotorPhotoSearchService::class);
+        $evidence = new ReflectionMethod($service, 'identityEvidence');
+
+        $query = [
+            'brand_guess' => 'ducati',
+            'model_guess' => 'panigale v4',
+            'visible_text' => ['ducati'],
+        ];
+        $candidate = [
+            'brand_guess' => 'unknown',
+            'model_guess' => 'kawasaki zx-6r',
+            'visible_text' => ['ducati'],
+        ];
+
+        $result = $evidence->invoke($service, $query, $candidate);
+
+        $this->assertSame('unknown', $result['model']);
+        $this->assertSame('unknown', $result['brand']);
+        $this->assertGreaterThan(0.0, $result['score']);
+    }
+
+    public function test_retrieval_document_focuses_on_motorcycle_without_mutating_json(): void
+    {
+        $ai = app(\App\Services\NineRouterAiService::class);
+        $descriptor = [
+            'brand_guess' => 'Ducati',
+            'model_guess' => 'Panigale V4',
+            'category' => 'sport',
+            'primary_color' => 'red',
+            'secondary_colors' => ['black'],
+            'fairing' => 'full fairing',
+            'windshield' => 'clear',
+            'wheel_color' => 'black',
+            'decals' => ['ducati'],
+            'accessories' => [],
+            'visible_text' => ['V4'],
+            'distinctive_features' => ['single-sided swingarm'],
+            'rider_clothing' => 'bright yellow jacket',
+            'helmet' => [
+                'type' => 'full-face',
+                'primary_color' => 'black',
+                'secondary_colors' => [],
+                'graphics' => [],
+            ],
+        ];
+        $original = $descriptor;
+
+        $document = $ai->retrievalDescriptor($descriptor);
+
+        $this->assertStringContainsString('motorcycle brand: ducati', $document);
+        $this->assertStringContainsString('motorcycle model: panigale v4', $document);
+        $this->assertStringContainsString('motorcycle visible text: v4', $document);
+        $this->assertStringNotContainsString('bright yellow jacket', $document);
+        $this->assertSame($original, $descriptor);
+    }
+
     public function test_helmet_is_secondary_bonus_and_cannot_override_motor_conflict(): void
     {
         $service = app(MotorPhotoSearchService::class);

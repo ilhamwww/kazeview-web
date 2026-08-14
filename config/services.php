@@ -40,7 +40,7 @@ return [
         'key' => env('NINEROUTER_API_KEY'),
         'vision_model' => env('NINEROUTER_VISION_MODEL', 'ag/gemini-3.6-flash-high'),
         'embedding_model' => env('NINEROUTER_EMBEDDING_MODEL', 'gemini/gemini-embedding-2-preview'),
-        'prompt_version' => env('NINEROUTER_MOTOR_PROMPT_VERSION', 'motor-helmet-v2'),
+        'prompt_version' => env('NINEROUTER_MOTOR_PROMPT_VERSION', 'motor-identity-v3'),
         'timeout' => (int) env('NINEROUTER_TIMEOUT', 60),
         'connect_timeout' => (int) env('NINEROUTER_CONNECT_TIMEOUT', 10),
         'search_limit' => (int) env('AI_PHOTO_SEARCH_LIMIT', 20),

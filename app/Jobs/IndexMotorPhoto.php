@@ -27,8 +27,10 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
 
     public int $uniqueFor = 300;
 
-    public function __construct(public int $listDownloadedId)
-    {
+    public function __construct(
+        public int $listDownloadedId,
+        public bool $force = false,
+    ) {
         $this->onQueue('ai-indexing');
     }
 
@@ -82,7 +84,8 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
         ]);
 
         if (
-            $index->exists
+            ! $this->force
+            && $index->exists
             && $index->status === 'indexed'
             && $index->source_hash === $sourceHash
             && $index->vision_model === $ai->visionModel()
@@ -95,18 +98,33 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
             return;
         }
 
-        $index->fill([
+        $hasUsableIndex = $index->exists
+            && filled($index->embedding)
+            && is_array($index->descriptor);
+
+        $processingAttributes = [
             'content_id' => $content->getKey(),
-            'source_hash' => $sourceHash,
-            'vision_model' => $ai->visionModel(),
-            'embedding_model' => $ai->embeddingModel(),
-            'prompt_version' => $ai->promptVersion(),
-            'status' => 'processing',
+            'status' => $this->force && $hasUsableIndex
+                ? 'reindexing'
+                : 'processing',
             'attempts' => ((int) $index->attempts) + 1,
             'error_message' => null,
             'processing_started_at' => now(),
-            'indexed_at' => null,
-        ])->save();
+            'indexed_at' => $this->force && $hasUsableIndex
+                ? $index->indexed_at
+                : null,
+        ];
+
+        if (! ($this->force && $hasUsableIndex)) {
+            $processingAttributes += [
+                'source_hash' => $sourceHash,
+                'vision_model' => $ai->visionModel(),
+                'embedding_model' => $ai->embeddingModel(),
+                'prompt_version' => $ai->promptVersion(),
+            ];
+        }
+
+        $index->fill($processingAttributes)->save();
 
         $content->update([
             'ai_index_status' => 'indexing',
@@ -125,9 +143,13 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
             }
 
             $descriptor = $ai->describeMotorcycle($temporaryPath, 'image/jpeg');
-            $embedding = $ai->embed($ai->canonicalDescriptor($descriptor));
+            $embedding = $ai->embed($ai->retrievalDescriptor($descriptor));
 
             $index->update([
+                'source_hash' => $sourceHash,
+                'vision_model' => $ai->visionModel(),
+                'embedding_model' => $ai->embeddingModel(),
+                'prompt_version' => $ai->promptVersion(),
                 'descriptor' => $descriptor,
                 'embedding' => FloatVector::encode($embedding),
                 'embedding_dimensions' => count($embedding),
@@ -137,7 +159,11 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
             ]);
         } catch (Throwable $exception) {
             $index->update([
-                'status' => 'failed',
+                // A forced refresh must not remove a previously usable index
+                // merely because the provider failed during this attempt.
+                'status' => $this->force && $hasUsableIndex
+                    ? 'indexed'
+                    : 'failed',
                 'error_message' => $this->safeErrorMessage($exception),
             ]);
 
@@ -160,13 +186,29 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
             return;
         }
 
-        $this->markFailed(
-            $photo,
-            $content,
-            $exception
-                ? $this->safeErrorMessage($exception)
-                : 'AI indexing gagal.',
-        );
+        $message = $exception
+            ? $this->safeErrorMessage($exception)
+            : 'AI indexing gagal.';
+        $index = PhotoMotorSearchIndex::query()
+            ->where('list_downloaded_id', $photo->getKey())
+            ->first();
+
+        if (
+            $this->force
+            && $index
+            && filled($index->embedding)
+            && is_array($index->descriptor)
+        ) {
+            $index->update([
+                'status' => 'indexed',
+                'error_message' => $message,
+            ]);
+            $this->refreshContentStatus($content);
+
+            return;
+        }
+
+        $this->markFailed($photo, $content, $message);
     }
 
     private function makeThumbnail(string $sourcePath): string
@@ -179,11 +221,11 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
 
         $manager = new ImageManager(new Driver());
         $image = $manager->read($sourcePath);
-        $image->scaleDown(width: 1024, height: 1024);
+        $image->scaleDown(width: 2048, height: 2048);
 
         file_put_contents(
             $temporaryPath,
-            (string) $image->encode(new JpegEncoder(quality: 82)),
+            (string) $image->encode(new JpegEncoder(quality: 92)),
         );
 
         return $temporaryPath;
@@ -246,7 +288,7 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
 
         $indexed = (clone $query)->where('status', 'indexed')->count();
         $failed = (clone $query)->where('status', 'failed')->count();
-        $remaining = (clone $query)->whereIn('status', ['pending', 'processing'])->count();
+        $remaining = (clone $query)->whereIn('status', ['pending', 'processing', 'reindexing'])->count();
 
         if ($remaining > 0) {
             $status = 'indexing';

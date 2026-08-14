@@ -41,7 +41,7 @@ class MotorPhotoSearchService
         try {
             $descriptor = $this->ai->describeMotorcycle($temporaryPath, 'image/jpeg');
             $queryVector = FloatVector::normalize(
-                $this->ai->embed($this->ai->canonicalDescriptor($descriptor)),
+                $this->ai->embed($this->ai->retrievalDescriptor($descriptor)),
             );
         } finally {
             @unlink($temporaryPath);
@@ -52,7 +52,7 @@ class MotorPhotoSearchService
 
         $matches = PhotoMotorSearchIndex::query()
             ->where('content_id', $content->getKey())
-            ->where('status', 'indexed')
+            ->whereIn('status', ['indexed', 'reindexing'])
             ->where('embedding_dimensions', count($queryVector))
             ->whereNotNull('embedding')
             ->with('photo.folder')
@@ -153,11 +153,11 @@ class MotorPhotoSearchService
 
         $manager = new ImageManager(new Driver());
         $image = $manager->read($sourcePath);
-        $image->scaleDown(width: 1024, height: 1024);
+        $image->scaleDown(width: 2048, height: 2048);
 
         file_put_contents(
             $temporaryPath,
-            (string) $image->encode(new JpegEncoder(quality: 82)),
+            (string) $image->encode(new JpegEncoder(quality: 92)),
         );
 
         return $temporaryPath;
@@ -185,10 +185,16 @@ class MotorPhotoSearchService
         if ($queryModel !== null && $candidateModel !== null) {
             if ($queryModel === $candidateModel) {
                 $modelEvidence = 'match';
-                $score += 1.0;
-            } else {
+                $score += 0.85;
+            } elseif (
+                $queryBrand !== null
+                && $candidateBrand !== null
+                && $queryBrand === $candidateBrand
+            ) {
+                // A model guess is probabilistic. Treat it as a hard conflict
+                // only when both descriptors independently agree on brand.
                 $modelEvidence = 'conflict';
-                $score -= 0.9;
+                $score -= 0.65;
             }
         }
 
@@ -208,7 +214,7 @@ class MotorPhotoSearchService
             $query,
             $candidate,
             'category',
-            0.10,
+            0.12,
         );
         $score += $this->equalFieldScore(
             $query,
@@ -228,14 +234,34 @@ class MotorPhotoSearchService
             0.08,
         );
         $score += $this->arrayOverlapScore(
+            $query['secondary_colors'] ?? [],
+            $candidate['secondary_colors'] ?? [],
+            0.06,
+        );
+        $score += $this->tokenOverlapScore(
+            $query['windshield'] ?? null,
+            $candidate['windshield'] ?? null,
+            0.05,
+        );
+        $score += $this->arrayOverlapScore(
             $query['decals'] ?? [],
             $candidate['decals'] ?? [],
-            0.12,
+            0.14,
+        );
+        $score += $this->arrayOverlapScore(
+            $query['visible_text'] ?? [],
+            $candidate['visible_text'] ?? [],
+            0.18,
+        );
+        $score += $this->arrayOverlapScore(
+            $query['accessories'] ?? [],
+            $candidate['accessories'] ?? [],
+            0.05,
         );
         $score += $this->arrayOverlapScore(
             $query['distinctive_features'] ?? [],
             $candidate['distinctive_features'] ?? [],
-            0.14,
+            0.16,
         );
 
         return [
@@ -265,7 +291,7 @@ class MotorPhotoSearchService
                 : max(0.0, min(1.0, $helmetScore)) * 0.06;
 
         return $visualScore
-            + ($identity['score'] * 0.16)
+            + ($identity['score'] * 0.20)
             + $helmetBonus;
     }
 
@@ -394,7 +420,7 @@ class MotorPhotoSearchService
         if ($identity['model'] === 'match') {
             // The identity bonus raises the combined score, so "high" needs
             // stronger visual agreement than merely matching a model guess.
-            return $score >= 1.05 ? 'high' : 'medium';
+            return $score >= 1.15 ? 'high' : 'medium';
         }
 
         // A generic descriptor such as just "ninja" is not enough evidence
@@ -449,9 +475,8 @@ class MotorPhotoSearchService
     }
 
     /**
-     * Returns only a specific model identifier. Generic family names such as
-     * "ninja" are deliberately ignored because they cannot distinguish a
-     * ZX-6R from a ZX-25R.
+     * Return a format-independent specific model identifier. Generic families
+     * are ignored because they cannot reliably distinguish variants.
      */
     private function specificModel(mixed $value): ?string
     {
@@ -461,36 +486,45 @@ class MotorPhotoSearchService
             return null;
         }
 
-        $compact = str_replace(' ', '', $token);
-
-        if (preg_match('/zx-?25r/', $compact) === 1) {
-            return 'zx25r';
-        }
-
-        if (preg_match('/zx-?6r/', $compact) === 1) {
-            return 'zx6r';
-        }
-
-        if (preg_match('/zx-?10r/', $compact) === 1) {
-            return 'zx10r';
-        }
-
-        if (preg_match('/zx-?4rr?/', $compact) === 1) {
-            return str_contains($compact, 'zx4rr') ? 'zx4rr' : 'zx4r';
-        }
+        $compact = preg_replace('/[^a-z0-9]+/', '', $token) ?? '';
 
         $generic = [
             'motorcycle',
             'motorbike',
             'bike',
-            'ninja',
-            'kawasaki ninja',
             'sport',
             'sportbike',
-            'sport bike',
+            'supersport',
+            'ninja',
+            'kawasakininja',
+            'panigale',
+            'ducatipanigale',
+            'cbr',
+            'hondacbr',
+            'yzf',
+            'yamahayzf',
+            'rseries',
+            'gsxr',
+            'suzukigsxr',
+            'rr',
         ];
 
-        return in_array($token, $generic, true) ? null : $compact;
+        if ($compact === '' || in_array($compact, $generic, true)) {
+            return null;
+        }
+
+        // Remove a duplicated brand/family prefix while preserving every
+        // distinguishing number and suffix (for example V4S, R15M, 250RR).
+        $compact = preg_replace(
+            '/^(kawasaki|honda|yamaha|suzuki|ducati|bmw|ktm|aprilia|triumph|harleydavidson)+/',
+            '',
+            $compact,
+        ) ?? $compact;
+        $compact = preg_replace('/^(ninja|panigale|yzf)+/', '', $compact) ?? $compact;
+
+        return $compact === '' || in_array($compact, $generic, true)
+            ? null
+            : $compact;
     }
 
     private function token(mixed $value): ?string

@@ -87,6 +87,43 @@ class NineRouterAiService
     }
 
     /**
+     * Build a stable retrieval document from the existing descriptor schema.
+     * The returned JSON descriptor itself is not changed; this representation
+     * only prevents rider/background details from dominating the embedding.
+     *
+     * @param  array<string, mixed>  $descriptor
+     */
+    public function retrievalDescriptor(array $descriptor): string
+    {
+        $helmet = is_array($descriptor['helmet'] ?? null)
+            ? $descriptor['helmet']
+            : [];
+
+        $parts = [
+            'motorcycle brand: '.$this->retrievalValue($descriptor['brand_guess'] ?? null),
+            'motorcycle model: '.$this->retrievalValue($descriptor['model_guess'] ?? null),
+            'motorcycle category: '.$this->retrievalValue($descriptor['category'] ?? null),
+            'motorcycle primary color: '.$this->retrievalValue($descriptor['primary_color'] ?? null),
+            'motorcycle secondary colors: '.$this->retrievalValue($descriptor['secondary_colors'] ?? null),
+            'motorcycle fairing: '.$this->retrievalValue($descriptor['fairing'] ?? null),
+            'motorcycle windshield: '.$this->retrievalValue($descriptor['windshield'] ?? null),
+            'motorcycle wheel color: '.$this->retrievalValue($descriptor['wheel_color'] ?? null),
+            'motorcycle decals: '.$this->retrievalValue($descriptor['decals'] ?? null),
+            'motorcycle accessories: '.$this->retrievalValue($descriptor['accessories'] ?? null),
+            'motorcycle visible text: '.$this->retrievalValue($descriptor['visible_text'] ?? null),
+            'motorcycle distinctive features: '.$this->retrievalValue($descriptor['distinctive_features'] ?? null),
+            'helmet type: '.$this->retrievalValue($helmet['type'] ?? null),
+            'helmet colors: '.$this->retrievalValue([
+                $helmet['primary_color'] ?? null,
+                ...($helmet['secondary_colors'] ?? []),
+            ]),
+            'helmet graphics: '.$this->retrievalValue($helmet['graphics'] ?? null),
+        ];
+
+        return implode("\n", $parts);
+    }
+
+    /**
      * @return array<int, float>
      */
     public function embed(string $input): array
@@ -157,7 +194,7 @@ class NineRouterAiService
     private function descriptorPrompt(): string
     {
         return <<<'PROMPT'
-You analyze event photographs for motorcycle retrieval. Return JSON only, with concise factual visual attributes. Do not identify a person and do not infer sensitive traits. Use this exact object shape:
+You analyze event photographs for high-precision motorcycle retrieval. Return JSON only, with concise factual visual attributes. Do not identify a person and do not infer sensitive traits. Use this exact object shape:
 {
   "motorcycle_present": true,
   "motorcycle_count": 1,
@@ -187,8 +224,32 @@ You analyze event photographs for motorcycle retrieval. Return JSON only, with c
   "rider_clothing": "string",
   "distinctive_features": ["string"]
 }
-The motorcycle is the primary retrieval subject. Analyze the helmet separately as secondary matching evidence: its colors, graphics, visor, visible text, and distinctive pattern can help distinguish riders, but never use helmet similarity to override a clearly conflicting motorcycle brand or model. If there is no motorcycle or helmet, set the corresponding present field false and keep uncertain fields as unknown or empty arrays. Do not identify a person. Describe visible evidence only. Keep every string short and lowercase.
+The motorcycle is the primary retrieval subject. Inspect the motorcycle itself before the rider or scene. First read visible badges, emblems, tank or fairing text, decals, and model markings; include every legible marking in visible_text. Then inspect the headlight, fairing geometry, intake, exhaust, swingarm, wheels, windshield, and body proportions. Use those visible cues together for brand_guess and model_guess.
+
+For model_guess, return a concise canonical model name only when the photo contains sufficient distinguishing evidence. A brand logo alone is not evidence for a specific model. Never infer a model from color, rider, helmet, background, event context, or category alone. Do not invent trim, engine size, generation, or suffix. If multiple models share the visible design or the evidence is weak, use "unknown". Ensure model_guess is compatible with brand_guess; otherwise use "unknown" for the uncertain field. Determine category from visible vehicle geometry rather than from the guessed model name.
+
+Analyze the helmet separately as secondary matching evidence: its colors, graphics, visor, visible text, and distinctive pattern can help distinguish riders, but never use helmet similarity to override a clearly conflicting motorcycle brand or reliable model. If there is no motorcycle or helmet, set the corresponding present field false and keep uncertain fields as unknown or empty arrays. Do not identify a person. Describe visible evidence only. Keep every string short and lowercase.
 PROMPT;
+    }
+
+    private function retrievalValue(mixed $value): string
+    {
+        $values = is_array($value) ? $value : [$value];
+        $normalized = [];
+
+        foreach ($values as $item) {
+            if (! is_scalar($item)) {
+                continue;
+            }
+
+            $item = mb_strtolower(trim((string) $item));
+
+            if ($item !== '' && $item !== 'unknown' && ! in_array($item, $normalized, true)) {
+                $normalized[] = $item;
+            }
+        }
+
+        return $normalized === [] ? 'unknown' : implode(', ', $normalized);
     }
 
     /**

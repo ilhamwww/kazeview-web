@@ -173,6 +173,39 @@ class AiPhotoSearchPage extends Page implements Tables\Contracts\HasTable
                             ->send();
                     }),
 
+                Action::make('forceRescan')
+                    ->label('Scan Ulang')
+                    ->icon('fas-arrows-rotate')
+                    ->color('danger')
+                    ->visible(
+                        fn (Content $record): bool =>
+                            $record->ai_photo_search_enabled
+                            && $record->downloaded_photos_count > 0,
+                    )
+                    ->requiresConfirmation()
+                    ->modalHeading('Scan ulang seluruh foto?')
+                    ->modalDescription(
+                        fn (Content $record): string =>
+                            "Seluruh {$record->downloaded_photos_count} foto akan dianalisis ulang oleh AI. Index lama tetap dapat dipakai sampai hasil baru berhasil disimpan.",
+                    )
+                    ->modalSubmitActionLabel('Ya, scan ulang')
+                    ->action(function (
+                        Content $record,
+                        AiPhotoIndexDispatcher $dispatcher,
+                    ): void {
+                        $total = $dispatcher->forceRescanForContent($record);
+
+                        Notification::make()
+                            ->title('Scan ulang dijadwalkan')
+                            ->body(
+                                $total > 0
+                                    ? "{$total} foto masuk antrean scan ulang AI."
+                                    : ($record->fresh()->ai_index_message ?? 'Tidak ada foto untuk dijadwalkan.'),
+                            )
+                            ->success()
+                            ->send();
+                    }),
+
                 Action::make('retryFailed')
                     ->label('Retry Failed')
                     ->icon('fas-arrow-rotate-right')
@@ -187,11 +220,11 @@ class AiPhotoSearchPage extends Page implements Tables\Contracts\HasTable
                         Content $record,
                         AiPhotoIndexDispatcher $dispatcher,
                     ): void {
-                        $total = $dispatcher->dispatchForContent($record);
+                        $total = $dispatcher->retryFailedForContent($record);
 
                         Notification::make()
                             ->title('Retry dijadwalkan')
-                            ->body("{$total} foto akan diperiksa ulang secara idempotent.")
+                            ->body("{$total} foto gagal masuk antrean ulang.")
                             ->success()
                             ->send();
                     }),
@@ -215,7 +248,7 @@ class AiPhotoSearchPage extends Page implements Tables\Contracts\HasTable
                 'downloaded_photos_count',
             )
             ->selectSub(
-                "select count(*) from photo_motor_search_indexes pmsi where pmsi.content_id = contents.id and pmsi.status = 'indexed'",
+                "select count(*) from photo_motor_search_indexes pmsi where pmsi.content_id = contents.id and pmsi.status in ('indexed', 'reindexing')",
                 'indexed_photos_count',
             )
             ->selectSub(
