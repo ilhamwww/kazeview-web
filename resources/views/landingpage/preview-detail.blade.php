@@ -75,6 +75,8 @@
         .gallery-brand:hover,.gallery-brand:focus-visible { border-color:var(--color-accent); outline:none; }
         .gallery-brand.is-active { border-color:var(--color-accent); background:var(--color-accent); color:#fff; }
         .gallery-brand.is-active strong { color:#fff; }
+        [data-gallery-section].is-filtering .photo-grid { opacity:.38; pointer-events:none; }
+        [data-gallery-section].is-filtering .gallery-brand { pointer-events:none; }
         .gallery-toolbar { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:2rem 0 1.5rem; border-bottom:1px solid rgba(127,127,127,.32); padding-bottom:1rem; }
         .gallery-toolbar h2 { margin:0; font:800 clamp(1.7rem,4vw,3.2rem)/1 "Inter Tight",sans-serif; letter-spacing:-.04em; }
         .gallery-toolbar p { margin:0; font:700 .75rem/1 Inter,sans-serif; letter-spacing:.12em; opacity:.6; }
@@ -168,12 +170,15 @@
             </section>
         @endif
 
-        <section aria-labelledby="photos-heading">
+        <section aria-labelledby="photos-heading" data-gallery-section>
             <div class="gallery-filter-group">
                 <p class="gallery-filter-label">FILTER BY CATEGORY</p>
                 <nav class="gallery-brands" aria-label="Filter kategori motor">
                     @foreach ($categoryFilters as $categoryFilter)
                         <a class="gallery-brand {{ $selectedCategory === $categoryFilter['slug'] ? 'is-active' : '' }}"
+                            data-gallery-filter
+                            data-filter-type="category"
+                            data-filter-slug="{{ $categoryFilter['slug'] }}"
                             href="{{ route('preview.show', [
                                 'content' => $content,
                                 ...($selectedBrand !== 'all' ? ['brand' => $selectedBrand] : []),
@@ -192,6 +197,9 @@
                 <nav class="gallery-brands" aria-label="Filter merek motor">
                     @foreach ($brandFilters as $brandFilter)
                         <a class="gallery-brand {{ $selectedBrand === $brandFilter['slug'] ? 'is-active' : '' }}"
+                            data-gallery-filter
+                            data-filter-type="brand"
+                            data-filter-slug="{{ $brandFilter['slug'] }}"
                             href="{{ route('preview.show', [
                                 'content' => $content,
                                 ...($selectedCategory !== 'all' ? ['category' => $selectedCategory] : []),
@@ -207,39 +215,38 @@
 
             <div class="gallery-toolbar">
                 <h2 id="photos-heading">EVENT PHOTOS<span class="accent">.</span></h2>
-                <p>{{ number_format($photos->total()) }} PHOTOS</p>
+                <p data-gallery-total>{{ number_format($photos->total()) }} PHOTOS</p>
             </div>
 
-            @if ($photos->isNotEmpty())
-                <div class="photo-grid" data-photo-grid>
-                    @include('landingpage.partials.preview-photo-batch', ['photos' => $photos])
-                </div>
+            <div class="photo-grid" data-photo-grid>
+                @include('landingpage.partials.preview-photo-batch', ['photos' => $photos])
+            </div>
 
-                <div class="gallery-load-more {{ $photos->hasMorePages() ? '' : 'is-complete' }}"
-                    data-infinite-scroll
-                    data-next-url="{{ $photos->hasMorePages() ? $photos->appends(['infinite' => 1])->nextPageUrl() : '' }}"
-                    data-loaded="{{ $photos->count() }}"
-                    data-total="{{ $photos->total() }}"
-                    aria-live="polite">
-                    <div>
-                        <p class="gallery-load-more__status" data-infinite-status>
-                            @if ($photos->hasMorePages())
-                                SCROLL TO LOAD MORE · {{ number_format($photos->count()) }} / {{ number_format($photos->total()) }}
-                            @else
-                                ALL {{ number_format($photos->total()) }} PHOTOS LOADED
-                            @endif
-                        </p>
-                        <button class="gallery-load-more__retry" type="button" data-infinite-retry>
-                            TRY AGAIN
-                        </button>
-                    </div>
+            <div class="gallery-empty" data-gallery-empty @if ($photos->isNotEmpty()) hidden @endif>
+                <h2>NO MATCHING PHOTOS<span class="accent">.</span></h2>
+                <p>Tidak ada foto yang cocok dengan kombinasi filter ini.</p>
+            </div>
+
+            <div class="gallery-load-more {{ $photos->hasMorePages() ? '' : 'is-complete' }}"
+                data-infinite-scroll
+                data-next-url="{{ $photos->hasMorePages() ? $photos->appends(['infinite' => 1])->nextPageUrl() : '' }}"
+                data-loaded="{{ $photos->count() }}"
+                data-total="{{ $photos->total() }}"
+                @if ($photos->isEmpty()) hidden @endif
+                aria-live="polite">
+                <div>
+                    <p class="gallery-load-more__status" data-infinite-status>
+                        @if ($photos->hasMorePages())
+                            SCROLL TO LOAD MORE · {{ number_format($photos->count()) }} / {{ number_format($photos->total()) }}
+                        @else
+                            ALL {{ number_format($photos->total()) }} PHOTOS LOADED
+                        @endif
+                    </p>
+                    <button class="gallery-load-more__retry" type="button" data-infinite-retry>
+                        TRY AGAIN
+                    </button>
                 </div>
-            @else
-                <div class="gallery-empty">
-                    <h2>PHOTOS ARE BEING PREPARED<span class="accent">.</span></h2>
-                    <p>Gallery untuk event ini belum tersedia atau sedang diperbarui.</p>
-                </div>
-            @endif
+            </div>
         </section>
     </main>
 
@@ -644,13 +651,16 @@
 
     <script>
         (() => {
-            const gallery = document.querySelector('[data-photo-grid]');
-            const sentinel = document.querySelector('[data-infinite-scroll]');
+            const section = document.querySelector('[data-gallery-section]');
+            const gallery = section?.querySelector('[data-photo-grid]');
+            const sentinel = section?.querySelector('[data-infinite-scroll]');
             const status = sentinel?.querySelector('[data-infinite-status]');
             const retry = sentinel?.querySelector('[data-infinite-retry]');
+            const total = section?.querySelector('[data-gallery-total]');
+            const empty = section?.querySelector('[data-gallery-empty]');
             const modal = document.querySelector('[data-lightbox]');
 
-            if (!gallery || !sentinel || !modal) return;
+            if (!section || !gallery || !sentinel || !status || !retry || !total || !empty || !modal) return;
 
             const image = modal.querySelector('[data-lightbox-image]');
             const caption = modal.querySelector('[data-lightbox-caption]');
@@ -660,8 +670,41 @@
             let previousFocus = null;
             let loading = false;
             let observer = null;
+            let filterController = null;
+            let batchController = null;
 
             const cards = () => [...gallery.querySelectorAll('[data-photo-src]')];
+
+            const selectedFilters = (url) => ({
+                category: url.searchParams.get('category') || 'all',
+                brand: url.searchParams.get('brand') || 'all',
+            });
+
+            const syncFilterLinks = (url) => {
+                const selected = selectedFilters(url);
+
+                for (const link of section.querySelectorAll('[data-gallery-filter]')) {
+                    const type = link.dataset.filterType;
+                    const slug = link.dataset.filterSlug || 'all';
+                    const next = new URL(url.origin + url.pathname);
+                    const filters = { ...selected, [type]: slug };
+
+                    for (const [filterType, filterSlug] of Object.entries(filters)) {
+                        if (filterSlug !== 'all') {
+                            next.searchParams.set(filterType, filterSlug);
+                        }
+                    }
+
+                    link.href = next.toString();
+                    link.classList.toggle('is-active', selected[type] === slug);
+
+                    if (selected[type] === slug) {
+                        link.setAttribute('aria-current', 'page');
+                    } else {
+                        link.removeAttribute('aria-current');
+                    }
+                }
+            };
 
             const show = (index) => {
                 const currentCards = cards();
@@ -698,11 +741,106 @@
                 observer?.disconnect();
             };
 
+            const observeInfiniteScroll = () => {
+                observer?.disconnect();
+
+                if (!sentinel.dataset.nextUrl) return;
+
+                observer = new IntersectionObserver(
+                    (entries) => {
+                        if (entries.some((entry) => entry.isIntersecting)) {
+                            loadNextBatch();
+                        }
+                    },
+                    { rootMargin: '600px 0px' },
+                );
+                observer.observe(sentinel);
+            };
+
+            const loadFilter = async (target, updateHistory = true) => {
+                const url = new URL(target, window.location.href);
+                url.searchParams.set('infinite', '1');
+
+                filterController?.abort();
+                batchController?.abort();
+
+                const controller = new AbortController();
+                filterController = controller;
+                loading = false;
+                observer?.disconnect();
+                section.classList.add('is-filtering');
+                section.setAttribute('aria-busy', 'true');
+                status.textContent = 'FILTERING PHOTOS…';
+
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        signal: controller.signal,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const payload = await response.json();
+                    if (typeof payload.html !== 'string') {
+                        throw new Error('Invalid response');
+                    }
+
+                    const batch = document.createElement('template');
+                    batch.innerHTML = payload.html;
+                    gallery.replaceChildren(
+                        ...batch.content.querySelectorAll('[data-photo-src]'),
+                    );
+
+                    const visibleUrl = new URL(url);
+                    visibleUrl.searchParams.delete('infinite');
+                    syncFilterLinks(visibleUrl);
+
+                    if (updateHistory) {
+                        window.history.pushState({}, '', visibleUrl);
+                    }
+
+                    const loaded = cards().length;
+                    sentinel.dataset.loaded = String(loaded);
+                    sentinel.dataset.total = String(payload.total);
+                    sentinel.dataset.nextUrl = payload.next_url || '';
+                    sentinel.classList.remove('is-loading', 'has-error', 'is-complete');
+                    sentinel.hidden = loaded === 0;
+                    empty.hidden = loaded !== 0;
+                    total.textContent = `${Number(payload.total).toLocaleString()} PHOTOS`;
+
+                    if (payload.next_url) {
+                        status.textContent = `SCROLL TO LOAD MORE · ${loaded.toLocaleString()} / ${Number(payload.total).toLocaleString()}`;
+                        observeInfiniteScroll();
+                    } else {
+                        setComplete();
+                    }
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        status.textContent = 'COULD NOT FILTER PHOTOS';
+                        sentinel.classList.add('has-error');
+                        observeInfiniteScroll();
+                    }
+                } finally {
+                    if (filterController === controller) {
+                        filterController = null;
+                        section.classList.remove('is-filtering');
+                        section.removeAttribute('aria-busy');
+                    }
+                }
+            };
+
             const loadNextBatch = async () => {
                 const nextUrl = sentinel.dataset.nextUrl;
                 if (loading || !nextUrl) return;
 
                 loading = true;
+                const controller = new AbortController();
+                batchController = controller;
                 sentinel.classList.remove('has-error');
                 sentinel.classList.add('is-loading');
                 status.textContent = 'LOADING MORE PHOTOS…';
@@ -713,6 +851,7 @@
                             Accept: 'application/json',
                             'X-Requested-With': 'XMLHttpRequest',
                         },
+                        signal: controller.signal,
                     });
 
                     if (!response.ok) {
@@ -748,13 +887,30 @@
                         setComplete();
                     }
                 } catch (error) {
-                    sentinel.classList.remove('is-loading');
-                    sentinel.classList.add('has-error');
-                    status.textContent = 'COULD NOT LOAD MORE PHOTOS';
+                    if (error.name !== 'AbortError') {
+                        sentinel.classList.remove('is-loading');
+                        sentinel.classList.add('has-error');
+                        status.textContent = 'COULD NOT LOAD MORE PHOTOS';
+                    }
                 } finally {
-                    loading = false;
+                    if (batchController === controller) {
+                        batchController = null;
+                        loading = false;
+                    }
                 }
             };
+
+            section.addEventListener('click', (event) => {
+                const filter = event.target.closest('[data-gallery-filter]');
+                if (!filter || !section.contains(filter)) return;
+
+                event.preventDefault();
+                loadFilter(filter.href);
+            });
+
+            window.addEventListener('popstate', () => {
+                loadFilter(window.location.href, false);
+            });
 
             gallery.addEventListener('click', (event) => {
                 const card = event.target.closest('[data-photo-src]');
@@ -775,17 +931,8 @@
             });
             retry.addEventListener('click', loadNextBatch);
 
-            if (sentinel.dataset.nextUrl) {
-                observer = new IntersectionObserver(
-                    (entries) => {
-                        if (entries.some((entry) => entry.isIntersecting)) {
-                            loadNextBatch();
-                        }
-                    },
-                    { rootMargin: '600px 0px' },
-                );
-                observer.observe(sentinel);
-            }
+            syncFilterLinks(new URL(window.location.href));
+            observeInfiniteScroll();
         })();
     </script>
 @endsection
