@@ -3182,8 +3182,56 @@ button {
     background: var(--color-accent);
 }
 
+.preview-brand-nav {
+    display: flex;
+    max-width: 100%;
+    margin-top: clamp(28px, 4vw, 48px);
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-color: var(--color-border) transparent;
+    scrollbar-width: thin;
+}
+
+.preview-brand-nav a {
+    display: inline-flex;
+    min-width: max-content;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 12px 16px;
+    border: 1px solid var(--color-border);
+    color: #fff;
+    font: 800 11px/1.2 var(--font-body);
+    letter-spacing: .1em;
+    text-decoration: none;
+    transition: border-color .2s ease, background-color .2s ease;
+}
+
+.preview-brand-nav a strong {
+    color: var(--color-text-muted);
+    font: inherit;
+    letter-spacing: .04em;
+    transition: color .2s ease;
+}
+
+.preview-brand-nav a:hover,
+.preview-brand-nav a:focus-visible {
+    border-color: var(--color-accent);
+}
+
+.preview-brand-nav a.is-active {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+}
+
+.preview-brand-nav a.is-active strong {
+    color: #fff;
+}
+
 .preview-gallery {
-    margin-top: clamp(36px, 6vw, 80px);
+    margin-top: clamp(28px, 4vw, 48px);
 }
 
 .preview-gallery-group + .preview-gallery-group {

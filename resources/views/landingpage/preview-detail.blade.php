@@ -71,6 +71,12 @@
         .gallery-folder { display:inline-flex; align-items:center; gap:.5rem; min-height:42px; padding:.7rem 1rem; border:1px solid rgba(127,127,127,.32); color:inherit; text-decoration:none; font:700 .72rem/1 Inter,sans-serif; letter-spacing:.09em; text-transform:uppercase; }
         .gallery-folder:hover,.gallery-folder:focus-visible,.gallery-folder.is-active { border-color:var(--color-accent); background:var(--color-accent); color:#fff; outline:none; }
         .gallery-folder small { opacity:.65; font:inherit; }
+        .gallery-brands { display:flex; max-width:100%; gap:.5rem; margin:2rem 0 0; padding-bottom:.4rem; overflow-x:auto; scrollbar-color:rgba(127,127,127,.42) transparent; scrollbar-width:thin; }
+        .gallery-brand { display:inline-flex; min-width:max-content; min-height:42px; align-items:center; justify-content:center; gap:.55rem; padding:.7rem 1rem; border:1px solid rgba(127,127,127,.32); color:inherit; text-decoration:none; font:800 .72rem/1 Inter,sans-serif; letter-spacing:.09em; text-transform:uppercase; transition:border-color .2s ease,background-color .2s ease,color .2s ease; }
+        .gallery-brand strong { color:rgba(255,255,255,.52); font:inherit; letter-spacing:.04em; transition:color .2s ease; }
+        .gallery-brand:hover,.gallery-brand:focus-visible { border-color:var(--color-accent); outline:none; }
+        .gallery-brand.is-active { border-color:var(--color-accent); background:var(--color-accent); color:#fff; }
+        .gallery-brand.is-active strong { color:#fff; }
         .gallery-toolbar { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:2rem 0 1.5rem; border-bottom:1px solid rgba(127,127,127,.32); padding-bottom:1rem; }
         .gallery-toolbar h2 { margin:0; font:800 clamp(1.7rem,4vw,3.2rem)/1 "Inter Tight",sans-serif; letter-spacing:-.04em; }
         .gallery-toolbar p { margin:0; font:700 .75rem/1 Inter,sans-serif; letter-spacing:.12em; opacity:.6; }
@@ -172,17 +178,39 @@
             @if ($topLevelFolders->isNotEmpty())
                 <nav class="gallery-folders" aria-label="Kategori foto">
                     <a class="gallery-folder {{ $selectedFolder === null ? 'is-active' : '' }}"
-                        href="{{ route('preview.show', $content) }}">
+                        href="{{ route('preview.show', [
+                            'content' => $content,
+                            ...($selectedBrand !== 'all' ? ['brand' => $selectedBrand] : []),
+                        ]) }}">
                         ALL PHOTOS <small>{{ number_format($content->downloads()->sum('total_files')) }}</small>
                     </a>
                     @foreach ($topLevelFolders as $folder)
                         <a class="gallery-folder {{ $selectedFolder?->id === $folder->id ? 'is-active' : '' }}"
-                            href="{{ route('preview.show', ['content' => $content, 'folder' => $folder->id]) }}">
+                            href="{{ route('preview.show', [
+                                'content' => $content,
+                                'folder' => $folder->id,
+                                ...($selectedBrand !== 'all' ? ['brand' => $selectedBrand] : []),
+                            ]) }}">
                             {{ $folder->name }} <small>{{ number_format($folder->total_image_count) }}</small>
                         </a>
                     @endforeach
                 </nav>
             @endif
+
+            <nav class="gallery-brands" aria-label="Filter merek motor">
+                @foreach ($brandFilters as $brandFilter)
+                    <a class="gallery-brand {{ $selectedBrand === $brandFilter['slug'] ? 'is-active' : '' }}"
+                        href="{{ route('preview.show', [
+                            'content' => $content,
+                            ...($selectedFolder ? ['folder' => $selectedFolder->id] : []),
+                            ...($brandFilter['slug'] !== 'all' ? ['brand' => $brandFilter['slug']] : []),
+                        ]) }}"
+                        @if ($selectedBrand === $brandFilter['slug']) aria-current="page" @endif>
+                        <span>{{ $brandFilter['label'] }}</span>
+                        <strong>{{ number_format($brandFilter['count']) }}</strong>
+                    </a>
+                @endforeach
+            </nav>
 
             <div class="gallery-toolbar">
                 <h2 id="photos-heading">EVENT PHOTOS<span class="accent">.</span></h2>

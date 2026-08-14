@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class HomeController extends Controller
 {
@@ -165,6 +166,48 @@ class HomeController extends Controller
             $photosQuery->whereIn('download_folder_id', $folderIds);
         }
 
+        $brandPhotoIds = [];
+        $hasMotorIndex = Schema::hasTable('photo_motor_search_indexes');
+        $facetPhotos = (clone $photosQuery)
+            ->when(
+                $hasMotorIndex,
+                fn ($query) => $query->with(
+                    'motorSearchIndex:id,list_downloaded_id,status,descriptor',
+                ),
+            )
+            ->get(['id']);
+
+        foreach ($facetPhotos as $facetPhoto) {
+            $brand = $hasMotorIndex
+                ? $this->canonicalMotorcycleBrand(
+                    $facetPhoto->motorSearchIndex,
+                )
+                : 'unknown';
+            $brandPhotoIds[$brand][] = $facetPhoto->getKey();
+        }
+
+        $brandFilters = collect($brandPhotoIds)
+            ->map(fn (array $ids, string $brand): array => [
+                'slug' => $brand,
+                'label' => Str::upper($brand),
+                'count' => count($ids),
+            ])
+            ->sortBy(fn (array $filter): string =>
+                $filter['slug'] === 'unknown'
+                    ? '1'
+                    : '0'.$filter['label']
+            )
+            ->values();
+
+        $selectedBrand = Str::slug(
+            mb_strtolower(trim((string) $request->query('brand', 'all'))),
+        ) ?: 'all';
+
+        if ($selectedBrand !== 'all') {
+            abort_unless(isset($brandPhotoIds[$selectedBrand]), 404);
+            $photosQuery->whereIn('id', $brandPhotoIds[$selectedBrand]);
+        }
+
         $photos = $photosQuery
             ->when(
                 $hasFolderSchema,
@@ -223,10 +266,97 @@ class HomeController extends Controller
             'photos' => $photos,
             'folders' => $folders,
             'selectedFolder' => $selectedFolder,
+            'selectedBrand' => $selectedBrand,
+            'brandFilters' => collect([
+                [
+                    'slug' => 'all',
+                    'label' => 'ALL PHOTOS',
+                    'count' => $facetPhotos->count(),
+                ],
+                ...$brandFilters->all(),
+            ]),
             'hasFolderSchema' => $hasFolderSchema,
             'data_web' => $data_web,
             'data_links' => $data_links ?? [],
         ]);
+    }
+
+    private function canonicalMotorcycleBrand(mixed $index): string
+    {
+        if (! $index || $index->status !== 'indexed') {
+            return 'unknown';
+        }
+
+        $descriptor = is_array($index->descriptor)
+            ? $index->descriptor
+            : [];
+
+        if (($descriptor['motorcycle_present'] ?? true) === false) {
+            return 'unknown';
+        }
+
+        $brand = Str::of((string) ($descriptor['brand_guess'] ?? ''))
+            ->lower()
+            ->ascii()
+            ->replaceMatches('/[^a-z0-9]+/', ' ')
+            ->squish()
+            ->toString();
+
+        if ($brand === '' || in_array($brand, [
+            'unknown',
+            'uncertain',
+            'unidentified',
+            'n a',
+            'none',
+        ], true)) {
+            return 'unknown';
+        }
+
+        $aliases = [
+            'bmw motorrad' => 'bmw',
+            'harley davidson' => 'harley-davidson',
+            'royal enfield' => 'royal-enfield',
+            'cf moto' => 'cfmoto',
+            'mv agusta' => 'mv-agusta',
+        ];
+
+        foreach ($aliases as $alias => $canonical) {
+            if ($brand === $alias || str_starts_with($brand, $alias.' ')) {
+                return $canonical;
+            }
+        }
+
+        $knownBrands = [
+            'aprilia', 'benelli', 'bmw', 'cfmoto', 'ducati', 'gasgas',
+            'harley-davidson', 'hero', 'honda', 'husqvarna', 'indian',
+            'kawasaki', 'ktm', 'kymco', 'moto-guzzi', 'mv-agusta',
+            'piaggio', 'royal-enfield', 'suzuki', 'triumph', 'vespa',
+            'victory', 'yamaha',
+        ];
+
+        $slug = Str::slug($brand);
+
+        foreach ($knownBrands as $knownBrand) {
+            if ($slug === $knownBrand || str_starts_with($slug, $knownBrand.'-')) {
+                return $knownBrand;
+            }
+        }
+
+        foreach ([
+            ' motorcycles',
+            ' motorcycle',
+            ' motorbikes',
+            ' motorbike',
+            ' motors',
+            ' motor',
+        ] as $suffix) {
+            if (str_ends_with($brand, $suffix)) {
+                $brand = trim(substr($brand, 0, -strlen($suffix)));
+                break;
+            }
+        }
+
+        return Str::slug($brand) ?: 'unknown';
     }
 
     public function about()

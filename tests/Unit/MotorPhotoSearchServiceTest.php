@@ -135,6 +135,80 @@ class MotorPhotoSearchServiceTest extends TestCase
         $this->assertGreaterThan(0.0, $result['score']);
     }
 
+    public function test_gallery_brand_filter_canonicalizes_ai_descriptors_and_unknown(): void
+    {
+        $controller = app(\App\Http\Controllers\Api\PublicApiController::class);
+        $canonicalBrand = new ReflectionMethod(
+            $controller,
+            'canonicalMotorcycleBrand',
+        );
+
+        $indexed = static fn (
+            mixed $brand,
+            bool $motorcyclePresent = true,
+        ): object => (object) [
+            'status' => 'indexed',
+            'descriptor' => [
+                'motorcycle_present' => $motorcyclePresent,
+                'brand_guess' => $brand,
+            ],
+        ];
+
+        $this->assertSame(
+            'kawasaki',
+            $canonicalBrand->invoke(
+                $controller,
+                $indexed('Kawasaki Motorcycles'),
+            ),
+        );
+        $this->assertSame(
+            'kawasaki',
+            $canonicalBrand->invoke(
+                $controller,
+                $indexed('Kawasaki Ninja'),
+            ),
+        );
+        $this->assertSame(
+            'harley-davidson',
+            $canonicalBrand->invoke(
+                $controller,
+                $indexed('Harley-Davidson'),
+            ),
+        );
+        $this->assertSame(
+            'bmw',
+            $canonicalBrand->invoke(
+                $controller,
+                $indexed('BMW Motorrad'),
+            ),
+        );
+        $this->assertSame(
+            'unknown',
+            $canonicalBrand->invoke($controller, $indexed('unknown')),
+        );
+        $this->assertSame(
+            'unknown',
+            $canonicalBrand->invoke(
+                $controller,
+                $indexed('Honda', false),
+            ),
+        );
+        $this->assertSame(
+            'unknown',
+            $canonicalBrand->invoke(
+                $controller,
+                (object) [
+                    'status' => 'processing',
+                    'descriptor' => ['brand_guess' => 'yamaha'],
+                ],
+            ),
+        );
+        $this->assertSame(
+            'unknown',
+            $canonicalBrand->invoke($controller, null),
+        );
+    }
+
     public function test_descriptor_prompt_rejects_overlay_and_unverified_model_evidence(): void
     {
         $ai = app(\App\Services\NineRouterAiService::class);

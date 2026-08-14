@@ -10,6 +10,7 @@ type Props = {
   params: Promise<{ content: string }>;
   searchParams: Promise<{
     folder?: string | string[];
+    brand?: string | string[];
     page?: string | string[];
   }>;
 };
@@ -20,8 +21,10 @@ async function detail(
 ): Promise<PreviewDetailData> {
   const query = new URLSearchParams();
   const folder = Array.isArray(search.folder) ? search.folder[0] : search.folder;
+  const brand = Array.isArray(search.brand) ? search.brand[0] : search.brand;
   const page = Array.isArray(search.page) ? search.page[0] : search.page;
   if (folder && /^\d+$/.test(folder)) query.set("folder", folder);
+  if (brand && /^[a-z0-9-]+$/i.test(brand)) query.set("brand", brand);
   if (page && /^\d+$/.test(page)) query.set("page", page);
 
   try {
@@ -49,10 +52,12 @@ export async function generateMetadata({ params, searchParams }: Props) {
 function href(
   content: string,
   folder: number | null,
+  brand = "all",
   page?: number,
 ): string {
   const query = new URLSearchParams();
   if (folder) query.set("folder", String(folder));
+  if (brand !== "all") query.set("brand", brand);
   if (page && page > 1) query.set("page", String(page));
   return `/preview/${content}${query.size ? `?${query}` : ""}`;
 }
@@ -106,7 +111,7 @@ export default async function PreviewDetailPage({
         <nav className="preview-folder-nav" aria-label="Gallery folders">
           <Link
             className={data.selected_folder_id === null ? "is-active" : ""}
-            href={href(contentId, null)}
+            href={href(contentId, null, data.selected_brand)}
           >
             ALL PHOTOS
           </Link>
@@ -118,13 +123,29 @@ export default async function PreviewDetailPage({
                 className={
                   data.selected_folder_id === folder.id ? "is-active" : ""
                 }
-                href={href(contentId, folder.id)}
+                href={href(contentId, folder.id, data.selected_brand)}
               >
                 {folder.name.toUpperCase()} ({folder.total_image_count})
               </Link>
             ))}
         </nav>
       )}
+
+      <nav className="preview-brand-nav" aria-label="Motorcycle brands">
+        {data.brand_filters.map((brand) => (
+          <Link
+            key={brand.slug}
+            className={data.selected_brand === brand.slug ? "is-active" : ""}
+            href={href(contentId, data.selected_folder_id, brand.slug)}
+            aria-current={
+              data.selected_brand === brand.slug ? "page" : undefined
+            }
+          >
+            <span>{brand.label}</span>
+            <strong>{brand.count}</strong>
+          </Link>
+        ))}
+      </nav>
 
       <section className="preview-gallery" aria-label="Event photos">
         {data.photos.data.length ? (
@@ -141,6 +162,7 @@ export default async function PreviewDetailPage({
               href={href(
                 contentId,
                 data.selected_folder_id,
+                data.selected_brand,
                 current - 1,
               )}
             >
@@ -155,6 +177,7 @@ export default async function PreviewDetailPage({
               href={href(
                 contentId,
                 data.selected_folder_id,
+                data.selected_brand,
                 current + 1,
               )}
             >

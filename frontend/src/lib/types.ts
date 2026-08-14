@@ -170,12 +170,20 @@ export interface GalleryPhoto {
   } | null;
 }
 
+export interface GalleryBrandFilter {
+  slug: string;
+  label: string;
+  count: number;
+}
+
 export interface GalleryDetailData {
   type: "gallery";
   site: Site;
   content: PreviewContent;
   folders: GalleryFolder[];
   selected_folder_id: number | null;
+  selected_brand: string;
+  brand_filters: GalleryBrandFilter[];
   photos: {
     data: GalleryPhoto[];
     current_page: number;
