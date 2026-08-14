@@ -52,6 +52,8 @@
         .ai-photo-search__preview { display:none; width:min(100%,320px); max-height:280px; margin-top:1rem; object-fit:contain; background:#050506; }
         .ai-photo-search__preview.is-visible { display:block; }
         .ai-photo-search__privacy { margin:.8rem 0 0; opacity:.5; font-size:.75rem; line-height:1.5; }
+        .ai-photo-search__brand { display:none; margin:1rem 0 0; color:var(--color-accent); font:800 clamp(1.35rem,3vw,2.25rem)/1 "Inter Tight",sans-serif; letter-spacing:-.025em; text-transform:uppercase; }
+        .ai-photo-search__brand.is-visible { display:block; }
         .ai-photo-search__message { display:none; margin:1rem 0 0; padding:.85rem 1rem; border-left:3px solid var(--color-accent); background:var(--color-accent-soft); line-height:1.5; }
         .ai-photo-search__message.is-visible { display:block; }
         .ai-photo-search__message.is-error { color:var(--color-accent-hover); border-left-color:var(--color-accent); background:var(--color-accent-soft); }
@@ -153,6 +155,7 @@
                 </form>
 
                 <img class="ai-photo-search__preview" data-ai-photo-search-preview src="" alt="Foto motor yang dipilih">
+                <p class="ai-photo-search__brand" data-ai-photo-search-brand></p>
                 <p class="ai-photo-search__message" data-ai-photo-search-message role="status" aria-live="polite"></p>
 
                 <div class="ai-photo-search__results" data-ai-photo-search-results>
@@ -245,6 +248,7 @@
                 const fileLabel = root.querySelector('[data-ai-photo-search-file]');
                 const submit = root.querySelector('[data-ai-photo-search-submit]');
                 const preview = root.querySelector('[data-ai-photo-search-preview]');
+                const brand = root.querySelector('[data-ai-photo-search-brand]');
                 const message = root.querySelector('[data-ai-photo-search-message]');
                 const results = root.querySelector('[data-ai-photo-search-results]');
                 const count = root.querySelector('[data-ai-photo-search-count]');
@@ -300,7 +304,7 @@
                     }
                 };
 
-                const rememberSearch = (fingerprint, matches) => {
+                const rememberSearch = (fingerprint, matches, brandGuess = null) => {
                     if (!fingerprint) return;
 
                     try {
@@ -311,6 +315,7 @@
                         const cacheEntry = {
                             fingerprint,
                             cached_at: Date.now(),
+                            brand_guess: brandGuess,
                             matches: matches.slice(0, 20).map((match) => ({
                                 id: match.id ?? null,
                                 name: match.name || 'MATCH',
@@ -418,6 +423,16 @@
                     message.classList.toggle('is-error', isError);
                 };
 
+                const setBrandGuess = (value = null) => {
+                    const normalized = typeof value === 'string'
+                        ? value.trim().toUpperCase()
+                        : '';
+                    const isKnown = normalized && normalized !== 'UNKNOWN';
+
+                    brand.textContent = isKnown ? `BRAND: ${normalized}` : '';
+                    brand.classList.toggle('is-visible', Boolean(isKnown));
+                };
+
                 const resetResults = () => {
                     grid.replaceChildren();
                     count.textContent = '';
@@ -486,6 +501,7 @@
                     preview.removeAttribute('src');
                     preview.classList.remove('is-visible');
                     resetResults();
+                    setBrandGuess();
                     setMessage();
                     fileLabel.textContent = file?.name || 'CHOOSE MOTORCYCLE PHOTO';
                     submit.disabled = true;
@@ -526,6 +542,7 @@
                             submit.disabled = true;
                             submit.textContent = 'PHOTO ALREADY SEARCHED';
                             const renderedCount = renderMatches(cached.matches);
+                            setBrandGuess(cached.brand_guess);
                             setMessage(`${renderedCount} kemungkinan foto dari pencarian sebelumnya ditampilkan.`);
                         } else {
                             submit.disabled = false;
@@ -574,9 +591,11 @@
                             ? payload.data.matches
                             : [];
 
+                        const brandGuess = payload.data.query_analysis?.brand_guess;
                         const renderedCount = renderMatches(matches);
                         searchCompleted = true;
-                        rememberSearch(photoFingerprint, matches);
+                        setBrandGuess(brandGuess);
+                        rememberSearch(photoFingerprint, matches, brandGuess);
                         setMessage(
                             renderedCount
                                 ? `${renderedCount} kemungkinan foto ditemukan.`
