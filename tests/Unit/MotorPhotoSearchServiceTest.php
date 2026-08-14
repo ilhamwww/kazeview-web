@@ -209,6 +209,75 @@ class MotorPhotoSearchServiceTest extends TestCase
         );
     }
 
+    public function test_gallery_category_filter_canonicalizes_ai_descriptors_and_unknown(): void
+    {
+        $controller = app(\App\Http\Controllers\HomeController::class);
+        $canonicalCategory = new ReflectionMethod(
+            $controller,
+            'canonicalMotorcycleCategory',
+        );
+
+        $indexed = static fn (
+            mixed $category,
+            bool $motorcyclePresent = true,
+        ): object => (object) [
+            'status' => 'indexed',
+            'descriptor' => [
+                'motorcycle_present' => $motorcyclePresent,
+                'category' => $category,
+            ],
+        ];
+
+        $this->assertSame(
+            'sport',
+            $canonicalCategory->invoke($controller, $indexed('sport')),
+        );
+        $this->assertSame(
+            'sport',
+            $canonicalCategory->invoke($controller, $indexed('Sport Bike')),
+        );
+        $this->assertSame(
+            'adventure',
+            $canonicalCategory->invoke(
+                $controller,
+                $indexed('Adventure Touring'),
+            ),
+        );
+        $this->assertSame(
+            'dual-sport',
+            $canonicalCategory->invoke($controller, $indexed('Dual Sport')),
+        );
+        $this->assertSame(
+            'cafe-racer',
+            $canonicalCategory->invoke($controller, $indexed('Cafe Racer')),
+        );
+        $this->assertSame(
+            'unknown',
+            $canonicalCategory->invoke($controller, $indexed('unknown')),
+        );
+        $this->assertSame(
+            'unknown',
+            $canonicalCategory->invoke(
+                $controller,
+                $indexed('sport', false),
+            ),
+        );
+        $this->assertSame(
+            'unknown',
+            $canonicalCategory->invoke(
+                $controller,
+                (object) [
+                    'status' => 'processing',
+                    'descriptor' => ['category' => 'sport'],
+                ],
+            ),
+        );
+        $this->assertSame(
+            'unknown',
+            $canonicalCategory->invoke($controller, null),
+        );
+    }
+
     public function test_descriptor_prompt_rejects_overlay_and_unverified_model_evidence(): void
     {
         $ai = app(\App\Services\NineRouterAiService::class);

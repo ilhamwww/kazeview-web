@@ -6,7 +6,6 @@ use App\Models\AboutSetting;
 use App\Models\ContactSetting;
 use App\Models\Content;
 use App\Models\ContentFilterCategory;
-use App\Models\DownloadFolder;
 use App\Models\ListDownloaded;
 use App\Support\GoogleDriveFolder;
 use Illuminate\Http\Request;
@@ -113,60 +112,13 @@ class HomeController extends Controller
         $data_web = DB::table('website_settings')->first();
         $data_links = $data_web ? json_decode($data_web->links, true) : [];
 
-        $hasFolderSchema = Schema::hasTable('download_folders')
-            && Schema::hasColumn('list_downloaded', 'download_folder_id')
-            && Schema::hasColumn('list_downloaded', 'relative_path');
-
-        $folders = $hasFolderSchema
-            ? DownloadFolder::query()
-                ->whereHas('download', function ($query) use ($content): void {
-                    $query->where('id_content', $content->getKey());
-                })
-                ->orderBy('depth')
-                ->orderBy('sort_order')
-                ->orderBy('name')
-                ->get()
-            : collect();
-
-        $selectedFolder = null;
-        $folderId = $request->integer('folder');
-
-        if ($folderId > 0) {
-            abort_unless($hasFolderSchema, 404);
-
-            $selectedFolder = $folders->firstWhere('id', $folderId);
-            abort_unless($selectedFolder, 404);
-        }
-
         $photosQuery = ListDownloaded::query()
             ->whereHas('download', function ($query) use ($content): void {
                 $query->where('id_content', $content->getKey());
-            })
-            ->with('download:id,id_content,folder_name,id_folder');
-
-        if ($hasFolderSchema) {
-            $photosQuery->with(
-                'folder:id,download_id,parent_id,name,relative_path,depth',
-            );
-        }
-
-        if ($selectedFolder) {
-            $folderIds = $folders
-                ->filter(function (DownloadFolder $folder) use (
-                    $selectedFolder,
-                ): bool {
-                    return $folder->getKey() === $selectedFolder->getKey()
-                        || str_starts_with(
-                            $folder->relative_path,
-                            "{$selectedFolder->relative_path}/",
-                        );
-                })
-                ->pluck('id');
-
-            $photosQuery->whereIn('download_folder_id', $folderIds);
-        }
+            });
 
         $brandPhotoIds = [];
+        $categoryPhotoIds = [];
         $hasMotorIndex = Schema::hasTable('photo_motor_search_indexes');
         $facetPhotos = (clone $photosQuery)
             ->when(
@@ -183,7 +135,14 @@ class HomeController extends Controller
                     $facetPhoto->motorSearchIndex,
                 )
                 : 'unknown';
+            $category = $hasMotorIndex
+                ? $this->canonicalMotorcycleCategory(
+                    $facetPhoto->motorSearchIndex,
+                )
+                : 'unknown';
+
             $brandPhotoIds[$brand][] = $facetPhoto->getKey();
+            $categoryPhotoIds[$category][] = $facetPhoto->getKey();
         }
 
         $brandFilters = collect($brandPhotoIds)
@@ -199,8 +158,25 @@ class HomeController extends Controller
             )
             ->values();
 
+        $categoryFilters = collect($categoryPhotoIds)
+            ->map(fn (array $ids, string $category): array => [
+                'slug' => $category,
+                'label' => Str::upper(str_replace('-', ' ', $category)),
+                'count' => count($ids),
+            ])
+            ->sortBy(fn (array $filter): string =>
+                $filter['slug'] === 'unknown'
+                    ? '1'
+                    : '0'.$filter['label']
+            )
+            ->values();
+
         $selectedBrand = Str::slug(
             mb_strtolower(trim((string) $request->query('brand', 'all'))),
+        ) ?: 'all';
+
+        $selectedCategory = Str::slug(
+            mb_strtolower(trim((string) $request->query('category', 'all'))),
         ) ?: 'all';
 
         if ($selectedBrand !== 'all') {
@@ -208,11 +184,15 @@ class HomeController extends Controller
             $photosQuery->whereIn('id', $brandPhotoIds[$selectedBrand]);
         }
 
+        if ($selectedCategory !== 'all') {
+            abort_unless(isset($categoryPhotoIds[$selectedCategory]), 404);
+            $photosQuery->whereIn(
+                'id',
+                $categoryPhotoIds[$selectedCategory],
+            );
+        }
+
         $photos = $photosQuery
-            ->when(
-                $hasFolderSchema,
-                fn ($query) => $query->orderBy('download_folder_id'),
-            )
             ->orderBy('file_name')
             ->paginate(48)
             ->withQueryString();
@@ -226,13 +206,7 @@ class HomeController extends Controller
                             $photo->storagePath(),
                         );
                 })
-                ->map(function (ListDownloaded $photo) use (
-                    $hasFolderSchema,
-                ): ListDownloaded {
-                    if (! $hasFolderSchema) {
-                        $photo->setRelation('folder', null);
-                    }
-
+                ->map(function (ListDownloaded $photo): ListDownloaded {
                     $photo->setAttribute(
                         'public_url',
                         Storage::disk('public')->url(
@@ -264,21 +238,81 @@ class HomeController extends Controller
         return view('landingpage.preview-detail', [
             'content' => $content,
             'photos' => $photos,
-            'folders' => $folders,
-            'selectedFolder' => $selectedFolder,
             'selectedBrand' => $selectedBrand,
+            'selectedCategory' => $selectedCategory,
             'brandFilters' => collect([
                 [
                     'slug' => 'all',
-                    'label' => 'ALL PHOTOS',
+                    'label' => 'ALL BRANDS',
                     'count' => $facetPhotos->count(),
                 ],
                 ...$brandFilters->all(),
             ]),
-            'hasFolderSchema' => $hasFolderSchema,
+            'categoryFilters' => collect([
+                [
+                    'slug' => 'all',
+                    'label' => 'ALL CATEGORIES',
+                    'count' => $facetPhotos->count(),
+                ],
+                ...$categoryFilters->all(),
+            ]),
             'data_web' => $data_web,
             'data_links' => $data_links ?? [],
         ]);
+    }
+
+    private function canonicalMotorcycleCategory(mixed $index): string
+    {
+        if (! $index || $index->status !== 'indexed') {
+            return 'unknown';
+        }
+
+        $descriptor = is_array($index->descriptor)
+            ? $index->descriptor
+            : [];
+
+        if (($descriptor['motorcycle_present'] ?? true) === false) {
+            return 'unknown';
+        }
+
+        $category = Str::of((string) ($descriptor['category'] ?? ''))
+            ->lower()
+            ->ascii()
+            ->replaceMatches('/[^a-z0-9]+/', ' ')
+            ->squish()
+            ->toString();
+
+        if ($category === '' || in_array($category, [
+            'unknown',
+            'uncertain',
+            'unidentified',
+            'n a',
+            'none',
+        ], true)) {
+            return 'unknown';
+        }
+
+        $aliases = [
+            'sports' => 'sport',
+            'sport bike' => 'sport',
+            'sportbike' => 'sport',
+            'super sport' => 'supersport',
+            'superbike' => 'supersport',
+            'adventure bike' => 'adventure',
+            'adventure touring' => 'adventure',
+            'dual sport' => 'dual-sport',
+            'dual purpose' => 'dual-sport',
+            'off road' => 'off-road',
+            'dirt bike' => 'off-road',
+            'street bike' => 'street',
+            'standard bike' => 'standard',
+            'naked bike' => 'naked',
+            'touring bike' => 'touring',
+            'cafe racer' => 'cafe-racer',
+            'under bone' => 'underbone',
+        ];
+
+        return $aliases[$category] ?? Str::slug($category) ?: 'unknown';
     }
 
     private function canonicalMotorcycleBrand(mixed $index): string

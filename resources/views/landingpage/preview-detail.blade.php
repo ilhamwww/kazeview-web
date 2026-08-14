@@ -16,7 +16,6 @@
     $coverImage = $content->image
         ? asset('storage/' . $content->image)
         : asset('KAZE_icon.png');
-    $topLevelFolders = $folders->where('depth', 1);
 @endphp
 
 @section('preloads')
@@ -67,11 +66,10 @@
         .ai-photo-search__match img { width:100%; height:100%; object-fit:cover; transition:transform .45s ease; }
         .ai-photo-search__match:hover img { transform:scale(1.035); }
         .ai-photo-search__match-meta { position:absolute; right:0; bottom:0; left:0; display:flex; justify-content:space-between; gap:.5rem; padding:.7rem; background:linear-gradient(transparent,rgba(0,0,0,.9)); font:700 .62rem/1.3 Inter,sans-serif; letter-spacing:.06em; text-transform:uppercase; }
-        .gallery-folders { display:flex; flex-wrap:wrap; gap:.5rem; margin:clamp(3rem,7vw,6rem) 0 0; }
-        .gallery-folder { display:inline-flex; align-items:center; gap:.5rem; min-height:42px; padding:.7rem 1rem; border:1px solid rgba(127,127,127,.32); color:inherit; text-decoration:none; font:700 .72rem/1 Inter,sans-serif; letter-spacing:.09em; text-transform:uppercase; }
-        .gallery-folder:hover,.gallery-folder:focus-visible,.gallery-folder.is-active { border-color:var(--color-accent); background:var(--color-accent); color:#fff; outline:none; }
-        .gallery-folder small { opacity:.65; font:inherit; }
-        .gallery-brands { display:flex; max-width:100%; gap:.5rem; margin:2rem 0 0; padding-bottom:.4rem; overflow-x:auto; scrollbar-color:rgba(127,127,127,.42) transparent; scrollbar-width:thin; }
+        .gallery-filter-group { margin:2rem 0 0; }
+        .gallery-filter-group + .gallery-filter-group { margin-top:1.25rem; }
+        .gallery-filter-label { margin:0 0 .7rem; opacity:.55; font:800 .66rem/1 Inter,sans-serif; letter-spacing:.14em; text-transform:uppercase; }
+        .gallery-brands { display:flex; max-width:100%; gap:.5rem; padding-bottom:.4rem; overflow-x:auto; scrollbar-color:rgba(127,127,127,.42) transparent; scrollbar-width:thin; }
         .gallery-brand { display:inline-flex; min-width:max-content; min-height:42px; align-items:center; justify-content:center; gap:.55rem; padding:.7rem 1rem; border:1px solid rgba(127,127,127,.32); color:inherit; text-decoration:none; font:800 .72rem/1 Inter,sans-serif; letter-spacing:.09em; text-transform:uppercase; transition:border-color .2s ease,background-color .2s ease,color .2s ease; }
         .gallery-brand strong { color:rgba(255,255,255,.52); font:inherit; letter-spacing:.04em; transition:color .2s ease; }
         .gallery-brand:hover,.gallery-brand:focus-visible { border-color:var(--color-accent); outline:none; }
@@ -80,10 +78,6 @@
         .gallery-toolbar { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:2rem 0 1.5rem; border-bottom:1px solid rgba(127,127,127,.32); padding-bottom:1rem; }
         .gallery-toolbar h2 { margin:0; font:800 clamp(1.7rem,4vw,3.2rem)/1 "Inter Tight",sans-serif; letter-spacing:-.04em; }
         .gallery-toolbar p { margin:0; font:700 .75rem/1 Inter,sans-serif; letter-spacing:.12em; opacity:.6; }
-        .photo-group + .photo-group { margin-top:3.5rem; }
-        .photo-group__heading { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:0 0 1rem; }
-        .photo-group__heading h3 { margin:0; font:800 clamp(1.25rem,3vw,2rem)/1 "Inter Tight",sans-serif; letter-spacing:-.03em; text-transform:uppercase; }
-        .photo-group__heading span { opacity:.55; font:700 .68rem/1 Inter,sans-serif; letter-spacing:.1em; }
         .photo-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:clamp(.5rem,1.2vw,1rem); }
         .photo-card { position:relative; border:0; padding:0; overflow:hidden; background:#151515; cursor:zoom-in; aspect-ratio:4/3; }
         .photo-card img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .45s ease,opacity .25s; }
@@ -175,42 +169,41 @@
         @endif
 
         <section aria-labelledby="photos-heading">
-            @if ($topLevelFolders->isNotEmpty())
-                <nav class="gallery-folders" aria-label="Kategori foto">
-                    <a class="gallery-folder {{ $selectedFolder === null ? 'is-active' : '' }}"
-                        href="{{ route('preview.show', [
-                            'content' => $content,
-                            ...($selectedBrand !== 'all' ? ['brand' => $selectedBrand] : []),
-                        ]) }}">
-                        ALL PHOTOS <small>{{ number_format($content->downloads()->sum('total_files')) }}</small>
-                    </a>
-                    @foreach ($topLevelFolders as $folder)
-                        <a class="gallery-folder {{ $selectedFolder?->id === $folder->id ? 'is-active' : '' }}"
+            <div class="gallery-filter-group">
+                <p class="gallery-filter-label">FILTER BY CATEGORY</p>
+                <nav class="gallery-brands" aria-label="Filter kategori motor">
+                    @foreach ($categoryFilters as $categoryFilter)
+                        <a class="gallery-brand {{ $selectedCategory === $categoryFilter['slug'] ? 'is-active' : '' }}"
                             href="{{ route('preview.show', [
                                 'content' => $content,
-                                'folder' => $folder->id,
                                 ...($selectedBrand !== 'all' ? ['brand' => $selectedBrand] : []),
-                            ]) }}">
-                            {{ $folder->name }} <small>{{ number_format($folder->total_image_count) }}</small>
+                                ...($categoryFilter['slug'] !== 'all' ? ['category' => $categoryFilter['slug']] : []),
+                            ]) }}"
+                            @if ($selectedCategory === $categoryFilter['slug']) aria-current="page" @endif>
+                            <span>{{ $categoryFilter['label'] }}</span>
+                            <strong>{{ number_format($categoryFilter['count']) }}</strong>
                         </a>
                     @endforeach
                 </nav>
-            @endif
+            </div>
 
-            <nav class="gallery-brands" aria-label="Filter merek motor">
-                @foreach ($brandFilters as $brandFilter)
-                    <a class="gallery-brand {{ $selectedBrand === $brandFilter['slug'] ? 'is-active' : '' }}"
-                        href="{{ route('preview.show', [
-                            'content' => $content,
-                            ...($selectedFolder ? ['folder' => $selectedFolder->id] : []),
-                            ...($brandFilter['slug'] !== 'all' ? ['brand' => $brandFilter['slug']] : []),
-                        ]) }}"
-                        @if ($selectedBrand === $brandFilter['slug']) aria-current="page" @endif>
-                        <span>{{ $brandFilter['label'] }}</span>
-                        <strong>{{ number_format($brandFilter['count']) }}</strong>
-                    </a>
-                @endforeach
-            </nav>
+            <div class="gallery-filter-group">
+                <p class="gallery-filter-label">FILTER BY BRAND</p>
+                <nav class="gallery-brands" aria-label="Filter merek motor">
+                    @foreach ($brandFilters as $brandFilter)
+                        <a class="gallery-brand {{ $selectedBrand === $brandFilter['slug'] ? 'is-active' : '' }}"
+                            href="{{ route('preview.show', [
+                                'content' => $content,
+                                ...($selectedCategory !== 'all' ? ['category' => $selectedCategory] : []),
+                                ...($brandFilter['slug'] !== 'all' ? ['brand' => $brandFilter['slug']] : []),
+                            ]) }}"
+                            @if ($selectedBrand === $brandFilter['slug']) aria-current="page" @endif>
+                            <span>{{ $brandFilter['label'] }}</span>
+                            <strong>{{ number_format($brandFilter['count']) }}</strong>
+                        </a>
+                    @endforeach
+                </nav>
+            </div>
 
             <div class="gallery-toolbar">
                 <h2 id="photos-heading">EVENT PHOTOS<span class="accent">.</span></h2>
@@ -218,7 +211,7 @@
             </div>
 
             @if ($photos->isNotEmpty())
-                <div data-photo-grid>
+                <div class="photo-grid" data-photo-grid>
                     @include('landingpage.partials.preview-photo-batch', ['photos' => $photos])
                 </div>
 
@@ -734,37 +727,13 @@
                     const batch = document.createElement('template');
                     batch.innerHTML = payload.html;
 
-                    for (const incomingGroup of batch.content.querySelectorAll('[data-photo-group]')) {
-                        const folderPath = incomingGroup.dataset.photoGroup || '';
-                        const existingGroup = [...gallery.querySelectorAll('[data-photo-group]')]
-                            .find((group) => group.dataset.photoGroup === folderPath);
+                    for (const incomingCard of batch.content.querySelectorAll('[data-photo-src]')) {
+                        const duplicate = cards().some(
+                            (card) => card.dataset.photoSrc === incomingCard.dataset.photoSrc,
+                        );
 
-                        if (!existingGroup) {
-                            gallery.append(incomingGroup);
-                            continue;
-                        }
-
-                        const existingGrid = existingGroup.querySelector('.photo-grid');
-                        const incomingGrid = incomingGroup.querySelector('.photo-grid');
-
-                        if (!existingGrid || !incomingGrid) {
-                            continue;
-                        }
-
-                        for (const incomingCard of [...incomingGrid.querySelectorAll('[data-photo-src]')]) {
-                            const duplicate = [...existingGrid.querySelectorAll('[data-photo-src]')]
-                                .some((card) => card.dataset.photoSrc === incomingCard.dataset.photoSrc);
-
-                            if (!duplicate) {
-                                existingGrid.append(incomingCard);
-                            }
-                        }
-
-                        const groupCount = existingGroup.querySelector('[data-photo-group-count]');
-                        const totalInGroup = existingGrid.querySelectorAll('[data-photo-src]').length;
-
-                        if (groupCount) {
-                            groupCount.textContent = `${totalInGroup.toLocaleString()} PHOTOS LOADED`;
+                        if (!duplicate) {
+                            gallery.append(incomingCard);
                         }
                     }
 
