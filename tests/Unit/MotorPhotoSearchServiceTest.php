@@ -135,6 +135,41 @@ class MotorPhotoSearchServiceTest extends TestCase
         $this->assertGreaterThan(0.0, $result['score']);
     }
 
+    public function test_descriptor_prompt_rejects_overlay_and_unverified_model_evidence(): void
+    {
+        $ai = app(\App\Services\NineRouterAiService::class);
+        $promptMethod = new ReflectionMethod($ai, 'descriptorPrompt');
+        $prompt = mb_strtolower($promptMethod->invoke($ai));
+
+        $this->assertStringContainsString('ignore watermarks', $prompt);
+        $this->assertStringContainsString(
+            'never copy them into visible_text',
+            $prompt,
+        );
+        $this->assertStringContainsString(
+            'never autocomplete blurred or partially hidden text',
+            $prompt,
+        );
+        $this->assertStringContainsString(
+            'never infer the total number of brake discs',
+            $prompt,
+        );
+        $this->assertStringContainsString(
+            'at least two independent reliable cues',
+            $prompt,
+        );
+        $this->assertStringContainsString(
+            'silently compare the closest visually similar models',
+            $prompt,
+        );
+
+        // The production prompt must remain generic. The expected fixture
+        // answer and local filename must never be leaked to the provider.
+        $this->assertStringNotContainsString('kawasaki-zx6r', $prompt);
+        $this->assertStringNotContainsString('zx-6r', $prompt);
+        $this->assertStringNotContainsString('zx-25r', $prompt);
+    }
+
     public function test_retrieval_document_focuses_on_motorcycle_without_mutating_json(): void
     {
         $ai = app(\App\Services\NineRouterAiService::class);
