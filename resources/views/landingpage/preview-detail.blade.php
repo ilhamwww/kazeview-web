@@ -238,7 +238,10 @@
 
         <section aria-labelledby="photos-heading" data-gallery-section>
             <div class="gallery-filter-group">
-                <p class="gallery-filter-label">FILTER BY CATEGORY</p>
+                <p class="gallery-filter-label"
+                    title="Kategori dikenali otomatis oleh AI dan mungkin tidak selalu akurat">
+                    FILTER BY CATEGORY · BY AI
+                </p>
                 <nav class="gallery-brands" aria-label="Filter kategori motor">
                     @foreach ($categoryFilters as $categoryFilter)
                         <a class="gallery-brand {{ $selectedCategory === $categoryFilter['slug'] ? 'is-active' : '' }}"
@@ -259,7 +262,10 @@
             </div>
 
             <div class="gallery-filter-group">
-                <p class="gallery-filter-label">FILTER BY BRAND</p>
+                <p class="gallery-filter-label"
+                    title="Merek dikenali otomatis oleh AI dan mungkin tidak selalu akurat">
+                    FILTER BY BRAND · BY AI
+                </p>
                 <nav class="gallery-brands" aria-label="Filter merek motor">
                     @foreach ($brandFilters as $brandFilter)
                         <a class="gallery-brand {{ $selectedBrand === $brandFilter['slug'] ? 'is-active' : '' }}"
