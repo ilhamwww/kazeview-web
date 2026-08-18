@@ -2209,6 +2209,14 @@ button {
     stroke-width: 1.6;
 }
 
+.whatsapp-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    fill: currentColor;
+}
+
 .help-link {
     display: inline-flex;
     min-height: 44px;
