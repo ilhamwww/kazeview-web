@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { config } from "@fortawesome/fontawesome-svg-core";
+import "@fortawesome/fontawesome-svg-core/styles.css";
 import SiteChrome from "@/components/SiteChrome";
 import { getPublicData } from "@/lib/api";
 import type { BootstrapData } from "@/lib/types";
 import "./kazeview.css";
+
+config.autoAddCss = false;
 
 export const revalidate = 30;
 

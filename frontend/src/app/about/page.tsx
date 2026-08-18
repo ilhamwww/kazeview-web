@@ -1,3 +1,5 @@
+import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { Metadata } from "next";
 import { getPublicData } from "@/lib/api";
 import type { AboutData } from "@/lib/types";
@@ -101,7 +103,11 @@ export default async function AboutPage() {
           target={external ? "_blank" : undefined}
           rel={external ? "noopener noreferrer" : undefined}
         >
-          {about.cta_label} <span aria-hidden="true">↗</span>
+          {about.cta_label}{" "}
+          <FontAwesomeIcon
+            icon={faArrowUpRightFromSquare}
+            aria-hidden="true"
+          />
         </a>
       </section>
     </article>

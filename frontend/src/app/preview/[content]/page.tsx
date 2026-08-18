@@ -1,3 +1,8 @@
+import {
+  faArrowLeft,
+  faArrowRight,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -90,7 +95,7 @@ export default async function PreviewDetailPage({
         <span className="preview-detail-hero__overlay" aria-hidden="true" />
         <div className="preview-detail-hero__content">
           <Link href="/preview" className="preview-detail-back">
-            ← ALL EVENTS
+            <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" /> ALL EVENTS
           </Link>
           <p className="preview-eyebrow">
             {event.preview_type} / {event.event_date || "KAZEVIEW"}
@@ -166,7 +171,7 @@ export default async function PreviewDetailPage({
                 current - 1,
               )}
             >
-              ← PREVIOUS
+              <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" /> PREVIOUS
             </Link>
           )}
           <span>
@@ -181,7 +186,7 @@ export default async function PreviewDetailPage({
                 current + 1,
               )}
             >
-              NEXT →
+              NEXT <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
             </Link>
           )}
         </nav>

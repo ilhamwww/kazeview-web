@@ -1,5 +1,7 @@
 "use client";
 
+import { faPlay, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CollectionItem } from "@/lib/types";
 
@@ -142,9 +144,7 @@ export default function FilmsShowcase({
                   />
                 )}
                 <span className="film-card__play" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M7 4.8v14.4L19 12 7 4.8Z" />
-                  </svg>
+                  <FontAwesomeIcon icon={faPlay} />
                 </span>
               </span>
               <span className="film-card__meta">
@@ -180,7 +180,7 @@ export default function FilmsShowcase({
               aria-label="Close film"
               onClick={() => setActiveFilm(null)}
             >
-              ×
+              <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
             </button>
             <video
               controls

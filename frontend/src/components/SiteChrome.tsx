@@ -1,5 +1,7 @@
 "use client";
 
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBars, faXmark } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -157,10 +159,12 @@ export default function SiteChrome({
           aria-expanded={menuOpen}
           aria-controls="primary-navigation"
           onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menuOpen ? "Tutup navigasi" : "Buka navigasi"}
         >
-          <span className="sr-only">Toggle navigation</span>
-          <span />
-          <span />
+          <FontAwesomeIcon
+            icon={menuOpen ? faXmark : faBars}
+            aria-hidden="true"
+          />
         </button>
 
         <nav

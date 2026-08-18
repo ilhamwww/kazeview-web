@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  faChevronLeft,
+  faChevronRight,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GalleryPhoto } from "@/lib/types";
 
@@ -98,7 +104,7 @@ export default function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
             aria-label="Close photo"
             onClick={close}
           >
-            ×
+            <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
           </button>
           {photos.length > 1 && (
             <button
@@ -107,7 +113,7 @@ export default function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
               aria-label="Previous photo"
               onClick={previous}
             >
-              ‹
+              <FontAwesomeIcon icon={faChevronLeft} aria-hidden="true" />
             </button>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -119,7 +125,7 @@ export default function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
               aria-label="Next photo"
               onClick={next}
             >
-              ›
+              <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
             </button>
           )}
           <p className="photo-lightbox__count">

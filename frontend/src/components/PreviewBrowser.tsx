@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  faArrowUpRightFromSquare,
+  faPlay,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -138,9 +144,7 @@ export default function PreviewBrowser({
           )}
           {item.media_type === "VIDEO" && (
             <span className="event-card__play" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M7 4.8v14.4L19 12 7 4.8Z" />
-              </svg>
+              <FontAwesomeIcon icon={faPlay} />
             </span>
           )}
         </div>
@@ -153,7 +157,10 @@ export default function PreviewBrowser({
           </div>
           <div className="event-card__footer">
             <span>{formatPrice(paid ? item.price : null)}</span>
-            <span aria-hidden="true">↗</span>
+            <FontAwesomeIcon
+              icon={faArrowUpRightFromSquare}
+              aria-hidden="true"
+            />
           </div>
         </div>
       </>
@@ -258,7 +265,7 @@ export default function PreviewBrowser({
               aria-label="Close payment information"
               onClick={() => setPayment(null)}
             >
-              ×
+              <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
             </button>
             <p className="preview-eyebrow">PHOTO ACCESS</p>
             <h2 id="payment-title">{payment.title}</h2>
@@ -274,7 +281,11 @@ export default function PreviewBrowser({
               target="_blank"
               rel="noopener noreferrer"
             >
-              CONTINUE VIA WHATSAPP <span aria-hidden="true">↗</span>
+              CONTINUE VIA WHATSAPP{" "}
+              <FontAwesomeIcon
+                icon={faArrowUpRightFromSquare}
+                aria-hidden="true"
+              />
             </a>
           </div>
         </div>

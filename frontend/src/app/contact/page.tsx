@@ -1,3 +1,5 @@
+import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { Metadata } from "next";
 import { getPublicData } from "@/lib/api";
 import type { ContactData, SiteLink } from "@/lib/types";
@@ -39,7 +41,11 @@ export default async function ContactPage() {
             target={external ? "_blank" : undefined}
             rel={external ? "noopener noreferrer" : undefined}
           >
-            {contact.cta_label} <span aria-hidden="true">↗</span>
+            {contact.cta_label}{" "}
+            <FontAwesomeIcon
+              icon={faArrowUpRightFromSquare}
+              aria-hidden="true"
+            />
           </a>
         </div>
         <figure className="contact-hero__media">
@@ -111,8 +117,11 @@ export default async function ContactPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {(item.label || item.name || "SOCIAL").toUpperCase()}
-                  <span aria-hidden="true">↗</span>
+                  {(item.label || item.name || "SOCIAL").toUpperCase()}{" "}
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    aria-hidden="true"
+                  />
                 </a>
               </li>
             ))}

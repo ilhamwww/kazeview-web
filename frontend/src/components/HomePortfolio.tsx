@@ -1,5 +1,7 @@
 "use client";
 
+import { faPlay } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import type { CollectionItem } from "@/lib/types";
 
@@ -96,9 +98,7 @@ export default function HomePortfolio({
               {isFilm && (
                 <>
                   <span className="portfolio-play" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M7 4.8v14.4L19 12 7 4.8Z" />
-                    </svg>
+                    <FontAwesomeIcon icon={faPlay} />
                   </span>
                   {item.duration && (
                     <span className="portfolio-duration" aria-hidden="true">

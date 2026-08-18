@@ -361,35 +361,14 @@ button {
     width: 44px;
     height: 44px;
     padding: 12px 8px;
+    color: #fff;
     cursor: pointer;
     background: transparent;
 }
 
-.menu-toggle>span:not(.sr-only) {
-    position: absolute;
-    right: 8px;
-    width: 27px;
-    height: 1px;
-    background: #fff;
-    transition: transform var(--transition-fast), top var(--transition-fast);
-}
-
-.menu-toggle>span:nth-child(2) {
-    top: 17px;
-}
-
-.menu-toggle>span:nth-child(3) {
-    top: 26px;
-}
-
-.menu-open .menu-toggle>span:nth-child(2) {
-    top: 22px;
-    transform: rotate(45deg);
-}
-
-.menu-open .menu-toggle>span:nth-child(3) {
-    top: 22px;
-    transform: rotate(-45deg);
+.menu-toggle .svg-inline--fa {
+    width: 24px;
+    height: 24px;
 }
 
 .site-footer {

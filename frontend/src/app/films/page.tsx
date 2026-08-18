@@ -1,3 +1,5 @@
+import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { Metadata } from "next";
 import Link from "next/link";
 import FilmsShowcase from "@/components/FilmsShowcase";
@@ -70,7 +72,11 @@ export default async function FilmsPage() {
                         : undefined
                     }
                   >
-                    WATCH FILM <span aria-hidden="true">↗</span>
+                    WATCH FILM{" "}
+                    <FontAwesomeIcon
+                      icon={faArrowUpRightFromSquare}
+                      aria-hidden="true"
+                    />
                   </a>
                 )}
               </div>
@@ -100,7 +106,11 @@ export default async function FilmsPage() {
           </h1>
           <p>New films are currently in production.</p>
           <Link href="/contact">
-            START A PROJECT <span aria-hidden="true">↗</span>
+            START A PROJECT{" "}
+            <FontAwesomeIcon
+              icon={faArrowUpRightFromSquare}
+              aria-hidden="true"
+            />
           </Link>
         </section>
       )}
