@@ -71,6 +71,83 @@ Forms\Components\FileUpload::make('hero_image')
 
                     ]),
 
+                Forms\Components\Section::make('Watermark Semua Preview')
+                    ->description('Satu watermark global untuk seluruh lightbox detail foto pada semua event preview. File foto dan thumbnail tidak dimodifikasi.')
+                    ->columns(3)
+                    ->schema([
+                        Forms\Components\Toggle::make('lightbox_watermark_enabled')
+                            ->label('Aktifkan watermark global')
+                            ->helperText('Jika aktif, watermark tampil pada semua detail foto preview.')
+                            ->live()
+                            ->default(false)
+                            ->columnSpanFull(),
+                        Forms\Components\FileUpload::make('lightbox_watermark_image')
+                            ->label('Gambar Watermark Global')
+                            ->helperText('Gunakan PNG atau WebP transparan. Maksimal 2 MB.')
+                            ->disk('public')
+                            ->directory('watermarks')
+                            ->image()
+                            ->acceptedFileTypes(['image/png', 'image/webp'])
+                            ->maxSize(2048)
+                            ->imagePreviewHeight('120')
+                            ->downloadable()
+                            ->openable()
+                            ->required(
+                                fn ($get): bool =>
+                                    (bool) $get('lightbox_watermark_enabled'),
+                            )
+                            ->visible(
+                                fn ($get): bool =>
+                                    (bool) $get('lightbox_watermark_enabled'),
+                            )
+                            ->columnSpanFull(),
+                        Forms\Components\Select::make('lightbox_watermark_position')
+                            ->label('Posisi Watermark')
+                            ->options([
+                                'top-left' => 'Kiri Atas',
+                                'top-center' => 'Tengah Atas',
+                                'top-right' => 'Kanan Atas',
+                                'center-left' => 'Kiri Tengah',
+                                'center' => 'Tengah',
+                                'center-right' => 'Kanan Tengah',
+                                'bottom-left' => 'Kiri Bawah',
+                                'bottom-center' => 'Tengah Bawah',
+                                'bottom-right' => 'Kanan Bawah',
+                            ])
+                            ->default('center')
+                            ->required()
+                            ->visible(
+                                fn ($get): bool =>
+                                    (bool) $get('lightbox_watermark_enabled'),
+                            ),
+                        Forms\Components\TextInput::make('lightbox_watermark_size')
+                            ->label('Ukuran Watermark')
+                            ->helperText('Lebar relatif terhadap foto (5–90%).')
+                            ->numeric()
+                            ->suffix('%')
+                            ->minValue(5)
+                            ->maxValue(90)
+                            ->default(30)
+                            ->required()
+                            ->visible(
+                                fn ($get): bool =>
+                                    (bool) $get('lightbox_watermark_enabled'),
+                            ),
+                        Forms\Components\TextInput::make('lightbox_watermark_opacity')
+                            ->label('Opacity Watermark')
+                            ->helperText('Transparansi watermark (5–100%).')
+                            ->numeric()
+                            ->suffix('%')
+                            ->minValue(5)
+                            ->maxValue(100)
+                            ->default(65)
+                            ->required()
+                            ->visible(
+                                fn ($get): bool =>
+                                    (bool) $get('lightbox_watermark_enabled'),
+                            ),
+                    ]),
+
                 Forms\Components\Section::make('Link Sosial / Tautan')
                     ->schema([
                         Forms\Components\Repeater::make('links')

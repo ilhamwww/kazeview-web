@@ -118,6 +118,7 @@ class Content extends Model
         static::updating(function ($content) {
             if ($content->isDirty('image')) {
                 $originalImage = $content->getOriginal('image');
+
                 if ($originalImage) {
                     Storage::disk('public')->delete($originalImage);
                 }

@@ -16,6 +16,61 @@
     $coverImage = $content->image
         ? asset('storage/' . $content->image)
         : asset('KAZE_icon.png');
+    $watermarkPositions = [
+        'top-left',
+        'top-center',
+        'top-right',
+        'center-left',
+        'center',
+        'center-right',
+        'bottom-left',
+        'bottom-center',
+        'bottom-right',
+    ];
+    $configuredWatermarkPosition = data_get(
+        $data_web,
+        'lightbox_watermark_position',
+        'center',
+    );
+    $watermarkPosition = in_array(
+        $configuredWatermarkPosition,
+        $watermarkPositions,
+        true,
+    )
+        ? $configuredWatermarkPosition
+        : 'center';
+    $watermarkSize = min(
+        90,
+        max(
+            5,
+            (int) (
+                data_get($data_web, 'lightbox_watermark_size')
+                ?: 30
+            ),
+        ),
+    );
+    $watermarkOpacity = min(
+        100,
+        max(
+            5,
+            (int) (
+                data_get($data_web, 'lightbox_watermark_opacity')
+                ?: 65
+            ),
+        ),
+    );
+    $watermarkImage = data_get(
+        $data_web,
+        'lightbox_watermark_image',
+    );
+    $watermarkEnabled = (bool) data_get(
+        $data_web,
+        'lightbox_watermark_enabled',
+        false,
+    ) && filled($watermarkImage);
+    $watermarkUrl = $watermarkEnabled
+        ? asset('storage/' . $watermarkImage)
+        : null;
 @endphp
 
 @section('preloads')
@@ -102,7 +157,18 @@
         .photo-lightbox__close,.photo-lightbox__nav { border:1px solid rgba(255,255,255,.35); background:rgba(0,0,0,.35); color:#fff; cursor:pointer; }
         .photo-lightbox__close { width:44px;height:44px;font-size:1.5rem; }
         .photo-lightbox__stage { position:relative; min-height:0; display:flex; align-items:center; justify-content:center; padding:0 4rem; }
-        .photo-lightbox__image { max-width:100%; max-height:calc(100vh - 150px); object-fit:contain; }
+        .photo-lightbox__frame { position:relative; display:inline-flex; max-width:100%; max-height:calc(100vh - 150px); align-items:center; justify-content:center; overflow:hidden; }
+        .photo-lightbox__image { display:block; max-width:100%; max-height:calc(100vh - 150px); object-fit:contain; }
+        .photo-lightbox__watermark { position:absolute; z-index:2; width:var(--watermark-size,30%); max-width:90%; max-height:90%; object-fit:contain; pointer-events:none; user-select:none; opacity:var(--watermark-opacity,.65); }
+        .photo-lightbox__watermark--top-left { top:3%; left:3%; }
+        .photo-lightbox__watermark--top-center { top:3%; left:50%; transform:translateX(-50%); }
+        .photo-lightbox__watermark--top-right { top:3%; right:3%; }
+        .photo-lightbox__watermark--center-left { top:50%; left:3%; transform:translateY(-50%); }
+        .photo-lightbox__watermark--center { top:50%; left:50%; transform:translate(-50%,-50%); }
+        .photo-lightbox__watermark--center-right { top:50%; right:3%; transform:translateY(-50%); }
+        .photo-lightbox__watermark--bottom-left { bottom:3%; left:3%; }
+        .photo-lightbox__watermark--bottom-center { bottom:3%; left:50%; transform:translateX(-50%); }
+        .photo-lightbox__watermark--bottom-right { right:3%; bottom:3%; }
         .photo-lightbox__nav { position:absolute; top:50%; transform:translateY(-50%); width:48px;height:64px;font-size:1.5rem; }
         .photo-lightbox__nav--prev { left:.75rem; } .photo-lightbox__nav--next { right:.75rem; }
         .photo-lightbox__caption { padding:1rem 1.25rem; text-align:center; font:.75rem/1.4 Inter,sans-serif; letter-spacing:.08em; }
@@ -257,7 +323,17 @@
         </div>
         <div class="photo-lightbox__stage">
             <button class="photo-lightbox__nav photo-lightbox__nav--prev" type="button" data-lightbox-prev aria-label="Foto sebelumnya">‹</button>
-            <img class="photo-lightbox__image" data-lightbox-image src="" alt="">
+            <div class="photo-lightbox__frame">
+                <img class="photo-lightbox__image" data-lightbox-image src="" alt="">
+                @if ($watermarkEnabled)
+                    <img class="photo-lightbox__watermark photo-lightbox__watermark--{{ $watermarkPosition }}"
+                        src="{{ $watermarkUrl }}"
+                        alt=""
+                        aria-hidden="true"
+                        draggable="false"
+                        style="--watermark-size:{{ $watermarkSize }}%;--watermark-opacity:{{ $watermarkOpacity / 100 }}">
+                @endif
+            </div>
             <button class="photo-lightbox__nav photo-lightbox__nav--next" type="button" data-lightbox-next aria-label="Foto berikutnya">›</button>
         </div>
         <div class="photo-lightbox__caption" data-lightbox-caption></div>
