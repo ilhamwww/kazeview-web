@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AboutSetting;
 use App\Models\Collection;
+use App\Models\CollectionCategory;
 use App\Models\ContactSetting;
 use App\Models\Content;
 use App\Models\ContentFilterCategory;
@@ -47,9 +48,24 @@ class PublicApiController extends Controller
             ))
             ->values();
 
+        $categories = Schema::hasTable('collection_categories')
+            ? CollectionCategory::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (CollectionCategory $category): array => [
+                    'id' => $category->getKey(),
+                    'name' => $category->name,
+                    'slug' => Str::slug($category->name),
+                ])
+                ->values()
+            : collect();
+
         return $this->respond([
             'site' => $this->site(),
             'collections' => $collections,
+            'categories' => $categories,
         ]);
     }
 

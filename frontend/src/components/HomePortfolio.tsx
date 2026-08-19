@@ -2,32 +2,48 @@
 
 import { faPlay } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useState } from "react";
-import type { CollectionItem } from "@/lib/types";
-
-const filters = [
-  ["all", "ALL"],
-  ["photography", "PHOTOGRAPHY"],
-  ["films", "FILMS"],
-  ["automotive", "AUTOMOTIVE"],
-  ["portraits", "PORTRAITS"],
-  ["events", "EVENTS"],
-] as const;
+import { useMemo, useState } from "react";
+import type {
+  CollectionCategory,
+  CollectionItem,
+} from "@/lib/types";
 
 function category(item: CollectionItem): string {
-  const value = (item.category || "PHOTOGRAPHY").toUpperCase();
-  return ["PHOTOGRAPHY", "AUTOMOTIVE", "PORTRAITS", "EVENTS"].includes(value)
-    ? value
-    : "PHOTOGRAPHY";
+  return (item.category || "PHOTOGRAPHY").trim().toUpperCase();
+}
+
+function categorySlug(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export default function HomePortfolio({
   items,
+  categories,
 }: {
   items: CollectionItem[];
+  categories: CollectionCategory[];
 }) {
   const [filter, setFilter] = useState("all");
   const portfolio = items.filter((item) => item.is_active);
+  const filters = useMemo(
+    () => [
+      ["all", "ALL"],
+      ["photography", "PHOTOGRAPHY"],
+      ["films", "FILMS"],
+      ...categories
+        .filter(
+          (item) =>
+            !["photography", "films"].includes(item.slug),
+        )
+        .map((item) => [item.slug, item.name.toUpperCase()]),
+    ],
+    [categories],
+  );
 
   return (
     <>
@@ -58,7 +74,7 @@ export default function HomePortfolio({
           const itemCategory = category(item);
           const tags = [
             isFilm ? "films" : "photography",
-            itemCategory.toLowerCase(),
+            categorySlug(itemCategory),
           ];
           const hidden = filter !== "all" && !tags.includes(filter);
 

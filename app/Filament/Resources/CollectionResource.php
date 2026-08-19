@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Models\Collection;
+use App\Models\CollectionCategory;
 use App\Filament\Resources\CollectionResource\Pages;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -32,13 +33,67 @@ class CollectionResource extends Resource
                         ->maxLength(255),
                     Forms\Components\Select::make('category')
                         ->label('Kategori')
-                        ->options([
-                            'PHOTOGRAPHY' => 'PHOTOGRAPHY',
-                            'AUTOMOTIVE' => 'AUTOMOTIVE',
-                            'PORTRAITS' => 'PORTRAITS',
-                            'EVENTS' => 'EVENTS',
-                        ])
+                        ->options(
+                            fn (?Collection $record): array => CollectionCategory::query()
+                                ->where(function ($query) use ($record): void {
+                                    $query
+                                        ->where('is_active', true)
+                                        ->when(
+                                            filled($record?->category),
+                                            fn ($query) => $query->orWhere(
+                                                'name',
+                                                $record->category,
+                                            ),
+                                        );
+                                })
+                                ->orderBy('sort_order')
+                                ->orderBy('name')
+                                ->pluck('name', 'name')
+                                ->all(),
+                        )
                         ->default('PHOTOGRAPHY')
+                        ->searchable()
+                        ->preload()
+                        ->createOptionForm([
+                            Forms\Components\TextInput::make('name')
+                                ->label('Nama Kategori Baru')
+                                ->placeholder('Contoh: WEDDING')
+                                ->helperText(
+                                    'Kategori akan disimpan ke Master Kategori Collection.',
+                                )
+                                ->required()
+                                ->maxLength(30)
+                                ->dehydrateStateUsing(
+                                    fn (?string $state): string =>
+                                        mb_strtoupper(trim((string) $state)),
+                                ),
+                            Forms\Components\Toggle::make('is_active')
+                                ->label('Aktif')
+                                ->default(true)
+                                ->required(),
+                        ])
+                        ->createOptionUsing(function (array $data): string {
+                            $name = mb_strtoupper(trim((string) $data['name']));
+
+                            $category = CollectionCategory::query()->firstOrCreate(
+                                ['name' => $name],
+                                [
+                                    'sort_order' => ((int) CollectionCategory::query()
+                                        ->max('sort_order')) + 1,
+                                    'is_active' => (bool) ($data['is_active'] ?? true),
+                                ],
+                            );
+
+                            return $category->name;
+                        })
+                        ->createOptionAction(
+                            fn ($action) => $action
+                                ->label('Tambah kategori baru')
+                                ->modalHeading('Tambah Kategori Collection'),
+                        )
+                        ->helperText(
+                            'Pilih dari master atau klik tambah untuk menyimpan kategori baru.',
+                        )
                         ->required(),
                     Forms\Components\Select::make('media_type')
                         ->label('Tipe Media')

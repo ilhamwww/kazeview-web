@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AboutSetting;
+use App\Models\CollectionCategory;
 use App\Models\ContactSetting;
 use App\Models\Content;
 use App\Models\ContentFilterCategory;
@@ -21,6 +22,14 @@ class HomeController extends Controller
         $data_web = DB::table('website_settings')->get()->first();
         $data_links = $data_web ? json_decode($data_web->links, true) : null;
         $data_COLLECTIONS = DB::table('collections')->orderBy('urut', 'asc')->get();
+        $collectionCategories = Schema::hasTable('collection_categories')
+            ? CollectionCategory::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
+
         if ($data_links === null) {
             $data_links = [];
         }
@@ -28,6 +37,7 @@ class HomeController extends Controller
         return view(view: 'landingpage.index')
             ->with('data_web', $data_web)
             ->with('data_links', $data_links)
+            ->with('collectionCategories', $collectionCategories)
             ->with('galleryImages', $data_COLLECTIONS);
     }
 

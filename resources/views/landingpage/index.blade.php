@@ -15,9 +15,7 @@
         )
         ->map(function ($item) {
             $category = strtoupper(trim((string) ($item->category ?? 'PHOTOGRAPHY')));
-            $category = in_array($category, ['PHOTOGRAPHY', 'AUTOMOTIVE', 'PORTRAITS', 'EVENTS'], true)
-                ? $category
-                : 'PHOTOGRAPHY';
+            $category = $category !== '' ? $category : 'PHOTOGRAPHY';
             $mediaType = strtoupper(trim((string) ($item->media_type ?? 'PHOTOGRAPHY')));
             $mediaType = in_array($mediaType, ['PHOTOGRAPHY', 'FILM'], true) ? $mediaType : 'PHOTOGRAPHY';
 
@@ -33,7 +31,7 @@
                 'title' => strtoupper(trim((string) ($item->title ?? 'KAZEVIEW'))),
                 'link' => !empty($item->link) ? $item->link : '#work',
                 'category' => $category,
-                'category_slug' => strtolower($category),
+                'category_slug' => \Illuminate\Support\Str::slug($category),
                 'media_type' => $mediaType,
                 'duration' => $item->duration ?? null,
                 'year' => $item->project_year
@@ -93,6 +91,19 @@
     $secondaryTiles = $featuredMedia->slice(1, 4)->values();
 
     $portfolioMedia = $media->reject(fn($item) => $item['id'] === $featured['id'])->values();
+
+    $homeFilters = collect([
+        ['value' => 'all', 'label' => 'ALL'],
+        ['value' => 'photography', 'label' => 'PHOTOGRAPHY'],
+        ['value' => 'films', 'label' => 'FILMS'],
+    ])->concat(
+        collect($collectionCategories ?? [])
+            ->map(fn($category) => [
+                'value' => \Illuminate\Support\Str::slug($category->name),
+                'label' => strtoupper($category->name),
+            ])
+            ->reject(fn($filter) => in_array($filter['value'], ['photography', 'films'], true)),
+    )->unique('value')->values();
 @endphp
 
 @section('preloads')
@@ -151,11 +162,12 @@
 
     <nav class="home-filter-bar" aria-label="Filter portfolio">
         <ul class="home-filter-list">
-            @foreach (['all' => 'ALL', 'photography' => 'PHOTOGRAPHY', 'films' => 'FILMS', 'automotive' => 'AUTOMOTIVE', 'portraits' => 'PORTRAITS', 'events' => 'EVENTS'] as $value => $label)
+            @foreach ($homeFilters as $filter)
                 <li>
                     <button class="filter-button {{ $loop->first ? 'is-active' : '' }}" type="button"
-                        data-home-filter="{{ $value }}" aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
-                        {{ $label }}
+                        data-home-filter="{{ $filter['value'] }}"
+                        aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
+                        {{ $filter['label'] }}
                     </button>
                 </li>
             @endforeach

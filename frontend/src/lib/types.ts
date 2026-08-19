@@ -55,6 +55,12 @@ export interface CollectionItem {
   sort_order: number | null;
 }
 
+export interface CollectionCategory {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export interface FilterCategory {
   id: number;
   name: string;
@@ -90,6 +96,7 @@ export interface BootstrapData {
 export interface HomeData {
   site: Site;
   collections: CollectionItem[];
+  categories: CollectionCategory[];
 }
 
 export interface FilmsData {

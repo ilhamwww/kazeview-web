@@ -134,7 +134,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <HomePortfolio items={portfolio} />
+      <HomePortfolio items={portfolio} categories={data.categories || []} />
 
       <section id="about" className="sr-only" aria-label="About KAZEVIEW">
         <h2>About KAZEVIEW</h2>
