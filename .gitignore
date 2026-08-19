@@ -23,3 +23,4 @@ yarn-error.log
 /.zed
 .deploy/kazeview-next.nginx.conf
 .clinerules/workflows/ssh_server.md
+.deploy/NEXTJS_CSS_404_RUNBOOK.md
