@@ -33,8 +33,6 @@ export default function HomePortfolio({
   const filters = useMemo(
     () => [
       ["all", "ALL"],
-      ["photography", "PHOTOGRAPHY"],
-      ["films", "FILMS"],
       ...categories
         .filter(
           (item) =>

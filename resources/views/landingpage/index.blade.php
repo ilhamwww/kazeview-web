@@ -94,8 +94,6 @@
 
     $homeFilters = collect([
         ['value' => 'all', 'label' => 'ALL'],
-        ['value' => 'photography', 'label' => 'PHOTOGRAPHY'],
-        ['value' => 'films', 'label' => 'FILMS'],
     ])->concat(
         collect($collectionCategories ?? [])
             ->map(fn($category) => [
