@@ -75,7 +75,7 @@ class AdminPanelProvider extends PanelProvider
             ->navigationItems([
                 NavigationItem::make('Server Panel')
                     ->icon('heroicon-o-server-stack')
-                    ->url('http://139.99.33.19:8090/', shouldOpenInNewTab: true)
+                    ->url('https://stats.kazeview.com/', shouldOpenInNewTab: true)
                     ->sort(999)
                     ->visible(
                         fn(): bool => auth()->user()?->hasRole(
