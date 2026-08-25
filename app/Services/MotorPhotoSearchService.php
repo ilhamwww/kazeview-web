@@ -107,7 +107,8 @@ class MotorPhotoSearchService
                 return [
                     'id' => $photo->getKey(),
                     'name' => $photo->file_name,
-                    'url' => $disk->url($photo->storagePath()),
+                    'url' => route('photos.thumbnail', ['photo' => $photo->getKey()]),
+                    'original_url' => $disk->url($photo->storagePath()),
                     'score' => round($rankingScore, 6),
                     'visual_score' => round($score, 6),
                     'motor_identity_score' => round($identity['score'], 6),

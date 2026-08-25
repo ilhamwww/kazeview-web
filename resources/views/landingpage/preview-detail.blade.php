@@ -552,37 +552,34 @@
                 const renderMatches = (matches) => {
                     grid.replaceChildren();
 
-                    for (const match of matches) {
+                    for (const [index, match] of matches.entries()) {
                         if (!match?.url) continue;
 
-                        const link = document.createElement('a');
-                        link.className = 'ai-photo-search__match';
-                        link.href = match.url;
-                        link.target = '_blank';
-                        link.rel = 'noopener';
-                        link.setAttribute('aria-label', `Buka ${match.name || 'foto hasil pencarian'}`);
+                        const card = document.createElement('button');
+                        card.className = 'photo-card';
+                        card.type = 'button';
+                        card.dataset.photoSrc = match.url;
+                        const rawName = match.name || 'PHOTO';
+                        const displayName = rawName.replace(/\.[^/.]+$/, '');
+                        card.dataset.photoName = displayName;
+                        card.dataset.photoNumber = String(index + 1);
+                        card.setAttribute('aria-label', `Buka ${displayName}`);
 
                         const image = document.createElement('img');
                         image.src = match.url;
-                        image.alt = match.name || 'Possible motorcycle match';
+                        image.alt = displayName;
                         image.loading = 'lazy';
                         image.decoding = 'async';
 
-                        const meta = document.createElement('span');
-                        meta.className = 'ai-photo-search__match-meta';
+                        const number = document.createElement('span');
+                        number.className = 'photo-card__number';
+                        number.textContent = `#${index + 1} | ${displayName}`;
 
-                        const name = document.createElement('span');
-                        name.textContent = match.name || 'MATCH';
-
-                        const confidence = document.createElement('span');
-                        confidence.textContent = String(match.confidence || 'possible');
-
-                        meta.append(name, confidence);
-                        link.append(image, meta);
-                        grid.append(link);
+                        card.append(image, number);
+                        grid.append(card);
                     }
 
-                    const renderedCount = grid.querySelectorAll('.ai-photo-search__match').length;
+                    const renderedCount = grid.querySelectorAll('.photo-card').length;
                     count.textContent = `${renderedCount} PHOTOS`;
                     results.classList.add('is-visible');
 
@@ -788,8 +785,10 @@
                 }
             };
 
+            let currentScopeCards = cards;
+
             const show = (index) => {
-                const currentCards = cards();
+                const currentCards = currentScopeCards();
                 if (!currentCards.length) return;
 
                 active = (index + currentCards.length) % currentCards.length;
@@ -797,10 +796,11 @@
                 image.src = card.dataset.photoSrc;
                 image.alt = card.dataset.photoName || '';
                 caption.textContent = card.dataset.photoName || '';
-                count.textContent = `PHOTO ${card.dataset.photoNumber} · ${active + 1} / ${currentCards.length}`;
+                count.textContent = `#${card.dataset.photoNumber} | ${card.dataset.photoName || ''} · ${active + 1} / ${currentCards.length}`;
             };
 
-            const setOpen = (open, index = active) => {
+            const setOpen = (open, index = active, scopeFn = cards) => {
+                currentScopeCards = scopeFn;
                 modal.classList.toggle('is-open', open);
                 modal.setAttribute('aria-hidden', String(!open));
                 document.body.style.overflow = open ? 'hidden' : '';
@@ -994,10 +994,31 @@
                 loadFilter(window.location.href, false);
             });
 
-            gallery.addEventListener('click', (event) => {
+            document.addEventListener('click', (event) => {
                 const card = event.target.closest('[data-photo-src]');
-                if (!card || !gallery.contains(card)) return;
-                setOpen(true, cards().indexOf(card));
+                if (!card) return;
+
+                const aiContainer = card.closest('[data-ai-photo-search-results]') || card.closest('.ai-photo-search');
+                if (aiContainer) {
+                    const aiCards = () => [...aiContainer.querySelectorAll('[data-photo-src]')];
+                    const index = aiCards().indexOf(card);
+                    if (index !== -1) {
+                        setOpen(true, index, aiCards);
+                        return;
+                    }
+                }
+
+                const currentCards = cards();
+                const index = currentCards.indexOf(card);
+                if (index !== -1) {
+                    setOpen(true, index, cards);
+                } else if (card.dataset.photoSrc) {
+                    image.src = card.dataset.photoSrc;
+                    image.alt = card.dataset.photoName || '';
+                    caption.textContent = card.dataset.photoName || '';
+                    count.textContent = `PHOTO ${card.dataset.photoNumber || ''}`;
+                    setOpen(true, 0, () => [card]);
+                }
             });
 
             close.addEventListener('click', () => setOpen(false));

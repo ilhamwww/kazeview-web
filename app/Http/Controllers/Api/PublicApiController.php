@@ -363,7 +363,8 @@ class PublicApiController extends Controller
             ->map(fn (ListDownloaded $photo): array => [
                 'id' => $photo->getKey(),
                 'name' => $photo->file_name,
-                'url' => Storage::disk('public')->url(
+                'url' => route('photos.thumbnail', ['photo' => $photo->getKey()]),
+                'original_url' => Storage::disk('public')->url(
                     $photo->storagePath(),
                 ),
                 'folder' => $hasFolderSchema && $photo->folder

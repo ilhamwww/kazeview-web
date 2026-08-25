@@ -6,17 +6,18 @@
     @php
         $number = ++$photoOffset;
         $thumbnailUrl = route('photos.thumbnail', ['photo' => $photo->getKey()]);
+        $displayName = pathinfo($photo->file_name, PATHINFO_FILENAME);
     @endphp
     <button class="photo-card" type="button"
         data-photo-src="{{ $thumbnailUrl }}"
-        data-photo-name="{{ $photo->file_name }}"
+        data-photo-name="{{ $displayName }}"
         data-photo-number="{{ $number }}"
-        aria-label="Buka thumbnail foto {{ $number }}: {{ $photo->file_name }}">
+        aria-label="Buka thumbnail foto {{ $number }}: {{ $displayName }}">
         <img src="{{ $thumbnailUrl }}"
-            alt="{{ $photo->file_name }}"
+            alt="{{ $displayName }}"
             loading="lazy"
             decoding="async"
             fetchpriority="low">
-        <span class="photo-card__number">#{{ str_pad((string) $number, 3, '0', STR_PAD_LEFT) }}</span>
+        <span class="photo-card__number">#{{ $number }} | {{ $displayName }}</span>
     </button>
 @endforeach
