@@ -377,6 +377,17 @@
                                     <span>Traffic Stats 📊</span>
                                 </a>
 
+                                <a href="/dmca"
+                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-zinc-300 rounded-xl transition duration-200">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                                        </svg>
+                                    </div>
+                                    <span>DMCA & Disclaimer ⚖️</span>
+                                </a>
+
                                 <!-- PWA Install Trigger -->
                                 <button type="button"
                                     @click="window.dispatchEvent(new CustomEvent('trigger-pwa-install'))"
@@ -463,6 +474,17 @@
                                         </svg>
                                     </div>
                                     <span>Traffic Stats 📊</span>
+                                </a>
+
+                                <a href="/dmca"
+                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-zinc-300 rounded-xl transition duration-200">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                                        </svg>
+                                    </div>
+                                    <span>DMCA & Disclaimer ⚖️</span>
                                 </a>
 
                                 <!-- PWA Install Trigger -->
@@ -609,6 +631,10 @@
                         <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
                         <span class="flex-1">Live Traffic Stats</span>
                     </a>
+                    <a href="/dmca" class="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold active:bg-white/5">
+                        <svg class="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                        <span class="flex-1">DMCA & Copyright</span>
+                    </a>
                     @auth
                         <form action="{{ route('clear.cache') }}" method="GET">
                             @csrf
@@ -683,6 +709,29 @@
     @endauth
 
     {{ $slot }}
+
+    {{-- Global Site Footer (Hidden on watch video player to keep full immersion) --}}
+    @if(!str_contains(request()->url(), '/movie/') && !str_contains(request()->url(), '/episode/') && !str_contains(request()->url(), '/drama/'))
+        <footer class="w-full border-t border-white/5 bg-black/40 text-center py-8 px-4 text-xs text-zinc-500 space-y-2 mt-auto">
+            <div class="flex items-center justify-center gap-3 sm:gap-4 flex-wrap text-zinc-400 font-medium">
+                <a href="/" class="hover:text-white transition">Home</a>
+                <span>•</span>
+                <a href="/movies" class="hover:text-white transition">Movies</a>
+                <span>•</span>
+                <a href="/tv-series" class="hover:text-white transition">TV Series</a>
+                <span>•</span>
+                <a href="/dracin" class="hover:text-white transition">Dracin</a>
+                <span>•</span>
+                <a href="/anime" class="hover:text-white transition">Anime</a>
+                <span>•</span>
+                <a href="/traffic" class="hover:text-white transition">Live Traffic</a>
+                <span>•</span>
+                <a href="/dmca" class="text-red-500 hover:text-red-400 font-bold transition">DMCA & Disclaimer</a>
+            </div>
+            <p class="text-[11px] text-zinc-600">Disclaimer: KZSTRM does not store any files on its servers. All contents are provided by non-affiliated third parties.</p>
+            <p class="text-[10px] text-zinc-600">© {{ date('Y') }} KZSTRM. All Rights Reserved.</p>
+        </footer>
+    @endif
 
     <!-- Search Modal Overlay -->
     <div x-show="searchOpen"

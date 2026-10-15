@@ -374,6 +374,14 @@ Route::get('/traffic', function () {
     ])->render());
 })->name('streaming.traffic.public');
 
+// Public DMCA Takedown & Copyright Policy (100% PUBLIC)
+Route::get('/dmca', function () {
+    return response(view('filament.streaming.layout', [
+        'title' => 'DMCA & Copyright Policy - KZSTRM',
+        'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.dmca')->render())
+    ])->render());
+})->name('streaming.dmca');
+
 Route::get('/stats', fn() => redirect('/traffic'));
 Route::get('/bookmark', fn() => redirect('/watchlist'));
 Route::get('/bookmarks', fn() => redirect('/watchlist'));
