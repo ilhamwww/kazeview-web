@@ -1,8 +1,8 @@
 {
-  "name": "KZSTRM — Streaming Film, Series, Dracin & Anime",
+  "name": "KZSTRM — Streaming Film, Series, Dracin, Anime & Live TV",
   "short_name": "KZSTRM",
-  "description": "Platform streaming film, serial TV, drama China pendek (dracin), dan anime 720p HD terlengkap.",
-  "start_url": "/streaming",
+  "description": "Platform privat streaming film, serial TV, drama China pendek, anime, dan siaran langsung TV 24 jam.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
@@ -32,31 +32,38 @@
   ],
   "shortcuts": [
     {
+      "name": "Live TV 24 Jam",
+      "short_name": "Live TV",
+      "description": "Nonton TV Indonesia & 170+ Negara Dunia",
+      "url": "/tv",
+      "icons": [{ "src": "/icons/kaze-app-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Movies",
       "short_name": "Movies",
       "description": "Nonton Film Bioskop & Movie Terbaru",
-      "url": "/streaming/movies",
+      "url": "/movies",
       "icons": [{ "src": "/icons/kaze-app-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Dracin Vertikal",
       "short_name": "Dracin",
       "description": "Nonton Short Drama Vertikal Fullscreen",
-      "url": "/streaming/dracin",
+      "url": "/dracin",
       "icons": [{ "src": "/icons/kaze-app-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Anime 720p HD",
       "short_name": "Anime",
       "description": "Koleksi Anime Lengkap Otakudesu",
-      "url": "/streaming/anime",
+      "url": "/anime",
       "icons": [{ "src": "/icons/kaze-app-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Daftar Tontonan",
       "short_name": "Watchlist",
       "description": "Lihat Daftar Tontonan & Bookmark Saya",
-      "url": "/streaming/watchlist",
+      "url": "/watchlist",
       "icons": [{ "src": "/icons/kaze-app-192.png", "sizes": "192x192" }]
     }
   ]
