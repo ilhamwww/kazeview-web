@@ -35,14 +35,18 @@
              x-transition:leave="transition ease-in duration-500" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
              class="absolute inset-0" @if($index !== 0) style="display:none;" @endif>
 
-            <img src="{{ $hero['banner'] ?: ($hero['thumbnail'] ?? '') }}" alt="{{ $hero['title'] ?? '' }}"
-                 class="absolute inset-0 w-full h-full object-cover object-top md:object-center"
-                 @if($index === 0) fetchpriority="high" @else loading="lazy" @endif>
+            {{-- Background Picture: Poster vertikal di HP agar objek utama presisi di tengah, Banner landscape di Desktop --}}
+            <picture class="absolute inset-0 w-full h-full">
+                <source media="(max-width: 767px)" srcset="{{ $hero['thumbnail'] ?: $hero['banner'] }}">
+                <img src="{{ $hero['banner'] ?: ($hero['thumbnail'] ?? '') }}" alt="{{ $hero['title'] ?? '' }}"
+                     class="w-full h-full object-cover object-center"
+                     @if($index === 0) fetchpriority="high" @else loading="lazy" @endif>
+            </picture>
 
-            {{-- Overlay --}}
-            <div class="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/80 to-transparent md:w-[75%]"></div>
-            <div class="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-[#050505]/80 to-transparent"></div>
-            <div class="absolute bottom-0 inset-x-0 h-[65%] bg-gradient-to-t from-[#050505] via-[#050505]/85 to-transparent"></div>
+            {{-- Overlay: Gradien kiri hanya di desktop (agar di HP gambar tidak tertutup hitam di sisi kiri/tengah) --}}
+            <div class="hidden md:block absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/80 to-transparent md:w-[75%]"></div>
+            <div class="absolute top-0 inset-x-0 h-32 md:h-40 bg-gradient-to-b from-[#050505]/85 via-[#050505]/40 to-transparent"></div>
+            <div class="absolute bottom-0 inset-x-0 h-[65%] md:h-[60%] bg-gradient-to-t from-[#050505] via-[#050505]/85 via-40% to-transparent"></div>
 
             <div class="relative z-10 h-full w-full max-w-[1800px] mx-auto px-5 md:px-10 flex flex-col justify-end pb-24 md:pb-32">
                 <div class="max-w-2xl">
