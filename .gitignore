@@ -28,3 +28,7 @@ yarn-error.log
 *.bak*
 Dockerfile
 docker-compose*
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
