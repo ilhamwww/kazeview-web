@@ -287,13 +287,23 @@
 
                 {{-- Channel Info Card --}}
                 <div class="p-6 rounded-3xl bg-zinc-900/40 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                    <div class="w-16 h-16 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center p-2.5 shrink-0 shadow-lg">
-                        <img :src="channel.logo" :alt="channel.name" class="max-h-full max-w-full object-contain filter drop-shadow">
+                    <div class="w-16 h-16 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center p-2.5 shrink-0 shadow-lg relative overflow-hidden">
+                        <template x-if="channel.logo">
+                            <img :src="channel.logo" :alt="channel.name" class="max-h-full max-w-full object-contain filter drop-shadow">
+                        </template>
+                        <template x-if="!channel.logo">
+                            <div class="flex flex-col items-center justify-center text-center">
+                                <span class="text-2xl filter drop-shadow" x-text="channel.flag || '📺'"></span>
+                                <span class="text-[9px] font-black uppercase text-zinc-400" x-text="channel.country ? channel.country.toUpperCase() : 'TV'"></span>
+                            </div>
+                        </template>
                     </div>
                     <div class="space-y-1.5 flex-1">
                         <div class="flex items-center gap-2.5 flex-wrap">
+                            <span class="text-xl" x-text="channel.flag"></span>
                             <h2 class="text-xl md:text-2xl font-black text-white" x-text="channel.name"></h2>
                             <span class="text-xs px-2.5 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold" x-text="channel.category"></span>
+                            <span class="text-xs px-2 py-0.5 rounded-md bg-red-950/40 border border-red-500/30 text-red-400 font-mono font-bold" x-text="channel.country_name || channel.country"></span>
                         </div>
                         <p class="text-xs md:text-sm text-zinc-400 font-medium" x-text="channel.tagline"></p>
                         <p class="text-xs text-zinc-500 leading-relaxed pt-1" x-text="channel.description"></p>
@@ -306,9 +316,15 @@
                 <div class="flex items-center justify-between pb-1">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
                         <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z"/></svg>
-                        Remote TV (Ganti Channel)
+                        <span>Remote TV</span>
+                        <span class="text-xs px-2 py-0.2 rounded bg-zinc-800 text-zinc-300 font-normal" x-text="(channel.flag || '') + ' ' + (channel.country_name || '')"></span>
                     </h3>
-                    <span class="text-[11px] text-zinc-500 font-medium" x-text="allChannels.length + ' Channel'"></span>
+                    <a :href="'/tv' + (channel.country ? '?country=' + channel.country : '')"
+                       class="text-[11px] text-red-400 hover:text-red-300 font-semibold flex items-center gap-1">
+                        <span>Semua</span>
+                        <span class="text-[10px] text-zinc-500" x-text="'(' + allChannels.length + ')'"></span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                    </a>
                 </div>
 
                 {{-- Scrollable Remote List --}}
@@ -318,8 +334,13 @@
                            :class="ch.slug === channel.slug ? 'bg-red-600/15 border-red-500/40 text-white shadow-lg shadow-red-950/20' : 'bg-zinc-900/40 hover:bg-zinc-800/60 border-zinc-800/80 text-zinc-300'"
                            class="flex items-center gap-3 p-2.5 rounded-2xl border transition duration-200 group">
                             {{-- Channel Logo Thumbnail --}}
-                            <div class="w-10 h-10 rounded-xl bg-zinc-950 border border-zinc-800/80 flex items-center justify-center p-1.5 shrink-0">
-                                <img :src="ch.logo" :alt="ch.name" class="max-h-full max-w-full object-contain" loading="lazy">
+                            <div class="w-10 h-10 rounded-xl bg-zinc-950 border border-zinc-800/80 flex items-center justify-center p-1.5 shrink-0 relative overflow-hidden">
+                                <template x-if="ch.logo">
+                                    <img :src="ch.logo" :alt="ch.name" class="max-h-full max-w-full object-contain" loading="lazy">
+                                </template>
+                                <template x-if="!ch.logo">
+                                    <span class="text-lg" x-text="ch.flag || '📺'"></span>
+                                </template>
                             </div>
 
                             {{-- Channel Title & Tagline --}}

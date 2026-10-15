@@ -7,7 +7,7 @@ class LiveTvService
     /**
      * Daftar stasiun TV Indonesia lengkap dengan metadata logo, kategori, dan multiple stream server.
      */
-    public static function getChannels(): array
+    public static function getCuratedChannels(): array
     {
         return [
             [
@@ -407,62 +407,433 @@ class LiveTvService
     /**
      * Dapatkan semua channel
      */
-    public static function getAll(): array
+    /**
+     * Cache metadata seluruh negara dari TV Garden
+     */
+    protected static ?array $countriesMetaCache = null;
+
+    public static function getCountriesMetadata(): array
     {
-        return self::getChannels();
+        if (self::$countriesMetaCache !== null) {
+            return self::$countriesMetaCache;
+        }
+
+        $file = storage_path('app/tv_garden/countries_metadata.json');
+        if (!file_exists($file)) {
+            $dir = dirname($file);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0777, true);
+            }
+            $raw = @file_get_contents('https://tvgarden.world/api/tv/countries_metadata.json');
+            if ($raw) {
+                if (substr($raw, 0, 2) === "\x1f\x8b") {
+                    $raw = gzdecode($raw);
+                }
+                file_put_contents($file, $raw);
+            }
+        }
+
+        if (file_exists($file)) {
+            $raw = file_get_contents($file);
+            if (substr($raw, 0, 2) === "\x1f\x8b") {
+                $raw = gzdecode($raw);
+            }
+            self::$countriesMetaCache = json_decode($raw, true) ?: [];
+        } else {
+            self::$countriesMetaCache = [];
+        }
+
+        return self::$countriesMetaCache;
     }
 
     /**
-     * Dapatkan daftar kategori yang tersedia
+     * Dapatkan daftar negara yang memiliki channel TV aktif
      */
-    public static function getCategories(): array
+    public static function getCountries(): array
     {
-        $categories = array_unique(array_column(self::getChannels(), 'category'));
-        return array_values($categories);
+        $popularCodes = ['id', 'jp', 'kr', 'sa', 'us', 'uk', 'my', 'sg', 'th', 'tr', 'de', 'fr'];
+        $meta = self::getCountriesMetadata();
+
+        $popular = [];
+        foreach ($popularCodes as $code) {
+            $upper = strtoupper($code);
+            $count = $meta[$upper]['channelCount'] ?? 0;
+            if ($code === 'id') {
+                $count += count(self::getCuratedChannels());
+            }
+            $popular[] = [
+                'code' => $code,
+                'name' => self::getCountryName($code),
+                'flag' => self::getCountryFlag($code),
+                'channel_count' => $count,
+                'is_popular' => true,
+            ];
+        }
+
+        $others = [];
+        foreach ($meta as $code => $info) {
+            $lower = strtolower($code);
+            if (in_array($lower, $popularCodes)) continue;
+            if (empty($info['hasChannels']) || empty($info['channelCount'])) continue;
+
+            $others[] = [
+                'code' => $lower,
+                'name' => self::getCountryName($lower),
+                'flag' => self::getCountryFlag($lower),
+                'channel_count' => (int)$info['channelCount'],
+                'is_popular' => false,
+            ];
+        }
+
+        usort($others, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+        return array_merge($popular, $others);
+    }
+
+    public static function getCountryInfo(string $code): array
+    {
+        $code = strtolower(trim($code ?: 'id'));
+        $meta = self::getCountriesMetadata();
+        $upper = strtoupper($code);
+        $count = $meta[$upper]['channelCount'] ?? 0;
+        if ($code === 'id') {
+            $count += count(self::getCuratedChannels());
+        }
+
+        return [
+            'code' => $code,
+            'name' => self::getCountryName($code),
+            'flag' => self::getCountryFlag($code),
+            'channel_count' => $count,
+            'capital' => $meta[$upper]['capital'] ?? null,
+            'time_zone' => $meta[$upper]['timeZone'] ?? null,
+        ];
+    }
+
+    public static function getCountryFlag(string $code): string
+    {
+        $code = strtoupper(trim($code));
+        if ($code === 'UK') $code = 'GB';
+        if (strlen($code) !== 2) return '🌐';
+        return mb_chr(ord($code[0]) - ord('A') + 0x1F1E6) . mb_chr(ord($code[1]) - ord('A') + 0x1F1E6);
+    }
+
+    public static function getCountryName(string $code): string
+    {
+        $code = strtolower(trim($code));
+        $names = [
+            'id' => 'Indonesia',
+            'jp' => 'Jepang',
+            'kr' => 'Korea Selatan',
+            'sa' => 'Arab Saudi',
+            'us' => 'Amerika Serikat',
+            'uk' => 'Inggris (UK)',
+            'my' => 'Malaysia',
+            'sg' => 'Singapura',
+            'th' => 'Thailand',
+            'tr' => 'Turki',
+            'de' => 'Jerman',
+            'fr' => 'Prancis',
+            'it' => 'Italia',
+            'es' => 'Spanyol',
+            'au' => 'Australia',
+            'ca' => 'Kanada',
+            'br' => 'Brasil',
+            'ru' => 'Rusia',
+            'cn' => 'China',
+            'in' => 'India',
+            'nl' => 'Belanda',
+            'ph' => 'Filipina',
+            'vn' => 'Vietnam',
+            'ae' => 'Uni Emirat Arab',
+            'eg' => 'Mesir',
+            'ps' => 'Palestina',
+        ];
+
+        if (isset($names[$code])) return $names[$code];
+
+        $meta = self::getCountriesMetadata();
+        $upper = strtoupper($code);
+        return $meta[$upper]['country'] ?? strtoupper($code);
     }
 
     /**
-     * Dapatkan channel berdasarkan slug / ID
+     * Dapatkan daftar channel dari TV Garden untuk negara tertentu
      */
-    public static function findBySlug(string $slug): ?array
+    public static function getTvGardenChannels(string $country = 'id'): array
     {
-        $channels = self::getChannels();
-        foreach ($channels as $channel) {
+        $country = strtolower(trim($country ?: 'id'));
+        $cacheFile = storage_path('app/tv_garden/countries/' . $country . '.json');
+
+        if (!file_exists($cacheFile)) {
+            $dir = dirname($cacheFile);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0777, true);
+            }
+
+            $url = 'https://tvgarden.world/api/tv/countries/' . $country . '.json';
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_ENCODING, '');
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $raw = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($code === 200 && !empty($raw)) {
+                if (substr($raw, 0, 2) === "\x1f\x8b") {
+                    $raw = gzdecode($raw);
+                }
+                file_put_contents($cacheFile, $raw);
+            } else {
+                return [];
+            }
+        }
+
+        $raw = file_get_contents($cacheFile);
+        if (substr($raw, 0, 2) === "\x1f\x8b") {
+            $raw = gzdecode($raw);
+        }
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            return [];
+        }
+
+        $flag = self::getCountryFlag($country);
+        $countryName = self::getCountryName($country);
+        $channels = [];
+
+        foreach ($data as $item) {
+            $nanoid = $item['nanoid'] ?? null;
+            if (!$nanoid) continue;
+
+            $name = trim($item['name'] ?? '[Tanpa Nama]');
+            $streamUrls = is_array($item['stream_urls'] ?? null) ? array_values(array_filter($item['stream_urls'])) : [];
+            $youtubeUrls = is_array($item['youtube_urls'] ?? null) ? array_values(array_filter($item['youtube_urls'])) : [];
+
+            if (empty($streamUrls) && empty($youtubeUrls)) {
+                continue;
+            }
+
+            $servers = [];
+            $srvIdx = 1;
+            foreach ($streamUrls as $sUrl) {
+                $servers[] = [
+                    'name' => 'Server ' . $srvIdx++ . ' (HLS Direct)',
+                    'type' => 'hls',
+                    'url' => $sUrl,
+                    'quality' => 'HD'
+                ];
+            }
+            foreach ($youtubeUrls as $yUrl) {
+                $embedUrl = $yUrl;
+                if (!str_contains($embedUrl, 'origin=')) {
+                    $sep = str_contains($embedUrl, '?') ? '&' : '?';
+                    $embedUrl .= $sep . 'autoplay=1&mute=0&playsinline=1&origin=https://streaming.kazeview.com';
+                }
+                $servers[] = [
+                    'name' => 'Server ' . $srvIdx++ . ' (YouTube Live)',
+                    'type' => 'youtube',
+                    'url' => $embedUrl,
+                    'quality' => '1080p'
+                ];
+            }
+
+            $category = self::inferCategory($name, $country);
+            $slug = 'tvg-' . $nanoid;
+
+            $channels[] = [
+                'id' => $slug,
+                'name' => $name,
+                'slug' => $slug,
+                'nanoid' => $nanoid,
+                'country' => $country,
+                'country_name' => $countryName,
+                'flag' => $flag,
+                'category' => $category,
+                'tagline' => 'Siaran TV ' . $name . ' (' . $countryName . ')',
+                'logo' => null,
+                'description' => 'Siaran langsung televisi ' . $name . ' asal negara ' . $countryName . ' tanpa jeda buffering.',
+                'servers' => $servers,
+                'is_featured' => false,
+                'is_geo_blocked' => (bool)($item['isGeoBlocked'] ?? false),
+                'source' => 'tvgarden'
+            ];
+        }
+
+        return $channels;
+    }
+
+    /**
+     * Klasifikasikan kategori secara cerdas
+     */
+    protected static function inferCategory(string $name, string $country): string
+    {
+        $nameLower = strtolower($name);
+        if ($country === 'id') {
+            if (str_contains($nameLower, 'tvri')) {
+                return 'Daerah & TVRI';
+            }
+            if (str_contains($nameLower, 'quran') || str_contains($nameLower, 'rodja') || str_contains($nameLower, 'madani') || str_contains($nameLower, 'ashiil') || str_contains($nameLower, 'islam') || str_contains($nameLower, 'tarim') || str_contains($nameLower, 'al wafa') || str_contains($nameLower, 'sunnah')) {
+                return 'Religi & Islami';
+            }
+            if (str_contains($nameLower, 'musik') || str_contains($nameLower, 'music') || str_contains($nameLower, 'frekuensi')) {
+                return 'Musik & Hiburan';
+            }
+            if (str_contains($nameLower, 'news') || str_contains($nameLower, 'berita')) {
+                return 'Berita & Bisnis';
+            }
+            return 'Daerah & Komunitas';
+        }
+
+        if (str_contains($nameLower, 'news') || str_contains($nameLower, 'berita') || str_contains($nameLower, 'alert') || str_contains($nameLower, 'cnn') || str_contains($nameLower, 'cna') || str_contains($nameLower, 'weather')) {
+            return 'Berita & Informasi';
+        }
+        if (str_contains($nameLower, 'music') || str_contains($nameLower, 'musik') || str_contains($nameLower, 'k-pop') || str_contains($nameLower, 'pop')) {
+            return 'Musik & Hiburan';
+        }
+        if (str_contains($nameLower, 'quran') || str_contains($nameLower, 'islam') || str_contains($nameLower, 'church') || str_contains($nameLower, 'gospel') || str_contains($nameLower, 'pray')) {
+            return 'Religi';
+        }
+        if (str_contains($nameLower, 'kids') || str_contains($nameLower, 'kartun') || str_contains($nameLower, 'cartoon') || str_contains($nameLower, 'anime') || str_contains($nameLower, 'anileap')) {
+            return 'Animasi & Anak';
+        }
+        if (str_contains($nameLower, 'sport') || str_contains($nameLower, 'bola')) {
+            return 'Olahraga';
+        }
+
+        return 'Umum';
+    }
+
+    /**
+     * Dapatkan semua channel (Hybrid untuk ID, TV Garden untuk negara lain)
+     */
+    public static function getChannels(string $country = 'id', ?string $category = null, ?string $search = null): array
+    {
+        $country = strtolower(trim($country ?: 'id'));
+        $channels = [];
+
+        if ($country === 'id') {
+            $curated = self::getCuratedChannels();
+            $tvg = self::getTvGardenChannels('id');
+
+            $curatedNamesMap = [
+                'kompas tv' => true,
+                'metro tv' => true,
+                'tvone' => true,
+                'tvonenews' => true,
+                'tvri' => true,
+                'tvri nasional' => true,
+                'trans7' => true,
+                'trans tv' => true,
+                'sctv' => true,
+                'indosiar' => true,
+                'rcti' => true,
+                'antv' => true,
+                'rtv' => true,
+                'rajawali tv' => true,
+                'inews' => true,
+                'tvri sport' => true,
+                'tvri world' => true,
+                'cnn indonesia' => true,
+                'cnbc indonesia' => true,
+                'btv' => true,
+                'sea today' => true,
+                'indonesiana tv' => true,
+                'indonesiana.tv' => true,
+            ];
+
+            $filteredTvg = [];
+            foreach ($tvg as $t) {
+                $n = strtolower(trim($t['name']));
+                if (isset($curatedNamesMap[$n])) {
+                    continue;
+                }
+                $filteredTvg[] = $t;
+            }
+
+            $channels = array_merge($curated, $filteredTvg);
+        } else {
+            $channels = self::getTvGardenChannels($country);
+        }
+
+        if (!empty($category) && $category !== 'all') {
+            $channels = array_values(array_filter($channels, function ($ch) use ($category) {
+                return strtolower($ch['category']) === strtolower($category);
+            }));
+        }
+
+        if (!empty($search)) {
+            $keyword = strtolower(trim($search));
+            $channels = array_values(array_filter($channels, function ($ch) use ($keyword) {
+                return str_contains(strtolower($ch['name']), $keyword)
+                    || str_contains(strtolower($ch['description'] ?? ''), $keyword)
+                    || str_contains(strtolower($ch['category'] ?? ''), $keyword);
+            }));
+        }
+
+        return $channels;
+    }
+
+    public static function getAll(string $country = 'id'): array
+    {
+        return self::getChannels($country);
+    }
+
+    public static function getCategories(string $country = 'id'): array
+    {
+        $channels = self::getChannels($country);
+        $categories = ['all'];
+
+        foreach ($channels as $ch) {
+            if (!empty($ch['category']) && !in_array($ch['category'], $categories)) {
+                $categories[] = $ch['category'];
+            }
+        }
+
+        return $categories;
+    }
+
+    public static function findBySlug(string $slug, ?string $country = null): ?array
+    {
+        // 1. Cek channel kurasi nasional
+        foreach (self::getCuratedChannels() as $channel) {
             if ($channel['slug'] === $slug || $channel['id'] === $slug) {
                 return $channel;
             }
         }
+
+        // 2. Jika ada parameter negara, cari di negara tersebut
+        if ($country) {
+            foreach (self::getChannels($country) as $channel) {
+                if ($channel['slug'] === $slug || $channel['id'] === $slug || ($channel['nanoid'] ?? null) === $slug) {
+                    return $channel;
+                }
+            }
+        }
+
+        // 3. Cek channel Indonesia
+        foreach (self::getChannels('id') as $channel) {
+            if ($channel['slug'] === $slug || $channel['id'] === $slug || ($channel['nanoid'] ?? null) === $slug) {
+                return $channel;
+            }
+        }
+
+        // 4. Jika slug tvg-*, cari di cache negara populer
+        if (str_starts_with($slug, 'tvg-')) {
+            $nanoid = substr($slug, 4);
+            $popular = ['jp', 'kr', 'sa', 'us', 'uk', 'my', 'sg', 'de', 'fr', 'tr', 'th'];
+            foreach ($popular as $c) {
+                foreach (self::getChannels($c) as $channel) {
+                    if ($channel['slug'] === $slug || ($channel['nanoid'] ?? null) === $nanoid) {
+                        return $channel;
+                    }
+                }
+            }
+        }
+
         return null;
-    }
-
-    /**
-     * Filter channel berdasarkan kategori
-     */
-    public static function getByCategory(string $category): array
-    {
-        if ($category === 'all' || empty($category)) {
-            return self::getChannels();
-        }
-
-        return array_values(array_filter(self::getChannels(), function ($channel) use ($category) {
-            return strtolower($channel['category']) === strtolower($category);
-        }));
-    }
-
-    /**
-     * Cari channel berdasarkan nama / tagline
-     */
-    public static function search(string $keyword): array
-    {
-        $keyword = strtolower(trim($keyword));
-        if (empty($keyword)) {
-            return self::getChannels();
-        }
-
-        return array_values(array_filter(self::getChannels(), function ($channel) use ($keyword) {
-            return str_contains(strtolower($channel['name']), $keyword)
-                || str_contains(strtolower($channel['description']), $keyword)
-                || str_contains(strtolower($channel['category']), $keyword);
-        }));
     }
 }

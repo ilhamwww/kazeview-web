@@ -382,36 +382,71 @@ Route::get('/dmca', function () {
     ])->render());
 })->name('streaming.dmca');
 
-// TV Indonesia Live Streaming Catalog (100% PUBLIC)
-Route::get('/tv', function () {
-    $channels = \App\Services\LiveTvService::getAll();
-    $categories = \App\Services\LiveTvService::getCategories();
+// TV Indonesia & Mancanegara Live Streaming Catalog (100% PUBLIC)
+Route::get('/tv', function (\Illuminate\Http\Request $request) {
+    $country = strtolower($request->query('country', 'id'));
+    $channels = \App\Services\LiveTvService::getChannels($country);
+    $categories = \App\Services\LiveTvService::getCategories($country);
+    $countries = \App\Services\LiveTvService::getCountries();
+    $currentCountry = \App\Services\LiveTvService::getCountryInfo($country);
+    $countryTitle = $currentCountry['name'] ?? 'Indonesia';
+
     return response(view('filament.streaming.layout', [
-        'title' => 'TV Indonesia Live Streaming 24 Jam - KZSTRM',
+        'title' => 'Live TV ' . $countryTitle . ' & Mancanegara Streaming 24 Jam - KZSTRM',
         'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.live-tv', [
             'channels' => $channels,
             'categories' => $categories,
+            'countries' => $countries,
+            'currentCountry' => $currentCountry,
+            'selectedCountry' => $country,
         ])->render())
     ])->render());
 })->name('streaming.tv');
 
-Route::get('/live-tv', fn() => redirect('/tv'));
+Route::get('/live-tv', fn(\Illuminate\Http\Request $request) => redirect('/tv' . ($request->getQueryString() ? '?' . $request->getQueryString() : '')));
 
-// TV Indonesia Live Player (100% PUBLIC)
-Route::get('/tv/{slug}', function ($slug) {
-    $channel = \App\Services\LiveTvService::findBySlug($slug);
+// TV Live Player (100% PUBLIC)
+Route::get('/tv/{slug}', function (\Illuminate\Http\Request $request, $slug) {
+    $country = $request->query('country');
+    $channel = \App\Services\LiveTvService::findBySlug($slug, $country);
     if (!$channel) {
         return redirect('/tv');
     }
-    $allChannels = \App\Services\LiveTvService::getAll();
+    $channelCountry = $channel['country'] ?? 'id';
+    $allChannels = \App\Services\LiveTvService::getChannels($channelCountry);
+    $countries = \App\Services\LiveTvService::getCountries();
+    $currentCountry = \App\Services\LiveTvService::getCountryInfo($channelCountry);
+
     return response(view('filament.streaming.layout', [
-        'title' => 'Nonton ' . $channel['name'] . ' Live Streaming - KZSTRM',
+        'title' => 'Nonton ' . $channel['name'] . ' (' . ($channel['country_name'] ?? 'Live') . ') Live Streaming - KZSTRM',
         'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.watch-tv', [
             'channel' => $channel,
             'allChannels' => $allChannels,
+            'countries' => $countries,
+            'currentCountry' => $currentCountry,
         ])->render())
     ])->render());
 })->name('streaming.tv.watch');
+
+Route::get('/tv/{country}/{slug}', function ($country, $slug) {
+    $channel = \App\Services\LiveTvService::findBySlug($slug, $country);
+    if (!$channel) {
+        return redirect('/tv?country=' . $country);
+    }
+    $allChannels = \App\Services\LiveTvService::getChannels($country);
+    $countries = \App\Services\LiveTvService::getCountries();
+    $currentCountry = \App\Services\LiveTvService::getCountryInfo($country);
+
+    return response(view('filament.streaming.layout', [
+        'title' => 'Nonton ' . $channel['name'] . ' (' . ($channel['country_name'] ?? 'Live') . ') Live Streaming - KZSTRM',
+        'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.watch-tv', [
+            'channel' => $channel,
+            'allChannels' => $allChannels,
+            'countries' => $countries,
+            'currentCountry' => $currentCountry,
+        ])->render())
+    ])->render());
+})->name('streaming.tv.watch.country');
 
 Route::get('/live-tv/{slug}', fn($slug) => redirect('/tv/' . $slug));
 
