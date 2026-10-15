@@ -56,8 +56,8 @@ class GlobalSearchService
                         if (empty($slug)) continue;
 
                         $url = $isSeries
-                            ? url('/streaming/series/' . $slug)
-                            : url('/streaming/movie/' . $slug);
+                            ? url('/series/' . $slug)
+                            : url('/movie/' . $slug);
 
                         $formatted = [
                             'id' => (string) ($item['id'] ?? $slug),
@@ -105,7 +105,7 @@ class GlobalSearchService
                             'year' => (string) ($otaku['status'] ?? 'Anime'),
                             'rating' => !empty($otaku['rating']) && (float)$otaku['rating'] > 0 ? number_format((float)$otaku['rating'], 1) : null,
                             'thumbnail' => $otaku['thumbnail'] ?? null,
-                            'url' => url('/streaming/anime-v2/' . $slug),
+                            'url' => url('/anime-v2/' . $slug),
                             'slug' => $slug,
                             'source_name' => 'Anime V2',
                         ];
@@ -135,7 +135,7 @@ class GlobalSearchService
                             'year' => (string) ($ano['episode'] ?? $ano['status'] ?? 'Anime'),
                             'rating' => null,
                             'thumbnail' => $ano['thumbnail'] ?? null,
-                            'url' => url('/streaming/anime-v3/' . $slug),
+                            'url' => url('/anime-v3/' . $slug),
                             'slug' => $slug,
                             'source_name' => 'Anime V3',
                         ];
@@ -185,7 +185,7 @@ class GlobalSearchService
                                     'year' => $episodes ? "{$episodes} Eps" : 'Dracin',
                                     'rating' => null,
                                     'thumbnail' => $it['coverWap'] ?? $it['cover'] ?? null,
-                                    'url' => url('/streaming/dracin/dramabox/drama/' . $dramaId),
+                                    'url' => url('/dracin/dramabox/drama/' . $dramaId),
                                     'slug' => $dramaId,
                                     'source_name' => 'DramaBox',
                                 ];
@@ -225,7 +225,7 @@ class GlobalSearchService
                                     'year' => 'Dracin',
                                     'rating' => null,
                                     'thumbnail' => $it['cover'] ?? $it['poster'] ?? null,
-                                    'url' => url('/streaming/dracin/reelbuzz/drama/' . $dramaId),
+                                    'url' => url('/dracin/reelbuzz/drama/' . $dramaId),
                                     'slug' => $dramaId,
                                     'source_name' => 'ReelBuzz',
                                 ];
@@ -267,7 +267,7 @@ class GlobalSearchService
                                     'year' => $episodes ? "{$episodes} Eps" : 'Dracin',
                                     'rating' => null,
                                     'thumbnail' => $it['contentCoverUrl'] ?? $it['cover'] ?? null,
-                                    'url' => url('/streaming/dracin/serealplus/drama/' . $dramaId),
+                                    'url' => url('/dracin/serealplus/drama/' . $dramaId),
                                     'slug' => $dramaId,
                                     'source_name' => 'Sereal+',
                                 ];

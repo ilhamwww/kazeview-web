@@ -15,18 +15,11 @@ Route::get(
     PhotoThumbnailController::class,
 )->whereNumber('photo')->name('photos.thumbnail');
 
-Route::get('/', function () {
-    return redirect('/streaming');
-})->name('home.index');
-
-Route::controller(HomeController::class)->group(function () {
-    Route::get('/films', 'films')->name('home.films');
-    Route::get('/about', 'about')->name('home.about');
-    Route::get('/contact', 'contact')->name('home.contact');
-    Route::get('/preview', 'index_product')->name('home.index_product');
-    Route::get('/preview/{content}', 'showPreview')->name('preview.show');
-    // Route::get('/test', 'index_preview')->name('home.index_preview');
-});
+// Legacy redirects from /streaming to clean root URLs
+Route::redirect('/streaming', '/');
+Route::get('/streaming/{any}', function ($any) {
+    return redirect('/' . $any);
+})->where('any', '.*');
 
 Route::prefix('api/v1/public')
     ->middleware('throttle:120,1')
@@ -366,22 +359,8 @@ Route::get('/api/streaming/subtitle', function (\Illuminate\Http\Request $reques
     }
 })->name('api.streaming.subtitle');
 
-// Collections Friendly Redirects
-Route::get('/collection', fn() => redirect('/streaming/collection'));
-Route::get('/collections', fn() => redirect('/streaming/collection'));
-Route::get('/collection/{slug}', fn($slug) => redirect('/streaming/collection/' . $slug));
-Route::get('/collections/{slug}', fn($slug) => redirect('/streaming/collection/' . $slug));
-Route::get('/streaming/collections', fn() => redirect('/streaming/collection'));
-Route::get('/streaming/collections/{slug}', fn($slug) => redirect('/streaming/collection/' . $slug));
-
-// Network Friendly Redirects
-Route::get('/network', fn() => redirect('/streaming/network'));
-Route::get('/networks', fn() => redirect('/streaming/network'));
-Route::get('/network/{slug}', fn($slug) => redirect('/streaming/network/' . $slug))->where('slug', '[a-z0-9-]+');
-Route::get('/streaming/networks', fn() => redirect('/streaming/network'));
-
 // Public Streaming Traffic Stats (100% PUBLIC)
-Route::get('/streaming/traffic', function () {
+Route::get('/traffic', function () {
     $stats = \App\Services\TrafficStatsService::getPublicStats();
     // Leaderboard memuat nama akun, jadi hanya untuk pengguna yang sudah login
     $leaderboard = auth()->check() ? \App\Services\TrafficStatsService::getLeaderboard() : null;
@@ -395,18 +374,11 @@ Route::get('/streaming/traffic', function () {
     ])->render());
 })->name('streaming.traffic.public');
 
-Route::get('/traffic', fn() => redirect('/streaming/traffic'));
-Route::get('/stats', fn() => redirect('/streaming/traffic'));
-
-// Watchlist / Bookmark Friendly Redirects
-Route::get('/watchlist', fn() => redirect('/streaming/watchlist'));
-Route::get('/bookmark', fn() => redirect('/streaming/watchlist'));
-Route::get('/bookmarks', fn() => redirect('/streaming/watchlist'));
-Route::get('/streaming/stats', fn() => redirect('/streaming/traffic'));
-
-// Legacy Anime Detail / Watch redirects to V2 (Server 2)
-Route::get('/streaming/anime/{slug}', fn($slug) => redirect('/streaming/anime-v2/' . $slug))->where('slug', '[a-zA-Z0-9-]+');
-Route::get('/streaming/anime/{anime_slug}/episode/{episode_slug}', fn($anime_slug, $episode_slug) => redirect("/streaming/anime-v2/{$anime_slug}/episode/{$episode_slug}"));
+Route::get('/stats', fn() => redirect('/traffic'));
+Route::get('/bookmark', fn() => redirect('/watchlist'));
+Route::get('/bookmarks', fn() => redirect('/watchlist'));
+Route::get('/collections', fn() => redirect('/collection'));
+Route::get('/networks', fn() => redirect('/network'));
 
 Route::get('/clear-cache', function () {
     \Illuminate\Support\Facades\Cache::flush();

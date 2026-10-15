@@ -26,7 +26,7 @@ class Profile extends Page
     {
         $user = auth()->user();
         if (!$user) {
-            $this->redirect('/streaming/login');
+            $this->redirect('/login');
             return;
         }
 

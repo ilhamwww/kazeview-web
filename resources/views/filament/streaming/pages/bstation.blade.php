@@ -135,7 +135,7 @@
                                 $seasonId = $item['season_id'] ?? null;
                             @endphp
                             @if ($seasonId)
-                                <a href="/streaming/bstation/{{ $seasonId }}" 
+                                <a href="/bstation/{{ $seasonId }}" 
                                    class="group bg-zinc-900/40 border border-zinc-800 hover:border-red-600/50 hover:bg-zinc-900/80 rounded-2xl p-3 flex flex-col justify-between gap-3 transition-all duration-300 hover:scale-105 shadow-lg">
                                     
                                     <!-- Cover Container -->
@@ -205,4 +205,4 @@
                 </div>
             @endif
         @endif
-</div>
+</div>

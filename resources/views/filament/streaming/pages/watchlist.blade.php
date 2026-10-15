@@ -50,10 +50,10 @@
                     </p>
                 </div>
                 <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                    <a href="/streaming/login" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-lg shadow-red-600/20 transition">
+                    <a href="/login" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-lg shadow-red-600/20 transition">
                         Masuk ke Akun
                     </a>
-                    <a href="/streaming/movies" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-sm transition">
+                    <a href="/movies" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-sm transition">
                         Jelajah Konten
                     </a>
                 </div>
@@ -115,10 +115,10 @@
                         </p>
                     </div>
                     <div class="pt-2 flex items-center justify-center gap-3">
-                        <a href="/streaming/dracin" class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 transition">
+                        <a href="/dracin" class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 transition">
                             Cari Dracin
                         </a>
-                        <a href="/streaming/movies" class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 transition">
+                        <a href="/movies" class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 transition">
                             Cari Film
                         </a>
                     </div>

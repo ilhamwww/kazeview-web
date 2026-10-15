@@ -25,7 +25,7 @@ class StreamingPanelProvider extends PanelProvider
     {
         return $panel
             ->id('streaming')
-            ->path('streaming')
+            ->path('')
             ->topNavigation()
             ->maxContentWidth(MaxWidth::Full)
             ->login(\App\Filament\Pages\Auth\CustomLogin::class)

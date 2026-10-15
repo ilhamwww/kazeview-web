@@ -13,7 +13,7 @@ class RedirectStreamingUsersFromAdmin
         $user = $request->user();
 
         if ($user?->hasRole('user_stream') && ! $user->hasRole('super_admin')) {
-            return redirect('/streaming');
+            return redirect('/');
         }
 
         return $next($request);

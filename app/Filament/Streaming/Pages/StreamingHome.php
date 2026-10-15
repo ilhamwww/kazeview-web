@@ -2,11 +2,11 @@
 
 namespace App\Filament\Streaming\Pages;
 
-use Filament\Pages\Page;
+use Filament\Pages\Dashboard as BaseDashboard;
 use App\Services\StreamingService;
 use Illuminate\Support\Facades\Log;
 
-class StreamingHome extends Page
+class StreamingHome extends BaseDashboard
 {
     protected static ?string $navigationIcon = 'heroicon-o-home';
     protected static ?string $navigationLabel = 'Home';
@@ -192,11 +192,11 @@ class StreamingHome extends Page
                 } elseif ($row->item_type === 'bstation') {
                     $url = BstationDetail::getUrl(parameters: ['id' => $row->item_id], panel: 'streaming');
                 } elseif ($row->item_type === 'movie') {
-                    $url = url('/streaming/movie/' . $row->item_id);
+                    $url = url('/movie/' . $row->item_id);
                 } elseif ($row->item_type === 'series') {
-                    $url = url('/streaming/series/' . $row->item_id);
+                    $url = url('/series/' . $row->item_id);
                 } elseif (!empty($row->url) && !str_contains($row->url, '/livewire/')) {
-                    $url = $row->url;
+                    $url = preg_replace('#^https?://[^/]+/streaming/#', '/', $row->url);
                 }
             } catch (\Throwable $e) {
                 $url = null;

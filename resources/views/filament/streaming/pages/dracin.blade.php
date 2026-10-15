@@ -3,7 +3,7 @@
 
     $online = array_values(array_filter($networks, fn ($n) => !empty($n['is_online'])));
     $offline = array_values(array_filter($networks, fn ($n) => empty($n['is_online'])));
-    $netUrl = fn ($n) => $n['id'] === 'bstation' ? '/streaming/bstation' : DracinNetwork::getUrl(['slug' => $n['id']], panel: 'streaming');
+    $netUrl = fn ($n) => $n['id'] === 'bstation' ? '/bstation' : DracinNetwork::getUrl(['slug' => $n['id']], panel: 'streaming');
     $logo = fn ($n) => !empty($n['logo']) ? url('/api/proxy-image?url=' . urlencode($n['logo'])) : null;
     // Warna aksen per network supaya kartu tidak seragam
     $accents = ['from-rose-600/30', 'from-violet-600/30', 'from-amber-500/30', 'from-sky-600/30', 'from-emerald-600/30', 'from-fuchsia-600/30', 'from-orange-600/30', 'from-cyan-600/30'];
