@@ -176,11 +176,19 @@ class ContentResource extends Resource
                     }),
                 Select::make('user_id')
                     ->label('Pemilik Konten')
-                    ->options(User::pluck('name', 'id'))
+                    ->options(function (?Content $record) {
+                        $query = User::whereHas('roles', fn ($q) => $q->where('name', 'like', '%admin%'));
+
+                        if ($record && $record->user_id) {
+                            $query->orWhere('id', $record->user_id);
+                        }
+
+                        return $query->pluck('name', 'id');
+                    })
                     ->searchable()
                     ->required()
                     ->default(function () {
-                        return User::pluck('id')->first();
+                        return \Illuminate\Support\Facades\Auth::id() ?? User::whereHas('roles', fn ($q) => $q->where('name', 'like', '%admin%'))->value('id');
                     }),
                 FileUpload::make('image')
                     ->label('Gambar')
@@ -193,15 +201,15 @@ class ContentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('urut', 'asc')
+            ->defaultSort('urut', 'desc')
             ->reorderable('urut')
             ->columns([
                 Tables\Columns\ImageColumn::make('image')
                     ->label('Gambar Konten')
                     ->circular()
                     ->size(40),
-                TextColumn::make('id')->label('ID'),
-                TextColumn::make('title')->label('Judul'),
+                TextColumn::make('id')->label('ID')->sortable(),
+                TextColumn::make('title')->label('Judul')->sortable(),
                 TextColumn::make('event_location')->label('Lokasi')->placeholder('-'),
                 TextColumn::make('event_date')->label('Tanggal')->date('d M Y')->sortable(),
                 TextColumn::make('content_media_type')
@@ -275,7 +283,7 @@ class ContentResource extends Resource
                 IconColumn::make('is_new')->label('NEW')->boolean(),
                 TextColumn::make('body')->label('Isi')->limit(50),
                 TextColumn::make('user.name')->label('Pemilik Konten'),
-                TextColumn::make('created_at')->label('Dibuat')->dateTime(),
+                TextColumn::make('created_at')->label('Dibuat')->dateTime()->sortable(),
             ])
             ->filters([])
             ->actions([

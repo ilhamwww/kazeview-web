@@ -24,3 +24,7 @@ yarn-error.log
 .deploy/kazeview-next.nginx.conf
 .clinerules/workflows/ssh_server.md
 .deploy/NEXTJS_CSS_404_RUNBOOK.md
+*.conf
+*.bak*
+Dockerfile
+docker-compose*

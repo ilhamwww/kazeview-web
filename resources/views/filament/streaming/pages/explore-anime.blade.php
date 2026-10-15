@@ -9,7 +9,13 @@
 
         <!-- Content -->
         <div class="relative w-full max-w-[1800px] mx-auto px-6 pt-32 pb-10 md:pb-16 z-10">
-            <div class="flex items-center gap-2 mb-4">
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                <a href="{{ \App\Filament\Streaming\Pages\AnimeSources::getUrl(panel: 'streaming') }}"
+                   class="inline-flex items-center gap-1.5 text-[11px] font-bold text-zinc-200 bg-black/50 border border-white/15 px-3 py-1 rounded-full hover:text-white hover:border-white/30 transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Ganti Sumber
+                </a>
+                <span class="bg-purple-600 text-white text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider">SERVER 1</span>
                 <span class="bg-purple-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">ANIME</span>
                 <span class="bg-red-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">LIVE SCRAPER</span>
             </div>

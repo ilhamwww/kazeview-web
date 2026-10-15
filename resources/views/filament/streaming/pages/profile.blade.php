@@ -248,8 +248,8 @@
                                 try {
                                     if ($history->item_type === 'movie') {
                                         $detailUrl = \App\Filament\Streaming\Pages\WatchMovie::getUrl(['slug' => $history->item_id], panel: 'streaming');
-                                    } elseif ($history->item_type === 'tv_series') {
-                                        $detailUrl = \App\Filament\Streaming\Pages\ShowSeries::getUrl(['slug' => $history->item_id], panel: 'streaming');
+                                    } elseif ($history->item_type === 'tv_series' || $history->item_type === 'series') {
+                                        $detailUrl = \App\Filament\Streaming\Pages\WatchSeries::getUrl(['seriesSlug' => $history->item_id], panel: 'streaming');
                                     } elseif ($history->item_type === 'anime') {
                                         $detailUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $history->item_id], panel: 'streaming');
                                     } elseif ($history->item_type === 'bstation') {

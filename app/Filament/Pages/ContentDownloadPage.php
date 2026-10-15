@@ -188,13 +188,17 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                 DownloadData::query()
                     ->where('id_content', $this->contentId)
             )
+            ->poll(function (): ?string {
+                $c = Content::query()->find($this->contentId);
+                return ($c && in_array($c->ai_index_status, ['queued', 'indexing', 'reindexing'])) ? '2s' : null;
+            })
             ->columns($columns)
             ->actions([
                 Action::make('viewFiles')
                     ->label('View Files')
                     ->button()
                     ->modalHeading(fn(DownloadData $record): string => "Files — {$record->folder_name}")
-                    ->modalWidth('5xl')
+                    ->modalWidth('7xl')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close')
                     ->modalContent(fn(DownloadData $record) => view(
@@ -283,5 +287,40 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                         'Folder, file storage, dan data download berhasil dihapus',
                     ),
             ]);
+    }
+
+    public function getAiStats(): array
+    {
+        $content = Content::query()->find($this->contentId);
+        if (! $content) {
+            return [];
+        }
+
+        $downloaded = (int) DB::table('list_downloaded')
+            ->join('download_data', 'download_data.id', '=', 'list_downloaded.id_download')
+            ->where('download_data.id_content', $this->contentId)
+            ->count();
+
+        $query = DB::table('photo_motor_search_indexes')
+            ->where('content_id', $this->contentId);
+
+        $indexed = (clone $query)->whereIn('status', ['indexed', 'reindexing'])->count();
+        $processing = (clone $query)->whereIn('status', ['processing', 'pending', 'reindexing'])->count();
+        $failed = (clone $query)->where('status', 'failed')->count();
+
+        $percent = $downloaded > 0 ? min(100, (int) round(($indexed / $downloaded) * 100)) : 0;
+        $isIndexing = in_array($content->ai_index_status, ['queued', 'indexing', 'reindexing']) || ($processing > 0 && $content->ai_photo_search_enabled);
+
+        return [
+            'enabled' => (bool) $content->ai_photo_search_enabled,
+            'status' => $content->ai_index_status,
+            'message' => $content->ai_index_message,
+            'downloaded' => $downloaded,
+            'indexed' => $indexed,
+            'processing' => $processing,
+            'failed' => $failed,
+            'percent' => $percent,
+            'is_indexing' => $isIndexing,
+        ];
     }
 }

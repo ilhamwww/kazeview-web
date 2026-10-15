@@ -39,9 +39,104 @@ class DownloadedFilesTable extends BaseWidget
                             ? $path
                             : null;
                     })
-                    ->height(80)
-                    ->width(80)
-                    ->square(),
+                    ->height(115)
+                    ->width(115)
+                    ->square()
+                    ->extraImgAttributes([
+                        'class' => 'rounded-xl object-cover shadow-sm hover:opacity-90 transition cursor-pointer',
+                    ])
+                    ->url(
+                        fn (ListDownloaded $record): ?string =>
+                            Storage::disk('public')->exists($record->storagePath())
+                                ? Storage::disk('public')->url($record->storagePath())
+                                : null,
+                        shouldOpenInNewTab: true,
+                    ),
+
+                Tables\Columns\TextColumn::make('embedding_result')
+                    ->label('Hasil Embedding')
+                    ->getStateUsing(function (ListDownloaded $record): string {
+                        $index = $record->motorSearchIndex;
+                        if (! $index) {
+                            return 'Belum di-index';
+                        }
+
+                        if ($index->status === 'failed') {
+                            return 'Gagal Index';
+                        }
+
+                        if ($index->status !== 'indexed') {
+                            return ucfirst(str_replace('_', ' ', $index->status ?? 'pending'));
+                        }
+
+                        $d = $index->descriptor ?? [];
+                        if (! ($d['motorcycle_present'] ?? true)) {
+                            return 'Bukan Motor';
+                        }
+
+                        $brand = ($d['brand_guess'] ?? 'unknown') !== 'unknown' ? ucfirst($d['brand_guess']) : '';
+                        $model = ($d['model_guess'] ?? 'unknown') !== 'unknown' ? strtoupper($d['model_guess']) : '';
+                        $vehicle = trim("{$brand} {$model}");
+
+                        if (! $vehicle) {
+                            $cat = ($d['category'] ?? 'unknown') !== 'unknown' ? ucfirst($d['category']) : 'Motor';
+                            $vehicle = $cat;
+                        }
+
+                        return $vehicle;
+                    })
+                    ->description(function (ListDownloaded $record): ?string {
+                        $index = $record->motorSearchIndex;
+                        if (! $index || $index->status !== 'indexed') {
+                            return $index?->error_message;
+                        }
+
+                        $d = $index->descriptor ?? [];
+                        $parts = [];
+
+                        $color = ($d['primary_color'] ?? 'unknown') !== 'unknown' ? ucfirst($d['primary_color']) : null;
+                        if ($color) {
+                            $parts[] = "Warna: {$color}";
+                        }
+
+                        $plate = $d['license_plate'] ?? ($d['visible_text'][0] ?? null);
+                        if ($plate && $plate !== 'unknown') {
+                            $parts[] = "Plat: " . strtoupper($plate);
+                        }
+
+                        $helmet = $d['helmet'] ?? [];
+                        $hColor = ($helmet['primary_color'] ?? 'unknown') !== 'unknown' ? ucfirst($helmet['primary_color']) : null;
+                        $hType = ($helmet['type'] ?? 'unknown') !== 'unknown' ? $helmet['type'] : null;
+                        if ($hType || $hColor) {
+                            $parts[] = "Helm: " . trim("{$hColor} {$hType}");
+                        }
+
+                        if ($index->embedding_dimensions) {
+                            $parts[] = "Vektor: {$index->embedding_dimensions}d";
+                        }
+
+                        return ! empty($parts) ? implode(' • ', $parts) : null;
+                    })
+                    ->badge(fn (ListDownloaded $record): bool => ! $record->motorSearchIndex || $record->motorSearchIndex->status !== 'indexed')
+                    ->color(function (ListDownloaded $record): string {
+                        $index = $record->motorSearchIndex;
+                        if (! $index) {
+                            return 'gray';
+                        }
+
+                        return match ($index->status) {
+                            'indexed' => 'success',
+                            'failed' => 'danger',
+                            'processing', 'indexing', 'queued', 'reindexing' => 'warning',
+                            default => 'gray',
+                        };
+                    })
+                    ->wrap(),
+
+                Tables\Columns\TextColumn::make('file_name')
+                    ->label('File Name')
+                    ->searchable()
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('folder.relative_path')
                     ->label('Folder')
@@ -49,16 +144,29 @@ class DownloadedFilesTable extends BaseWidget
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('file_name')
-                    ->label('File Name')
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Downloaded At')
                     ->dateTime()
                     ->sortable(),
             ])
             ->actions([
+                Tables\Actions\Action::make('viewAiDetail')
+                    ->label('Detail AI')
+                    ->icon('heroicon-o-cpu-chip')
+                    ->color('info')
+                    ->visible(fn (ListDownloaded $record): bool => filled($record->motorSearchIndex))
+                    ->modalHeading(fn (ListDownloaded $record): string => "Hasil Analisis AI & Embedding — {$record->file_name}")
+                    ->modalWidth('4xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->modalContent(fn (ListDownloaded $record) => view(
+                        'filament.pages.actions.ai-photo-detail',
+                        [
+                            'record' => $record,
+                            'index' => $record->motorSearchIndex,
+                            'descriptor' => $record->motorSearchIndex?->descriptor ?? [],
+                        ]
+                    )),
                 Tables\Actions\Action::make('delete')
                     ->label('Hapus')
                     ->color('danger')
@@ -94,6 +202,7 @@ class DownloadedFilesTable extends BaseWidget
             ])
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50, 100])
+            ->poll(fn (): ?string => DB::table('photo_motor_search_indexes')->whereIn('status', ['processing', 'pending', 'reindexing'])->exists() ? '3s' : null)
             ->emptyStateHeading('Belum ada file')
             ->emptyStateDescription('Tidak ada file yang tercatat untuk download ini.')
             ->emptyStateIcon('heroicon-o-document-magnifying-glass');
@@ -102,7 +211,7 @@ class DownloadedFilesTable extends BaseWidget
     protected function getFilesQuery(): Builder
     {
         $query = ListDownloaded::query()
-            ->with('folder')
+            ->with(['folder', 'motorSearchIndex'])
             ->where('id_download', $this->downloadId ?? 0);
 
         $driver = DB::connection()->getDriverName();
@@ -142,6 +251,16 @@ class DownloadedFilesTable extends BaseWidget
                 ->value('total_files')
             : 0;
 
-        return "Downloaded: {$downloadedFiles} dari total {$totalFiles} file";
+        $indexedCount = $this->downloadId
+            ? DB::table('photo_motor_search_indexes')
+                ->join('list_downloaded', 'list_downloaded.id', '=', 'photo_motor_search_indexes.list_downloaded_id')
+                ->where('list_downloaded.id_download', $this->downloadId)
+                ->where('photo_motor_search_indexes.status', 'indexed')
+                ->count()
+            : 0;
+
+        $percent = $totalFiles > 0 ? min(100, (int) round(($indexedCount / $totalFiles) * 100)) : 0;
+
+        return "Downloaded: {$downloadedFiles}/{$totalFiles} file • AI Indexed: {$indexedCount}/{$totalFiles} ({$percent}%)";
     }
 }

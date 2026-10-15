@@ -55,13 +55,94 @@
     <div class="w-full h-full flex items-center justify-center relative">
 
         {{-- Wrapper video 9:16 --}}
-        <div class="relative h-full aspect-[9/16] max-w-full max-h-screen bg-black overflow-hidden select-none">
+        <div class="kz-swipe-zone relative h-full aspect-[9/16] max-w-full max-h-[100dvh] bg-black overflow-hidden select-none"
+             @touchstart="handleTouchStart($event)"
+             @touchmove="handleTouchMove($event)"
+             @touchend="handleTouchEnd($event)"
+             @touchcancel="handleTouchCancel()"
+             @wheel.passive="handleWheel($event)"
+             @keydown.window="handleKeyDown($event)">
 
-            {{-- Elemen video --}}
+            {{-- Elemen video (ikut bergeser saat di-drag) --}}
             <video x-ref="video"
-                   class="absolute inset-0 w-full h-full object-contain bg-black"
+                   class="absolute inset-0 w-full h-full object-contain bg-black will-change-transform"
+                   :class="isSwiping ? '' : 'transition-transform duration-300 ease-out'"
+                   :style="dragY ? `transform: translateY(${dragY * 0.45}px) scale(${1 - Math.min(Math.abs(dragY), 400) / 4000})` : ''"
                    @click="togglePlayPause()"
                    playsinline></video>
+
+            {{-- Petunjuk saat menggeser --}}
+            <template x-if="swipeHint">
+                <div class="absolute inset-x-0 z-40 flex justify-center pointer-events-none"
+                     :class="swipeHint.dir === 'up' ? 'bottom-24' : 'top-24'">
+                    <div class="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border text-sm font-bold shadow-2xl transition-colors"
+                         :class="swipeHint.ready ? 'bg-red-600/90 border-red-400 text-white' : 'bg-black/70 border-white/20 text-white/90'">
+                        <svg class="w-4 h-4 transition-transform" :class="swipeHint.dir === 'down' ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                        </svg>
+                        <span x-text="swipeHint.text"></span>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Gesture feedback toast --}}
+            <div x-show="showGestureToast"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 -translate-y-4 scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave-end="opacity-0 -translate-y-4 scale-95"
+                 class="absolute top-20 inset-x-0 flex items-center justify-center pointer-events-none z-50"
+                 style="display: none;">
+                <div class="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs md:text-sm font-bold px-4 py-2 rounded-full shadow-2xl flex items-center gap-2">
+                    <span x-text="gestureToastText"></span>
+                </div>
+            </div>
+
+            {{-- Auto-Next Binge Countdown Overlay --}}
+            <div x-show="showAutoNextPrompt"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute inset-0 flex items-center justify-center z-50 bg-black/80 backdrop-blur-md pointer-events-auto p-4"
+                 style="display: none;">
+                <div class="bg-zinc-950/95 border border-zinc-700/80 rounded-3xl p-6 text-center shadow-2xl max-w-[280px] w-full space-y-4">
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/20 text-red-400 border border-red-500/30 text-[10px] font-black uppercase tracking-wider">
+                        <span>⏭️ Auto-Next Binge</span>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-xs text-zinc-400 uppercase tracking-wider font-semibold">Episode Selesai</h4>
+                        <div class="text-xl font-black text-white mt-0.5">
+                            Episode <span x-text="autoNextTargetEp"></span>
+                        </div>
+                    </div>
+
+                    <!-- Countdown Circular Visual -->
+                    <div class="relative w-16 h-16 mx-auto flex items-center justify-center">
+                        <div class="w-16 h-16 rounded-full border-4 border-zinc-800"></div>
+                        <div class="absolute inset-0 w-16 h-16 rounded-full border-4 border-red-500 border-t-transparent animate-spin"></div>
+                        <span class="absolute font-mono font-black text-white text-xl" x-text="autoNextSeconds"></span>
+                    </div>
+
+                    <div class="flex items-center gap-2 pt-1">
+                        <button type="button"
+                                @click="cancelAutoNext()"
+                                class="flex-1 py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-300 text-xs font-bold transition">
+                            Batal
+                        </button>
+                        <button type="button"
+                                @click="confirmAutoNextNow()"
+                                class="flex-1 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-bold shadow-lg shadow-red-600/30 transition">
+                            Putar
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             {{-- Overlay klik-tengah play/pause (untuk area video) --}}
             <div x-show="showCenterIndicator"
@@ -86,7 +167,8 @@
             </div>
 
             {{-- Unmute banner --}}
-            <div x-show="isMutedAutoplay"
+            <div x-show="isMutedAutoplay && controlsVisible && !showAutoNextPrompt"
+                 x-transition.opacity.duration.200ms
                  class="absolute inset-0 z-40 pointer-events-none"
                  style="display: none;">
                 <button type="button"
@@ -119,9 +201,18 @@
                 </div>
 
                 <div class="pointer-events-auto flex flex-col items-end gap-1.5">
-                    <span class="text-[11px] md:text-xs font-semibold text-white/80 drop-shadow-md">
-                        Eps <span x-text="currentEpisode"></span>/<span x-text="drama.totalEpisodes"></span>
-                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] md:text-xs font-semibold text-white/80 drop-shadow-md">
+                            Eps <span x-text="currentEpisode"></span>/<span x-text="drama.totalEpisodes"></span>
+                        </span>
+                        <button @click.stop="toggleManualHide()"
+                                class="w-7 h-7 rounded-full bg-black/40 backdrop-blur border border-white/20 hover:bg-black/60 flex items-center justify-center transition text-white/80 hover:text-white"
+                                title="Sembunyikan UI">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            </svg>
+                        </button>
+                    </div>
                     <button @click="showEpisodes = true"
                             class="bg-black/40 backdrop-blur border border-white/20 hover:bg-black/60 rounded-full px-3 py-1 text-xs font-bold flex items-center gap-1.5 transition">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -131,6 +222,21 @@
                     </button>
                 </div>
             </div>
+
+            {{-- Floating Unhide Button (Muncul di kanan atas saat UI disembunyikan) --}}
+            <button x-show="!controlsVisible"
+                    x-transition.opacity.duration.200ms
+                    @click.stop="toggleManualHide()"
+                    type="button"
+                    class="absolute top-4 right-4 z-50 bg-black/60 backdrop-blur-md border border-white/25 hover:bg-black/80 text-white rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-xl transition active:scale-95 cursor-pointer"
+                    style="display: none;"
+                    title="Tampilkan UI">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span class="text-xs font-bold tracking-wide">Tampilkan UI</span>
+            </button>
 
             {{-- Floating action panel: kanan tengah --}}
             <div x-show="controlsVisible"
@@ -177,6 +283,18 @@
                         @endif
                     </button>
                     <span class="text-[11px] font-semibold drop-shadow-md">{{ ($isFavorited ?? false) ? 'Favorit' : 'Simpan' }}</span>
+                </div>
+
+                {{-- Tombol Mata / Bersihkan Layar (Hide UI) --}}
+                <div class="flex flex-col items-center gap-1 pointer-events-auto">
+                    <button @click.stop="toggleManualHide()"
+                            class="w-12 h-12 rounded-full bg-black/40 backdrop-blur border border-white/20 hover:bg-black/60 flex items-center justify-center transition cursor-pointer text-white/90 hover:text-white"
+                            title="Sembunyikan UI">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                        </svg>
+                    </button>
+                    <span class="text-[11px] font-semibold drop-shadow-md">Hide UI</span>
                 </div>
             </div>
 
@@ -318,6 +436,19 @@
         nav[aria-label="Global"] {
             display: none !important;
         }
+
+        /* Player fullscreen: kunci scroll halaman & matikan pull-to-refresh,
+           supaya swipe atas/bawah sepenuhnya dipegang player. */
+        html, body {
+            overscroll-behavior-y: none !important;
+            overflow: hidden !important;
+            height: 100% !important;
+        }
+        .kz-swipe-zone {
+            touch-action: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
     </style>
 @endpush
 
@@ -337,7 +468,7 @@
             }
 
             try {
-                await navigator.serviceWorker.register('/melolo-sw.js');
+                await navigator.serviceWorker.register('/sw.js', { scope: '/' });
 
                 if (!navigator.serviceWorker.controller) {
                     await new Promise((resolve) => {
@@ -346,15 +477,14 @@
                             resolve,
                             { once: true },
                         );
+                        setTimeout(resolve, 1500);
                     });
                 }
 
-                meloloSwReady = true;
-
+                meloloSwReady = !!navigator.serviceWorker.controller;
                 return true;
             } catch (error) {
                 console.warn('Service Worker Melolo tidak tersedia:', error);
-
                 return false;
             }
         }
@@ -383,9 +513,25 @@
                 centerIndicatorTimeout: null,
                 controlsVisible: true,
                 controlsTimer: null,
+                isManualHide: false,
                 meloloBlobUrl: null,
                 playerEngine: null,
                 useHlsJs: {{ $networkSlug === 'raptdrama' ? 'true' : 'false' }},
+
+                // Gesture & Auto-Next Binge State
+                touchStartY: 0,
+                touchStartX: 0,
+                touchStartTime: 0,
+                isSwiping: false,
+                dragY: 0,
+                lastWheelTime: 0,
+                showGestureToast: false,
+                gestureToastText: '',
+                gestureToastTimeout: null,
+                showAutoNextPrompt: false,
+                autoNextTargetEp: null,
+                autoNextSeconds: 3,
+                autoNextTimer: null,
 
                 // Metadata dari server (di-hydrate dari <script> tag)
                 drama: {
@@ -449,8 +595,11 @@
                     });
                     v.addEventListener('volumechange', () => { this.muted = v.muted; });
                     v.addEventListener('ended', () => {
-                        if (this.nextEpisode) {
-                            this.$wire.playEpisode(this.nextEpisode);
+                        const nextEp = this.getNextEpisodeNumber();
+                        if (nextEp) {
+                            this.startAutoNextCountdown(nextEp);
+                        } else {
+                            this.triggerGestureToast('🎉 Seluruh episode telah selesai!');
                         }
                     });
                 },
@@ -535,6 +684,21 @@
                             shouldPlay,
                         );
 
+                        return;
+                    }
+
+                    // Direct MP4 playback (DramaBox & progressive streams)
+                    const isDirectMp4 = this.videoUrl.toLowerCase().includes('.mp4');
+                    if (isDirectMp4) {
+                        video.src = this.videoUrl;
+                        video.load();
+                        this.isBuffering = false;
+                        if (resumeTime > 0 && Number.isFinite(resumeTime)) {
+                            video.currentTime = resumeTime;
+                        }
+                        if (shouldPlay) {
+                            this.attemptPlay(video);
+                        }
                         return;
                     }
 
@@ -677,13 +841,22 @@
                     this.isBuffering = true;
 
                     try {
-                        const keyResponse = await fetch(
-                            `https://melolo-api.dramabos.fun/api/melolo/key?vid=${encodeURIComponent(quality.kid)}`,
-                        );
-                        const keyPayload = await keyResponse.json();
-                        const keyHex = keyPayload?.key;
+                        let keyHex = quality?.key;
+                        if (!keyHex && quality?.kid) {
+                            try {
+                                const keyResponse = await fetch(
+                                    `https://melolo-api.dramabos.fun/api/melolo/key?vid=${encodeURIComponent(quality.kid)}`,
+                                );
+                                if (keyResponse.ok) {
+                                    const keyPayload = await keyResponse.json();
+                                    keyHex = keyPayload?.key;
+                                }
+                            } catch (e) {
+                                console.warn('Gagal fetch key Melolo:', e);
+                            }
+                        }
 
-                        if (!keyResponse.ok || !keyHex) {
+                        if (!keyHex) {
                             throw new Error('Kunci dekripsi Melolo tidak tersedia.');
                         }
 
@@ -692,7 +865,8 @@
                             this.meloloBlobUrl = null;
                         }
 
-                        if (meloloSwReady) {
+                        const canUseSw = (meloloSwReady || !!navigator.serviceWorker?.controller);
+                        if (canUseSw) {
                             video.src =
                                 '/sw-play?url=' +
                                 encodeURIComponent(this.videoUrl) +
@@ -707,8 +881,22 @@
                         video.load();
 
                         await new Promise((resolve, reject) => {
-                            const timeout = window.setTimeout(() => {
+                            const timeout = window.setTimeout(async () => {
                                 cleanup();
+                                // Fallback to in-memory blob if SW timed out
+                                if (!this.meloloBlobUrl) {
+                                    try {
+                                        console.warn('SW timeout, mencoba MeloloDecrypt in-memory...');
+                                        const blob = await MeloloDecrypt.decrypt(this.videoUrl, keyHex);
+                                        this.meloloBlobUrl = URL.createObjectURL(blob);
+                                        video.src = this.meloloBlobUrl;
+                                        video.load();
+                                        video.addEventListener('canplay', () => resolve(), { once: true });
+                                        return;
+                                    } catch (err) {
+                                        console.error('Fallback decrypt error:', err);
+                                    }
+                                }
                                 reject(new Error('Waktu tunggu dekripsi Melolo habis.'));
                             }, 15000);
 
@@ -723,8 +911,22 @@
                                 resolve();
                             };
 
-                            const onError = () => {
+                            const onError = async () => {
                                 cleanup();
+                                if (!this.meloloBlobUrl) {
+                                    try {
+                                        console.warn('SW error, mencoba MeloloDecrypt in-memory fallback...');
+                                        const blob = await MeloloDecrypt.decrypt(this.videoUrl, keyHex);
+                                        this.meloloBlobUrl = URL.createObjectURL(blob);
+                                        video.src = this.meloloBlobUrl;
+                                        video.load();
+                                        video.addEventListener('canplay', () => resolve(), { once: true });
+                                        video.addEventListener('error', () => reject(new Error('Dekripsi fallback gagal')), { once: true });
+                                        return;
+                                    } catch (err) {
+                                        console.error('Fallback decrypt error:', err);
+                                    }
+                                }
                                 reject(new Error('Video Melolo hasil dekripsi gagal diputar.'));
                             };
 
@@ -816,6 +1018,11 @@
                 togglePlayPause() {
                     const v = this.$refs.video;
                     if (!v) return;
+                    if (this.isManualHide) {
+                        this.isManualHide = false;
+                        this.showControls();
+                        return;
+                    }
                     this.showControls();
                     if (v.paused) {
                         v.play().catch(() => {});
@@ -833,7 +1040,25 @@
                     }, 500);
                 },
 
+                toggleManualHide() {
+                    if (this.controlsVisible) {
+                        this.controlsVisible = false;
+                        this.isManualHide = true;
+                        if (this.controlsTimer) {
+                            window.clearTimeout(this.controlsTimer);
+                            this.controlsTimer = null;
+                        }
+                    } else {
+                        this.isManualHide = false;
+                        this.showControls();
+                    }
+                },
+
                 showControls() {
+                    if (this.isManualHide) {
+                        return;
+                    }
+
                     this.controlsVisible = true;
 
                     if (this.controlsTimer) {
@@ -859,7 +1084,7 @@
                         ) {
                             this.controlsVisible = false;
                         }
-                    }, 3000);
+                    }, 3500);
                 },
 
                 seek(evt) {
@@ -935,6 +1160,205 @@
                     const m = Math.floor(secs / 60);
                     const s = Math.floor(secs % 60).toString().padStart(2, '0');
                     return `${m}:${s}`;
+                },
+
+                // --- SWIPE GESTURES & BINGE MODE ---
+                // Gestur vertikal ala TikTok:
+                // - geser ke ATAS  = episode berikutnya
+                // - geser ke BAWAH = episode sebelumnya
+                // Wrapper memakai `touch-action: none` + overscroll-behavior none,
+                // supaya browser tidak mengambil alih tarikan ke bawah (pull-to-refresh)
+                // yang dulu memicu touchcancel sehingga "episode sebelumnya" tidak pernah jalan.
+                handleTouchStart(e) {
+                    if (this.showEpisodes || this.showAutoNextPrompt) return;
+                    if (e.target.closest('button, a, input, select, [data-no-swipe]')) return;
+                    this.touchStartY = e.touches[0].clientY;
+                    this.touchStartX = e.touches[0].clientX;
+                    this.touchStartTime = Date.now();
+                    this.isSwiping = false;
+                    this.dragY = 0;
+                },
+
+                handleTouchMove(e) {
+                    if (this.showEpisodes || this.showAutoNextPrompt || !this.touchStartTime) return;
+                    const deltaY = e.touches[0].clientY - this.touchStartY;
+                    const deltaX = e.touches[0].clientX - this.touchStartX;
+                    if (!this.isSwiping && Math.abs(deltaY) > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
+                        this.isSwiping = true;
+                    }
+                    if (this.isSwiping) {
+                        if (e.cancelable) e.preventDefault();
+                        // Beri resistensi di ujung (tidak ada episode sebelumnya/berikutnya)
+                        const blocked = (deltaY > 0 && !this.getPrevEpisodeNumber()) || (deltaY < 0 && !this.getNextEpisodeNumber());
+                        this.dragY = blocked ? deltaY * 0.2 : deltaY;
+                    }
+                },
+
+                handleTouchEnd(e) {
+                    if (this.showEpisodes || this.showAutoNextPrompt) return;
+                    if (!this.touchStartTime) return;
+                    const touch = e.changedTouches && e.changedTouches[0];
+                    const deltaY = touch ? touch.clientY - this.touchStartY : this.dragY;
+                    const deltaX = touch ? touch.clientX - this.touchStartX : 0;
+                    const elapsed = Date.now() - this.touchStartTime;
+                    const h = this.$refs.video?.clientHeight || window.innerHeight;
+
+                    // Lolos kalau: geser jauh (>18% tinggi layar) ATAU flick cepat (>50px < 450ms)
+                    const isVertical = Math.abs(deltaY) > Math.abs(deltaX) * 1.2;
+                    const far = Math.abs(deltaY) > h * 0.18;
+                    const flick = elapsed < 450 && Math.abs(deltaY) > 50;
+
+                    if (this.isSwiping && isVertical && (far || flick)) {
+                        if (deltaY < 0) {
+                            this.playNextEpisode();
+                        } else {
+                            this.playPrevEpisode();
+                        }
+                    }
+                    this.resetDrag();
+                },
+
+                handleTouchCancel() {
+                    this.resetDrag();
+                },
+
+                resetDrag() {
+                    this.touchStartTime = 0;
+                    this.isSwiping = false;
+                    this.dragY = 0;
+                },
+
+                get swipeHint() {
+                    if (!this.isSwiping || Math.abs(this.dragY) < 30) return null;
+                    const h = this.$refs.video?.clientHeight || window.innerHeight;
+                    const ready = Math.abs(this.dragY) > h * 0.18;
+                    if (this.dragY < 0) {
+                        const n = this.getNextEpisodeNumber();
+                        return { dir: 'up', ready, text: n ? (ready ? `Lepas untuk Episode ${n}` : `Episode ${n}`) : 'Episode terakhir' };
+                    }
+                    const p = this.getPrevEpisodeNumber();
+                    return { dir: 'down', ready, text: p ? (ready ? `Lepas untuk Episode ${p}` : `Episode ${p}`) : 'Sudah episode pertama' };
+                },
+
+                handleWheel(e) {
+                    if (this.showEpisodes || this.showAutoNextPrompt) return;
+                    const now = Date.now();
+                    if (now - this.lastWheelTime < 1000) return;
+
+                    if (Math.abs(e.deltaY) > 75) {
+                        this.lastWheelTime = now;
+                        if (e.deltaY > 0) {
+                            this.playNextEpisode();
+                        } else {
+                            this.playPrevEpisode();
+                        }
+                    }
+                },
+
+                handleKeyDown(e) {
+                    if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+
+                    if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+                        e.preventDefault();
+                        this.playNextEpisode();
+                    } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+                        e.preventDefault();
+                        this.playPrevEpisode();
+                    } else if (e.key === ' ' || e.key === 'k') {
+                        e.preventDefault();
+                        this.togglePlayPause();
+                    } else if (e.key === 'm') {
+                        e.preventDefault();
+                        this.toggleMute();
+                    }
+                },
+
+                getNextEpisodeNumber() {
+                    if (this.nextEpisode) return Number(this.nextEpisode);
+                    const curr = Number(this.currentEpisode) || 1;
+                    if (Array.isArray(this.drama.episodeList) && this.drama.episodeList.length > 0) {
+                        const nextObj = this.drama.episodeList.find(e => Number(e.episode) > curr);
+                        if (nextObj) return Number(nextObj.episode);
+                    }
+                    if (this.drama.totalEpisodes && curr < Number(this.drama.totalEpisodes)) {
+                        return curr + 1;
+                    }
+                    return null;
+                },
+
+                getPrevEpisodeNumber() {
+                    const curr = Number(this.currentEpisode) || 1;
+                    if (Array.isArray(this.drama.episodeList) && this.drama.episodeList.length > 0) {
+                        const prevList = this.drama.episodeList.filter(e => Number(e.episode) < curr);
+                        if (prevList.length > 0) {
+                            const prevObj = prevList[prevList.length - 1];
+                            return Number(prevObj.episode);
+                        }
+                    }
+                    if (curr > 1) return curr - 1;
+                    return null;
+                },
+
+                playNextEpisode() {
+                    this.cancelAutoNext();
+                    const nextEp = this.getNextEpisodeNumber();
+                    if (!nextEp) {
+                        this.triggerGestureToast('Ini adalah episode terakhir');
+                        return;
+                    }
+                    this.triggerGestureToast(`⏭️ Episode ${nextEp}`);
+                    this.$wire.playEpisode(nextEp);
+                },
+
+                playPrevEpisode() {
+                    this.cancelAutoNext();
+                    const prevEp = this.getPrevEpisodeNumber();
+                    if (!prevEp) {
+                        this.triggerGestureToast('Ini sudah episode pertama');
+                        return;
+                    }
+                    this.triggerGestureToast(`⏮️ Episode ${prevEp}`);
+                    this.$wire.playEpisode(prevEp);
+                },
+
+                startAutoNextCountdown(targetEp) {
+                    this.cancelAutoNext();
+                    this.autoNextTargetEp = targetEp;
+                    this.autoNextSeconds = 3;
+                    this.showAutoNextPrompt = true;
+
+                    this.autoNextTimer = setInterval(() => {
+                        this.autoNextSeconds--;
+                        if (this.autoNextSeconds <= 0) {
+                            this.confirmAutoNextNow();
+                        }
+                    }, 1000);
+                },
+
+                cancelAutoNext() {
+                    if (this.autoNextTimer) {
+                        clearInterval(this.autoNextTimer);
+                        this.autoNextTimer = null;
+                    }
+                    this.showAutoNextPrompt = false;
+                },
+
+                confirmAutoNextNow() {
+                    this.cancelAutoNext();
+                    const ep = this.autoNextTargetEp;
+                    if (ep) {
+                        this.triggerGestureToast(`⏭️ Episode ${ep}`);
+                        this.$wire.playEpisode(ep);
+                    }
+                },
+
+                triggerGestureToast(msg) {
+                    this.gestureToastText = msg;
+                    this.showGestureToast = true;
+                    if (this.gestureToastTimeout) clearTimeout(this.gestureToastTimeout);
+                    this.gestureToastTimeout = setTimeout(() => {
+                        this.showGestureToast = false;
+                    }, 1500);
                 },
             }));
         }

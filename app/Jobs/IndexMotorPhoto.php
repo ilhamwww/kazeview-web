@@ -221,11 +221,11 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
 
         $manager = new ImageManager(new Driver());
         $image = $manager->read($sourcePath);
-        $image->scaleDown(width: 2048, height: 2048);
+        $image->scaleDown(width: 1280, height: 1280);
 
         file_put_contents(
             $temporaryPath,
-            (string) $image->encode(new JpegEncoder(quality: 92)),
+            (string) $image->encode(new JpegEncoder(quality: 85)),
         );
 
         return $temporaryPath;

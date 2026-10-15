@@ -15,8 +15,11 @@ Route::get(
     PhotoThumbnailController::class,
 )->whereNumber('photo')->name('photos.thumbnail');
 
+Route::get('/', function () {
+    return redirect('/streaming');
+})->name('home.index');
+
 Route::controller(HomeController::class)->group(function () {
-    Route::get('/', 'index')->name('home.index');
     Route::get('/films', 'films')->name('home.films');
     Route::get('/about', 'about')->name('home.about');
     Route::get('/contact', 'contact')->name('home.contact');
@@ -74,18 +77,336 @@ Route::get('/api/anime/episode-video', function (\Illuminate\Http\Request $reque
         return response()->json(['error' => 'URL is required'], 400);
     }
 
-    $scraper = new AnoboyScraperService();
-    $detail = $scraper->scrapeEpisodeDetail($url);
+    $detail = null;
+    if (str_contains($url, 'anoboy')) {
+        $anoboyScraper = new \App\Services\AnoboyScraperService();
+        $detail = $anoboyScraper->scrapeEpisodeDetail($url);
+    } else {
+        $otakudesuScraper = new \App\Services\OtakudesuScraperService();
+        $detail = $otakudesuScraper->scrapeEpisodeDetail($url);
+    }
 
     if (!$detail) {
         return response()->json(['error' => 'Failed to fetch episode detail'], 500);
     }
 
     return response()->json([
-        'title' => $detail['title'],
+        'title' => $detail['title'] ?? '',
         'video_url' => $detail['video_url'] ?? '',
+        'direct_mp4' => $detail['direct_mp4'] ?? null,
+        'iframe_url' => $detail['iframe_url'] ?? '',
+        'quality' => $detail['quality'] ?? 'HD',
     ]);
 })->name('api.anime.episode-video');
+
+// Asynchronous Mirror Resolver for Otakudesu Anime
+Route::get('/api/anime/resolve-mirror', function (\Illuminate\Http\Request $request) {
+    $episodeUrl = $request->query('url');
+    $id = (int) $request->query('id');
+    $i = (int) $request->query('i');
+    $q = $request->query('q', '720p');
+    $server = $request->query('server', '');
+
+    if (empty($episodeUrl) || empty($id)) {
+        return response()->json(['error' => 'Missing url or id parameter'], 400);
+    }
+
+    $scraper = new \App\Services\OtakudesuScraperService();
+    $resolved = $scraper->resolveMirror($episodeUrl, $id, $i, $q, $server);
+
+    if (!$resolved) {
+        return response()->json(['error' => 'Failed to resolve mirror stream'], 500);
+    }
+
+    return response()->json($resolved);
+})->name('api.anime.resolve-mirror');
+
+Route::get('/api/streaming/stream', function (\Illuminate\Http\Request $request) {
+    $type = $request->query('type');
+    $id = $request->query('id');
+    $force = $request->boolean('force') || $request->query('force') === '1';
+
+    if (empty($id)) {
+        return response()->json(['error' => 'ID is required'], 400);
+    }
+
+    try {
+        if ($type === 'movie') {
+            $stream = \App\Services\StreamingService::getMovieStream($id, $force);
+        } elseif ($type === 'series' || $type === 'episode') {
+            $stream = \App\Services\StreamingService::getEpisodeStream($id, $force);
+        } else {
+            return response()->json(['error' => 'Invalid stream type'], 400);
+        }
+
+        if (!$stream || empty($stream['video_url'])) {
+            return response()->json(['error' => 'Stream not available'], 404);
+        }
+
+        return response()->json($stream);
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error('Stream API error: ' . $e->getMessage());
+        return response()->json(['error' => 'Failed to load stream'], 500);
+    }
+})->name('api.streaming.stream');
+
+// Laporan error pemutar video dari browser (diagnosa "stuck"). Dibatasi agar tidak bisa dipakai spam.
+Route::get('/api/player-log', function (\Illuminate\Http\Request $request) {
+    \Illuminate\Support\Facades\Log::channel('daily')->warning('[player] ' . json_encode([
+        'kind' => mb_substr((string) $request->query('kind'), 0, 40),
+        'detail' => mb_substr((string) $request->query('detail'), 0, 300),
+        'type' => mb_substr((string) $request->query('type'), 0, 10),
+        'id' => mb_substr((string) $request->query('id'), 0, 64),
+        'proxy' => $request->query('proxy') === '1',
+        'ua' => mb_substr((string) $request->userAgent(), 0, 160),
+        'user' => auth()->id(),
+    ]));
+    return response()->noContent();
+})->middleware('throttle:30,1')->name('api.player-log');
+
+Route::get('/api/streaming/embed', function (\Illuminate\Http\Request $request) {
+    $url = $request->query('url');
+    if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+        abort(400, 'Invalid URL');
+    }
+
+    $parsed = parse_url($url);
+    $host = $parsed['host'] ?? '';
+    $scheme = $parsed['scheme'] ?? 'https';
+    $origin = "{$scheme}://{$host}";
+
+    $ua = $request->userAgent() ?: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+    $cacheKey = 'embed_html_' . md5($url . $ua);
+    $cookieFile = '/tmp/juicy_cookie_' . md5($request->ip()) . '.txt';
+    $html = \Illuminate\Support\Facades\Cache::remember($cacheKey, 10, function () use ($url, $origin, $ua, $cookieFile) {
+        try {
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
+            curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'User-Agent: ' . $ua,
+                'Referer: https://rebahinxxi3.mom/',
+                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            ]);
+            $content = curl_exec($ch);
+            $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($status !== 200 || empty($content)) {
+                return null;
+            }
+
+            // Inject base tag agar asset JWPlayer load sempurna
+            if (str_contains($content, '<head>')) {
+                $content = str_replace('<head>', "<head><base href=\"{$origin}/\">", $content);
+            } elseif (str_contains($content, '<html')) {
+                $content = preg_replace('/(<html[^>]*>)/i', "$1<head><base href=\"{$origin}/\"></head>", $content);
+            }
+
+            // Netralkan popup window.open & bypass CORS untuk stream/ping XHR
+            $antiPopScript = <<<'HTML'
+<script>
+window.open = function() { console.log("Popup blocked"); return null; };
+(function() {
+    const PROXY_BASE = 'https://www.kazeview.com/api/streaming/embed-proxy?url=';
+    function wrapUrl(u) {
+        if (!u) return u;
+        if (typeof u === 'string') {
+            if (u.includes('groovy.monster') || u.includes('178.211.139.171') || u.includes('199.87.210.226') || u.includes('/api/videos/')) {
+                if (u.startsWith('/')) {
+                    u = 'https://178.211.139.171' + u;
+                }
+                return PROXY_BASE + encodeURIComponent(u);
+            }
+        }
+        return u;
+    }
+    const origOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+        return origOpen.call(this, method, wrapUrl(url), ...rest);
+    };
+    const origFetch = window.fetch;
+    window.fetch = function(input, init) {
+        if (typeof input === 'string') {
+            input = wrapUrl(input);
+        } else if (input && input.url) {
+            input = new Request(wrapUrl(input.url), input);
+        }
+        return origFetch.call(this, input, init);
+    };
+})();
+</script>
+HTML;
+            $content = str_replace('</head>', "{$antiPopScript}</head>", $content);
+
+            return $content;
+        } catch (\Exception $e) {
+            return null;
+        }
+    });
+
+    if (!$html) {
+        return response('<div style="color:#fff;background:#000;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">Server video sedang sibuk, silakan coba server lain.</div>', 200, ['Content-Type' => 'text/html']);
+    }
+
+    return response($html, 200, [
+        'Content-Type' => 'text/html; charset=utf-8',
+        'X-Frame-Options' => 'SAMEORIGIN',
+    ]);
+})->name('api.streaming.embed');
+
+Route::match(['GET', 'POST', 'OPTIONS'], '/api/streaming/embed-proxy', function (\Illuminate\Http\Request $request) {
+    if ($request->isMethod('OPTIONS')) {
+        return response('', 204, [
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers' => '*',
+        ]);
+    }
+
+    $targetUrl = $request->query('url');
+    if (empty($targetUrl) || !filter_var($targetUrl, FILTER_VALIDATE_URL)) {
+        abort(400, 'Invalid target URL');
+    }
+
+    $cookieFile = '/tmp/juicy_cookie_' . md5($request->ip()) . '.txt';
+    $ch = curl_init($targetUrl);
+    $ua = $request->userAgent() ?: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+    $forwardHeaders = [
+        'User-Agent: ' . $ua,
+        'Referer: https://178.211.139.171/',
+        'Origin: https://178.211.139.171',
+    ];
+
+    if ($range = $request->header('Range')) {
+        $forwardHeaders[] = 'Range: ' . $range;
+    }
+
+    if ($request->isMethod('POST')) {
+        curl_setopt($ch, CURLOPT_POST, true);
+        $body = $request->getContent();
+        if ($body) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            $forwardHeaders[] = 'Content-Type: ' . ($request->header('Content-Type') ?: 'application/json');
+        }
+    }
+
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $forwardHeaders);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
+    curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
+
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($curl, $header) {
+        $len = strlen($header);
+        if (preg_match('/^HTTP\/[\d\.]+\s+(\d+)/i', $header, $sm)) {
+            http_response_code((int) $sm[1]);
+            return $len;
+        }
+        $parts = explode(':', $header, 2);
+        if (count($parts) === 2) {
+            $name = strtolower(trim($parts[0]));
+            $val = trim($parts[1]);
+            if (in_array($name, ['content-type', 'content-length', 'content-range', 'accept-ranges', 'content-disposition'])) {
+                header("{$parts[0]}: {$val}");
+            }
+        }
+        return $len;
+    });
+
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: *');
+
+    if (ob_get_level()) {
+        ob_end_clean();
+    }
+
+    curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    exit;
+})->name('api.streaming.embed-proxy');
+
+Route::get('/api/streaming/subtitle', function (\Illuminate\Http\Request $request) {
+    $url = $request->query('url');
+    if (empty($url)) {
+        return response('VTT URL is required', 400);
+    }
+
+    try {
+        $vtt = \Illuminate\Support\Facades\Cache::remember('vtt_' . md5($url), 86400, function () use ($url) {
+            $resp = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            ])->timeout(10)->get($url);
+
+            return $resp->successful() ? $resp->body() : null;
+        });
+
+        if (!$vtt) {
+            return response('Failed to load subtitle', 404);
+        }
+
+        return response($vtt, 200, [
+            'Content-Type' => 'text/vtt; charset=utf-8',
+            'Access-Control-Allow-Origin' => '*',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    } catch (\Throwable $e) {
+        return response('Error fetching subtitle: ' . $e->getMessage(), 500);
+    }
+})->name('api.streaming.subtitle');
+
+// Collections Friendly Redirects
+Route::get('/collection', fn() => redirect('/streaming/collection'));
+Route::get('/collections', fn() => redirect('/streaming/collection'));
+Route::get('/collection/{slug}', fn($slug) => redirect('/streaming/collection/' . $slug));
+Route::get('/collections/{slug}', fn($slug) => redirect('/streaming/collection/' . $slug));
+Route::get('/streaming/collections', fn() => redirect('/streaming/collection'));
+Route::get('/streaming/collections/{slug}', fn($slug) => redirect('/streaming/collection/' . $slug));
+
+// Network Friendly Redirects
+Route::get('/network', fn() => redirect('/streaming/network'));
+Route::get('/networks', fn() => redirect('/streaming/network'));
+Route::get('/network/{slug}', fn($slug) => redirect('/streaming/network/' . $slug))->where('slug', '[a-z0-9-]+');
+Route::get('/streaming/networks', fn() => redirect('/streaming/network'));
+
+// Public Streaming Traffic Stats (100% PUBLIC)
+Route::get('/streaming/traffic', function () {
+    $stats = \App\Services\TrafficStatsService::getPublicStats();
+    // Leaderboard memuat nama akun, jadi hanya untuk pengguna yang sudah login
+    $leaderboard = auth()->check() ? \App\Services\TrafficStatsService::getLeaderboard() : null;
+    return response(view('filament.streaming.layout', [
+        'title' => 'Statistik Traffic Streaming - KZSTRM',
+        'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.traffic-stats', [
+            'stats' => $stats,
+            'leaderboard' => $leaderboard,
+            'meId' => auth()->id(),
+        ])->render())
+    ])->render());
+})->name('streaming.traffic.public');
+
+Route::get('/traffic', fn() => redirect('/streaming/traffic'));
+Route::get('/stats', fn() => redirect('/streaming/traffic'));
+
+// Watchlist / Bookmark Friendly Redirects
+Route::get('/watchlist', fn() => redirect('/streaming/watchlist'));
+Route::get('/bookmark', fn() => redirect('/streaming/watchlist'));
+Route::get('/bookmarks', fn() => redirect('/streaming/watchlist'));
+Route::get('/streaming/stats', fn() => redirect('/streaming/traffic'));
+
+// Legacy Anime Detail / Watch redirects to V2 (Server 2)
+Route::get('/streaming/anime/{slug}', fn($slug) => redirect('/streaming/anime-v2/' . $slug))->where('slug', '[a-zA-Z0-9-]+');
+Route::get('/streaming/anime/{anime_slug}/episode/{episode_slug}', fn($anime_slug, $episode_slug) => redirect("/streaming/anime-v2/{$anime_slug}/episode/{$episode_slug}"));
 
 Route::get('/clear-cache', function () {
     \Illuminate\Support\Facades\Cache::flush();
@@ -103,18 +424,14 @@ Route::get('/clear-cache', function () {
 
 Route::get('/api/search', function (\Illuminate\Http\Request $request) {
     $q = $request->query('q', '');
-    if (empty($q)) {
+    $category = $request->query('category', 'all');
+    $limit = (int) $request->query('limit', 36);
+
+    if (empty(trim($q))) {
         return response()->json([]);
     }
     
-    $results = \App\Services\StreamingService::search($q);
-    
-    foreach ($results as &$item) {
-        $isSeries = isset($item['type']) && in_array($item['type'], ['tv_series', 'tv', 'series']);
-        $item['url'] = $isSeries 
-            ? \App\Filament\Streaming\Pages\ShowSeries::getUrl(parameters: ['slug' => $item['slug']], panel: 'streaming')
-            : \App\Filament\Streaming\Pages\WatchMovie::getUrl(parameters: ['slug' => $item['slug']], panel: 'streaming');
-    }
+    $results = \App\Services\GlobalSearchService::search($q, $category, $limit);
     
     return response()->json($results);
 })->name('api.search.proxy');
@@ -129,10 +446,13 @@ Route::get('/api/proxy-stream', function (\Illuminate\Http\Request $request) {
     $host = $parsedUrl['host'] ?? '';
     $scheme = $parsedUrl['scheme'] ?? 'https';
 
-    // Referer/Origin sesuai host asal (khusus untuk bilibili.tv gunakan domain kanonisnya).
+    // Referer/Origin sesuai host asal (khusus untuk bilibili.tv dan CDN anime Mirainime gunakan domain kanonisnya).
     if (str_contains($host, 'bilibili.tv')) {
         $referer = 'https://www.bilibili.tv/';
         $origin = 'https://www.bilibili.tv';
+    } elseif (str_contains($host, 'erisboreas.my.id') || str_contains($host, 'suzune.web.id') || str_contains($host, 'mirainime')) {
+        $referer = 'https://mirainime.com/';
+        $origin = 'https://mirainime.com';
     } else {
         $referer = "{$scheme}://{$host}/";
         $origin = "{$scheme}://{$host}";
@@ -269,7 +589,7 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
     $scheme = $parsedUrl['scheme'] ?? 'https';
 
     // Domain HLS yang diperbolehkan.
-    $allowedDomains = ['shorttv.live', 'goodbos.online', 'dramabos.fun', 'netshort.com', 'b-cdn.net', 'ibyteimg.com', 'tiktokcdn.com', 'goodshort.com', 'goodreels.com'];
+    $allowedDomains = ['shorttv.live', 'goodbos.online', 'dramabos.fun', 'netshort.com', 'b-cdn.net', 'ibyteimg.com', 'tiktokcdn.com', 'goodshort.com', 'goodreels.com', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'stardust-tv.com', 'stardusttv.cc', 'vibeshort.live'];
     $allowed = false;
     foreach ($allowedDomains as $domain) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {
@@ -401,9 +721,17 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
         abort(400, 'URL is required');
     }
 
+    // Normalisasi gambar Melolo (ByteDance ImageX) jika URL lama mengarah ke apsoutheast atau signature expired
+    if (str_contains($url, 'novel-images-') && preg_match('/novel-images-[a-z]+(?:%2F|\/)([0-9a-f]{32})/i', $url, $matches)) {
+        $url = "https://p16-novel-sg.ibyteimg.com/img/novel-images-sg/{$matches[1]}~tplv-resize:570:810.jpg";
+    }
+
+    // Normalisasi double-slash pada path URL
+    $url = preg_replace('#(?<!:)//#', '/', $url);
+
     $parsedUrl = parse_url($url);
     $host = $parsedUrl['host'] ?? '';
-    $allowedDomains = ['dramabuzz.sbs', 'goodbos.online', 'dramabos.fun', 'wsrv.nl', 'lh3.googleusercontent.com', 'tiktokcdn.com', 'ibyteimg.com', 'netshort.com', 'shorttv.live', 'raptdrama.com', 'goodreels.com', 'goodshort.com'];
+    $allowedDomains = ['dramabuzz.sbs', 'goodbos.online', 'dramabos.fun', 'wsrv.nl', 'lh3.googleusercontent.com', 'tiktokcdn.com', 'ibyteimg.com', 'netshort.com', 'shorttv.live', 'raptdrama.com', 'goodreels.com', 'goodshort.com', 'dramaboxdb.com', 'dramabox.com', 'shortolol.com', 'kintoto.xyz', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'assets.stardusttv.cc', 'stardusttv.cc', 'stardust-tv.com', 'vibeshort.live', 'rebahinxxi3.mom', 'rebahinxxi.mom', 'rebahinxxi3.pics', 'rebahinxxi3.casa', 'serealshort.com', 'serealplus.com'];
     $allowed = false;
     foreach ($allowedDomains as $domain) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {

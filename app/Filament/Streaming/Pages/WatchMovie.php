@@ -19,10 +19,27 @@ class WatchMovie extends Page
     public ?array $media = null;
     public array $recommendations = [];
     public bool $isFavorited = false;
+    public array $servers = [];
 
-    public function mount($slug): void
+    public function mount($slug)
     {
         $this->movieSlug = $slug;
+
+        // Auto-redirect Rebahin slug to canonical IDLIX movie if available
+        if (str_starts_with($slug, 'rb-')) {
+            try {
+                $rbDetail = StreamingService::getMovieDetail($slug);
+                if ($rbDetail) {
+                    $idlixMovie = StreamingService::findIdlixMovieByTitle($rbDetail['title'] ?? '', $rbDetail['year'] ?? null);
+                    if ($idlixMovie && !empty($idlixMovie['slug'])) {
+                        return redirect()->to(self::getUrl(['slug' => $idlixMovie['slug']], panel: 'streaming'));
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Ignore and proceed
+            }
+        }
+
         $this->media = StreamingService::getMovieDetail($slug);
 
         if (!$this->media) {
@@ -34,17 +51,63 @@ class WatchMovie extends Page
             $this->media['video_url'] = '';
             $this->media['subtitles'] = [];
             $this->recommendations = [];
+            $this->servers = [];
             return;
         }
 
-        $stream = !empty($this->media['id']) ? StreamingService::getMovieStream($this->media['id']) : null;
+        // Setup servers (HLS vs Embed)
+        $servers = [];
+        $isEmbedMovie = !empty($this->media['isEmbed']);
+
+        if ($isEmbedMovie) {
+            // Server 1 (HD) uses native Artplayer via Stream Relay
+            $servers[] = [
+                'id' => 'server1',
+                'name' => 'Server 1 (HD)',
+                'type' => 'hls',
+                'embed_url' => '',
+            ];
+
+            $rbServers = $this->media['servers'] ?? [];
+            foreach ($rbServers as $idx => $s) {
+                $servers[] = [
+                    'id' => 'server_mirror_' . ($idx + 1),
+                    'name' => 'Server ' . ($idx + 2) . ' (Mirror)',
+                    'type' => 'embed',
+                    'embed_url' => $s['embed_url'] ?? '',
+                ];
+            }
+        } else {
+            $servers[] = [
+                'id' => 'server1',
+                'name' => 'Server 1 (HD)',
+                'type' => 'hls',
+                'embed_url' => '',
+            ];
+
+            if (!empty($this->media['mirror_servers'])) {
+                foreach ($this->media['mirror_servers'] as $idx => $s) {
+                    $servers[] = [
+                        'id' => 'server_mirror_' . ($idx + 1),
+                        'name' => 'Server ' . ($idx + 2) . ' (Mirror)',
+                        'type' => 'embed',
+                        'embed_url' => $s['embed_url'] ?? '',
+                    ];
+                }
+            }
+        }
+        $this->servers = $servers;
+
+        $stream = !empty($this->media['id']) ? StreamingService::getValidCachedMovieStream($this->media['id']) : null;
+        if (!$stream && !empty($this->media['id']) && str_starts_with($this->media['id'], 'rb-')) {
+            $stream = StreamingService::getMovieStream($this->media['id']);
+        }
         if ($stream) {
             $this->media['video_url'] = $stream['video_url'] ?? '';
             $this->media['subtitles'] = $stream['subtitles'] ?? [];
-        }
-
-        if (empty($this->media['video_url'])) {
-            $this->media['video_url'] = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+        } else {
+            $this->media['video_url'] = '';
+            $this->media['subtitles'] = [];
         }
 
         // Get recommendations
@@ -66,6 +129,27 @@ class WatchMovie extends Page
                 ->where('item_type', 'movie')
                 ->exists()
             : false;
+
+        // Record Watch History
+        if (auth()->check()) {
+            $user = auth()->user();
+            $movieTitle = $this->media['title'] ?? 'Movie';
+            $thumbnail = $this->media['poster'] ?? $this->media['thumbnail'] ?? null;
+
+            $user->watchHistories()->updateOrCreate(
+                [
+                    'item_id' => $this->movieSlug,
+                    'item_type' => 'movie',
+                ],
+                [
+                    'title' => $movieTitle,
+                    'thumbnail' => $thumbnail,
+                    'last_episode' => '1',
+                    'watched_episodes' => ['1'],
+                    'url' => request()->url(),
+                ]
+            );
+        }
     }
 
     public function toggleFavorite()

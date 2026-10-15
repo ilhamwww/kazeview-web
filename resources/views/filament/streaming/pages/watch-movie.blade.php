@@ -1,332 +1,997 @@
-<div class="min-h-screen bg-[#050505] text-white pb-16">
-    <!-- Main Content Container -->
-    <div class="w-full max-w-[1800px] mx-auto px-6 pt-24 space-y-8">
-        <!-- Back Link & Header -->
-        <div class="flex items-center justify-between pb-4 border-b border-zinc-800">
-            <a href="{{ \App\Filament\Streaming\Pages\StreamingHome::getUrl(panel: 'streaming') }}"
-                class="inline-flex items-center text-sm font-semibold text-gray-400 hover:text-white transition gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Kembali ke Jelajah
-            </a>
-            <h1 class="text-xl font-bold text-white tracking-wide">Sedang Menonton</h1>
-        </div>
+@php
+    use App\Filament\Streaming\Pages\Movies;
+    use App\Filament\Streaming\Pages\ShowSeries;
+    use App\Filament\Streaming\Pages\WatchMovie;
 
-        <!-- Video Player Wrapper -->
-        <div class="w-full bg-black rounded-xl overflow-hidden shadow-2xl aspect-video border border-zinc-800 relative"
-            x-data="watchPlayerInit()">
-            <!-- Shaka Player Container (Only initialized / visible when playing) -->
-            <div x-show="isPlaying" class="w-full h-full relative" x-ref="playerContainer" style="display: none;">
-                <div class="w-full h-full bg-black relative">
-                    <video x-ref="video" class="w-full h-full object-contain" poster="{{ $media['banner'] }}"></video>
-                    <!-- IDLIX Titlebar style -->
-                    <div class="absolute top-0 left-0 w-full p-4 flex items-center gap-3 z-10 pointer-events-none bg-gradient-to-b from-black/80 to-transparent opacity-0 transition-opacity duration-300"
-                        id="shaka-titlebar">
-                        <div class="min-w-0 flex-1">
-                            <p class="text-xs uppercase tracking-[0.18em] text-white/50 font-semibold drop-shadow-md">
-                                Now Playing</p>
-                            <p class="truncate text-base font-semibold text-white/95 drop-shadow-md">
-                                {{ $media['title'] }}</p>
-                        </div>
-                    </div>
+    $mBanner = str_replace('/t/p/original/', '/t/p/w1280/', $media['banner'] ?? '') ?: ($media['thumbnail'] ?? '');
+    $mRating = is_numeric($media['rating'] ?? null) ? (float) $media['rating'] : 0;
+    $rawGenres = !empty($media['genres']) && is_array($media['genres'])
+        ? (isset($media['genres'][0]['name']) ? array_column($media['genres'], 'name') : $media['genres'])
+        : array_filter(array_map('trim', explode(',', (string) ($media['genre'] ?? ''))));
+    $mGenres = array_map(fn($g) => html_entity_decode((string)$g, ENT_QUOTES | ENT_HTML5, 'UTF-8'), array_values($rawGenres));
+    $mRuntime = null;
+    if (preg_match('/^(\d+)m$/', (string) ($media['duration'] ?? ''), $mm)) {
+        $mRuntime = (int) $mm[1] >= 60 ? intdiv((int) $mm[1], 60) . 'j ' . ((int) $mm[1] % 60) . 'm' : $mm[1] . 'm';
+    } elseif (!empty($media['duration'])) {
+        $mRuntime = $media['duration'];
+    }
+    $recUrl = function (array $it) {
+        if (empty($it['slug'])) return '#';
+        $isSeries = in_array($it['type'] ?? '', ['tv_series', 'tv', 'series'], true);
+        return $isSeries
+            ? ShowSeries::getUrl(['slug' => $it['slug']], panel: 'streaming')
+            : WatchMovie::getUrl(['slug' => $it['slug']], panel: 'streaming');
+    };
+@endphp
+
+<div class="min-h-screen bg-[#050505] text-white pb-28 md:pb-16 relative">
+
+    {{-- Ambient backdrop --}}
+    @if($mBanner)
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-[900px] overflow-hidden" aria-hidden="true">
+            <img src="{{ $mBanner }}" alt="" class="w-full h-full object-cover opacity-30 blur-3xl scale-110">
+            <div class="absolute inset-0 bg-gradient-to-b from-[#050505]/40 via-[#050505]/80 to-[#050505]"></div>
+        </div>
+    @endif
+
+    {{-- Top bar --}}
+    <div class="relative w-full max-w-[1600px] mx-auto px-4 md:px-8 pt-20 md:pt-28 pb-4 flex items-center justify-between">
+        <a href="{{ Movies::getUrl(panel: 'streaming') }}"
+           class="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Movies
+        </a>
+        <span class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400">
+            <span class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+            Sedang Menonton
+        </span>
+    </div>
+
+    <div class="relative w-full max-w-[1600px] mx-auto px-0 md:px-8 space-y-8" x-data="watchPlayerInit()">
+
+        {{-- ================= PLAYER ================= --}}
+        <div class="w-full bg-black md:rounded-2xl overflow-hidden aspect-video relative ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = true)">
+            <div x-show="isPlaying && !isEmbed" class="w-full h-full relative" style="display: none;">
+                <div x-ref="artContainer" id="movieArtPlayer" class="w-full h-full"></div>
+            </div>
+
+            <div x-show="isPlaying && isEmbed" class="w-full h-full relative bg-black" style="display: none;">
+                <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+            </div>
+
+            <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 flex flex-col items-center justify-center gap-3">
+                <div class="w-14 h-14 rounded-full border-4 border-red-600/30 border-t-red-600 animate-spin"></div>
+                <div class="text-center px-4">
+                    <p class="text-sm font-bold">Menyiapkan pemutar...</p>
+                    <p class="text-xs text-zinc-400 mt-1">Mengambil stream terbaik & subtitle Indonesia</p>
                 </div>
             </div>
 
-            <!-- Poster / Details Overlay (Initially visible, hidden when playing) -->
-            <div x-show="!isPlaying" class="absolute inset-0 z-20 flex flex-col justify-end">
-                <!-- Backdrop/Banner Image -->
-                @if(!empty($media['banner']))
-                    <img src="{{ $media['banner'] }}" alt="" class="absolute inset-0 w-full h-full object-cover opacity-75">
+            <div x-show="!isPlaying && !isLoadingStream" class="absolute inset-0 z-20">
+                @if($mBanner)
+                    <img src="{{ $mBanner }}" alt="" class="absolute inset-0 w-full h-full object-cover">
                 @endif
+                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/30 to-black/10"></div>
+                <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/70 via-transparent to-transparent"></div>
 
-                <!-- Gradients -->
-                <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent"></div>
-
-                <!-- Center Play Button -->
-                <div class="absolute inset-0 flex items-center justify-center">
-                    <button @click="playVideo()"
-                        class="w-20 h-20 rounded-full border border-white/40 bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition duration-300 transform hover:scale-110 shadow-2xl focus:outline-none">
-                        <svg class="w-8 h-8 fill-current ml-1" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Video Details -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 space-y-4">
-                <div class="flex items-center space-x-3 text-xs md:text-sm">
-                    <span
-                        class="inline-block text-[11px] bg-white/10 text-gray-300 font-bold px-2.5 py-0.5 rounded border border-white/10">{{ strtoupper($media['type']) }}</span>
-                    <span class="text-emerald-500 font-bold flex items-center">
-                        <svg class="w-4 h-4 mr-1 text-yellow-500 fill-current" viewBox="0 0 24 24">
-                            <path
-                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                        </svg>
-                        {{ $media['rating'] }} Rating
-                    </span>
-                    <span class="text-gray-400 font-medium">{{ $media['year'] }}</span>
-                    <span class="text-gray-400 font-medium">{{ $media['duration'] }}</span>
-                </div>
-                <h2 class="text-2xl md:text-4xl font-extrabold text-white">{{ $media['title'] }}</h2>
-                <p class="text-gray-400 text-sm md:text-base leading-relaxed font-medium">
-                    {{ $media['description'] }}
-                </p>
-                <div class="text-xs md:text-sm text-gray-500 space-y-1 pt-2">
-                    <p><strong class="text-gray-300">Genre:</strong> {{ $media['genre'] }}</p>
-                </div>
-            </div>
-
-            <!-- Sidebar/Quick Actions -->
-            <div class="bg-zinc-950 p-6 rounded-xl border border-zinc-800 h-max space-y-4 shadow-sm">
-                <h3 class="font-bold text-lg text-white">Watch Information</h3>
-                <div class="space-y-2 text-sm text-gray-400">
-                    <div class="flex justify-between border-b border-zinc-800 pb-2">
-                        <span>Quality:</span>
-                        <span class="text-emerald-500 font-bold">{{ $media['quality'] ?? '1080p Full HD' }}</span>
-                    </div>
-                    <div class="flex justify-between border-b border-zinc-800 pb-2">
-                        <span>Audio:</span>
-                        <span>Stereo 2.0 (English)</span>
-                    </div>
-                    <div class="flex justify-between pb-2">
-                        <span>Subtitles:</span>
-                        <span>English, Indonesia</span>
-                    </div>
-                </div>
-                <button wire:click="toggleFavorite"
-                    class="w-full {{ $isFavorited ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-white hover:bg-gray-200 text-black' }} text-sm py-2.5 rounded-lg font-bold transition flex items-center justify-center space-x-2 shadow">
-                    @if($isFavorited)
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        <span>Hapus dari Favorit</span>
-                    @else
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span>Tambahkan ke Favorit</span>
-                    @endif
+                <button type="button" @click="playVideo()" aria-label="Putar {{ $media['title'] }}"
+                        class="absolute inset-0 m-auto w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/15 hover:bg-red-600 backdrop-blur-md ring-1 ring-white/40 flex items-center justify-center transition duration-300 hover:scale-110 group cursor-pointer z-20">
+                    <span class="pointer-events-none absolute inset-0 rounded-full ring-2 ring-white/20 animate-ping"></span>
+                    <svg class="pointer-events-none w-9 h-9 md:w-11 md:h-11 fill-white ml-1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
                 </button>
 
+                <div class="absolute left-4 right-4 bottom-4 md:left-8 md:bottom-7 flex items-end justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-red-500">Movie</p>
+                        <p class="text-lg md:text-3xl font-black tracking-tight line-clamp-1 drop-shadow-lg">{{ $media['title'] }}</p>
+                    </div>
+                    @if($mRuntime)
+                        <span class="hidden sm:inline shrink-0 text-xs font-bold bg-black/60 backdrop-blur px-2.5 py-1 rounded-full border border-white/10">{{ $mRuntime }}</span>
+                    @endif
+                </div>
             </div>
         </div>
 
-        <!-- Recommendations Row -->
-        <section class="space-y-4 pt-8 border-t border-zinc-800">
-            <h2 class="text-xl font-bold tracking-wide text-white border-l-4 border-red-600 pl-3">Rekomendasi Lainnya
-            </h2>
-            <div
-                class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-x-4 gap-y-6">
-                @foreach(array_slice($recommendations, 0, 8) as $item)
-                    @php
-                        $itemUrl = '#';
-                        if (!empty($item['slug'])) {
-                            $itemIsSeries = isset($item['type']) && ($item['type'] === 'tv_series' || $item['type'] === 'tv' || $item['type'] === 'series');
-                            $itemUrl = $itemIsSeries
-                                ? \App\Filament\Streaming\Pages\ShowSeries::getUrl(parameters: ['slug' => $item['slug']], panel: 'streaming')
-                                : \App\Filament\Streaming\Pages\WatchMovie::getUrl(parameters: ['slug' => $item['slug']], panel: 'streaming');
-                        }
-                    @endphp
-                    <div class="flex flex-col group">
-                        <a href="{{ $itemUrl }}"
-                            class="block relative overflow-hidden rounded-lg transition duration-300 hover:scale-[1.02]">
-                            <!-- Image -->
-                            <div class="relative aspect-[2/3] w-full overflow-hidden">
-                                <img src="{{ $item['thumbnail'] }}" alt="{{ $item['title'] }}"
-                                    class="w-full h-full object-cover group-hover:opacity-85 transition duration-300">
-
-                                <!-- Badges (Top Left) -->
-                                <span
-                                    class="absolute top-2 left-2 px-1.5 py-0.5 text-[9px] font-extrabold text-gray-200 bg-black/60 backdrop-blur-md rounded border border-white/5 uppercase tracking-wider">
-                                    {{ strtoupper($item['type']) }}
-                                </span>
-
-                                <!-- Badges (Top Right) -->
-                                @php
-                                    $qualityColor = $item['quality'] === 'BLU-RAY' ? 'bg-blue-950/60 text-blue-400 border-blue-500/20' : 'bg-emerald-950/60 text-emerald-400 border-emerald-500/20';
-                                @endphp
-                                <span
-                                    class="absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-extrabold border rounded uppercase tracking-wider backdrop-blur-md {{ $qualityColor }}">
-                                    {{ $item['quality'] }}
-                                </span>
-
-                                <!-- Bottom Badges Info (Left & Right) -->
-                                <div class="absolute bottom-2 inset-x-2 flex items-center justify-between">
-                                    <!-- Star Rating Badge -->
-                                    <span
-                                        class="flex items-center gap-0.5 text-yellow-400 font-extrabold text-[10px] bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/5">
-                                        <svg class="w-3 h-3 text-yellow-500 fill-current" viewBox="0 0 24 24">
-                                            <path
-                                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                                        </svg>
-                                        {{ $item['rating'] }}
-                                    </span>
-
-                                    <!-- Comments Badge -->
-                                    <span
-                                        class="flex items-center gap-0.5 text-gray-300 font-bold text-[10px] bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/5">
-                                        <svg class="w-3 h-3 fill-current opacity-80" viewBox="0 0 24 24">
-                                            <path
-                                                d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
-                                        </svg>
-                                        {{ $item['comments'] }}
-                                    </span>
-                                </div>
-                            </div>
-                        </a>
-                        <!-- Title & Year -->
-                        <h3 class="mt-2 text-xs md:text-[13px] font-bold text-gray-200 group-hover:text-red-500 transition duration-200 truncate leading-snug"
-                            title="{{ $item['title'] }} ({{ $item['year'] }})">
-                            {{ $item['title'] }} <span
-                                class="text-zinc-550 font-semibold text-[11.5px]">({{ $item['year'] }})</span>
-                        </h3>
-                    </div>
+        {{-- ================= SERVER SWITCHER ================= --}}
+        @if(!empty($servers) && count($servers) > 1)
+            <div class="px-4 md:px-0 flex items-center gap-2 overflow-x-auto kz-noscroll -mt-4 pb-1">
+                <span class="text-xs font-bold text-zinc-400 mr-1 flex items-center gap-1.5 shrink-0">
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
+                    Pilihan Server:
+                </span>
+                @foreach($servers as $s)
+                    <button type="button"
+                            @click="switchServer('{{ $s['id'] }}', '{{ $s['embed_url'] ?? '' }}', {{ $s['type'] === 'embed' ? 'true' : 'false' }})"
+                            :class="activeServer === '{{ $s['id'] }}' ? 'bg-red-600 text-white ring-red-500 shadow-lg shadow-red-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white'"
+                            class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full" :class="activeServer === '{{ $s['id'] }}' ? 'bg-white' : 'bg-zinc-500'"></span>
+                        {{ $s['name'] }}
+                    </button>
                 @endforeach
             </div>
-        </section>
+        @endif
+
+        {{-- ================= INFO ================= --}}
+        <div class="px-4 md:px-0 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+            <div class="min-w-0">
+                <div class="flex items-start gap-5">
+                    @if(!empty($media['thumbnail']))
+                        <img src="{{ $media['thumbnail'] }}" alt="" class="hidden sm:block w-28 md:w-32 aspect-[2/3] object-cover rounded-xl ring-1 ring-white/10 shadow-xl shrink-0">
+                    @endif
+                    <div class="min-w-0">
+                        <h1 class="text-2xl md:text-4xl font-black tracking-tight leading-tight">{{ $media['title'] }}</h1>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mt-3 text-sm font-semibold text-zinc-300">
+                            @if($mRating > 0)
+                                <span class="inline-flex items-center gap-1 text-yellow-400">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                    {{ number_format($mRating, 1) }}
+                                </span>
+                            @endif
+                            @if(!empty($media['year']))<span class="text-zinc-600">•</span><span>{{ $media['year'] }}</span>@endif
+                            @if($mRuntime)<span class="text-zinc-600">•</span><span>{{ $mRuntime }}</span>@endif
+                            <span class="px-1.5 py-0.5 text-[10px] font-black border border-emerald-500/50 text-emerald-400 rounded">{{ $media['quality'] ?? 'HD' }}</span>
+                        </div>
+                        @if(count($mGenres))
+                            <div class="flex flex-wrap gap-2 mt-4">
+                                @foreach($mGenres as $g)
+                                    <span class="px-3 py-1 text-xs font-semibold text-zinc-200 bg-white/5 border border-white/10 rounded-full">{{ $g }}</span>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                @if(!empty($media['description']))
+                    <div class="mt-6">
+                        <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2">Sinopsis</h2>
+                        <p x-data="{ more: false }" @click="more = !more" :class="more ? '' : 'line-clamp-4'"
+                           class="text-sm md:text-base text-zinc-300 leading-relaxed cursor-pointer">{{ $media['description'] }}</p>
+                    </div>
+                @endif
+            </div>
+
+            {{-- Side panel: actions + subtitle --}}
+            <aside class="bg-zinc-900/50 backdrop-blur rounded-2xl ring-1 ring-white/5 p-5 space-y-5 self-start">
+                <button type="button" @click="playVideo()" x-show="!isPlaying"
+                        class="w-full inline-flex items-center justify-center gap-2 py-3 bg-white text-black hover:bg-zinc-200 active:scale-[0.98] rounded-xl font-bold text-sm transition">
+                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                    Putar Film
+                </button>
+
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Subtitle</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" @click="setSubtitle('id')"
+                                :class="activeSubtitleLang === 'id' ? 'bg-red-600 border-red-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-600'"
+                                class="py-2 rounded-lg text-xs font-bold border transition">Indonesia</button>
+                        <button type="button" @click="setSubtitle('en')"
+                                :class="activeSubtitleLang === 'en' ? 'bg-red-600 border-red-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-600'"
+                                class="py-2 rounded-lg text-xs font-bold border transition">English</button>
+                        <button type="button" @click="setSubtitle('off')"
+                                :class="activeSubtitleLang === 'off' ? 'bg-zinc-700 border-zinc-600 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600'"
+                                class="py-2 rounded-lg text-xs font-bold border transition">Mati</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button wire:click="toggleFavorite" type="button"
+                            class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border transition {{ $isFavorited ? 'bg-red-600/15 border-red-600/50 text-red-400' : 'bg-zinc-950 border-zinc-800 text-zinc-200 hover:border-zinc-600' }}">
+                        <svg class="w-4 h-4 {{ $isFavorited ? 'fill-current' : 'fill-none stroke-current' }}" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                        {{ $isFavorited ? 'Tersimpan' : 'Favorit' }}
+                    </button>
+                    <button type="button" x-data="{ ok: false }"
+                            @click="navigator.clipboard.writeText(window.location.href); ok = true; setTimeout(() => ok = false, 1800)"
+                            class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-zinc-950 border border-zinc-800 text-zinc-200 hover:border-zinc-600 transition">
+                        <span x-text="ok ? 'Link disalin' : 'Bagikan'">Bagikan</span>
+                    </button>
+                </div>
+            </aside>
+        </div>
+
+        {{-- ================= RECOMMENDATIONS ================= --}}
+        @if(count($recommendations))
+            <section class="px-4 md:px-0 pt-4">
+                <h2 class="text-xl md:text-2xl font-black tracking-tight mb-5">Mungkin Kamu Suka</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-6">
+                    @foreach(array_slice($recommendations, 0, 12) as $item)
+                        @php $r = is_numeric($item['rating'] ?? null) ? (float) $item['rating'] : 0; @endphp
+                        <a href="{{ $recUrl($item) }}" class="group block">
+                            <div class="relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-white/5 group-hover:ring-red-600/60 transition">
+                                <img src="{{ $item['thumbnail'] ?? '' }}" alt="{{ $item['title'] ?? '' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-100 transition"></div>
+                                @if($r > 0)
+                                    <span class="absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-black rounded bg-black/60 backdrop-blur text-yellow-400 border border-white/10">★ {{ number_format($r, 1) }}</span>
+                                @endif
+                                <span class="absolute top-2 left-2 px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-black/60 backdrop-blur border border-white/10">{{ in_array($item['type'] ?? '', ['tv_series', 'tv', 'series'], true) ? 'Series' : 'Movie' }}</span>
+                            </div>
+                            <h3 class="mt-2.5 text-sm font-bold text-zinc-100 group-hover:text-red-500 transition line-clamp-1">{{ $item['title'] ?? '' }}</h3>
+                            @if(!empty($item['year']))<p class="text-[11px] text-zinc-500 mt-0.5">{{ $item['year'] }}</p>@endif
+                        </a>
+                    @endforeach
+                </div>
+            </section>
+        @endif
     </div>
 </div>
 
 @push('styles')
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.9/controls.min.css" />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <style>
-        /* Hide native HTML5 video controls */
-        video::-webkit-media-controls {
+        .artplayer-app {
+            width: 100% !important;
+            height: 100% !important;
+            background: #000 !important;
+        }
+
+        /* 1. Hapus total gradien hitam tebal dari art-bottom agar video jernih dan subtitle tidak tertutup */
+        .art-video-player .art-bottom {
+            background: none !important;
+            background-image: none !important;
+        }
+
+        /* 2. Hanya saat kontrol aktif, berikan gradien halus di bilah tombol kontrol bawah (bukan di layar video) */
+        .art-video-player.art-control-show .art-controls,
+        .art-video-player.art-hover .art-controls {
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, transparent 100%) !important;
+        }
+
+        /* 3. Subtitle styling: Z-index tinggi agar selalu di atas layer kontrol & tidak pernah tertutup */
+        .art-video-player .art-subtitle {
+            z-index: 75 !important;
+            pointer-events: none !important;
+            text-align: center !important;
+            bottom: 35px !important;
+            padding: 0 4% !important;
+            white-space: pre-line !important;
+            transition: bottom 0.2s ease !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            text-shadow: none !important;
+        }
+
+        /* Saat bar kontrol bawah muncul, naikkan sedikit subtitle agar tidak bertabrakan dengan progress bar */
+        .art-video-player.art-control-show .art-subtitle {
+            bottom: 72px !important;
+        }
+
+        /* 4. Kotak subtitle transparan ala IDLIX / Netflix yang super rapi dan kontras tinggi */
+        .art-subtitle-inner-box {
+            display: inline-block !important;
+            background: rgba(0, 0, 0, 0.75) !important;
+            padding: 4px 14px !important;
+            border-radius: 8px !important;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            font-size: 22px !important;
+            font-weight: 600 !important;
+            color: #ffffff !important;
+            line-height: 1.42 !important;
+            text-align: center !important;
+            box-decoration-break: clone !important;
+            -webkit-box-decoration-break: clone !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* Style subtitle saat dalam mode teks bersih (outline tanpa kotak) */
+        .art-subtitle-style-clean .art-subtitle-inner-box {
+            background: transparent !important;
+            box-shadow: none !important;
+            text-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.95),
+                0 0 4px rgba(0, 0, 0, 0.9),
+                1px 1px 2px rgba(0, 0, 0, 0.95),
+                -1px -1px 2px rgba(0, 0, 0, 0.95),
+                1px -1px 2px rgba(0, 0, 0, 0.95),
+                -1px 1px 2px rgba(0, 0, 0, 0.95),
+                0 0 8px rgba(0, 0, 0, 0.9) !important;
+        }
+
+        /* Style subtitle saat kotak hitam pekat */
+        .art-subtitle-style-solid .art-subtitle-inner-box {
+            background: #000000 !important;
+        }
+
+        /* 5. Menu settings popup Artplayer 100% Persis IDLIX (Pixel-Perfect) */
+        .art-video-player .art-settings {
+            height: auto !important;
+            max-height: 380px !important;
+            overflow: visible !important;
+        }
+
+        .art-video-player .art-setting-panel {
+            min-width: 255px !important;
+            width: 255px !important;
+            max-width: 92vw !important;
+            height: auto !important;
+            max-height: 380px !important;
+            overflow: visible !important;
+            border-radius: 12px !important;
+            backdrop-filter: blur(18px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+            background: rgba(18, 18, 22, 0.88) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+            padding: 6px 6px !important;
+        }
+
+        .art-video-player .art-setting-item {
+            height: 38px !important;
+            min-height: 38px !important;
+            padding: 0 10px !important;
+            border-radius: 8px !important;
+            margin: 1px 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            transition: background 0.15s ease !important;
+            cursor: pointer !important;
+        }
+
+        .art-video-player .art-setting-item:hover {
+            background: rgba(255, 255, 255, 0.09) !important;
+        }
+
+        .art-video-player .art-setting-item-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon {
+            flex-shrink: 0 !important;
+            width: 18px !important;
+            height: 18px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #ffffff !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon svg {
+            width: 18px !important;
+            height: 18px !important;
+            display: block !important;
+            fill: none !important;
+            stroke: #ffffff !important;
+            stroke-width: 2 !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon svg rect,
+        .art-video-player .art-setting-item-left-icon svg circle,
+        .art-video-player .art-setting-item-left-icon svg path,
+        .art-video-player .art-setting-item-left-icon svg line,
+        .art-video-player .art-setting-item-left-icon svg polyline {
+            fill: none !important;
+            stroke: #ffffff !important;
+        }
+
+        .art-video-player .art-setting-item-left-text {
+            font-size: 13.5px !important;
+            font-weight: 500 !important;
+            color: #ffffff !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        .art-video-player .art-setting-item-right {
+            flex-shrink: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+
+        .art-video-player .art-setting-item-right-tooltip {
+            font-size: 12.5px !important;
+            font-weight: 400 !important;
+            color: rgba(255, 255, 255, 0.78) !important;
+            white-space: nowrap !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        .art-video-player .art-setting-item-right-icon {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Pure CSS Crisp 90deg White Chevron Arrow */
+        .art-video-player .art-setting-item-right-icon svg {
             display: none !important;
         }
+        .art-video-player .art-setting-item-right-icon::after {
+            content: '';
+            display: block;
+            width: 5.5px;
+            height: 5.5px;
+            border-top: 1.8px solid rgba(255, 255, 255, 0.75);
+            border-right: 1.8px solid rgba(255, 255, 255, 0.75);
+            transform: rotate(45deg);
+            margin-right: 2px;
+        }
 
-        video::-webkit-media-controls-enclosure {
+        /* Hide chevron arrow on Picture-in-Picture row */
+        .art-video-player .art-setting-item[data-name="pip"] .art-setting-item-right-icon::after,
+        .art-video-player .art-setting-item:nth-child(6) .art-setting-item-right-icon::after {
             display: none !important;
-        }
-
-        /* Shaka Customizations for IDLIX style */
-        .shaka-seek-bar-container {
-            background: rgba(255, 255, 255, 0.25) !important;
-        }
-
-        .shaka-seek-bar {
-            background: linear-gradient(to right, rgb(229, 9, 20) 0%, rgb(229, 9, 20) var(--seek-bar-percentage, 0%), rgba(255, 255, 255, 0) var(--seek-bar-percentage, 0%)) !important;
-        }
-
-        .shaka-play-button,
-        .shaka-fullscreen-button,
-        .shaka-volume-bar,
-        .shaka-range-element {
-            accent-color: #E50914 !important;
-        }
-
-        .shaka-text-container span {
-            background-color: rgba(0, 0, 0, 0.6) !important;
-            color: #fff !important;
-            font-size: 1.1em !important;
-            text-shadow: 1px 1px 2px #000 !important;
-            padding: 2px 8px !important;
-            border-radius: 4px !important;
-        }
-
-        .shaka-video-container:hover #shaka-titlebar {
-            opacity: 1 !important;
         }
     </style>
 @endpush
 
 @push('scripts')
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.9/shaka-player.ui.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
+    <script src="/js/kz-fullscreen.js?v=1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('watchPlayerInit', () => ({
-                isPlaying: false,
-                player: null,
-                ui: null,
-                destroy() {
-                    if (this.ui) this.ui.destroy();
-                    if (this.player) this.player.destroy();
-                },
-                async playVideo() {
-                    this.isPlaying = true;
-                    await this.$nextTick();
-                    await this.initPlayer();
-                },
-                async initPlayer() {
-                    const videoSrc = '{{ $media['video_url'] ?? '' }}';
-                    const subtitles = @json($media['subtitles'] ?? []);
+        (function() {
+            function initWatchMovieComponent() {
+                const componentDefinition = () => ({
+                    isPlaying: false,
+                    isLoadingStream: false,
+                    art: null,
+                    hls: null,
+                    videoSrc: '{{ $media['video_url'] ?? '' }}',
+                    subtitles: @json($media['subtitles'] ?? []),
+                    movieId: '{{ $media['id'] ?? '' }}',
+                    activeSubtitleLang: 'id',
+                    activeServer: '{{ $servers[0]["id"] ?? "server1" }}',
+                    isEmbed: {{ !empty($servers[0]["type"]) && $servers[0]["type"] === "embed" ? "true" : "false" }},
+                    currentEmbedUrl: '{{ $servers[0]["embed_url"] ?? "" }}',
+                    useProxy: false,
+                    streamError: '',
+                    _prefetch: null,
+                    _stallTimer: null,
+                    _proxyRestarted: false,
 
-                    if (!videoSrc) return;
+                    init() {
+                        // Ambil stream sejak halaman dibuka supaya saat tombol play ditekan video langsung jalan (khusus HLS)
+                        if (!this.isEmbed && !this.videoSrc && this.movieId) this._prefetch = this.fetchStreamAsync(false);
+                    },
 
-                    if (!window.shaka) {
-                        setTimeout(() => this.initPlayer(), 100);
-                        return;
-                    }
-
-                    shaka.polyfill.installAll();
-                    if (!shaka.Player.isBrowserSupported()) {
-                        console.error('Browser not supported!');
-                        return;
-                    }
-
-                    const video = this.$refs.video;
-                    const container = video.parentElement;
-
-                    this.player = new shaka.Player(video);
-                    this.ui = new shaka.ui.Overlay(this.player, container, video);
-
-                    this.ui.configure({
-                        controlPanelElements: [
-                            'play_pause',
-                            'rewind',
-                            'fast_forward',
-                            'mute',
-                            'volume',
-                            'time_and_duration',
-                            'spacer',
-                            'captions',
-                            'quality',
-                            'playback_rate',
-                            'picture_in_picture',
-                            'fullscreen'
-                        ],
-                        addSeekBar: true,
-                        overflowMenuButtons: ['captions', 'quality', 'language', 'playback_rate', 'picture_in_picture']
-                    });
-
-                    this.player.addEventListener('error', (e) => console.error('Error code', e.detail.code, 'object', e.detail));
-
-                    try {
-                        await this.player.load(videoSrc);
-
-                        video.play();
-
-                        // Add text tracks manually
-                        if (subtitles && subtitles.length > 0) {
-                            for (const sub of subtitles) {
-                                try {
-                                    if (sub.path && sub.lang) {
-                                        await this.player.addTextTrackAsync(sub.path, sub.lang, 'subtitles', 'text/vtt', '', sub.label || sub.lang);
-                                    }
-                                } catch (e) {
-                                    console.error('Error adding text track:', e);
-                                }
+                    switchServer(id, embedUrl, isEmbedServer) {
+                        this.activeServer = id;
+                        this.isEmbed = isEmbedServer;
+                        this.currentEmbedUrl = embedUrl;
+                        if (isEmbedServer) {
+                            if (this.art) {
+                                try { this.art.destroy(false); } catch(e) {}
+                                this.art = null;
                             }
+                            this.isPlaying = true;
+                        } else {
+                            this.isPlaying = true;
+                            this.$nextTick(() => {
+                                this.initPlayer();
+                            });
+                        }
+                    },
 
-                            // Enable ID text track by default if exists
-                            const tracks = this.player.getTextTracks();
-                            const defaultTrack = tracks.find(t => t.language === 'id' || t.language === 'ind') || tracks[0];
-                            if (defaultTrack) {
-                                this.player.selectTextTrack(defaultTrack);
-                                this.player.setTextTrackVisibility(true);
+                    // HP/tablet: fullscreen native + kunci landscape. Desktop: tetap web fullscreen.
+                    useNativeFs() {
+                        return !!(window.KzFs && window.KzFs.isTouch() && window.KzFs.supportsElement(this.$refs.playerShell));
+                    },
+
+                    enterNativeFs() {
+                        if (window.KzFs && this.$refs.playerShell) window.KzFs.enter(this.$refs.playerShell);
+                    },
+
+                    toggleNativeFs() {
+                        if (!window.KzFs) return;
+                        if (window.KzFs.isActive(this.$refs.playerShell)) window.KzFs.exit();
+                        else this.enterNativeFs();
+                    },
+
+                    afterInitFs() {
+                        if (!this.art) return;
+                        if (this.useNativeFs()) {
+                            if (!window.KzFs.isActive(this.$refs.playerShell)) this.art.fullscreenWeb = true;
+                        } else {
+                            this.art.fullscreenWeb = true;
+                        }
+                    },
+
+                    restartWithProxy() {
+                        // Bangun ulang player (video + audio) lewat proxy, lanjut dari posisi terakhir
+                        if (this._proxyRestarted) return;
+                        this._proxyRestarted = true;
+                        this.useProxy = true;
+                        const at = (this.art && this.art.currentTime) || 0;
+                        this.report('restart-proxy', 'at=' + Math.round(at));
+                        this.initPlayer();
+                        if (this.art) {
+                            this.art.once('video:loadedmetadata', () => {
+                                if (at > 1) this.art.currentTime = at;
+                                Promise.resolve(this.art.play()).catch(() => {});
+                            });
+                        }
+                    },
+
+                    setSubtitle(lang) {
+                        this.activeSubtitleLang = lang;
+                        if (!this.art) return;
+                        if (lang === 'off') {
+                            this.art.subtitle.show = false;
+                            return;
+                        }
+                        const list = Array.isArray(this.subtitles) ? this.subtitles : Object.values(this.subtitles || {});
+                        const sub = list.find(s => s && (s.lang === lang || (lang === 'id' && (s.label || '').toLowerCase().includes('indo'))
+                            || (lang === 'en' && (s.label || '').toLowerCase().includes('eng')))) || list[0];
+                        if (!sub) return;
+                        this.art.subtitle.switch('/api/streaming/subtitle?url=' + encodeURIComponent(sub.path), { type: 'vtt' });
+                        this.art.subtitle.show = true;
+                    },
+
+                    report(kind, detail = '') {
+                        try {
+                            const q = new URLSearchParams({ kind, detail: String(detail).slice(0, 300), type: 'movie', id: this.movieId, proxy: this.useProxy ? '1' : '0' });
+                            fetch('/api/player-log?' + q.toString(), { keepalive: true }).catch(() => {});
+                        } catch (e) {}
+                    },
+
+                    destroy() {
+                        if (this.hls) {
+                            this.hls.destroy();
+                            this.hls = null;
+                        }
+                        if (this.art) {
+                            this.art.destroy(false);
+                            this.art = null;
+                        }
+                    },
+
+                    async fetchStreamAsync(autoPlayAfter = true, force = false) {
+                        if (!this.movieId) return;
+                        if (autoPlayAfter) this.isLoadingStream = true;
+                        try {
+                            const ctrl = new AbortController();
+                            const timer = setTimeout(() => ctrl.abort(), 60000);
+                            const res = await fetch('/api/streaming/stream?type=movie&id=' + encodeURIComponent(this.movieId) + (force ? '&force=1' : ''), { signal: ctrl.signal });
+                            clearTimeout(timer);
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data && data.video_url) {
+                                    this.videoSrc = data.video_url;
+                                    this.subtitles = data.subtitles || [];
+                                }
+                            } else {
+                                this.report('stream-api', res.status);
+                            }
+                        } catch (e) {
+                            this.report('stream-api-exc', e && e.name);
+                        } finally {
+                            if (autoPlayAfter) this.isLoadingStream = false;
+                        }
+                        if (autoPlayAfter && this.videoSrc) {
+                            this.isPlaying = true;
+                            await this.$nextTick();
+                            this.initPlayer();
+                            this.afterInitFs();
+                        }
+                    },
+
+                    async playVideo() {
+                        console.log('playVideo called! videoSrc:', this.videoSrc, 'isPlaying:', this.isPlaying);
+                        this.streamError = '';
+                        // Harus dipanggil sebelum await apa pun, selagi masih di dalam gesture tap
+                        if (this.useNativeFs()) this.enterNativeFs();
+                        
+                        // Jika mode embed (Server mirror / Rebahin)
+                        if (this.isEmbed) {
+                            this.isPlaying = true;
+                            return;
+                        }
+
+                        if (!this.videoSrc) {
+                            this.isLoadingStream = true;
+                            if (this._prefetch) await this._prefetch;
+                            if (!this.videoSrc) await this.fetchStreamAsync(false);
+                            this.isLoadingStream = false;
+                            if (!this.videoSrc) {
+                                this.isPlaying = false;
+                                this.streamError = 'Stream belum tersedia. Coba tekan putar lagi sebentar lagi.';
+                                this.report('no-stream');
+                                return;
                             }
                         }
-                    } catch (e) {
-                        console.error('Error code', e.code, 'object', e);
+                        this.isPlaying = true;
+                        await this.$nextTick();
+                        this.initPlayer();
+                        this.afterInitFs();
+                    },
+
+                    initPlayer() {
+                        const artContainer = this.$refs.artContainer || document.getElementById('movieArtPlayer');
+                        if (!artContainer || !this.videoSrc) return;
+
+                        if (this.art) {
+                            this.art.destroy(false);
+                            this.art = null;
+                        }
+
+                        const self = this;
+                        const subList = Array.isArray(this.subtitles) 
+                            ? this.subtitles 
+                            : Object.values(this.subtitles || {});
+
+                        // Prefer Indonesian as default subtitle
+                        const defaultSub = subList.find(s => s && (s.lang === 'id' || s.label?.toLowerCase().includes('indo'))) || subList[0];
+                        const defaultSubUrl = defaultSub ? ('/api/streaming/subtitle?url=' + encodeURIComponent(defaultSub.path)) : '';
+
+                        // Build subtitles options for setting menu
+                        const captionOptions = [
+                            ...subList.map(s => {
+                                const label = s.label || (s.lang === 'id' ? 'Indonesia' : (s.lang === 'en' ? 'English' : s.lang));
+                                const isDef = defaultSub && (s.lang === defaultSub.lang || s.path === defaultSub.path);
+                                return {
+                                    default: isDef,
+                                    html: label,
+                                    url: '/api/streaming/subtitle?url=' + encodeURIComponent(s.path),
+                                };
+                            }),
+                            {
+                                default: !defaultSub,
+                                html: 'Matikan Subtitle (Off)',
+                                url: '',
+                            }
+                        ];
+
+                        this.art = new Artplayer({
+                            container: artContainer,
+                            url: this.videoSrc,
+                            type: 'm3u8',
+                            theme: '#E50914',
+                            volume: 0.8,
+                            isLive: false,
+                            muted: false,
+                            autoplay: true,
+                            pip: true,
+                            setting: true,
+                            loop: false,
+                            flip: false,
+                            playbackRate: false,
+                            aspectRatio: false,
+                            fullscreen: !self.useNativeFs(),
+                            fullscreenWeb: !self.useNativeFs(),
+                            subtitleOffset: false,
+                            miniProgressBar: true,
+                            playsInline: true,
+                            airplay: true,
+                            hotkey: true,
+                            subtitle: {
+                                url: defaultSubUrl,
+                                type: 'vtt',
+                                escape: false,
+                                style: {
+                                    color: '#ffffff',
+                                    fontSize: '22px',
+                                    fontWeight: '600',
+                                },
+                                encoding: 'utf-8',
+                            },
+                            controls: [
+                                {
+                                    name: 'kz-fs',
+                                    position: 'right',
+                                    index: 70,
+                                    html: '<svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="14" height="10" rx="2"/><path d="M20 4v5h-5"/><path d="M20 9a8 8 0 0 0-8-6"/></svg>',
+                                    tooltip: 'Layar penuh',
+                                    style: self.useNativeFs() ? {} : { display: 'none' },
+                                    click: () => self.toggleNativeFs(),
+                                },
+                                {
+                                    position: 'left',
+                                    index: 10,
+                                    html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>',
+                                    tooltip: 'Mundur 10 Detik',
+                                    click: function (art) {
+                                        art.seek = Math.max(0, art.currentTime - 10);
+                                    },
+                                },
+                                {
+                                    position: 'left',
+                                    index: 11,
+                                    html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg>',
+                                    tooltip: 'Maju 10 Detik',
+                                    click: function (art) {
+                                        art.seek = Math.min(art.duration, art.currentTime + 10);
+                                    },
+                                },
+                            ],
+                            settings: [
+                                {
+                                    html: 'Captions',
+                                    name: 'captions',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M10 9H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2"/><path d="M18 9h-2a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2"/></svg>',
+                                    tooltip: defaultSub ? (defaultSub.label || 'Indonesian') : 'Off',
+                                    selector: captionOptions,
+                                    onSelect: function (item) {
+                                        if (item.url) {
+                                            self.art.subtitle.show = true;
+                                            self.art.subtitle.switch(item.url, { name: item.html });
+                                        } else {
+                                            self.art.subtitle.show = false;
+                                        }
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Subtitle size',
+                                    name: 'subtitle-size',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M9 8h6"/><path d="M12 8v6"/></svg>',
+                                    tooltip: '100%',
+                                    selector: [
+                                        { html: '75%', size: '16px' },
+                                        { default: true, html: '100%', size: '22px' },
+                                        { html: '125%', size: '26px' },
+                                        { html: '150%', size: '30px' },
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.subtitle.style('fontSize', item.size);
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Subtitle position',
+                                    name: 'subtitle-position',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><line x1="6" y1="13" x2="18" y2="13" stroke-width="2.5"/></svg>',
+                                    tooltip: 'Default',
+                                    selector: [
+                                        { default: true, html: 'Default', bottom: '35px' },
+                                        { html: 'Top', bottom: 'auto', top: '40px' },
+                                        { html: 'Bottom', bottom: '15px' },
+                                    ],
+                                    onSelect: function (item) {
+                                        if (item.top) {
+                                            self.art.subtitle.style('bottom', 'auto');
+                                            self.art.subtitle.style('top', item.top);
+                                        } else {
+                                            self.art.subtitle.style('top', 'auto');
+                                            self.art.subtitle.style('bottom', item.bottom);
+                                        }
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Resolution',
+                                    name: 'resolution',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
+                                    tooltip: 'Auto',
+                                    selector: [
+                                        { default: true, html: 'Auto', levelIndex: -1 }
+                                    ],
+                                    onSelect: function (item) {
+                                        if (self.hls) self.hls.currentLevel = item.levelIndex;
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Playback speed',
+                                    name: 'playback-speed',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>',
+                                    tooltip: '1x',
+                                    selector: [
+                                        { html: '0.5x', speed: 0.5 },
+                                        { html: '0.75x', speed: 0.75 },
+                                        { default: true, html: '1x', speed: 1.0 },
+                                        { html: '1.25x', speed: 1.25 },
+                                        { html: '1.5x', speed: 1.5 },
+                                        { html: '2x', speed: 2.0 },
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.playbackRate = item.speed;
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Picture-in-Picture',
+                                    name: 'pip',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="11" y="9" width="9" height="6" rx="1" stroke="currentColor" fill="none"/></svg>',
+                                    tooltip: 'Off',
+                                    selector: [
+                                        { html: 'On' },
+                                        { default: true, html: 'Off' }
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.pip = !self.art.pip;
+                                        return self.art.pip ? 'On' : 'Off';
+                                    },
+                                },
+                                {
+                                    html: 'Subtitle style',
+                                    name: 'subtitle-style',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-7-7-8 8 7 7 8-8z"/><path d="m19 11 2 2-2 2-2-2z"/><line x1="2" y1="21" x2="22" y2="21"/></svg>',
+                                    tooltip: 'Custom',
+                                    selector: [
+                                        { default: true, html: 'Custom', cls: '' },
+                                        { html: 'Clean Outline', cls: 'art-subtitle-style-clean' },
+                                        { html: 'Solid Black', cls: 'art-subtitle-style-solid' },
+                                    ],
+                                    onSelect: function (item) {
+                                        const subEl = self.art.template.$subtitle;
+                                        if (subEl) {
+                                            subEl.classList.remove('art-subtitle-style-clean', 'art-subtitle-style-solid');
+                                            if (item.cls) subEl.classList.add(item.cls);
+                                        }
+                                        return item.html;
+                                    },
+                                },
+                            ],
+                            customType: {
+                                m3u8: function (video, url, artInstance) {
+                                    if (window.Hls && window.Hls.isSupported()) {
+                                        if (artInstance.hls) artInstance.hls.destroy();
+                                        const masterHost = (() => { try { return new URL(url, location.href).host; } catch (e) { return ''; } })();
+                                        const hls = new window.Hls({
+                                            // Fallback: kalau potongan video gagal diambil langsung (mis. diblok jaringan),
+                                            // ambil lewat server sendiri. Playlist tetap langsung agar URL relatif benar.
+                                            xhrSetup: function (xhr, u) {
+                                                try {
+                                                    const h = new URL(u, location.href).host;
+                                                    if (self.useProxy && h !== masterHost && h !== location.host) {
+                                                        xhr.open('GET', '/api/proxy-stream?url=' + encodeURIComponent(u), true);
+                                                    }
+                                                } catch (e) {}
+                                            },
+                                            enableWorker: true,
+                                            lowLatencyMode: false,
+                                            maxBufferLength: 60,
+                                            backBufferLength: 30,
+                                        });
+                                        artInstance.hls = hls;
+                                        self.hls = hls;
+
+                                        hls.loadSource(url);
+                                        hls.attachMedia(video);
+
+                                        hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
+                                            const levels = hls.levels;
+                                            if (levels && levels.length > 0) {
+                                                const qualityOptions = [
+                                                    {
+                                                        default: true,
+                                                        html: 'Auto',
+                                                        levelIndex: -1,
+                                                    },
+                                                    ...levels.map((level, idx) => ({
+                                                        html: (level.height ? level.height + 'p' : 'Level ' + (idx + 1)),
+                                                        levelIndex: idx,
+                                                    }))
+                                                ];
+
+                                                artInstance.setting.update({
+                                                    name: 'resolution',
+                                                    selector: qualityOptions,
+                                                    onSelect: function (item) {
+                                                        hls.currentLevel = item.levelIndex;
+                                                        return item.html;
+                                                    },
+                                                });
+                                            }
+                                        });
+
+                                        hls.on(window.Hls.Events.ERROR, async function (event, data) {
+                                            // Potongan video/audio gagal diambil langsung (biasanya domain CDN diblok operator):
+                                            // pindah ke proxy server. Retry berikutnya otomatis lewat proxy.
+                                            const segErr = data.type === window.Hls.ErrorTypes.NETWORK_ERROR && /frag|key|init/i.test(data.details || '');
+                                            if (segErr && !self.useProxy) {
+                                                self.useProxy = true;
+                                                self.report('switch-proxy', data.details + (data.fatal ? ':fatal' : ''));
+                                                if (data.fatal) { self.restartWithProxy(); return; }
+                                            }
+                                            if (data.fatal) {
+                                                self.report('hls-fatal', data.type + ':' + data.details + (data.response ? ':' + data.response.code : '') + (self.useProxy ? ':proxy' : ''));
+                                                if (segErr && !self._proxyRestarted) { self.restartWithProxy(); return; }
+                                                const isAuthError = data.response && (data.response.code === 403 || data.response.code === 401);
+                                                if (isAuthError || data.details === 'manifestLoadError') {
+                                                    console.log('Stream token expired/rejected, refreshing fresh stream...');
+                                                    await self.fetchStreamAsync(true, true);
+                                                    return;
+                                                }
+
+                                                switch (data.type) {
+                                                    case window.Hls.ErrorTypes.NETWORK_ERROR:
+                                                        hls.startLoad();
+                                                        break;
+                                                    case window.Hls.ErrorTypes.MEDIA_ERROR:
+                                                        hls.recoverMediaError();
+                                                        break;
+                                                    default:
+                                                        hls.destroy();
+                                                        break;
+                                                }
+                                            }
+                                        });
+
+                                        artInstance.on('destroy', () => hls.destroy());
+                                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                                        video.src = url;
+                                    }
+                                }
+                            }
+                        });
+
+                        // Stamp data-name on setting items for custom styling
+                        const stampSettingNames = () => {
+                            const items = document.querySelectorAll('.art-setting-item');
+                            const names = ['captions', 'subtitle-size', 'subtitle-position', 'resolution', 'playback-speed', 'pip', 'subtitle-style'];
+                            items.forEach((item, idx) => {
+                                if (names[idx]) item.setAttribute('data-name', names[idx]);
+                            });
+                        };
+                        this.art.on('setting', stampSettingNames);
+
+                        // Kalau browser menolak autoplay bersuara, putar tanpa suara dulu; laporkan kalau macet
+                        this.art.on('ready', () => {
+                            const v = self.art && self.art.video;
+                            const pr = v && v.play ? v.play() : null;
+                            if (pr && pr.catch) pr.catch((err) => {
+                                self.report('play-rejected', err && err.name);
+                                self.art.muted = true;
+                                Promise.resolve(self.art.play()).catch(() => {});
+                                self.art.notice.show = 'Ketuk ikon suara untuk menyalakan audio';
+                            });
+                            clearTimeout(self._stallTimer);
+                            self._stallTimer = setTimeout(() => {
+                                const vv = self.art && self.art.video;
+                                if (vv && vv.currentTime < 0.5 && !vv.paused) {
+                                    self.report('stall', 'rs=' + vv.readyState + ' net=' + vv.networkState);
+                                    if (!self._proxyRestarted) { self.useProxy = true; self.restartWithProxy(); }
+                                }
+                            }, 20000);
+                        });
+
+                        // Subtitle box wrapper observer (IDLIX & Netflix style)
+                        const subEl = this.art.template.$subtitle;
+                        if (subEl) {
+                            let updating = false;
+                            const subObserver = new MutationObserver(() => {
+                                if (updating) return;
+                                if (subEl.childNodes.length > 0 && !subEl.querySelector('.art-subtitle-inner-box')) {
+                                    const raw = subEl.innerHTML.trim();
+                                    if (raw) {
+                                        updating = true;
+                                        subEl.innerHTML = '<span class="art-subtitle-inner-box">' + raw + '</span>';
+                                        setTimeout(() => { updating = false; }, 20);
+                                    }
+                                }
+                            });
+                            subObserver.observe(subEl, { childList: true });
+                            this.art.on('destroy', () => subObserver.disconnect());
+                        }
+
+                        // Otomatis aktifkan Web Fullscreen (in-page theater mode) saat mulai play
+                        let hasTriggeredAutoWebFs = false;
+                        const enterWebFs = () => {
+                            if (!hasTriggeredAutoWebFs) {
+                                hasTriggeredAutoWebFs = true;
+                                if (self.useNativeFs() && window.KzFs.isActive(self.$refs.playerShell)) return;
+                                self.art.fullscreenWeb = true;
+                            }
+                        };
+                        this.art.on('video:play', enterWebFs);
+                        if (this.art.video) {
+                            this.art.video.addEventListener('play', enterWebFs);
+                        }
                     }
+                });
+
+                window.watchPlayerInit = componentDefinition;
+
+                if (window.Alpine) {
+                    Alpine.data('watchPlayerInit', componentDefinition);
+                } else {
+                    document.addEventListener('alpine:init', () => {
+                        Alpine.data('watchPlayerInit', componentDefinition);
+                    });
                 }
-            }));
-        });
+            }
+            initWatchMovieComponent();
+        })();
     </script>
 @endpush

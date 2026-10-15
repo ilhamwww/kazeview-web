@@ -27,6 +27,11 @@ class CollectionCategoryResource extends Resource
 
     protected static ?int $navigationSort = 19;
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form

@@ -15,7 +15,7 @@ class DracinDetail extends Page
     protected static ?string $navigationLabel = 'Dracin Detail';
     protected static ?string $title = 'Drama Detail';
     protected static ?string $slug = 'dracin/{network_slug}/drama/{id}';
-    protected static string $view = 'filament.streaming.pages.dracin-detail';
+    protected static string $view = 'filament.streaming.pages.dracin-detail-v2';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
@@ -115,12 +115,111 @@ class DracinDetail extends Page
                 ];
             }
 
+            // Ensure DramaBox is included
+            if (!collect($activePlatforms)->contains('id', 'dramabox')) {
+                $activePlatforms[] = [
+                    'id' => 'dramabox',
+                    'name' => 'DramaBox',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/dramabox.svg',
+                    'api' => 'https://dramabox.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure ReelBuzz is included
+            if (!collect($activePlatforms)->contains('id', 'reelbuzz')) {
+                $activePlatforms[] = [
+                    'id' => 'reelbuzz',
+                    'name' => 'ReelBuzz',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/reelbuzz.png',
+                    'api' => 'https://reelbuzz.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure ReelShort is included
+            if (!collect($activePlatforms)->contains('id', 'reelshort')) {
+                $activePlatforms[] = [
+                    'id' => 'reelshort',
+                    'name' => 'ReelShort',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/reelshort.svg',
+                    'api' => 'https://reelshort.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure VibeShort is included
+            if (!collect($activePlatforms)->contains('id', 'vibeshort')) {
+                $activePlatforms[] = [
+                    'id' => 'vibeshort',
+                    'name' => 'VibeShort',
+                    'logo' => null,
+                    'api' => 'https://vibeshort.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure StoryReel is included
+            if (!collect($activePlatforms)->contains('id', 'storyreel')) {
+                $activePlatforms[] = [
+                    'id' => 'storyreel',
+                    'name' => 'StoryReel',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/storyreel.png',
+                    'api' => 'https://storyreel.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure MoboReels is included
+            if (!collect($activePlatforms)->contains('id', 'moboreels')) {
+                $activePlatforms[] = [
+                    'id' => 'moboreels',
+                    'name' => 'MoboReels',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/moboreels.svg',
+                    'api' => 'https://moboreels.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure StardustTV is included
+            if (!collect($activePlatforms)->contains('id', 'stardusttv')) {
+                $activePlatforms[] = [
+                    'id' => 'stardusttv',
+                    'name' => 'StardustTV',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/stardusttv.png',
+                    'api' => 'https://stardusttv.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Normalize serialplus from API to serealplus
+            $activePlatforms = collect($activePlatforms)->map(function ($p) {
+                if ($p['id'] === 'serialplus') {
+                    $p['id'] = 'serealplus';
+                    $p['name'] = 'Sereal+';
+                    $p['logo'] = 'https://api.dramabuzz.sbs/logos/serialplus.png';
+                    $p['api'] = 'https://serealplus.goodbos.online';
+                }
+                return $p;
+            })->unique('id')->values()->toArray();
+
+            // Ensure Sereal+ is included
+            if (!collect($activePlatforms)->contains('id', 'serealplus')) {
+                $activePlatforms[] = [
+                    'id' => 'serealplus',
+                    'name' => 'Sereal+',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/serialplus.png',
+                    'api' => 'https://serealplus.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
             return $activePlatforms;
         });
 
         // Find the network by slug
         $this->network = collect($networks)->first(function ($net) use ($network_slug) {
-            return $net['id'] === $network_slug;
+            return $net['id'] === $network_slug || ($network_slug === 'serealplus' && $net['id'] === 'serialplus') || ($network_slug === 'serialplus' && $net['id'] === 'serealplus');
         });
 
         if (!$this->network || empty($this->network['api'])) {
@@ -130,16 +229,203 @@ class DracinDetail extends Page
         $setting = ScraperSetting::getInstance();
         $apiKey = $setting->dramabuzz_api_key;
 
-        if ($network_slug === 'goodshort') {
+        if ($network_slug === 'serealplus' || $network_slug === 'serialplus') {
+            try {
+                $lang = request()->query('lang', 'id');
+                $detailRes = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4], 'timeout' => 15])
+                    ->get("https://serealplus.goodbos.online/api/detail?id={$id}&lang={$lang}&code={$apiKey}");
+                $detailJson = $detailRes->successful() ? ($detailRes->json() ?: []) : [];
+                $rawDetail = $detailJson['data'] ?? [];
+
+                $episodesRes = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4], 'timeout' => 15])
+                    ->get("https://serealplus.goodbos.online/api/episodes?id={$id}&lang={$lang}&code={$apiKey}");
+                $episodesJson = $episodesRes->successful() ? ($episodesRes->json() ?: []) : [];
+                $rawEpisodes = $episodesJson['episodes'] ?? [];
+
+                $catalogDrama = Cache::get('serealplus_drama_' . $this->dramaId, []);
+
+                $videos = array_map(function ($ep, $index) {
+                    $epNum = (int) ($ep['seqNo'] ?? ($index + 1));
+                    return [
+                        'episode' => $epNum,
+                        'video_id' => (string) ($ep['id'] ?? $epNum),
+                        'title' => "Episode {$epNum}",
+                        'is_lock' => !empty($ep['lock']),
+                        'duration' => $ep['duration'] ?? null,
+                        'video_url' => $ep['videoUrl'] ?? null,
+                    ];
+                }, $rawEpisodes, array_keys($rawEpisodes));
+
+                $intro = !empty($rawDetail['introduce'])
+                    ? $rawDetail['introduce']
+                    : ($rawDetail['shortIntroduce'] ?? ($catalogDrama['intro'] ?? ''));
+
+                $this->drama = [
+                    'title' => $rawDetail['contentName'] ?? $catalogDrama['name'] ?? 'Detail Drama',
+                    'name' => $rawDetail['contentName'] ?? $catalogDrama['name'] ?? 'Detail Drama',
+                    'cover' => $rawDetail['contentCoverUrl'] ?? $catalogDrama['cover'] ?? null,
+                    'intro' => $intro,
+                    'episodes' => (int) ($rawDetail['chapterNum'] ?? count($videos)),
+                    'videos' => $videos,
+                ];
+
+                static::$title = $this->drama['title'] ?? 'Drama Detail';
+
+                $this->isFavorited = auth()->user()
+                    ? auth()->user()->favorites()
+                        ->where('item_id', $this->networkSlug . ':' . $this->dramaId)
+                        ->where('item_type', 'dracin')
+                        ->exists()
+                    : false;
+
+                $history = auth()->user()
+                    ? auth()->user()->watchHistories()
+                        ->where('item_id', $this->networkSlug . ':' . $this->dramaId)
+                        ->where('item_type', 'dracin')
+                        ->first()
+                    : null;
+                $this->lastWatchedEpisode = $history ? $history->last_episode : null;
+                $this->watchedEpisodes = $history && is_array($history->watched_episodes) ? $history->watched_episodes : [];
+
+                return;
+            } catch (\Exception $e) {
+                \Log::error('Sereal+ detail error: ' . $e->getMessage());
+                abort(500, 'Gagal memuat detail drama dari Sereal+');
+            }
+        } elseif ($network_slug === 'dramabox') {
+            try {
+                $detailRes = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4], 'timeout' => 15])
+                    ->withHeaders(['x-token' => $apiKey])
+                    ->get("https://dramabox.goodbos.online/api/dramabox/detail?bookId={$id}&lang=in");
+                $rawDetail = $detailRes->successful() ? ($detailRes->json() ?: []) : [];
+
+                $rawEpisodes = [];
+                try {
+                    $resEp = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4], 'timeout' => 15])
+                        ->withHeaders(['x-token' => $apiKey])
+                        ->get("https://dramabox.goodbos.online/api/dramabox/allepisode?bookId={$id}");
+                    if ($resEp->successful()) {
+                        $rawEpisodes = $resEp->json() ?: [];
+                    }
+                } catch (\Exception $e) {}
+
+                $catalogDrama = Cache::get('dramabox_drama_' . $this->dramaId, []);
+
+                $videos = array_map(function ($ep, $index) {
+                    $epNum = (int) ($ep['chapterIndex'] ?? $index) + 1;
+                    return [
+                        'episode' => $epNum,
+                        'video_id' => (string) ($ep['chapterId'] ?? $epNum),
+                        'title' => $ep['chapterName'] ?? "Episode {$epNum}",
+                        'is_lock' => !empty($ep['isLocked']),
+                        'video_url' => $ep['videoUrl1080'] ?? $ep['videoUrl720'] ?? $ep['videoUrl'] ?? null,
+                        'videoUrl1080' => $ep['videoUrl1080'] ?? null,
+                        'videoUrl720' => $ep['videoUrl720'] ?? null,
+                        'videoUrl540' => $ep['videoUrl540'] ?? null,
+                    ];
+                }, $rawEpisodes, array_keys($rawEpisodes));
+
+                $this->drama = [
+                    'title' => $rawDetail['bookName'] ?? $catalogDrama['name'] ?? 'Detail Drama',
+                    'name' => $rawDetail['bookName'] ?? $catalogDrama['name'] ?? 'Detail Drama',
+                    'cover' => $rawDetail['coverWap'] ?? $rawDetail['cover'] ?? $catalogDrama['cover'] ?? null,
+                    'intro' => $rawDetail['introduction'] ?? $catalogDrama['intro'] ?? '',
+                    'episodes' => (int) ($rawDetail['chapterCount'] ?? count($videos)),
+                    'videos' => $videos,
+                ];
+
+                static::$title = $this->drama['title'] ?? 'Drama Detail';
+
+                $this->isFavorited = auth()->user()
+                    ? auth()->user()->favorites()
+                        ->where('item_id', $this->networkSlug . ':' . $this->dramaId)
+                        ->where('item_type', 'dracin')
+                        ->exists()
+                    : false;
+
+                $history = auth()->user()
+                    ? auth()->user()->watchHistories()
+                        ->where('item_id', $this->networkSlug . ':' . $this->dramaId)
+                        ->where('item_type', 'dracin')
+                        ->first()
+                    : null;
+                $this->lastWatchedEpisode = $history ? $history->last_episode : null;
+                $this->watchedEpisodes = $history && is_array($history->watched_episodes) ? $history->watched_episodes : [];
+
+                return;
+            } catch (\Exception $e) {
+                \Log::error('DramaBox detail error: ' . $e->getMessage());
+                abort(500, 'Gagal memuat detail drama dari DramaBox');
+            }
+        } elseif ($network_slug === 'reelbuzz') {
+            try {
+                $detailRes = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4], 'timeout' => 15])
+                    ->get("https://reelbuzz.goodbos.online/api/drama/detail?id={$id}&code={$apiKey}");
+                $json = $detailRes->successful() ? ($detailRes->json() ?: []) : [];
+                $rawDetail = $json['rows'] ?? $json['data'] ?? $json;
+                $rawEpisodes = $rawDetail['episodeList'] ?? [];
+
+                $catalogDrama = Cache::get('reelbuzz_drama_' . $this->dramaId, []);
+
+                $videos = array_map(function ($ep, $index) {
+                    $epNum = (int) ($ep['episodeNo'] ?? ($index + 1));
+                    $playUrl = $ep['fileUrl'] ?? $ep['playURL'] ?? '';
+                    $directUrl = $playUrl;
+                    if (str_contains($playUrl, '?url=')) {
+                        parse_str(parse_url($playUrl, PHP_URL_QUERY), $queryParts);
+                        if (!empty($queryParts['url'])) {
+                            $directUrl = $queryParts['url'];
+                        }
+                    }
+
+                    return [
+                        'episode' => $epNum,
+                        'video_id' => (string) ($ep['id'] ?? $epNum),
+                        'title' => "Episode {$epNum}",
+                        'is_lock' => !empty($ep['locked']),
+                        'video_url' => $directUrl,
+                    ];
+                }, $rawEpisodes, array_keys($rawEpisodes));
+
+                $this->drama = [
+                    'title' => $rawDetail['name'] ?? $catalogDrama['name'] ?? 'Detail Drama',
+                    'name' => $rawDetail['name'] ?? $catalogDrama['name'] ?? 'Detail Drama',
+                    'cover' => $rawDetail['coverUrl'] ?? $catalogDrama['cover'] ?? null,
+                    'intro' => $rawDetail['description'] ?? $catalogDrama['intro'] ?? '',
+                    'episodes' => (int) ($rawDetail['episodes'] ?? count($videos)),
+                    'videos' => $videos,
+                ];
+
+                static::$title = $this->drama['title'] ?? 'Drama Detail';
+
+                $this->isFavorited = auth()->user()
+                    ? auth()->user()->favorites()
+                        ->where('item_id', $this->networkSlug . ':' . $this->dramaId)
+                        ->where('item_type', 'dracin')
+                        ->exists()
+                    : false;
+
+                $history = auth()->user()
+                    ? auth()->user()->watchHistories()
+                        ->where('item_id', $this->networkSlug . ':' . $this->dramaId)
+                        ->where('item_type', 'dracin')
+                        ->first()
+                    : null;
+                $this->lastWatchedEpisode = $history ? $history->last_episode : null;
+                $this->watchedEpisodes = $history && is_array($history->watched_episodes) ? $history->watched_episodes : [];
+
+                return;
+            } catch (\Exception $e) {
+                \Log::error('ReelBuzz detail error: ' . $e->getMessage());
+                abort(500, 'Gagal memuat detail drama dari ReelBuzz');
+            }
+        } elseif ($network_slug === 'goodshort') {
             $lang = request()->query('lang', 'id');
             $apiLang = $lang === 'id' ? 'in' : $lang;
             // API Goodshort Chapters/Detail URL: https://goodshort.goodbos.online/chapters/{bookId}?lang=in&code=5193CD21848193E43FC399BA4D73BB13
             $detailUrl = "https://goodshort.goodbos.online/chapters/{$id}?lang={$apiLang}&code={$apiKey}";
         } elseif ($network_slug === 'raptdrama') {
-            $detailUrl = 'https://raptdrama.goodbos.online/api/allepisodes'
-                . '?id=' . urlencode($id)
-                . '&lang=en'
-                . '&code=' . urlencode(self::RAPTDRAMA_CODE);
+            $detailUrl = "https://raptdrama.goodbos.online/api/raptdrama/episodes?id={$id}";
         } elseif ($network_slug === 'pinedrama') {
             $code = "5193CD21848193E43FC399BA4D73BB13";
             $baseUrl = 'https://pinedrama.goodbos.online';
@@ -151,6 +437,16 @@ class DracinDetail extends Page
         } elseif ($network_slug === 'melolo') {
             $baseUrl = 'https://melolo.goodbos.online/api';
             $detailUrl = "{$baseUrl}/detail/{$id}?lang=id&code={$apiKey}";
+        } elseif ($network_slug === 'reelshort') {
+            $detailUrl = "https://reelshort.goodbos.online/detail/{$id}?code={$apiKey}&lang=in";
+        } elseif ($network_slug === 'vibeshort') {
+            $detailUrl = "https://vibeshort.goodbos.online/api/v1/detail/{$id}?lang=id";
+        } elseif ($network_slug === 'storyreel') {
+            $detailUrl = "https://storyreel.goodbos.online/api/v1/detail/{$id}?lang=id";
+        } elseif ($network_slug === 'moboreels') {
+            $detailUrl = "https://moboreels.goodbos.online/api/v1/series/{$id}?lang=in&code={$apiKey}";
+        } elseif ($network_slug === 'stardusttv') {
+            $detailUrl = "https://stardusttv.goodbos.online/v1/detail/drama/{$id}?code={$apiKey}";
         } else {
             $baseUrl = rtrim($this->network['api'], '/');
             $detailUrl = "{$baseUrl}/detail/{$id}?lang=id&code={$apiKey}";
@@ -158,10 +454,20 @@ class DracinDetail extends Page
 
         try {
             // Shortmax API kadang lambat merespons; timeout longgar untuknya.
-            $detailTimeout = $network_slug === 'shortmax' ? 25 : 10;
-            $response = Http::timeout($detailTimeout)->get($detailUrl);
+            $detailTimeout = $network_slug === 'shortmax' ? 25 : 12;
+            $req = Http::timeout($detailTimeout);
+            if ($network_slug === 'vibeshort' || $network_slug === 'storyreel' || $network_slug === 'raptdrama') {
+                $req = $req->withHeaders(['x-token' => $apiKey]);
+            }
+            $response = $req->get($detailUrl);
             if ($response->successful()) {
                 $this->drama = $response->json();
+
+                if ($network_slug === 'melolo') {
+                    if (!empty($this->drama['cover']) && preg_match('/novel-images-[a-z]+(?:%2F|\/)([0-9a-f]{32})/i', $this->drama['cover'], $matches)) {
+                        $this->drama['cover'] = "https://p16-novel-sg.ibyteimg.com/img/novel-images-sg/{$matches[1]}~tplv-resize:570:810.jpg";
+                    }
+                }
 
                 if ($network_slug === 'goodshort') {
                     $records = $this->drama['data']['list'] ?? [];
@@ -186,56 +492,29 @@ class DracinDetail extends Page
                     ];
                 } elseif ($network_slug === 'raptdrama') {
                     $data = $this->drama['data'] ?? [];
-                    $catalogDrama = Cache::get(
-                        'raptdrama_drama_' . $this->dramaId,
-                        [],
-                    );
-                    $rawEpisodes = is_array($data['episodes'] ?? null)
-                        ? $data['episodes']
-                        : [];
+                    $catalogDrama = Cache::get('raptdrama_drama_' . $this->dramaId, []);
+                    $rawEpisodes = is_array($data['episodes'] ?? null) ? $data['episodes'] : [];
 
-                    $videos = array_values(array_filter(array_map(
-                        function (array $episode): ?array {
-                            $episodeNumber = (int) ($episode['idx'] ?? 0);
-                            $videoUrl = $episode['video_url'] ?? null;
+                    $videos = array_map(function (array $ep): array {
+                        $episodeNumber = (int) ($ep['idx'] ?? 1);
+                        $videoUrl = $ep['src'] ?? null;
+                        return [
+                            'episode' => $episodeNumber,
+                            'video_id' => (string) ($ep['cid'] ?? ''),
+                            'title' => $ep['msg'] ?? "Episode {$episodeNumber}",
+                            'is_lock' => !empty($ep['fufei']),
+                            'video_url' => $videoUrl,
+                        ];
+                    }, $rawEpisodes);
 
-                            if (
-                                $episodeNumber < 1
-                                || empty($episode['has_video'])
-                                || !is_string($videoUrl)
-                                || $videoUrl === ''
-                            ) {
-                                return null;
-                            }
-
-                            return [
-                                'episode' => $episodeNumber,
-                                'video_id' => (string) ($episode['id'] ?? ''),
-                                'title' => $episode['title'] ?? "Episode {$episodeNumber}",
-                                'is_lock' => (string) ($episode['is_vip'] ?? '0') === '1',
-                                'video_url' => $videoUrl,
-                                'bunny_id' => $episode['bunny_id'] ?? null,
-                            ];
-                        },
-                        $rawEpisodes,
-                    )));
-
-                    usort(
-                        $videos,
-                        fn(array $left, array $right): int =>
-                        $left['episode'] <=> $right['episode'],
-                    );
+                    usort($videos, fn(array $a, array $b): int => $a['episode'] <=> $b['episode']);
 
                     $this->drama = [
-                        'title' => $data['name'] ?? $catalogDrama['name'] ?? 'Detail Drama',
-                        'name' => $data['name'] ?? $catalogDrama['name'] ?? 'Detail Drama',
+                        'title' => $catalogDrama['name'] ?? 'RaptDrama',
+                        'name' => $catalogDrama['name'] ?? 'RaptDrama',
                         'cover' => $catalogDrama['cover'] ?? null,
                         'intro' => $catalogDrama['intro'] ?? '',
-                        'episodes' => (int) (
-                            $data['totalEpisodes']
-                            ?? $catalogDrama['episodes']
-                            ?? count($videos)
-                        ),
+                        'episodes' => (int) ($data['total'] ?? count($videos)),
                         'videos' => $videos,
                     ];
                 } elseif ($network_slug === 'pinedrama') {
@@ -329,12 +608,172 @@ class DracinDetail extends Page
                     } catch (\Exception $e) {
                         // Biarkan videos kosong; blade akan tampil grid berdasarkan `episodes` count.
                     }
+                } elseif ($network_slug === 'reelshort') {
+                    $allepsUrl = "https://reelshort.goodbos.online/allepisodes/{$id}?code={$apiKey}&lang=in";
+                    $eps = [];
+                    try {
+                        $allepsRes = Http::timeout(12)->get($allepsUrl);
+                        if ($allepsRes->successful()) {
+                            $eps = $allepsRes->json('episodes') ?: $allepsRes->json('chapters') ?: [];
+                        }
+                    } catch (\Exception $e) {}
+
+                    $this->drama = [
+                        'title' => $this->drama['title'] ?? 'ReelShort Drama',
+                        'name' => $this->drama['title'] ?? 'ReelShort Drama',
+                        'cover' => $this->drama['pic'] ?? $this->drama['cover'] ?? '',
+                        'intro' => $this->drama['desc'] ?? '',
+                        'episodes' => count($eps) ?: (int)($this->drama['chapters'] ?? 0),
+                        'videos' => array_map(function ($ep) {
+                            $streams = $ep['streams'] ?? [];
+                            $url = !empty($streams) ? ($streams[0]['url'] ?? '') : '';
+                            return [
+                                'episode' => (int) ($ep['episode'] ?? 1),
+                                'video_id' => (string) ($ep['id'] ?? ''),
+                                'title' => $ep['name'] ?? ('Episode ' . ($ep['episode'] ?? 1)),
+                                'is_lock' => false,
+                                'duration' => $ep['duration'] ?? null,
+                                'streams' => $streams,
+                                'video_url' => $url,
+                            ];
+                        }, $eps),
+                    ];
+                } elseif ($network_slug === 'vibeshort' || $network_slug === 'storyreel') {
+                    $host = $network_slug === 'vibeshort' ? 'vibeshort.goodbos.online' : 'storyreel.goodbos.online';
+                    $allepsUrl = "https://{$host}/api/v1/alleps/{$id}?lang=id";
+                    $rawEps = [];
+                    try {
+                        $allepsRes = Http::timeout(12)->withHeaders(['x-token' => $apiKey])->get($allepsUrl);
+                        if ($allepsRes->successful()) {
+                            $rawEps = $allepsRes->json('data.episodes') ?: $allepsRes->json('data.chapterList') ?: [];
+                        }
+                    } catch (\Exception $e) {}
+
+                    $this->drama = [
+                        'title' => $this->drama['name'] ?? 'Detail Drama',
+                        'name' => $this->drama['name'] ?? 'Detail Drama',
+                        'cover' => $this->drama['cover'] ?? '',
+                        'intro' => $this->drama['summary'] ?? '',
+                        'episodes' => count($rawEps) ?: (int)($this->drama['episodes'] ?? 0),
+                        'videos' => array_map(function ($ch) {
+                            $videoMap = $ch['video'] ?? [];
+                            $videoUrls = [];
+                            foreach (['480', '720', '1080'] as $q) {
+                                $k = 'video_' . $q;
+                                if (!empty($videoMap[$k])) {
+                                    $videoUrls[$q] = url('/api/proxy-hls?url=' . urlencode($videoMap[$k]));
+                                }
+                            }
+                            $singleUrl = $videoUrls['720'] ?? ($videoUrls['1080'] ?? ($videoUrls['480'] ?? ($ch['videoUrl'] ?? '')));
+                            return [
+                                'episode' => (int) ($ch['episode'] ?? $ch['chapterNo'] ?? 1),
+                                'video_id' => (string) ($ch['id'] ?? $ch['chapterId'] ?? ''),
+                                'title' => 'Episode ' . ($ch['episode'] ?? $ch['chapterNo'] ?? 1),
+                                'is_lock' => false,
+                                'duration' => $ch['duration'] ?? null,
+                                'video_url' => $singleUrl,
+                                'video_urls' => $videoUrls,
+                            ];
+                        }, $rawEps),
+                    ];
+                } elseif ($network_slug === 'moboreels') {
+                    $sData = $this->drama['data'] ?? [];
+                    $episodes = $sData['episodes'] ?? [];
+                    $catalogDrama = Cache::get('moboreels_drama_' . $this->dramaId, []);
+                    $this->drama = [
+                        'title' => $catalogDrama['name'] ?? ($sData['seriesName'] ?? 'MoboReels Drama'),
+                        'name' => $catalogDrama['name'] ?? ($sData['seriesName'] ?? 'MoboReels Drama'),
+                        'cover' => $catalogDrama['cover'] ?? '',
+                        'intro' => $catalogDrama['intro'] ?? '',
+                        'episodes' => (int)($sData['totalEpisodes'] ?? count($episodes)),
+                        'videos' => array_map(function ($ep) {
+                            return [
+                                'episode' => (int) ($ep['episNum'] ?? 1),
+                                'video_id' => (string) ($ep['episId'] ?? ''),
+                                'title' => 'Episode ' . ($ep['episNum'] ?? 1),
+                                'is_lock' => !empty($ep['isLock']),
+                                'duration' => $ep['duration'] ?? null,
+                                'video_url' => $ep['mediaUrl'] ?? '',
+                                'subtitles' => $ep['subtitles'] ?? [],
+                            ];
+                        }, $episodes),
+                    ];
+                } elseif ($network_slug === 'stardusttv') {
+                    $sData = $this->drama['data'] ?? [];
+                    $rawEps = $sData['episodes'] ?? [];
+                    $videos = [];
+                    foreach ($rawEps as $num => $epObj) {
+                        $vUrl = $epObj['h264'] ?? $epObj['h265'] ?? '';
+                        $videos[] = [
+                            'episode' => (int) $num,
+                            'video_id' => (string) $num,
+                            'title' => 'Episode ' . $num,
+                            'is_lock' => false,
+                            'duration' => null,
+                            'video_url' => $vUrl,
+                        ];
+                    }
+                    usort($videos, fn($a, $b) => $a['episode'] <=> $b['episode']);
+                    $this->drama = [
+                        'title' => $sData['title'] ?? 'Stardust Drama',
+                        'name' => $sData['title'] ?? 'Stardust Drama',
+                        'cover' => $sData['poster'] ?? $sData['cover'] ?? '',
+                        'intro' => $sData['description'] ?? '',
+                        'episodes' => (int)($sData['totalEpisodes'] ?? count($videos)),
+                        'videos' => $videos,
+                    ];
                 }
             } else {
-                abort(404, 'Drama not found');
+                $cachedDrama = Cache::get($network_slug . '_drama_' . $this->dramaId, []);
+                if (!empty($cachedDrama)) {
+                    $totalEps = (int) ($cachedDrama['episodes'] ?? 30);
+                    if ($totalEps <= 0) $totalEps = 30;
+                    $videos = [];
+                    for ($i = 1; $i <= $totalEps; $i++) {
+                        $videos[] = [
+                            'episode' => $i,
+                            'video_id' => (string) $i,
+                            'title' => "Episode {$i}",
+                            'is_lock' => false,
+                            'duration' => null,
+                            'video_url' => '',
+                        ];
+                    }
+                    $this->drama = [
+                        'title' => $cachedDrama['name'] ?? 'Detail Drama',
+                        'name' => $cachedDrama['name'] ?? 'Detail Drama',
+                        'cover' => $cachedDrama['cover'] ?? '',
+                        'intro' => $cachedDrama['intro'] ?? '',
+                        'episodes' => $totalEps,
+                        'videos' => $videos,
+                    ];
+                } else {
+                    abort(404, 'Drama not found');
+                }
             }
-        } catch (\Exception $e) {
-            abort(500, 'Failed to fetch drama details');
+        } catch (\Throwable $e) {
+            $cachedDrama = Cache::get($network_slug . '_drama_' . $this->dramaId, []);
+            $totalEps = (int) ($cachedDrama['episodes'] ?? 30);
+            if ($totalEps <= 0) $totalEps = 30;
+            $videos = [];
+            for ($i = 1; $i <= $totalEps; $i++) {
+                $videos[] = [
+                    'episode' => $i,
+                    'video_id' => (string) $i,
+                    'title' => "Episode {$i}",
+                    'is_lock' => false,
+                    'duration' => null,
+                    'video_url' => '',
+                ];
+            }
+            $this->drama = [
+                'title' => $cachedDrama['name'] ?? 'Detail Drama',
+                'name' => $cachedDrama['name'] ?? 'Detail Drama',
+                'cover' => $cachedDrama['cover'] ?? '',
+                'intro' => $cachedDrama['intro'] ?? '',
+                'episodes' => $totalEps,
+                'videos' => $videos,
+            ];
         }
 
         static::$title = $this->drama['title'] ?? 'Drama Detail';
@@ -394,17 +833,7 @@ class DracinDetail extends Page
 
     public function autoPlayMelolo(): void
     {
-        if (
-            $this->networkSlug !== 'melolo'
-            && $this->networkSlug !== 'pinedrama'
-            && $this->networkSlug !== 'netshort'
-            && $this->networkSlug !== 'shortmax'
-            && $this->networkSlug !== 'raptdrama'
-            && $this->networkSlug !== 'goodshort'
-        ) {
-            return;
-        }
-
+        // Standar Dracin V2: Semua network otomatis play saat dibuka
         $episodeToPlay = null;
         if ($this->lastWatchedEpisode) {
             $episodeToPlay = (int) $this->lastWatchedEpisode;
@@ -446,7 +875,271 @@ class DracinDetail extends Page
         $setting = ScraperSetting::getInstance();
         $apiKey = $setting->dramabuzz_api_key;
 
+        if ($this->networkSlug === 'serealplus' || $this->networkSlug === 'serialplus') {
+            $activeEp = collect($this->drama['videos'] ?? [])->firstWhere('episode', $ep);
+            if (!$activeEp) {
+                $activeEp = ($this->drama['videos'] ?? [])[$ep - 1] ?? null;
+            }
+
+            if (!$activeEp) {
+                \Filament\Notifications\Notification::make()
+                    ->title('Episode tidak ditemukan')
+                    ->danger()
+                    ->send();
+                return;
+            }
+
+            $videoUrl = $activeEp['video_url'] ?? null;
+
+            if (!$videoUrl) {
+                try {
+                    $epRes = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4], 'timeout' => 10])
+                        ->get("https://serealplus.goodbos.online/api/episodes?id={$this->dramaId}&lang=id&code={$apiKey}");
+                    if ($epRes->successful()) {
+                        $epJson = $epRes->json();
+                        $epList = $epJson['episodes'] ?? [];
+                        $targetEp = collect($epList)->firstWhere('seqNo', $ep) ?? ($epList[$ep - 1] ?? null);
+                        if ($targetEp && !empty($targetEp['videoUrl'])) {
+                            $videoUrl = $targetEp['videoUrl'];
+                        }
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            if (!$videoUrl) {
+                \Filament\Notifications\Notification::make()
+                    ->title('Video episode tidak ditemukan')
+                    ->danger()
+                    ->send();
+                return;
+            }
+
+            $qualityList = [
+                [
+                    'label' => 'HD',
+                    'url' => $videoUrl,
+                    'isDefault' => true,
+                ]
+            ];
+
+            $videoData = [
+                'videoUrl' => $videoUrl,
+                'qualityList' => $qualityList,
+                'subtitles' => [],
+                'duration' => $activeEp['duration'] ?? null,
+            ];
+            $this->streamData = $videoData;
+            $nextEpisode = null;
+            if (!empty($this->drama['videos']) && $ep < count($this->drama['videos'])) {
+                $nextEpisode = $ep + 1;
+            }
+
+            $this->saveWatchHistory($ep);
+
+            $this->dispatch(
+                'init-player',
+                videoUrl: $videoUrl,
+                qualityList: $qualityList,
+                episode: $ep,
+                nextEpisode: $nextEpisode,
+                subtitles: [],
+            );
+            return;
+        }
+
+        if ($this->networkSlug === 'dramabox') {
+            $activeEp = collect($this->drama['videos'] ?? [])->firstWhere('episode', $ep);
+            if (!$activeEp) {
+                $activeEp = ($this->drama['videos'] ?? [])[$ep - 1] ?? null;
+            }
+
+            if (!$activeEp) {
+                \Filament\Notifications\Notification::make()
+                    ->title('Episode tidak ditemukan')
+                    ->danger()
+                    ->send();
+                return;
+            }
+
+            $qualityList = [];
+            if (!empty($activeEp['videoUrl1080'])) {
+                $qualityList[] = [
+                    'label' => '1080p FHD',
+                    'url' => $activeEp['videoUrl1080'],
+                    'isDefault' => true,
+                ];
+            }
+            if (!empty($activeEp['videoUrl720'])) {
+                $qualityList[] = [
+                    'label' => '720p HD',
+                    'url' => $activeEp['videoUrl720'],
+                    'isDefault' => empty($qualityList),
+                ];
+            }
+            if (!empty($activeEp['videoUrl540'])) {
+                $qualityList[] = [
+                    'label' => '540p SD',
+                    'url' => $activeEp['videoUrl540'],
+                    'isDefault' => empty($qualityList),
+                ];
+            }
+            if (empty($qualityList) && !empty($activeEp['video_url'])) {
+                $qualityList[] = [
+                    'label' => 'HD',
+                    'url' => $activeEp['video_url'],
+                    'isDefault' => true,
+                ];
+            }
+
+            $videoUrl = !empty($qualityList) ? $qualityList[0]['url'] : null;
+
+            if ($videoUrl) {
+                $videoData = [
+                    'videoUrl' => $videoUrl,
+                    'qualityList' => $qualityList,
+                    'subtitles' => [],
+                    'duration' => null,
+                ];
+                $this->streamData = $videoData;
+                $nextEpisode = null;
+                if (!empty($this->drama['videos']) && $ep < count($this->drama['videos'])) {
+                    $nextEpisode = $ep + 1;
+                }
+
+                $this->saveWatchHistory($ep);
+
+                $this->dispatch(
+                    'init-player',
+                    videoUrl: $videoUrl,
+                    qualityList: $qualityList,
+                    episode: $ep,
+                    nextEpisode: $nextEpisode,
+                    subtitles: []
+                );
+            }
+            return;
+        }
+
+        if ($this->networkSlug === 'reelbuzz') {
+            $activeEp = collect($this->drama['videos'] ?? [])->firstWhere('episode', $ep);
+            if (!$activeEp) {
+                $activeEp = ($this->drama['videos'] ?? [])[$ep - 1] ?? null;
+            }
+
+            $videoUrl = $activeEp['video_url'] ?? null;
+
+            if (!$videoUrl) {
+                try {
+                    $playRes = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4], 'timeout' => 10])
+                        ->get("https://reelbuzz.goodbos.online/api/drama/play?dramaId={$this->dramaId}&ep={$ep}&code={$apiKey}");
+                    if ($playRes->successful()) {
+                        $playJson = $playRes->json();
+                        $playUrl = $playJson['playURL'] ?? $playJson['proxyURL'] ?? '';
+                        if (str_contains($playUrl, '?url=')) {
+                            parse_str(parse_url($playUrl, PHP_URL_QUERY), $queryParts);
+                            $videoUrl = $queryParts['url'] ?? $playUrl;
+                        } else {
+                            $videoUrl = $playUrl;
+                        }
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            if (!$videoUrl) {
+                \Filament\Notifications\Notification::make()
+                    ->title('Video episode tidak ditemukan')
+                    ->danger()
+                    ->send();
+                return;
+            }
+
+            $qualityList = [
+                [
+                    'label' => '720p HD',
+                    'url' => $videoUrl,
+                    'isDefault' => true,
+                ]
+            ];
+
+            $videoData = [
+                'videoUrl' => $videoUrl,
+                'qualityList' => $qualityList,
+                'subtitles' => [],
+                'duration' => null,
+            ];
+            $this->streamData = $videoData;
+            $nextEpisode = null;
+            if (!empty($this->drama['videos']) && $ep < count($this->drama['videos'])) {
+                $nextEpisode = $ep + 1;
+            }
+
+            $this->saveWatchHistory($ep);
+
+            $this->dispatch(
+                'init-player',
+                videoUrl: $videoUrl,
+                qualityList: $qualityList,
+                episode: $ep,
+                nextEpisode: $nextEpisode,
+                subtitles: []
+            );
+            return;
+        }
+
         if ($this->networkSlug === 'goodshort') {
+            $qualityList = [];
+            $multiVideos = $this->activeEpisode['multi_videos'] ?? [];
+            if (!empty($multiVideos) && is_array($multiVideos)) {
+                $sortedVideos = collect($multiVideos)->sortByDesc(function ($v) {
+                    $type = strtolower($v['type'] ?? '');
+                    if (str_contains($type, '1080')) return 1080;
+                    if (str_contains($type, '720')) return 720;
+                    if (str_contains($type, '540')) return 540;
+                    return 0;
+                })->values()->toArray();
+
+                foreach ($sortedVideos as $v) {
+                    $label = $v['type'] ?? '720p';
+                    $rawUrl = $v['filePath'] ?? ($v['cdnList'][0]['videoPath'] ?? '');
+                    if ($rawUrl) {
+                        $qualityList[] = [
+                            'label' => $label,
+                            'url' => url('/api/proxy-hls?url=' . urlencode($rawUrl)),
+                            'isDefault' => empty($qualityList),
+                        ];
+                    }
+                }
+            }
+
+            if (empty($qualityList) && !empty($this->activeEpisode['video_url'])) {
+                $qualityList[] = [
+                    'label' => '720p HD',
+                    'url' => url('/api/proxy-hls?url=' . urlencode($this->activeEpisode['video_url'])),
+                    'isDefault' => true,
+                ];
+            }
+
+            if (!empty($qualityList)) {
+                $videoUrl = $qualityList[0]['url'];
+                $this->streamData = [
+                    'videoUrl' => $videoUrl,
+                    'qualityList' => $qualityList,
+                    'subtitles' => [],
+                    'duration' => null,
+                ];
+
+                $this->dispatch('init-player',
+                    videoUrl: $videoUrl,
+                    qualityList: $qualityList,
+                    episode: $ep,
+                    nextEpisode: $this->findNextEpisode($ep),
+                    subtitles: []
+                );
+
+                $this->saveWatchHistory($ep);
+                return;
+            }
+
             $chapterId = $this->activeEpisode['video_id'] ?? null;
             if (!$chapterId) {
                 \Filament\Notifications\Notification::make()
@@ -462,7 +1155,7 @@ class DracinDetail extends Page
             $rawUrlEndpoint = "https://goodshort.goodbos.online/rawurl/{$this->dramaId}?lang={$apiLang}&code={$apiKey}";
             
             try {
-                $rawResponse = Http::timeout(20)->get($rawUrlEndpoint);
+                $rawResponse = Http::timeout(10)->get($rawUrlEndpoint);
                 if ($rawResponse->successful() && (int)$rawResponse->json('status') === 0) {
                     $videoData = $rawResponse->json('data') ?? [];
                     $videoKey = $videoData['videoKey'] ?? null;
@@ -712,6 +1405,143 @@ class DracinDetail extends Page
             return;
         }
 
+        if ($this->networkSlug === 'reelshort') {
+            $streams = $this->activeEpisode['streams'] ?? [];
+            $qualityList = [];
+            foreach ($streams as $s) {
+                if (!empty($s['url'])) {
+                    $qLabel = ($s['quality'] ?? '') === '0p' ? 'Auto' : ($s['quality'] ?? 'HD');
+                    $qualityList[] = [
+                        'label' => $qLabel,
+                        'url' => $s['url'],
+                        'isDefault' => ($s['quality'] ?? '') === '720p' || empty($qualityList),
+                    ];
+                }
+            }
+            if (empty($qualityList) && !empty($this->activeEpisode['video_url'])) {
+                $qualityList[] = [
+                    'label' => '720p HD',
+                    'url' => $this->activeEpisode['video_url'],
+                    'isDefault' => true,
+                ];
+            }
+            if (!empty($qualityList)) {
+                $videoUrl = $qualityList[0]['url'];
+                $this->streamData = [
+                    'videoUrl' => $videoUrl,
+                    'qualityList' => $qualityList,
+                    'subtitles' => [],
+                    'duration' => $this->activeEpisode['duration'] ?? null,
+                ];
+                $this->dispatch('init-player', videoUrl: $videoUrl, qualityList: $qualityList, episode: $ep, nextEpisode: $this->findNextEpisode($ep), subtitles: []);
+                $this->saveWatchHistory($ep);
+                return;
+            }
+        }
+
+        if ($this->networkSlug === 'vibeshort' || $this->networkSlug === 'storyreel') {
+            $videoUrls = $this->activeEpisode['video_urls'] ?? [];
+            $qualityList = [];
+            $order = ['720' => '720p', '1080' => '1080p', '480' => '480p'];
+            foreach ($order as $k => $label) {
+                if (!empty($videoUrls[$k])) {
+                    $qualityList[] = [
+                        'label' => $label,
+                        'url' => $videoUrls[$k],
+                        'isDefault' => empty($qualityList),
+                    ];
+                }
+            }
+            if (empty($qualityList) && !empty($this->activeEpisode['video_url'])) {
+                $qualityList[] = [
+                    'label' => '720p HD',
+                    'url' => url('/api/proxy-hls?url=' . urlencode($this->activeEpisode['video_url'])),
+                    'isDefault' => true,
+                ];
+            }
+            if (!empty($qualityList)) {
+                $videoUrl = $qualityList[0]['url'];
+                $this->streamData = [
+                    'videoUrl' => $videoUrl,
+                    'qualityList' => $qualityList,
+                    'subtitles' => [],
+                    'duration' => $this->activeEpisode['duration'] ?? null,
+                ];
+                $this->dispatch('init-player', videoUrl: $videoUrl, qualityList: $qualityList, episode: $ep, nextEpisode: $this->findNextEpisode($ep), subtitles: []);
+                $this->saveWatchHistory($ep);
+                return;
+            }
+        }
+
+        if ($this->networkSlug === 'moboreels') {
+            $videoUrl = $this->activeEpisode['video_url'] ?? null;
+            if ($videoUrl) {
+                $streamUrl = url('/api/proxy-stream?url=' . urlencode($videoUrl));
+                $qualityList = [['label' => 'HD 720p', 'url' => $streamUrl, 'isDefault' => true]];
+                $subtitles = [];
+                $rawSub = $this->activeEpisode['subtitles'] ?? null;
+                if (is_array($rawSub)) {
+                    foreach ($rawSub as $sub) {
+                        if (!empty($sub['subtitleUrl'])) {
+                            $subtitles[] = [
+                                'lang' => $sub['languageName'] ?? 'Subtitle',
+                                'url' => url('/api/proxy-subtitle?url=' . urlencode($sub['subtitleUrl'])),
+                            ];
+                        }
+                    }
+                } elseif (is_string($rawSub) && !empty($rawSub)) {
+                    $subtitles[] = [
+                        'lang' => 'Indonesia',
+                        'url' => url('/api/proxy-subtitle?url=' . urlencode($rawSub)),
+                    ];
+                }
+
+                $this->streamData = [
+                    'videoUrl' => $streamUrl,
+                    'qualityList' => $qualityList,
+                    'subtitles' => $subtitles,
+                    'duration' => $this->activeEpisode['duration'] ?? null,
+                ];
+                $this->dispatch('init-player', videoUrl: $streamUrl, qualityList: $qualityList, episode: $ep, nextEpisode: $this->findNextEpisode($ep), subtitles: $subtitles);
+                $this->saveWatchHistory($ep);
+                return;
+            }
+        }
+
+        if ($this->networkSlug === 'stardusttv') {
+            $videoUrl = $this->activeEpisode['video_url'] ?? null;
+            if ($videoUrl) {
+                $streamUrl = url('/api/proxy-hls?url=' . urlencode($videoUrl));
+                $qualityList = [['label' => '720p HD', 'url' => $streamUrl, 'isDefault' => true]];
+                $this->streamData = [
+                    'videoUrl' => $streamUrl,
+                    'qualityList' => $qualityList,
+                    'subtitles' => [],
+                    'duration' => null,
+                ];
+                $this->dispatch('init-player', videoUrl: $streamUrl, qualityList: $qualityList, episode: $ep, nextEpisode: $this->findNextEpisode($ep), subtitles: []);
+                $this->saveWatchHistory($ep);
+                return;
+            }
+        }
+
+        if ($this->networkSlug === 'raptdrama') {
+            $videoUrl = $this->activeEpisode['video_url'] ?? null;
+            if ($videoUrl) {
+                $streamUrl = url('/api/proxy-hls?url=' . urlencode($videoUrl));
+                $qualityList = [['label' => '720p HD', 'url' => $streamUrl, 'isDefault' => true]];
+                $this->streamData = [
+                    'videoUrl' => $streamUrl,
+                    'qualityList' => $qualityList,
+                    'subtitles' => [],
+                    'duration' => null,
+                ];
+                $this->dispatch('init-player', videoUrl: $streamUrl, qualityList: $qualityList, episode: $ep, nextEpisode: $this->findNextEpisode($ep), subtitles: []);
+                $this->saveWatchHistory($ep);
+                return;
+            }
+        }
+
         if ($this->networkSlug === 'pinedrama') {
             $code = "5193CD21848193E43FC399BA4D73BB13";
             $videoUrl = "https://pinedrama.goodbos.online/episode?code={$code}&id={$this->dramaId}&ep={$ep}";
@@ -936,15 +1766,10 @@ class DracinDetail extends Page
     }
 
     /**
-     * Network short-drama yang sudah memakai Detail Dracin V2.
-     * BasePage::render() tetap menangani layout Filament melalui getLayout().
+     * Network short-drama wajib memakai Detail Dracin V2 (Standar NetShort: Fullscreen 9:16 + Autoplay).
      */
     public function getView(): string
     {
-        $v2Networks = ['shortmax', 'netshort', 'pinedrama', 'melolo', 'raptdrama', 'goodshort'];
-
-        return in_array($this->networkSlug ?? null, $v2Networks, true)
-            ? 'filament.streaming.pages.dracin-detail-v2'
-            : static::$view;
+        return 'filament.streaming.pages.dracin-detail-v2';
     }
 }

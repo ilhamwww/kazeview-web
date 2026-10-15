@@ -10,6 +10,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -94,6 +95,42 @@ class UserResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\Action::make('changePassword')
+                    ->label('Ubah Password')
+                    ->icon('heroicon-o-key')
+                    ->color('warning')
+                    ->modalHeading(fn (User $record): string => 'Ubah Password: ' . $record->name)
+                    ->modalDescription('Masukkan password baru untuk user ini tanpa perlu mengetahui password lama.')
+                    ->modalSubmitActionLabel('Simpan')
+                    ->modalWidth('md')
+                    ->form([
+                        TextInput::make('new_password')
+                            ->label('Password Baru')
+                            ->password()
+                            ->revealable()
+                            ->required()
+                            ->minLength(8)
+                            ->same('new_password_confirmation')
+                            ->validationAttribute('Password Baru'),
+                        TextInput::make('new_password_confirmation')
+                            ->label('Konfirmasi Password Baru')
+                            ->password()
+                            ->revealable()
+                            ->required()
+                            ->dehydrated(false)
+                            ->validationAttribute('Konfirmasi Password Baru'),
+                    ])
+                    ->action(function (User $record, array $data): void {
+                        $record->update([
+                            'password' => $data['new_password'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Password Berhasil Diubah')
+                            ->body("Password untuk {$record->name} berhasil diperbarui.")
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\EditAction::make(),
                 Impersonate::make()
                 ->redirectTo('/admin'),

@@ -1,17 +1,27 @@
-# DESIGN DETAIL DRACIN V2
+# DESIGN DETAIL DRACIN V2 (STANDARISASI RESMI)
 
 ## 1. Ringkasan
 
-**Detail Dracin V2** adalah pola halaman detail sekaligus pemutar video vertikal fullscreen untuk konten short drama. Implementasi referensi saat ini berada pada network **Shortmax** dan dirancang agar dapat digunakan kembali oleh network Dracin lain tanpa mengubah karakter visual maupun pengalaman pengguna.
+**Detail Dracin V2** adalah **STANDAR BAKU** (mandatory standard) halaman detail sekaligus pemutar video vertikal fullscreen untuk SELURUH konten short drama (Dracin) di platform KZSTRM (NetShort, DramaBox, ShortMax, Melolo, GoodShort, PineDrama, RaptDrama, dsb.).
 
-Pola ini tidak mengubah video vertikal menjadi layout landscape pada desktop. Video tetap memakai komposisi **9:16**, ditempatkan di tengah layar, sementara ruang kosong di kiri dan kanan menggunakan warna hitam sebagai **pillarbox**. Pendekatan ini mengikuti pengalaman aplikasi short drama seperti ShortMax, ReelShort, dan DramaBox.
+Setiap drama pendek yang diklik dari katalog jaringan MANA PUN wajib langsung:
+1. **Instant Auto-Play**: Video langsung berputar otomatis saat halaman dibuka tanpa memerlukan klik tombol episode terpisah.
+2. **Layout Vertikal Standar NetShort**: Memakai rasio vertikal murni **9:16**, memenuhi layar mobile (edge-to-edge) dan centered pillarbox di desktop.
+3. **Right Action Rail**: Tombol melayang `Episode` (buka drawer daftar babak), `Suara / Bisu` (toggle mute/unmute audio), `Simpan` (favorit), dan **`Hide UI` (ikon mata coret untuk membersihkan layar seketika, serta tombol mengambang `Tampilkan UI` saat disembunyikan)**.
+4. **Binge Mode & Gestures**:
+   - **Auto-Next Countdown (3s)**: Saat video selesai (`ended`), muncul modal countdown 3 detik untuk melanjutkan ke episode berikutnya secara otomatis.
+   - **Swipe Gestures**: Swipe jari ke atas (**Swipe UP**) untuk lompat ke episode selanjutnya, dan swipe ke bawah (**Swipe DOWN**) untuk kembali ke episode sebelumnya (identik dengan TikTok/Reels/Shorts).
+   - **Keyboard & Wheel**: Tombol Panah Bawah/PageDown/Wheel Scroll bawah untuk Next Episode; Panah Atas/PageUp/Wheel Scroll atas untuk Previous Episode.
+5. **Top Header**: Tombol kembali `< `, judul drama, counter episode `Eps X/Y`, dan pill shortcut `☰ X/Y`.
+5. **Bottom Overlay**: Judul babak, sinopsis ringkas, scrubber timeline interaktif, pill pilihan resolusi (1080p FHD, 720p HD, 540p SD), dan pill `☰ Episode X >`.
 
 Referensi implementasi:
 
-- View: `resources/views/filament/streaming/pages/shortmax-detail.blade.php`
+- View: `resources/views/filament/streaming/pages/dracin-detail-v2.blade.php`
 - Page/Livewire: `app/Filament/Streaming/Pages/DracinDetail.php`
 - HLS manifest proxy: `GET /api/proxy-hls`
 - Media segment proxy: `GET /api/proxy-stream`
+- Image proxy: `GET /api/proxy-image`
 - Route detail: `/streaming/dracin/{network_slug}/drama/{id}`
 - Route kembali network: `/streaming/dracin/{network_slug}`
 

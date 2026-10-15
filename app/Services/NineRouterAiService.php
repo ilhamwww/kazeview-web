@@ -104,6 +104,7 @@ class NineRouterAiService
             'motorcycle model: '.$this->retrievalValue($descriptor['model_guess'] ?? null),
             'motorcycle category: '.$this->retrievalValue($descriptor['category'] ?? null),
             'motorcycle primary color: '.$this->retrievalValue($descriptor['primary_color'] ?? null),
+            'motorcycle license plate: '.$this->retrievalValue($descriptor['license_plate'] ?? null),
             'motorcycle secondary colors: '.$this->retrievalValue($descriptor['secondary_colors'] ?? null),
             'motorcycle fairing: '.$this->retrievalValue($descriptor['fairing'] ?? null),
             'motorcycle windshield: '.$this->retrievalValue($descriptor['windshield'] ?? null),
@@ -203,6 +204,7 @@ You analyze event photographs for high-precision motorcycle retrieval. Return JS
   "secondary_colors": ["string"],
   "brand_guess": "string or unknown",
   "model_guess": "string or unknown",
+  "license_plate": "string or unknown",
   "fairing": "string",
   "windshield": "string",
   "wheel_color": "string",
@@ -226,7 +228,13 @@ You analyze event photographs for high-precision motorcycle retrieval. Return JS
 }
 The motorcycle is the primary retrieval subject. Ignore watermarks, photographer logos, filenames, frame counters, timestamps, captions, borders, and other scene overlays completely: never use them for identification and never copy them into visible_text. Inspect the motorcycle itself before the rider or scene.
 
-Perform a model-independent visual inventory before choosing a model. First inspect actual text-bearing regions on the motorcycle: badges, emblems, tank or fairing text, decals, and model markings. For a possible model marking, verify each distinguishing digit and suffix independently. Never autocomplete blurred or partially hidden text from an expected decal or from a model you are considering. If only a generic fragment such as "zx" is clearly readable, record only that fragment. Then inspect physical geometry: frame construction, headlight and intake layout, fairing vents, engine and body proportions, exhaust, swingarm, forks and brakes, wheels, windshield, and tail.
+Perform a model-independent visual inventory before choosing a model. First inspect actual text-bearing regions on the motorcycle: badges, emblems, tank or fairing text, decals, and model markings. For a possible model marking, verify each distinguishing digit and suffix independently. Never autocomplete blurred or partially hidden text from an expected decal or from a model you are considering. If only a generic fragment such as "zx" is clearly readable, record only that fragment.
+
+Carefully inspect registration plates (Indonesian license plates: 1-2 letters, 1-4 digits, 1-3 letters, e.g. "b 1234 xyz", "ab 5732 sk") or competition race number decals on the windscreen, cowl, or fairing. If legible, record the number/plate in license_plate and also include it in visible_text.
+
+Then inspect physical geometry: frame construction, headlight and intake layout, fairing vents, engine and body proportions, exhaust type (underbelly, side slip-on, full-system, or stock), front suspension (upside-down gold/black or telescopic), swingarm, wheels (alloy multi-spoke or wire spoke), windshield, and tail.
+
+For popular Indonesian event motorcycles (e.g., Scooter: NMAX, Aerox, Vario, Beat, PCX, Scoopy, Vespa; Sport: Ninja 250, ZX-25R, ZX-6R, R15, R25, CBR150R, CBR250RR; Underbone: MX King, Satria F150, Sonic, Supra; Naked: MT-15, MT-25, CB150R, KLX, CRF150L), observe distinctive headlights, fairing shapes, and radiator/air intakes before concluding.
 
 Report only components actually visible. Never infer the total number of brake discs, calipers, exhaust outlets, or other left/right components from a one-sided or occluded view. Do not mistake shadows, fairing gaps, panel seams, hoses, frame sliders, decorative graphics, or aftermarket accessories for structural frame members.
 

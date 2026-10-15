@@ -1,62 +1,91 @@
-<div class="min-h-screen bg-[#050505] text-white pt-28 pb-16 px-6 max-w-[1800px] mx-auto">
-    <div class="flex items-center justify-between mb-8 border-b border-zinc-800 pb-4">
-        <h1 class="text-3xl font-extrabold text-white tracking-wide border-l-4 border-red-600 pl-4">Drama China (Dracin) - Networks</h1>
-    </div>
+@php
+    use App\Filament\Streaming\Pages\DracinNetwork;
 
-    @if(empty($networks))
-        <!-- Empty State -->
-        <div class="flex flex-col items-center justify-center py-32 text-center bg-zinc-900/40 rounded-2xl border border-white/5">
-            <svg class="w-16 h-16 text-zinc-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-            </svg>
-            <h3 class="text-xl font-bold text-gray-300 mb-2">Belum Ada Network</h3>
-            <p class="text-zinc-500 max-w-sm mb-6">Jaringan penyiaran drama belum ditemukan di API status.</p>
-            <a href="/admin/scraper-setting-page" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 transition rounded-xl text-xs font-bold uppercase tracking-wider">
-                Buka Scraper Settings
-            </a>
+    $online = array_values(array_filter($networks, fn ($n) => !empty($n['is_online'])));
+    $offline = array_values(array_filter($networks, fn ($n) => empty($n['is_online'])));
+    $netUrl = fn ($n) => $n['id'] === 'bstation' ? '/streaming/bstation' : DracinNetwork::getUrl(['slug' => $n['id']], panel: 'streaming');
+    $logo = fn ($n) => !empty($n['logo']) ? url('/api/proxy-image?url=' . urlencode($n['logo'])) : null;
+    // Warna aksen per network supaya kartu tidak seragam
+    $accents = ['from-rose-600/30', 'from-violet-600/30', 'from-amber-500/30', 'from-sky-600/30', 'from-emerald-600/30', 'from-fuchsia-600/30', 'from-orange-600/30', 'from-cyan-600/30'];
+@endphp
+
+<div class="min-h-screen bg-[#050505] text-white pb-28 md:pb-16">
+
+    {{-- ================= HERO ================= --}}
+    <section class="relative overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(220,38,38,0.25),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(147,51,234,0.18),transparent_55%)]" aria-hidden="true"></div>
+        <div class="relative w-full max-w-[1400px] mx-auto px-5 md:px-10 pt-24 md:pt-28 pb-8 md:pb-12">
+            <span class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-400 bg-red-600/10 border border-red-600/30 px-3 py-1 rounded-full">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
+                Short Drama · Vertikal
+            </span>
+            <h1 class="mt-4 text-4xl md:text-6xl font-black tracking-tight leading-[0.95]">Dracin</h1>
+            <p class="mt-3 max-w-xl text-sm md:text-base text-zinc-400 leading-relaxed">
+                Drama pendek format HP. Pilih platform, lalu geser ke atas untuk episode berikutnya dan ke bawah untuk episode sebelumnya.
+            </p>
+
+            <div class="mt-6 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>{{ count($online) }} platform aktif
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-300">↕ Swipe untuk ganti episode</span>
+            </div>
         </div>
-    @else
-        <!-- Networks Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            @foreach($networks as $network)
-                @if($network['is_online'])
-                    <a href="{{ $network['id'] === 'bstation' ? '/streaming/bstation' : \App\Filament\Streaming\Pages\DracinNetwork::getUrl(['slug' => $network['id']]) }}" 
-                       class="group bg-zinc-900/40 border border-zinc-800 hover:border-red-600/50 hover:bg-zinc-900/80 rounded-2xl p-4 flex flex-col items-center justify-between gap-4 transition-all duration-300 hover:scale-105 shadow-lg">
-                @else
-                    <div class="relative group bg-zinc-950/40 border border-zinc-900/60 rounded-2xl p-4 flex flex-col items-center justify-between gap-4 opacity-50 cursor-not-allowed shadow-inner select-none filter grayscale transition-all duration-300">
-                        <!-- Offline Badge -->
-                        <span class="absolute top-2 right-2 px-2 py-0.5 bg-zinc-800/80 border border-zinc-700/50 text-[9px] font-bold text-zinc-400 rounded-md tracking-wider uppercase">Offline</span>
-                @endif
-                    
-                    <!-- Logo Container -->
-                    <div class="w-full aspect-square rounded-xl bg-black/60 border border-zinc-800/85 flex items-center justify-center overflow-hidden p-4 group-hover:scale-95 transition-transform duration-300">
-                        @if(!empty($network['logo']))
-                            <img src="{{ url('/api/proxy-image?url=' . urlencode($network['logo'])) }}" alt="{{ $network['name'] }}" class="w-full h-full object-contain" referrerpolicy="no-referrer">
-                        @else
-                            <div class="text-zinc-700 flex flex-col items-center gap-1.5">
-                                <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
-                                </svg>
-                                <span class="text-[9px] uppercase tracking-widest font-bold">No Image</span>
+    </section>
+
+    <main class="w-full max-w-[1400px] mx-auto px-5 md:px-10">
+        @if(empty($networks))
+            <div class="flex flex-col items-center justify-center py-24 text-center bg-zinc-900/40 rounded-3xl border border-white/5">
+                <h3 class="text-lg font-bold text-zinc-200 mb-2">Belum Ada Platform</h3>
+                <p class="text-sm text-zinc-500 max-w-sm mb-6">Platform drama belum tersedia saat ini. Coba lagi nanti.</p>
+                <a href="/admin/scraper-setting-page" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 transition rounded-xl text-xs font-bold uppercase tracking-wider">Buka Pengaturan</a>
+            </div>
+        @else
+            {{-- ================= ONLINE ================= --}}
+            <h2 class="text-lg md:text-xl font-black tracking-tight mb-4">Pilih Platform</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+                @foreach($online as $i => $n)
+                    <a href="{{ $netUrl($n) }}"
+                       class="group relative overflow-hidden rounded-2xl bg-zinc-900/70 ring-1 ring-white/10 hover:ring-red-500/60 active:scale-[0.97] transition p-4 flex flex-col gap-4 min-h-[150px]">
+                        <div class="absolute inset-0 bg-gradient-to-br {{ $accents[$i % count($accents)] }} to-transparent opacity-80 group-hover:opacity-100 transition" aria-hidden="true"></div>
+                        <div class="relative flex items-start justify-between">
+                            <div class="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-black/60 ring-1 ring-white/10 flex items-center justify-center overflow-hidden p-2">
+                                @if($logo($n))
+                                    <img src="{{ $logo($n) }}" alt="" class="w-full h-full object-contain" referrerpolicy="no-referrer" loading="lazy"
+                                         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">
+                                    <span class="hidden text-xl md:text-2xl font-black">{{ mb_substr($n['name'], 0, 1) }}</span>
+                                @else
+                                    <span class="text-xl md:text-2xl font-black">{{ mb_substr($n['name'], 0, 1) }}</span>
+                                @endif
                             </div>
-                        @endif
-                    </div>
-
-                    <!-- Details -->
-                    <div class="text-center w-full">
-                        <h3 class="text-sm font-bold text-zinc-200 group-hover:text-white truncate transition-colors duration-200">{{ $network['name'] }}</h3>
-                        @if($network['is_online'])
-                            <span class="text-[10px] text-zinc-500 font-medium font-mono uppercase tracking-wider group-hover:text-red-500 transition-colors duration-200">Lihat Drama</span>
-                        @else
-                            <span class="text-[10px] text-zinc-500 font-medium font-mono uppercase tracking-wider">Tidak Tersedia</span>
-                        @endif
-                    </div>
-                @if($network['is_online'])
+                            <span class="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                                <span class="w-1 h-1 rounded-full bg-emerald-400"></span>Online
+                            </span>
+                        </div>
+                        <div class="relative mt-auto flex items-end justify-between gap-2">
+                            <div class="min-w-0">
+                                <h3 class="text-base md:text-lg font-black leading-tight line-clamp-1">{{ $n['name'] }}</h3>
+                                <p class="text-[11px] text-zinc-400 mt-0.5">Lihat drama</p>
+                            </div>
+                            <span class="shrink-0 w-9 h-9 rounded-full bg-white text-black flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                            </span>
+                        </div>
                     </a>
-                @else
-                    </div>
-                @endif
-            @endforeach
-        </div>
-    @endif
+                @endforeach
+            </div>
+
+            {{-- ================= OFFLINE ================= --}}
+            @if(count($offline))
+                <h2 class="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500 mt-10 mb-3">Sedang Tidak Tersedia</h2>
+                <div class="flex flex-wrap gap-2">
+                    @foreach($offline as $n)
+                        <span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-900 text-xs font-semibold text-zinc-500 select-none">
+                            <span class="w-1.5 h-1.5 rounded-full bg-zinc-600"></span>{{ $n['name'] }}
+                        </span>
+                    @endforeach
+                </div>
+            @endif
+        @endif
+    </main>
 </div>

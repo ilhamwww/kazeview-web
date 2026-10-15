@@ -2,65 +2,60 @@
 
 namespace App\Filament\Streaming\Pages;
 
-use App\Services\AnoboyScraperService;
+use App\Services\MirainimeScraperService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
 
 class AnimeDetail extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';
-    protected static ?string $navigationLabel = 'Anime Detail';
+    protected static ?string $navigationLabel = 'Anime Detail V1';
     protected static ?string $title = 'Anime Detail';
-    protected static ?string $slug = 'anime/{slug}';
-    protected static string $view = 'filament.streaming.pages.anime-detail';
+    protected static ?string $slug = 'anime-v1/{slug}';
+    protected static string $view = 'filament.streaming.pages.anime-detail-v1';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
     public string $animeSlug = '';
     public ?array $detail = null;
-    public string $animeUrl = '';
     public bool $isFavorited = false;
 
     public function mount($slug): void
     {
         $this->animeSlug = $slug;
 
-        // Build the full URL from the slug
-        $scraper = new AnoboyScraperService();
-        $this->animeUrl = rtrim($scraper->getBaseUrl(), '/') . '/anime/' . $slug . '/';
-
-        $cacheKey = 'anoboy_explore_detail_' . md5($this->animeUrl);
-        $this->detail = Cache::remember($cacheKey, 86400, function () {
-            $scraper = new AnoboyScraperService();
-            return $scraper->scrapeAnimeSeriesDetail($this->animeUrl);
+        $scraper = new MirainimeScraperService();
+        $cacheKey = 'v1_detail_' . md5($slug);
+        $this->detail = Cache::remember($cacheKey, 43200, function () use ($scraper, $slug) {
+            return $scraper->scrapeAnimeSeriesDetail($slug);
         });
 
         if (!$this->detail) {
-            abort(404);
+            abort(404, 'Detail anime tidak ditemukan');
         }
 
         $this->isFavorited = auth()->user()
             ? auth()->user()->favorites()
-                ->where('item_id', $this->animeSlug)
+                ->where('item_id', 'v1:' . $this->animeSlug)
                 ->where('item_type', 'anime')
                 ->exists()
             : false;
     }
 
-    public function toggleFavorite()
+    public function toggleFavorite(): void
     {
         if (!auth()->check()) {
-            return redirect()->to(route('filament.streaming.auth.login'));
+            return;
         }
 
         $user = auth()->user();
-        $favorite = $user->favorites()
-            ->where('item_id', $this->animeSlug)
+        $fav = $user->favorites()
+            ->where('item_id', 'v1:' . $this->animeSlug)
             ->where('item_type', 'anime')
             ->first();
 
-        if ($favorite) {
-            $favorite->delete();
+        if ($fav) {
+            $fav->delete();
             $this->isFavorited = false;
             \Filament\Notifications\Notification::make()
                 ->title('Dihapus dari Favorit')
@@ -68,7 +63,7 @@ class AnimeDetail extends Page
                 ->send();
         } else {
             $user->favorites()->create([
-                'item_id' => $this->animeSlug,
+                'item_id' => 'v1:' . $this->animeSlug,
                 'item_type' => 'anime',
                 'title' => $this->detail['title'] ?? 'Anime Detail',
                 'thumbnail' => $this->detail['thumbnail'] ?? null,

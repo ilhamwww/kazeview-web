@@ -14,12 +14,14 @@ class AnoboyScraperService
 
     public function __construct()
     {
-        // Get domain from settings
-        $this->baseUrl = ScraperSetting::getInstance()->anoboy_domain;
+        $domain = ScraperSetting::getInstance()->anoboy_domain ?: 'https://anoboy.quest/';
+        $this->baseUrl = rtrim($domain, '/') . '/';
 
         $this->client = new Client([
             'base_uri' => $this->baseUrl,
-            'timeout' => 30,
+            'timeout' => 20,
+            'allow_redirects' => true,
+            'http_errors' => false,
             'headers' => $this->getRandomHeaders(),
         ]);
     }
@@ -33,59 +35,22 @@ class AnoboyScraperService
     }
 
     /**
-     * Search anime via ajax endpoint
+     * Search anime via WordPress search query
      *
      * @param string $query
      * @return array List of anime data matching the query
      */
     public function searchAnime(string $query): array
     {
-        $ajaxUrl = rtrim($this->baseUrl, '/') . '/wp-admin/admin-ajax.php';
+        if (empty(trim($query))) {
+            return [];
+        }
 
         try {
-            // WordPress admin-ajax.php typically expects POST requests with application/x-www-form-urlencoded body
-            $response = $this->client->post($ajaxUrl, [
-                'headers' => array_merge(
-                    $this->getRandomHeaders(),
-                    [
-                        'Accept' => 'application/json, text/javascript, */*; q=0.01',
-                        'X-Requested-With' => 'XMLHttpRequest',
-                        'Origin' => rtrim($this->baseUrl, '/'),
-                        'Referer' => rtrim($this->baseUrl, '/') . '/',
-                    ]
-                ),
-                'form_params' => [
-                    'action' => 'ts_ac_do_search',
-                    'ts_ac_query' => $query,
-                ]
-            ]);
+            $url = '?s=' . urlencode(trim($query));
+            $html = $this->fetchHtml($url);
 
-            $json = json_decode((string) $response->getBody(), true);
-            $animes = [];
-
-            if (isset($json['anime']) && is_array($json['anime'])) {
-                foreach ($json['anime'] as $group) {
-                    if (isset($group['all']) && is_array($group['all'])) {
-                        foreach ($group['all'] as $item) {
-                            $episode = '';
-                            if (!empty($item['post_ep']) || !empty($item['post_latest'])) {
-                                $episode = trim(($item['post_ep'] ?? '') . ' ' . ($item['post_latest'] ?? ''));
-                            }
-
-                            $animes[] = [
-                                'title' => $item['post_title'] ?? '',
-                                'url' => $item['post_link'] ?? '',
-                                'thumbnail' => $item['post_image'] ?? '',
-                                'episode' => $episode,
-                                'type' => $item['post_type'] ?? '',
-                                'status' => $item['post_sub'] ?? '',
-                            ];
-                        }
-                    }
-                }
-            }
-
-            return $animes;
+            return $this->parseAnimeList($html);
         } catch (\Exception $e) {
             \Log::error('Anoboy search error: ' . $e->getMessage());
             return [];
@@ -99,40 +64,41 @@ class AnoboyScraperService
      */
     public function scrapeGenres(): array
     {
-        try {
-            $html = $this->fetchHtml('anime/');
-            $crawler = new Crawler($html);
+        $genresMap = [
+            'action' => 'Action',
+            'adventure' => 'Adventure',
+            'comedy' => 'Comedy',
+            'drama' => 'Drama',
+            'ecchi' => 'Ecchi',
+            'fantasy' => 'Fantasy',
+            'harem' => 'Harem',
+            'horror' => 'Horror',
+            'isekai' => 'Isekai',
+            'magic' => 'Magic',
+            'mecha' => 'Mecha',
+            'mystery' => 'Mystery',
+            'psychological' => 'Psychological',
+            'romance' => 'Romance',
+            'school' => 'School',
+            'sci-fi' => 'Sci-Fi',
+            'seinen' => 'Seinen',
+            'shounen' => 'Shounen',
+            'slice-of-life' => 'Slice of Life',
+            'sports' => 'Sports',
+            'supernatural' => 'Supernatural',
+            'thriller' => 'Thriller',
+        ];
 
-            $genres = [];
-            $crawler->filter('.section ul.genre li a, ul.genre li a')->each(function (Crawler $node) use (&$genres) {
-                $url = $node->attr('href') ?? '';
-                $name = trim($node->text());
-
-                if (empty($url) || empty($name)) {
-                    return;
-                }
-
-                $path = parse_url($url, PHP_URL_PATH);
-                $slug = '';
-                if ($path) {
-                    $parts = array_filter(explode('/', trim($path, '/')));
-                    $slug = end($parts);
-                }
-
-                if ($slug && !isset($genres[$slug])) {
-                    $genres[$slug] = [
-                        'name' => $name,
-                        'slug' => $slug,
-                        'url' => $url,
-                    ];
-                }
-            });
-
-            return array_values($genres);
-        } catch (\Exception $e) {
-            \Log::error('Anoboy scrape genres error: ' . $e->getMessage());
-            return [];
+        $genres = [];
+        foreach ($genresMap as $slug => $name) {
+            $genres[] = [
+                'name' => $name,
+                'slug' => $slug,
+                'url' => $this->baseUrl . 'category/' . $slug . '/',
+            ];
         }
+
+        return $genres;
     }
 
     /**
@@ -144,7 +110,7 @@ class AnoboyScraperService
      */
     public function scrapeAnimeByGenre(string $genreSlug, int $page = 1): array
     {
-        $url = $page === 1 ? "genres/{$genreSlug}/" : "genres/{$genreSlug}/page/{$page}/";
+        $url = $page <= 1 ? "category/{$genreSlug}/" : "category/{$genreSlug}/page/{$page}/";
 
         try {
             $html = $this->fetchHtml($url);
@@ -157,7 +123,7 @@ class AnoboyScraperService
     }
 
     /**
-     * Scrape anime list from anoboy.be with status filter support
+     * Scrape anime list from anoboy with status filter support
      *
      * @param int $page Page number (default 1)
      * @param string $status Filter by status (completed, ongoing, or empty)
@@ -165,13 +131,21 @@ class AnoboyScraperService
      */
     public function scrapeAnimeList(int $page = 1, string $status = ''): array
     {
-        $statusParam = filled($status) ? "&status={$status}" : "";
-        $url = "anime/?page={$page}{$statusParam}&sub=&order=update";
+        $url = $page <= 1 ? "category/anime/" : "category/anime/page/{$page}/";
 
         try {
             $html = $this->fetchHtml($url);
+            $items = $this->parseAnimeList($html);
 
-            return $this->parseAnimeList($html);
+            if (filled($status)) {
+                $statusLower = strtolower($status);
+                $filtered = array_filter($items, function ($item) use ($statusLower) {
+                    return strtolower($item['status'] ?? '') === $statusLower;
+                });
+                return array_values($filtered);
+            }
+
+            return $items;
         } catch (\Exception $e) {
             \Log::error('Anoboy scraper error: ' . $e->getMessage());
             return [];
@@ -180,7 +154,7 @@ class AnoboyScraperService
 
     /**
      * Parse anime list from HTML
-     * Extracts anime series (not individual episodes) and builds the anime detail URL
+     * Extracts anime items (.amv cards wrapped in <a>)
      *
      * @param string $html
      * @return array
@@ -191,70 +165,77 @@ class AnoboyScraperService
         $animes = [];
         $seenUrls = [];
 
-        // Select all anime items with class .bsx
-        $crawler->filter('.bsx')->each(function (Crawler $node) use (&$animes, &$seenUrls) {
-            $linkNode = $node->filter('a')->first();
-
-            if ($linkNode->count() === 0) {
+        // Select all anime cards with class .amv
+        $crawler->filter('.amv')->each(function (Crawler $node) use (&$animes, &$seenUrls) {
+            $aNode = $node->closest('a');
+            if (!$aNode || $aNode->count() === 0) {
                 return;
             }
 
-            $episodeUrl = $linkNode->attr('href') ?? '';
-            $title = $linkNode->attr('title') ?? '';
+            $url = $aNode->attr('href') ?? '';
+            if (empty($url) || isset($seenUrls[$url])) {
+                return;
+            }
 
-            // Get thumbnail
+            // Extract title
+            $title = '';
+            $titleNode = $node->filter('.amvj h3');
+            if ($titleNode->count() > 0) {
+                $title = trim($titleNode->text());
+            } else {
+                $title = trim($aNode->attr('title') ?? '');
+            }
+
+            if (empty($title)) {
+                return;
+            }
+
+            // Normalize URL
+            if (str_starts_with($url, '/')) {
+                $url = rtrim($this->baseUrl, '/') . $url;
+            }
+
+            // Extract thumbnail
             $thumbnail = '';
             $imgNode = $node->filter('img');
             if ($imgNode->count() > 0) {
                 $thumbnail = $imgNode->attr('src') ?? '';
+                if ($thumbnail && str_starts_with($thumbnail, '/')) {
+                    $thumbnail = rtrim($this->baseUrl, '/') . $thumbnail;
+                }
             }
 
-            // Get episode info
+            // Extract schedule / episode string
             $episode = '';
-            $epxNode = $node->filter('.epx');
-            if ($epxNode->count() > 0) {
-                $episode = trim($epxNode->text());
+            $jamupNode = $node->filter('.jamup');
+            if ($jamupNode->count() > 0) {
+                $episode = trim($jamupNode->text());
             }
 
-            // Get type (TV, Movie, etc)
-            $type = '';
-            $typezNode = $node->filter('.typez');
-            if ($typezNode->count() > 0) {
-                $type = trim($typezNode->text());
-            }
+            // Status: check if title or labels indicate Completed / Tamat
+            $titleLower = strtolower($title);
+            $status = (str_contains($titleLower, 'selesai') || str_contains($titleLower, 'tamat'))
+                ? 'Completed'
+                : 'Ongoing';
 
-            // Get status (Sub/Dub)
-            $status = '';
-            $sbNode = $node->filter('.sb');
-            if ($sbNode->count() > 0) {
-                $status = trim($sbNode->text());
-            }
+            // Clean title (remove trailing Subtitle Indonesia / Sub Indo / anoBoy)
+            $cleanTitle = preg_replace('/\s*[-–|]?\s*(?:Subtitle\s+Indonesia|Sub\s+Indo|anoBoy|anoboy)$/i', '', $title);
+            $cleanTitle = preg_replace('/anoBoy|anoboy/i', '', $cleanTitle);
+            $cleanTitle = trim($cleanTitle);
 
-            // Clean title - remove episode info if present
-            $cleanTitle = $title;
-            if (preg_match('/^(.+?)\s*Episode\s*\d+/i', $title, $matches)) {
-                $cleanTitle = trim($matches[1]);
-            }
+            $path = parse_url($url, PHP_URL_PATH) ?? '';
+            $segments = array_filter(explode('/', trim($path, '/')));
+            $slug = end($segments) ?: '';
 
-            // Derive anime series URL from episode URL
-            $animeUrl = $this->deriveAnimeSeriesUrl($episodeUrl);
-
-            if (empty($animeUrl) || empty($cleanTitle)) {
-                return;
-            }
-
-            // Deduplicate by anime series URL
-            if (isset($seenUrls[$animeUrl])) {
-                return;
-            }
-            $seenUrls[$animeUrl] = true;
+            $seenUrls[$url] = true;
 
             $animes[] = [
                 'title' => $cleanTitle,
-                'url' => $animeUrl,
+                'slug' => $slug,
+                'url' => $url,
                 'thumbnail' => $thumbnail,
                 'episode' => $episode,
-                'type' => $type,
+                'type' => str_contains(strtolower($cleanTitle), 'movie') ? 'Movie' : 'Anime',
                 'status' => $status,
             ];
         });
@@ -270,42 +251,60 @@ class AnoboyScraperService
      */
     protected function deriveAnimeSeriesUrl(string $episodeUrl): string
     {
-        // Parse the URL to get the path
         $path = parse_url($episodeUrl, PHP_URL_PATH);
-
         if (!$path) {
-            return '';
+            return $episodeUrl;
         }
 
-        // Remove leading/trailing slashes and get the slug
-        $slug = trim($path, '/');
+        $segments = array_filter(explode('/', trim($path, '/')));
+        $slug = end($segments) ?: '';
 
-        // Remove episode suffix patterns
-        $slug = preg_replace('/-episode-\d+(-subtitle-indonesia)?\/?$/', '', $slug);
+        // Remove episode pattern
+        $slug = preg_replace('/-episode-\d+(?:-[a-z0-9]+)?$/i', '', $slug);
 
         if (empty($slug)) {
-            return '';
+            return $episodeUrl;
         }
 
-        // Build the anime series URL
         return rtrim($this->baseUrl, '/') . '/anime/' . $slug . '/';
     }
 
     /**
      * Scrape anime series detail page for episode list
-     * URL format: https://anoboy.be/anime/liar-game/
      *
-     * @param string $url Full URL to anime series detail page
+     * @param string $url Full URL or relative slug URL
      * @return array|null Array with title, episodes list, thumbnail, or null on failure
      */
     public function scrapeAnimeSeriesDetail(string $url): ?array
     {
         try {
             $html = $this->fetchHtml($url);
+            $detail = $this->parseAnimeSeriesDetail($html, $url);
 
-            return $this->parseAnimeSeriesDetail($html, $url);
+            // Fallback: If no episodes found, check if slug can be searched
+            if ($detail && empty($detail['episodes'])) {
+                $path = parse_url($url, PHP_URL_PATH);
+                $segments = array_filter(explode('/', trim($path ?: '', '/')));
+                $slug = end($segments) ?: '';
+                if ($slug) {
+                    $searchQuery = str_replace('-', ' ', $slug);
+                    $searchResults = $this->searchAnime($searchQuery);
+                    if (!empty($searchResults)) {
+                        $candidate = $searchResults[0];
+                        if (!empty($candidate['url']) && $candidate['url'] !== $url) {
+                            $fallbackHtml = $this->fetchHtml($candidate['url']);
+                            $fallbackDetail = $this->parseAnimeSeriesDetail($fallbackHtml, $candidate['url']);
+                            if ($fallbackDetail && !empty($fallbackDetail['episodes'])) {
+                                return $fallbackDetail;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return $detail;
         } catch (\Exception $e) {
-            \Log::error('Anoboy series detail scraper error: ' . $e->getMessage());
+            \Log::error('Anoboy series detail scraper error for ' . $url . ': ' . $e->getMessage());
             return null;
         }
     }
@@ -321,7 +320,7 @@ class AnoboyScraperService
     {
         $crawler = new Crawler($html);
 
-        // Get title from h1.entry-title or title tag
+        // Get title
         $title = '';
         $titleNode = $crawler->filter('h1.entry-title, .entry-title, h1');
         if ($titleNode->count() > 0) {
@@ -330,81 +329,295 @@ class AnoboyScraperService
             $titleNode = $crawler->filter('title');
             if ($titleNode->count() > 0) {
                 $title = trim($titleNode->text());
-                $title = preg_replace('/\s*[-|]\s*[^-|]+$/', '', $title);
             }
         }
 
-        // Get thumbnail/featured image
-        $thumbnail = '';
-        $thumbNode = $crawler->filter('.thumb img, .post-thumbnail img, meta[property="og:image"]');
-        if ($thumbNode->count() > 0) {
-            $thumbnail = $thumbNode->first()->attr('src') ?? $thumbNode->first()->attr('content') ?? '';
-        }
-
-        // Get description/synopsis
-        $description = '';
-        $descNode = $crawler->filter('.entry-content, .desc, .sinopsis, .synopsis');
-        if ($descNode->count() > 0) {
-            $description = trim($descNode->first()->text());
-        }
-
-        // Get genre/info metadata
-        $genres = [];
-        $genreNodes = $crawler->filter('.genxed a, .genre-info a, .info-content a[rel="tag"]');
-        $genreNodes->each(function (Crawler $node) use (&$genres) {
-            $genres[] = trim($node->text());
-        });
-
-        // Parse episode list from .eplister
-        $episodes = [];
-        $epListNodes = $crawler->filter('.eplister ul li');
-        $epListNodes->each(function (Crawler $node) use (&$episodes) {
-            $linkNode = $node->filter('a')->first();
-            if ($linkNode->count() === 0) {
-                return;
-            }
-
-            $epUrl = $linkNode->attr('href') ?? '';
-            $epNum = '';
-            $epTitle = '';
-            $epDate = '';
-
-            $numNode = $node->filter('.epl-num');
-            if ($numNode->count() > 0) {
-                $epNum = trim($numNode->text());
-            }
-
-            $titleNode = $node->filter('.epl-title');
-            if ($titleNode->count() > 0) {
-                $epTitle = trim($titleNode->text());
-            }
-
-            $dateNode = $node->filter('.epl-date');
-            if ($dateNode->count() > 0) {
-                $epDate = trim($dateNode->text());
-            }
-
-            if (!empty($epUrl)) {
-                $episodes[] = [
-                    'episode' => $epNum,
-                    'title' => $epTitle,
-                    'date' => $epDate,
-                    'url' => $epUrl,
-                ];
-            }
-        });
+        // Clean title
+        $title = preg_replace('/\s*[-–|]?\s*(?:Subtitle\s+Indonesia|Sub\s+Indo|anoBoy|anoboy).*$/i', '', $title);
+        $title = preg_replace('/anoBoy|anoboy/i', '', $title);
+        $title = trim($title);
 
         if (empty($title)) {
             return null;
         }
 
+        // Get thumbnail/poster
+        $thumbnail = '';
+        $thumbNode = $crawler->filter('.sisi img, .entry-content img, .content img, img[src*="/upload/"], meta[property="og:image"]');
+        if ($thumbNode->count() > 0) {
+            $first = $thumbNode->first();
+            $thumbnail = $first->attr('src') ?? $first->attr('content') ?? '';
+            if ($thumbnail && str_starts_with($thumbnail, '/')) {
+                $thumbnail = rtrim($this->baseUrl, '/') . $thumbnail;
+            }
+        }
+
+        // Get description/synopsis
+        $description = '';
+        $descNode = $crawler->filter('span.entry-content[itemprop="description"], .entry-content, .sisi, .desc');
+        if ($descNode->count() > 0 && filled(trim($descNode->first()->text()))) {
+            $description = trim($descNode->first()->text());
+        } else {
+            $metaDesc = $crawler->filter('meta[name="description"], meta[property="og:description"]');
+            if ($metaDesc->count() > 0) {
+                $description = trim($metaDesc->first()->attr('content') ?? '');
+            }
+        }
+        $description = preg_replace('/anoBoy|anoboy(?:\.[a-z]+)?/i', '', $description);
+        $description = preg_replace('/(?:\bdan\s+)?download\s*(?:gratis)?\s*(?:download)?/i', '', $description);
+        $description = preg_replace('/\s+/', ' ', $description);
+        $description = trim($description);
+
+        // Get genres
+        $genres = [];
+        $crawler->filter('.sisi a[href*="/category/"], .entry-content a[href*="/category/"]')->each(function (Crawler $node) use (&$genres) {
+            $text = trim($node->text());
+            if (preg_match('/genre\s+([A-Za-z0-9\-_]+)/i', $text, $m)) {
+                $genres[] = ucfirst($m[1]);
+            } else {
+                $cleaned = preg_replace('/^(?:Nonton\s+Anime\s+bergenre\s+|Nonton\s+anime\s+genre\s+|disini\.?)/i', '', $text);
+                $cleaned = trim($cleaned);
+                if ($cleaned && !in_array($cleaned, ['Anime', 'Lihat Lebih', 'DonghuaList', 'Movie', 'Tokusatsu'])) {
+                    $genres[] = ucfirst($cleaned);
+                }
+            }
+        });
+        $genres = array_values(array_unique($genres));
+
+        // Parse episode list
+        $episodes = [];
+        $seenEpUrls = [];
+
+        // Method 1: Check .singlelink list (standard series posts)
+        $epListNodes = $crawler->filter('.singlelink ul.lcp_catlist li a, .singlelink li a, .singlelink a');
+        $epListNodes->each(function (Crawler $node) use (&$episodes, &$seenEpUrls) {
+            $epUrl = $node->attr('href') ?? '';
+            $epTitle = trim($node->text());
+
+            if (empty($epUrl) || str_contains($epTitle, '[Download]') || isset($seenEpUrls[$epUrl])) {
+                return;
+            }
+
+            if (str_starts_with($epUrl, '/')) {
+                $epUrl = rtrim($this->baseUrl, '/') . $epUrl;
+            }
+
+            // Extract episode number for compact UI display
+            $epNum = '';
+            if (preg_match('/Episode\s*([0-9\.]+(?:\s*Selesai|\s*End)?)/i', $epTitle, $m)) {
+                $epNum = trim($m[1]);
+            } elseif (preg_match('/-episode-([0-9\.]+)/i', $epUrl, $m)) {
+                $epNum = trim($m[1]);
+            }
+
+            $epPath = parse_url($epUrl, PHP_URL_PATH) ?? '';
+            $epSegments = array_filter(explode('/', trim($epPath, '/')));
+            $epSlug = end($epSegments) ?: '';
+
+            $seenEpUrls[$epUrl] = true;
+            $episodes[] = [
+                'episode' => $epNum ?: (string) (count($episodes) + 1),
+                'title' => $epTitle,
+                'date' => '',
+                'url' => $epUrl,
+                'slug' => $epSlug,
+            ];
+        });
+
+        // Method 2: If no .singlelink, check if page contains .amv cards (category/series archive)
+        if (empty($episodes)) {
+            $crawler->filter('.amv')->each(function (Crawler $node) use (&$episodes, &$seenEpUrls) {
+                $a = $node->closest('a');
+                if (!$a || $a->count() === 0) return;
+
+                $epUrl = $a->attr('href') ?? '';
+                $epTitle = $node->filter('.amvj h3')->count() ? trim($node->filter('.amvj h3')->text()) : trim($a->attr('title') ?? '');
+
+                if (empty($epUrl) || isset($seenEpUrls[$epUrl])) return;
+
+                if (str_starts_with($epUrl, '/')) {
+                    $epUrl = rtrim($this->baseUrl, '/') . $epUrl;
+                }
+
+                $epNum = '';
+                if (preg_match('/Episode\s*([0-9\.]+(?:\s*Selesai|\s*End)?)/i', $epTitle, $m)) {
+                    $epNum = trim($m[1]);
+                }
+
+                $epPath = parse_url($epUrl, PHP_URL_PATH) ?? '';
+                $epSegments = array_filter(explode('/', trim($epPath, '/')));
+                $epSlug = end($epSegments) ?: '';
+
+                $seenEpUrls[$epUrl] = true;
+                $episodes[] = [
+                    'episode' => $epNum ?: (string) (count($episodes) + 1),
+                    'title' => $epTitle,
+                    'date' => '',
+                    'url' => $epUrl,
+                    'slug' => $epSlug,
+                ];
+            });
+        }
+
+        // Method 3: If still empty but page has video iframe (single movie or standalone episode)
+        if (empty($episodes)) {
+            $hasVideo = $crawler->filter('iframe, .vmiror a')->count() > 0;
+            if ($hasVideo) {
+                $epPath = parse_url($url, PHP_URL_PATH) ?? '';
+                $epSegments = array_filter(explode('/', trim($epPath, '/')));
+                $epSlug = end($epSegments) ?: '';
+
+                $episodes[] = [
+                    'episode' => '1',
+                    'title' => $title,
+                    'date' => '',
+                    'url' => $url,
+                    'slug' => $epSlug,
+                ];
+            }
+        }
+
+        // Sort episodes in ascending order (Episode 1 first)
+        usort($episodes, function ($a, $b) {
+            $numA = (float) filter_var($a['episode'], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+            $numB = (float) filter_var($b['episode'], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+            return $numA <=> $numB;
+        });
+
+        $seriesPath = parse_url($url, PHP_URL_PATH) ?? '';
+        $seriesSegments = array_filter(explode('/', trim($seriesPath, '/')));
+        $seriesSlug = end($seriesSegments) ?: '';
+
         return [
             'title' => $title,
+            'slug' => $seriesSlug,
             'thumbnail' => $thumbnail,
             'description' => $description,
             'genres' => $genres,
             'episodes' => $episodes,
             'source_url' => $url,
+        ];
+    }
+
+    /**
+     * Scrape episode page for video embed URL
+     *
+     * @param string $url Full URL to episode page
+     * @return array|null Array with title, video_url, or null on failure
+     */
+    public function scrapeEpisodeDetail(string $url): ?array
+    {
+        try {
+            $html = $this->fetchHtml($url);
+
+            return $this->parseEpisodeDetail($html, $url);
+        } catch (\Exception $e) {
+            \Log::error('Anoboy episode scraper error for ' . $url . ': ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Parse episode page HTML for video URL
+     *
+     * @param string $html
+     * @param string $url
+     * @return array|null
+     */
+    protected function parseEpisodeDetail(string $html, string $url): ?array
+    {
+        $crawler = new Crawler($html);
+
+        // Get title
+        $title = '';
+        $titleNode = $crawler->filter('h1.entry-title, .entry-title, h1');
+        if ($titleNode->count() > 0) {
+            $title = trim($titleNode->first()->text());
+        } else {
+            $titleNode = $crawler->filter('title');
+            if ($titleNode->count() > 0) {
+                $title = trim($titleNode->text());
+            }
+        }
+        $title = preg_replace('/\s*[-–|]?\s*(?:anoBoy|anoboy).*$/i', '', $title);
+        $title = preg_replace('/anoBoy|anoboy/i', '', $title);
+        $title = trim($title);
+
+        $videoUrl = '';
+
+        // Priority 1: Check existing iframe
+        $iframeNode = $crawler->filter('iframe');
+        if ($iframeNode->count() > 0) {
+            $videoUrl = $iframeNode->first()->attr('src') ?? '';
+        }
+
+        // Priority 2: Check .vmiror data-video links
+        $mirrors = [];
+        $crawler->filter('.vmiror a')->each(function (Crawler $m) use (&$mirrors, &$videoUrl) {
+            $v = $m->attr('data-video') ?? '';
+            $label = trim($m->text());
+            if ($v) {
+                if (str_starts_with($v, '/')) {
+                    $v = rtrim($this->baseUrl, '/') . $v;
+                }
+                $mirrors[] = [
+                    'label' => $label ?: 'Server ' . (count($mirrors) + 1),
+                    'url' => $v,
+                ];
+            }
+        });
+
+        if (empty($videoUrl) && !empty($mirrors)) {
+            $videoUrl = $mirrors[0]['url'];
+        }
+
+        // Normalize video URL
+        if ($videoUrl && str_starts_with($videoUrl, '/')) {
+            $videoUrl = rtrim($this->baseUrl, '/') . $videoUrl;
+        }
+
+        if (empty($title)) {
+            return null;
+        }
+
+        // Extract series URL & slug from breadcrumb
+        $seriesUrl = '';
+        $crawler->filter('.breadcrumb a')->each(function (Crawler $b) use (&$seriesUrl) {
+            $href = $b->attr('href') ?? '';
+            $text = trim($b->text());
+            if (!empty($href) && !in_array(strtolower($text), ['home', 'anime', 'anoboy']) && !str_contains($href, '-episode-')) {
+                $seriesUrl = $href;
+            }
+        });
+
+        if ($seriesUrl && str_starts_with($seriesUrl, '/')) {
+            $seriesUrl = rtrim($this->baseUrl, '/') . $seriesUrl;
+        }
+        $seriesSlug = '';
+        if ($seriesUrl) {
+            $seriesPath = parse_url($seriesUrl, PHP_URL_PATH) ?? '';
+            $seriesSlug = basename(trim($seriesPath, '/'));
+        }
+
+        // Episode number
+        $epNum = '1';
+        if (preg_match('/Episode\s*([0-9\.]+)/i', $title, $m)) {
+            $epNum = $m[1];
+        }
+
+        // Episode slug
+        $epPath = parse_url($url, PHP_URL_PATH) ?? '';
+        $epSlug = basename(trim($epPath, '/'));
+
+        return [
+            'title' => $title,
+            'slug' => $epSlug,
+            'video_url' => $videoUrl,
+            'mirrors' => $mirrors,
+            'source_url' => $url,
+            'series_url' => $seriesUrl,
+            'series_slug' => $seriesSlug,
+            'episode_number' => $epNum,
         ];
     }
 
@@ -418,9 +631,8 @@ class AnoboyScraperService
     public function scrapeAndSave(int $page = 1, bool $force = false): array
     {
         $startTime = microtime(true);
-        $url = "anime/?page={$page}&sub=&order=update";
+        $url = $page <= 1 ? "category/anime/" : "category/anime/page/{$page}/";
 
-        // Check if page already scraped successfully
         if (!$force && ScraperLog::isPageScraped('anoboy', $page)) {
             $duration = round(microtime(true) - $startTime, 3);
             ScraperLog::create([
@@ -455,7 +667,6 @@ class AnoboyScraperService
 
             $duration = round(microtime(true) - $startTime, 3);
 
-            // Log the scraping result (updateOrCreate to handle re-scrapes)
             ScraperLog::updateOrCreate(
                 ['source' => 'anoboy', 'page' => $page],
                 [
@@ -492,7 +703,7 @@ class AnoboyScraperService
     }
 
     /**
-     * Check if a page has a "next" button (meaning there are more pages)
+     * Check if a page has a "next" button in pagination
      *
      * @param int $currentPage
      * @return bool
@@ -500,38 +711,11 @@ class AnoboyScraperService
     public function hasNextPage(int $currentPage): bool
     {
         try {
-            $url = "anime/?page={$currentPage}&status=&type=&order=";
+            $url = $currentPage <= 1 ? "category/anime/" : "category/anime/page/{$currentPage}/";
             $html = $this->fetchHtml($url);
             $crawler = new Crawler($html);
 
-            // Check for "next" link in pagination
-            // Common patterns: a.next, a with text "Next", a with "›", a with "»"
-            $nextLinks = $crawler->filter('.pagination a.next, .page-numbers a.next, a.next.page-numbers');
-            if ($nextLinks->count() > 0) {
-                return true;
-            }
-
-            // Also check for any link pointing to page+1
-            $nextPage = $currentPage + 1;
-            $allLinks = $crawler->filter('.pagination a, .page-numbers a, .hpage a');
-            $hasNext = false;
-
-            $allLinks->each(function (Crawler $node) use ($nextPage, &$hasNext) {
-                $href = $node->attr('href') ?? '';
-                $text = trim($node->text());
-
-                // Check if link points to next page
-                if (preg_match('/[?&]page=' . $nextPage . '/', $href)) {
-                    $hasNext = true;
-                }
-
-                // Check for common "next" text patterns
-                if (in_array(strtolower($text), ['next', 'next »', '»', '›', '→', 'selanjutnya'])) {
-                    $hasNext = true;
-                }
-            });
-
-            return $hasNext;
+            return $crawler->filter('a.nextpostslink, .wp-pagenavi a.next')->count() > 0;
         } catch (\Exception $e) {
             \Log::error('Anoboy next page check error: ' . $e->getMessage());
             return false;
@@ -539,39 +723,22 @@ class AnoboyScraperService
     }
 
     /**
-     * Get total pages by following next buttons from page 1
+     * Get total pages from wp-pagenavi
      *
      * @return int
      */
     public function getTotalPages(): int
     {
         try {
-            $url = 'anime/?page=1&status=&type=&order=';
-            $html = $this->fetchHtml($url);
+            $html = $this->fetchHtml('category/anime/');
             $crawler = new Crawler($html);
 
-            // Method 1: Find the highest page number in pagination links
-            $maxPage = 1;
-            $allLinks = $crawler->filter('.pagination a, .page-numbers a, .hpage a');
+            $pagesText = $crawler->filter('.wp-pagenavi span.pages')->text('');
+            if (preg_match('/of\s+(\d+)/i', $pagesText, $matches)) {
+                return (int) $matches[1];
+            }
 
-            $allLinks->each(function (Crawler $node) use (&$maxPage) {
-                $href = $node->attr('href') ?? '';
-                $text = trim($node->text());
-
-                // Extract page number from URL
-                if (preg_match('/[?&]page=(\d+)/', $href, $matches)) {
-                    $maxPage = max($maxPage, (int) $matches[1]);
-                }
-
-                // Also check if the text itself is a page number
-                if (is_numeric($text)) {
-                    $maxPage = max($maxPage, (int) $text);
-                }
-            });
-
-            // Method 2: If we found a "next" button but no high page numbers,
-            // the last page link might be the highest numbered link
-            return $maxPage;
+            return 1;
         } catch (\Exception $e) {
             \Log::error('Anoboy pagination error: ' . $e->getMessage());
             return 1;
@@ -579,21 +746,16 @@ class AnoboyScraperService
     }
 
     /**
-     * Scrape all pages from first to last, following the "next" button
-     * Skips already-scraped pages unless $force is true
-     *
-     * @param callable|null $onProgress Callback function(int $currentPage, array $result) for progress updates
-     * @param bool $force Force re-scrape even if already logged
-     * @return array ['total_saved' => int, 'total_skipped' => int, 'total_pages' => int, 'pages_scraped' => int, 'pages_skipped' => int]
+     * Scrape all pages sequentially
      */
     public function scrapeAllPages(?callable $onProgress = null, bool $force = false): array
     {
         $currentPage = 1;
         $totalSaved = 0;
         $totalSkipped = 0;
-        $totalPages = 1;
         $pagesScraped = 0;
         $pagesSkipped = 0;
+        $totalPages = 1;
 
         while (true) {
             $result = $this->scrapeAndSave($currentPage, $force);
@@ -610,7 +772,6 @@ class AnoboyScraperService
                 $onProgress($currentPage, $result);
             }
 
-            // Check if there's a next page
             if (!$this->hasNextPage($currentPage)) {
                 $totalPages = $currentPage;
                 break;
@@ -618,9 +779,8 @@ class AnoboyScraperService
 
             $currentPage++;
 
-            // Safety limit to prevent infinite loops
-            if ($currentPage > 1000) {
-                \Log::warning('Anoboy scraper reached safety limit of 1000 pages');
+            if ($currentPage > 500) {
+                \Log::warning('Anoboy scraper reached safety limit of 500 pages');
                 $totalPages = $currentPage;
                 break;
             }
@@ -635,182 +795,40 @@ class AnoboyScraperService
         ];
     }
 
-
     /**
-     * Scrape episode page for video URL
-     * URL format: https://anoboy.be/liar-game-episode-1-subtitle-indonesia/
-     *
-     * @param string $url Full URL to episode page
-     * @return array|null Array with title, video_url, or null on failure
-     */
-    public function scrapeEpisodeDetail(string $url): ?array
-    {
-        try {
-            $html = $this->fetchHtml($url);
-
-            return $this->parseEpisodeDetail($html, $url);
-        } catch (\Exception $e) {
-            \Log::error('Anoboy episode scraper error: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Parse episode page HTML for video URL
-     *
-     * @param string $html
-     * @param string $url
-     * @return array|null
-     */
-    protected function parseEpisodeDetail(string $html, string $url): ?array
-    {
-        $crawler = new Crawler($html);
-
-        // Get title from h1.entry-title or title tag
-        $title = '';
-        $titleNode = $crawler->filter('h1.entry-title, .entry-title, h1');
-        if ($titleNode->count() > 0) {
-            $title = trim($titleNode->first()->text());
-        } else {
-            $titleNode = $crawler->filter('title');
-            if ($titleNode->count() > 0) {
-                $title = trim($titleNode->text());
-                $title = preg_replace('/\s*[-|]\s*[^-|]+$/', '', $title);
-            }
-        }
-
-        // Get video URL from iframe
-        $videoUrl = '';
-        $iframeNode = $crawler->filter('iframe');
-        if ($iframeNode->count() > 0) {
-            $videoUrl = $iframeNode->first()->attr('src') ?? '';
-        }
-
-        // Try to find video in common video player containers
-        if (empty($videoUrl)) {
-            $videoNode = $crawler->filter('video source, video');
-            if ($videoNode->count() > 0) {
-                $videoUrl = $videoNode->first()->attr('src') ?? '';
-            }
-        }
-
-        // Try to extract from script tags
-        if (empty($videoUrl)) {
-            $crawler->filter('script')->each(function (Crawler $node) use (&$videoUrl) {
-                $script = $node->text();
-                if (preg_match('/["\']?(https?:\/\/[^\s"\']+?(?:embed|player|video)[^\s"\']*?)["\']?/i', $script, $matches)) {
-                    $videoUrl = $matches[1];
-                }
-            });
-        }
-
-        if (empty($title)) {
-            return null;
-        }
-
-        return [
-            'title' => $title,
-            'video_url' => $videoUrl,
-            'source_url' => $url,
-        ];
-    }
-
-    /**
-     * Get HTML content from URL, with fallback to Puppeteer if blocked or challenge detected.
+     * Get HTML content from URL
      */
     protected function fetchHtml(string $url): string
     {
-        try {
-            $response = $this->client->get($url, [
-                'headers' => $this->getRandomHeaders(),
-            ]);
-            $html = (string) $response->getBody();
+        $targetUrl = str_starts_with($url, 'http') ? $url : rtrim($this->baseUrl, '/') . '/' . ltrim($url, '/');
 
-            // Check if HTML contains Cloudflare challenge page
-            if (
-                str_contains($html, 'Just a moment...') || 
-                str_contains($html, 'Attention Required!') || 
-                str_contains($html, 'Cloudflare') || 
-                str_contains($html, 'enable JavaScript')
-            ) {
-                throw new \Exception("Cloudflare or anti-bot challenge page detected.");
-            }
+        $response = $this->client->get($targetUrl, [
+            'headers' => $this->getRandomHeaders(),
+        ]);
 
-            return $html;
-        } catch (\Exception $e) {
-            \Log::warning('Guzzle failed or blocked (' . $e->getMessage() . '). Falling back to Puppeteer for: ' . $url);
-            return $this->fetchWithPuppeteer($url);
+        $html = (string) $response->getBody();
+
+        // Check if blocked by Cloudflare captcha page
+        if (
+            str_contains($html, 'Just a moment...') &&
+            str_contains($html, 'Enable JavaScript and cookies to continue')
+        ) {
+            throw new \Exception("Cloudflare anti-bot challenge page detected for: {$targetUrl}");
         }
+
+        return $html;
     }
 
     /**
-     * Fetch HTML using Puppeteer headless browser
-     */
-    protected function fetchWithPuppeteer(string $url): string
-    {
-        $fullUrl = str_starts_with($url, 'http') ? $url : rtrim($this->baseUrl, '/') . '/' . ltrim($url, '/');
-        $scriptPath = base_path('puppeteer_scraper.js');
-
-        // Escape arguments carefully for Windows execution
-        $cmd = 'node ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($fullUrl);
-
-        $output = [];
-        $returnVar = 0;
-        
-        // Execute the command
-        exec($cmd, $output, $returnVar);
-
-        if ($returnVar !== 0) {
-            throw new \Exception("Puppeteer execution failed with exit code {$returnVar}. Output: " . implode("\n", $output));
-        }
-
-        return implode("\n", $output);
-    }
-
-    /**
-     * Get modern HTTP headers representing a random browser profile
+     * Get random browser headers
      */
     protected function getRandomHeaders(): array
     {
-        $profiles = [
-            [
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Language' => 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-                'sec-ch-ua' => '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                'sec-ch-ua-mobile' => '?0',
-                'sec-ch-ua-platform' => '"Windows"',
-                'sec-fetch-dest' => 'document',
-                'sec-fetch-mode' => 'navigate',
-                'sec-fetch-site' => 'none',
-                'sec-fetch-user' => '?1',
-                'upgrade-insecure-requests' => '1',
-            ],
-            [
-                'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Language' => 'en-US,en;q=0.9,id;q=0.8',
-                'sec-ch-ua' => '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                'sec-ch-ua-mobile' => '?0',
-                'sec-ch-ua-platform' => '"macOS"',
-                'sec-fetch-dest' => 'document',
-                'sec-fetch-mode' => 'navigate',
-                'sec-fetch-site' => 'none',
-                'sec-fetch-user' => '?1',
-                'upgrade-insecure-requests' => '1',
-            ],
-            [
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
-                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'Accept-Language' => 'id,en-US;q=0.7,en;q=0.3',
-                'Upgrade-Insecure-Requests' => '1',
-                'Sec-Fetch-Dest' => 'document',
-                'Sec-Fetch-Mode' => 'navigate',
-                'Sec-Fetch-Site' => 'none',
-                'Sec-Fetch-User' => '?1',
-            ],
+        return [
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language' => 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Referer' => $this->baseUrl,
         ];
-
-        return $profiles[array_rand($profiles)];
     }
 }

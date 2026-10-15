@@ -1,3 +1,26 @@
+/**
+ * KZSTRM Progressive Web App (PWA) & Melolo Decrypt Service Worker
+ * Version: 1.1.0
+ */
+
+const CACHE_NAME = 'kzstrm-pwa-v1.1.0';
+const OFFLINE_URL = '/offline.html';
+
+// Core static assets to pre-cache
+const PRECACHE_ASSETS = [
+    '/',
+    '/offline.html',
+    '/manifest.json',
+    '/icons/icon-192x192.png',
+    '/icons/icon-512x512.png',
+    '/icons/maskable-icon-512x512.png',
+    '/icons/apple-touch-icon.png',
+    '/favicon.ico'
+];
+
+// -------------------------------------------------------------
+// Melolo MP4 / AES-CTR Decryption Utilities
+// -------------------------------------------------------------
 function readU32(b, o) { return (b[o]<<24|b[o+1]<<16|b[o+2]<<8|b[o+3])>>>0; }
 function readU64(b, o) { return readU32(b,o)*0x100000000+readU32(b,o+4); }
 function readTag(b, o) { return String.fromCharCode(b[o],b[o+1],b[o+2],b[o+3]); }
@@ -69,16 +92,6 @@ function neutralizeDRM(buf, ms, me) {
   while(off+8<=buf.length){const sz=readU32(buf,off);if(sz<8||off+sz>buf.length)break;
     if(readTag(buf,off+4)==='pssh')writeTag(buf,off+4,'free'); off+=sz;}
 }
-
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  if (url.pathname === '/sw-play') {
-    event.respondWith(handleStreamDecrypt(url));
-  }
-});
 
 async function handleStreamDecrypt(url) {
   const cdnURL = url.searchParams.get('url');
@@ -207,3 +220,103 @@ async function handleStreamDecrypt(url) {
     )
   });
 }
+
+// -------------------------------------------------------------
+// PWA Service Worker Lifecycle
+// -------------------------------------------------------------
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.addAll(PRECACHE_ASSETS);
+        }).then(() => self.skipWaiting())
+    );
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((name) => {
+                    if (name !== CACHE_NAME) {
+                        return caches.delete(name);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
+    );
+});
+
+// -------------------------------------------------------------
+// Fetch Interception
+// -------------------------------------------------------------
+self.addEventListener('fetch', (event) => {
+    const request = event.request;
+    const url = new URL(request.url);
+
+    // 1. Melolo Live Stream Decryptor
+    if (url.pathname === '/sw-play') {
+        event.respondWith(handleStreamDecrypt(url));
+        return;
+    }
+
+    // Skip non-GET requests
+    if (request.method !== 'GET') {
+        return;
+    }
+
+    // 2. MEDIA & STREAMING BYPASS: Video files, live streams, HLS manifests/chunks, proxies
+    const isMediaOrStream = 
+        request.headers.has('range') ||
+        url.pathname.includes('/api/proxy') ||
+        url.pathname.includes('/api/streaming') ||
+        url.pathname.includes('/stream') ||
+        url.pathname.includes('/livewire') ||
+        url.pathname.endsWith('.m3u8') ||
+        url.pathname.endsWith('.ts') ||
+        url.pathname.endsWith('.mp4') ||
+        url.pathname.endsWith('.vtt') ||
+        url.hostname.includes('goodbos') ||
+        url.hostname.includes('shortolol') ||
+        url.hostname.includes('odcloud') ||
+        url.hostname.includes('dramaboxdb') ||
+        url.hostname.includes('melolostatic') ||
+        url.hostname.includes('majorplay');
+
+    if (isMediaOrStream) {
+        // Direct network fetch without service worker caching
+        return;
+    }
+
+    // 3. HTML Navigation Requests (Visiting pages)
+    if (request.mode === 'navigate') {
+        event.respondWith(
+            fetch(request)
+                .catch(async () => {
+                    const cache = await caches.open(CACHE_NAME);
+                    const cachedResponse = await cache.match(request);
+                    if (cachedResponse) {
+                        return cachedResponse;
+                    }
+                    return cache.match(OFFLINE_URL);
+                })
+        );
+        return;
+    }
+
+    // 4. Static App Icons & Local Assets
+    if (url.origin === self.location.origin && (url.pathname.startsWith('/icons/') || url.pathname.endsWith('.ico'))) {
+        event.respondWith(
+            caches.match(request).then((cached) => {
+                if (cached) return cached;
+                return fetch(request).then((response) => {
+                    if (response && response.status === 200) {
+                        const copy = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+                    }
+                    return response;
+                });
+            })
+        );
+        return;
+    }
+});

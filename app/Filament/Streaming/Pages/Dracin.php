@@ -57,17 +57,6 @@ class Dracin extends Page
                 ];
             }
 
-            // Ensure Netshort is included
-            if (!collect($activePlatforms)->contains('id', 'netshort')) {
-                $activePlatforms[] = [
-                    'id' => 'netshort',
-                    'name' => 'Netshort',
-                    'logo' => null,
-                    'api' => 'https://netshort.goodbos.online',
-                    'status' => 'active'
-                ];
-            }
-
             // Ensure Shortmax is included
             if (!collect($activePlatforms)->contains('id', 'shortmax')) {
                 $activePlatforms[] = [
@@ -101,13 +90,132 @@ class Dracin extends Page
                 ];
             }
 
+            // Ensure DramaBox is included
+            if (!collect($activePlatforms)->contains('id', 'dramabox')) {
+                $activePlatforms[] = [
+                    'id' => 'dramabox',
+                    'name' => 'DramaBox',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/dramabox.svg',
+                    'api' => 'https://dramabox.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure ReelBuzz is included
+            if (!collect($activePlatforms)->contains('id', 'reelbuzz')) {
+                $activePlatforms[] = [
+                    'id' => 'reelbuzz',
+                    'name' => 'ReelBuzz',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/reelbuzz.png',
+                    'api' => 'https://reelbuzz.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure ReelShort is included
+            if (!collect($activePlatforms)->contains('id', 'reelshort')) {
+                $activePlatforms[] = [
+                    'id' => 'reelshort',
+                    'name' => 'ReelShort',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/reelshort.svg',
+                    'api' => 'https://reelshort.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure VibeShort is included
+            if (!collect($activePlatforms)->contains('id', 'vibeshort')) {
+                $activePlatforms[] = [
+                    'id' => 'vibeshort',
+                    'name' => 'VibeShort',
+                    'logo' => null,
+                    'api' => 'https://vibeshort.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure StoryReel is included
+            if (!collect($activePlatforms)->contains('id', 'storyreel')) {
+                $activePlatforms[] = [
+                    'id' => 'storyreel',
+                    'name' => 'StoryReel',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/storyreel.png',
+                    'api' => 'https://storyreel.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure MoboReels is included
+            if (!collect($activePlatforms)->contains('id', 'moboreels')) {
+                $activePlatforms[] = [
+                    'id' => 'moboreels',
+                    'name' => 'MoboReels',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/moboreels.svg',
+                    'api' => 'https://moboreels.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure StardustTV is included
+            if (!collect($activePlatforms)->contains('id', 'stardusttv')) {
+                $activePlatforms[] = [
+                    'id' => 'stardusttv',
+                    'name' => 'StardustTV',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/stardusttv.png',
+                    'api' => 'https://stardusttv.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Normalize serialplus from API to serealplus
+            $activePlatforms = collect($activePlatforms)->map(function ($p) {
+                if ($p['id'] === 'serialplus') {
+                    $p['id'] = 'serealplus';
+                    $p['name'] = 'Sereal+';
+                    $p['logo'] = 'https://api.dramabuzz.sbs/logos/serialplus.png';
+                    $p['api'] = 'https://serealplus.goodbos.online';
+                }
+                return $p;
+            })->unique('id')->values()->toArray();
+
+            // Ensure Sereal+ is included
+            if (!collect($activePlatforms)->contains('id', 'serealplus')) {
+                $activePlatforms[] = [
+                    'id' => 'serealplus',
+                    'name' => 'Sereal+',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/serialplus.png',
+                    'api' => 'https://serealplus.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
             return $activePlatforms;
         });
 
         $setting = ScraperSetting::getInstance();
         $onlineNetworks = $setting->dramabuzz_network_statuses;
 
-        $this->networks = collect($rawNetworks)->map(function ($platform) use ($onlineNetworks) {
+        $nameMap = [
+            'serealplus' => 'Sereal+',
+            'serialplus' => 'Sereal+',
+            'stardusttv' => 'StardustTV',
+            'vibeshort' => 'VibeShort',
+            'storyreel' => 'StoryReel',
+            'reelshort' => 'ReelShort',
+            'moboreels' => 'MoboReels',
+            'shortmax' => 'ShortMax',
+            'goodshort' => 'GoodShort',
+            'dramabox' => 'DramaBox',
+            'pinedrama' => 'PineDrama',
+            'raptdrama' => 'RaptDrama',
+            'reelbuzz' => 'ReelBuzz',
+            'melolo' => 'Melolo',
+        ];
+
+        $this->networks = collect($rawNetworks)->map(function ($platform) use ($onlineNetworks, $nameMap) {
+            if (isset($nameMap[$platform['id']])) {
+                $platform['name'] = $nameMap[$platform['id']];
+            }
             if (is_null($onlineNetworks)) {
                 $platform['is_online'] = true;
             } else {

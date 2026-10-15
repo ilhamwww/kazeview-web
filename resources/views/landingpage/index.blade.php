@@ -206,11 +206,6 @@
                         <span class="portfolio-duration" aria-hidden="true">{{ $item['duration'] }}</span>
                     @endif
                 @endif
-
-                <span class="portfolio-card__meta" aria-hidden="true">
-                    <span class="portfolio-card__category">{{ $item['category'] }}</span>
-                    <span class="portfolio-card__title">{{ $item['title'] }}</span>
-                </span>
             </a>
         @endforeach
     </section>

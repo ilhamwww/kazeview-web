@@ -2,18 +2,17 @@
 
 namespace App\Filament\Streaming\Pages;
 
-use App\Services\AnoboyScraperService;
+use App\Services\MirainimeScraperService;
 use Filament\Pages\Page;
-use Filament\Actions\Action;
 use Illuminate\Support\Facades\Cache;
 
 class ExploreAnime extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
-    protected static ?string $navigationLabel = 'Anime';
-    protected static ?string $title = 'Explore Anime';
-    protected static ?string $slug = 'anime';
-    protected static string $view = 'filament.streaming.pages.explore-anime';
+    protected static ?string $navigationLabel = 'Anime V1';
+    protected static ?string $title = 'Explore Anime V1';
+    protected static ?string $slug = 'anime-v1';
+    protected static string $view = 'filament.streaming.pages.explore-anime-v1';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
@@ -23,6 +22,8 @@ class ExploreAnime extends Page
     public string $search = '';
     public string $genre = '';
     public string $status = '';
+    public array $home = [];
+    public array $recent = [];
 
     protected function rememberCache(string $key, int $ttl, \Closure $callback)
     {
@@ -32,15 +33,9 @@ class ExploreAnime extends Page
         }
 
         $value = $callback();
-        
+
         if ($value !== null && (!is_array($value) || !empty($value))) {
             Cache::put($key, $value, $ttl);
-
-            $keys = Cache::get('anoboy_explore_keys', []);
-            if (!in_array($key, $keys)) {
-                $keys[] = $key;
-                Cache::put('anoboy_explore_keys', $keys, 86400 * 30);
-            }
         }
 
         return $value;
@@ -48,30 +43,48 @@ class ExploreAnime extends Page
 
     public function mount(): void
     {
-        $this->genres = $this->rememberCache('anoboy_explore_genres', 86400, function () {
-            $scraper = new AnoboyScraperService();
+        $this->genres = $this->rememberCache('v1_genres', 86400, function () {
+            $scraper = new MirainimeScraperService();
             return $scraper->scrapeGenres();
         });
+
+        // Beranda V1: episode terbaru, tren, musim ini (cache singkat supaya tetap fresh)
+        $this->home = $this->rememberCache('v1_home', 600, function () {
+            $data = (new MirainimeScraperService())->scrapeHomepage();
+            return empty($data['latest']) && empty($data['hero']) ? [] : $data;
+        }) ?? [];
+
+        $this->recent = $this->rememberCache('v1_recent_feed', 600, function () {
+            return (new MirainimeScraperService())->scrapeRecentFeed(24);
+        }) ?? [];
 
         $this->loadAnimes();
     }
 
+    /**
+     * Beranda hanya tampil saat tidak ada pencarian/filter dan di halaman 1.
+     */
+    public function getShowHomeProperty(): bool
+    {
+        return blank($this->search) && blank($this->genre) && blank($this->status) && $this->pageNumber === 1;
+    }
+
     public function loadAnimes(): void
     {
-        $scraper = new AnoboyScraperService();
+        $scraper = new MirainimeScraperService();
         if (filled($this->search)) {
-            $cacheKey = 'anoboy_explore_search_' . md5($this->search);
+            $cacheKey = 'v1_search_' . md5($this->search);
             $this->animes = $this->rememberCache($cacheKey, 3600, function () use ($scraper) {
                 return $scraper->searchAnime($this->search);
             });
         } elseif (filled($this->genre)) {
-            $cacheKey = "anoboy_explore_genre_{$this->genre}_{$this->pageNumber}";
-            $this->animes = $this->rememberCache($cacheKey, 86400, function () use ($scraper) {
+            $cacheKey = "v1_genre_{$this->genre}_{$this->pageNumber}";
+            $this->animes = $this->rememberCache($cacheKey, 43200, function () use ($scraper) {
                 return $scraper->scrapeAnimeByGenre($this->genre, $this->pageNumber);
             });
         } else {
-            $cacheKey = "anoboy_explore_list_{$this->status}_{$this->pageNumber}";
-            $this->animes = $this->rememberCache($cacheKey, 86400, function () use ($scraper) {
+            $cacheKey = "v1_list_{$this->status}_{$this->pageNumber}";
+            $this->animes = $this->rememberCache($cacheKey, 43200, function () use ($scraper) {
                 return $scraper->scrapeAnimeList($this->pageNumber, $this->status);
             });
         }
@@ -101,15 +114,6 @@ class ExploreAnime extends Page
         $this->loadAnimes();
     }
 
-    public function clearSearch(): void
-    {
-        $this->search = '';
-        $this->genre = '';
-        $this->status = '';
-        $this->pageNumber = 1;
-        $this->loadAnimes();
-    }
-
     public function nextPage(): void
     {
         $this->pageNumber++;
@@ -124,65 +128,12 @@ class ExploreAnime extends Page
         }
     }
 
-    public function clearExploreCache(): void
+    public function clearSearch(): void
     {
-        $keys = Cache::get('anoboy_explore_keys', []);
-        foreach ($keys as $key) {
-            Cache::forget($key);
-        }
-        Cache::forget('anoboy_explore_keys');
-        Cache::forget('anoboy_explore_genres');
-
-        \Filament\Notifications\Notification::make()
-            ->title('Cache anime berhasil dibersihkan')
-            ->success()
-            ->send();
-
-        $this->genres = $this->rememberCache('anoboy_explore_genres', 86400, function () {
-            $scraper = new AnoboyScraperService();
-            return $scraper->scrapeGenres();
-        });
-
-        $this->pageNumber = 1;
         $this->search = '';
         $this->genre = '';
         $this->status = '';
+        $this->pageNumber = 1;
         $this->loadAnimes();
-    }
-
-    public function detailAction(): Action
-    {
-        return Action::make('detailAction')
-            ->modalHeading(fn (array $arguments) => $arguments['title'] ?? 'Detail Anime')
-            ->modalContent(function (array $arguments) {
-                $url = $arguments['url'] ?? '';
-                if (empty($url)) {
-                    return view('filament.resources.anime-detail-modal', [
-                        'detail' => null,
-                        'anime' => null,
-                    ]);
-                }
-
-                $scraper = new AnoboyScraperService();
-                $cacheKey = 'anoboy_explore_detail_' . md5($url);
-                $detail = $this->rememberCache($cacheKey, 86400, function () use ($scraper, $url) {
-                    return $scraper->scrapeAnimeSeriesDetail($url);
-                });
-
-                return view('filament.resources.anime-detail-modal', [
-                    'detail' => $detail,
-                    'anime' => (object) [
-                        'title' => $arguments['title'] ?? 'Detail Anime',
-                        'url' => $url,
-                        'thumbnail' => $arguments['thumbnail'] ?? '',
-                        'status' => $arguments['status'] ?? '',
-                        'type' => $arguments['type'] ?? '',
-                        'episode' => $arguments['episode'] ?? '',
-                    ],
-                ]);
-            })
-            ->modalSubmitAction(false)
-            ->modalCancelActionLabel('Tutup')
-            ->modalWidth('4xl');
     }
 }

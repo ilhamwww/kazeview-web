@@ -29,7 +29,9 @@ if (!domain || !playInfoPath) {
                 '--disable-blink-features=AutomationControlled',
                 '--disable-web-security',
                 '--disable-dev-shm-usage',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--no-first-run',
+                '--disable-extensions'
             ]
         };
 
@@ -41,6 +43,16 @@ if (!domain || !playInfoPath) {
 
         const page = await browser.newPage();
         await page.setViewport({ width: 1280, height: 800 });
+
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            const rt = req.resourceType();
+            if (['image', 'media', 'font'].includes(rt)) {
+                req.abort();
+            } else {
+                req.continue();
+            }
+        });
 
         // Override default HeadlessChrome user agent
         const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';

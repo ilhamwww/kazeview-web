@@ -25,11 +25,17 @@
                 <!-- Info -->
                 <div class="flex-1 min-w-0">
                     <!-- Badges -->
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="bg-purple-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">ANIME</span>
+                    <div class="flex flex-wrap items-center gap-2 mb-3">
+                        <span class="bg-red-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">ANIME</span>
+                        <span class="bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">720P HD</span>
                         @if(!empty($detail['episodes']))
                             <span class="bg-zinc-800 text-gray-300 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider border border-zinc-700">
                                 {{ count($detail['episodes']) }} Episode
+                            </span>
+                        @endif
+                        @if(!empty($detail['score']))
+                            <span class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">
+                                ★ {{ $detail['score'] }}
                             </span>
                         @endif
                     </div>
@@ -39,28 +45,50 @@
                         {{ $detail['title'] ?? 'Anime Detail' }}
                     </h1>
 
+                    @if(!empty($detail['japanese_title']))
+                        <p class="text-sm text-zinc-400 mt-1 italic">{{ $detail['japanese_title'] }}</p>
+                    @endif
+
                     <!-- Genres -->
                     @if(!empty($detail['genres']))
                     <div class="flex flex-wrap gap-2 mt-4">
                         @foreach($detail['genres'] as $genre)
-                            <span class="px-2.5 py-1 text-xs font-bold text-purple-300 bg-purple-600/15 border border-purple-500/20 rounded-full">
+                            <span class="px-2.5 py-1 text-xs font-bold text-red-300 bg-red-600/15 border border-red-500/20 rounded-full">
                                 {{ $genre }}
                             </span>
                         @endforeach
                     </div>
                     @endif
 
-                    <!-- Description -->
-                    @if(!empty($detail['description']))
+                    <!-- Description / Synopsis -->
+                    @if(!empty($detail['synopsis']))
                     <p class="max-w-2xl mt-4 text-sm md:text-base text-gray-400 leading-relaxed font-medium line-clamp-3">
-                        {{ $detail['description'] }}
+                        {{ $detail['synopsis'] }}
                     </p>
                     @endif
 
                     <!-- Actions -->
-                    <div class="flex items-center gap-3 mt-6">
+                    <div class="flex flex-wrap items-center gap-3 mt-6">
+                        @if(!empty($detail['episodes']))
+                            @php
+                                $firstEp = $detail['episodes'][0] ?? null;
+                                $firstEpSlug = $firstEp ? basename(rtrim($firstEp['url'], '/')) : '';
+                                $firstWatchUrl = $firstEpSlug
+                                    ? \App\Filament\Streaming\Pages\WatchAnime::getUrl([
+                                        'anime_slug' => $animeSlug,
+                                        'episode_slug' => $firstEpSlug,
+                                    ], panel: 'streaming')
+                                    : '#';
+                            @endphp
+                            <a href="{{ $firstWatchUrl }}"
+                               class="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-extrabold text-sm tracking-wide shadow-xl shadow-red-600/30 active:scale-95 transition duration-200">
+                                <svg class="w-4 h-4 fill-current translate-x-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                <span>Mulai Menonton</span>
+                            </a>
+                        @endif
+
                         <a href="{{ \App\Filament\Streaming\Pages\ExploreAnime::getUrl(panel: 'streaming') }}"
-                           class="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-gray-300 rounded-lg font-bold text-sm tracking-wide transition duration-300">
+                           class="inline-flex items-center gap-2 px-5 py-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-gray-300 rounded-xl font-bold text-sm tracking-wide transition duration-300">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                             </svg>
@@ -68,7 +96,7 @@
                         </a>
 
                         <button wire:click="toggleFavorite"
-                           class="inline-flex items-center gap-2 px-5 py-2.5 {{ $isFavorited ? 'bg-red-600 hover:bg-red-700 border-red-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-gray-300' }} border rounded-lg font-bold text-sm tracking-wide transition duration-300">
+                           class="inline-flex items-center gap-2 px-5 py-3 {{ $isFavorited ? 'bg-red-600 hover:bg-red-700 border-red-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-gray-300' }} border rounded-xl font-bold text-sm tracking-wide transition duration-300">
                             @if($isFavorited)
                                 <svg class="w-4 h-4 fill-current text-white" viewBox="0 0 24 24">
                                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -88,110 +116,65 @@
     </section>
 
     <!-- Episode List Section -->
-    <div class="space-y-6 px-6 pb-12" x-data="{ selectedEpisode: null, videoUrl: '', loadingVideo: false }">
-
-        <!-- Video Player (shown when episode selected) -->
-        <div x-show="videoUrl || loadingVideo" x-cloak class="mt-2">
-            <!-- Loading -->
-            <div x-show="loadingVideo" class="flex items-center justify-center py-16 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                <div class="flex items-center gap-3 text-zinc-400">
-                    <svg class="animate-spin h-6 w-6 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="text-sm font-semibold">Memuat video...</span>
-                </div>
-            </div>
-
-            <!-- Player -->
-            <div x-show="videoUrl && !loadingVideo" x-cloak>
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="w-1 h-5 bg-purple-600 rounded-full"></span>
-                    <h2 class="text-lg font-bold text-gray-100">
-                        Now Playing — <span class="text-purple-400" x-text="'Episode ' + selectedEpisode"></span>
-                    </h2>
-                </div>
-                <div class="bg-black rounded-xl overflow-hidden border border-zinc-800 shadow-2xl" style="aspect-ratio: 16/9;">
-                    <iframe x-bind:src="videoUrl"
-                            class="w-full h-full"
-                            frameborder="0"
-                            allowfullscreen
-                            allow="autoplay; encrypted-media; picture-in-picture"
-                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms">
-                    </iframe>
-                </div>
-            </div>
-        </div>
+    <div class="space-y-6 px-6 pb-16">
 
         <!-- Episode List Header -->
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
-            <h2 class="text-xl font-bold text-gray-100 flex items-center gap-2">
-                <span class="w-1 h-5 bg-purple-600 rounded-full"></span>
-                Daftar Episode
-            </h2>
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-4 pt-6">
+            <div>
+                <h2 class="text-xl md:text-2xl font-black text-gray-100 flex items-center gap-2">
+                    <span class="w-1.5 h-5 bg-red-600 rounded-full"></span>
+                    Daftar Episode
+                </h2>
+                <p class="text-xs text-zinc-400 mt-1">Klik episode untuk membuka halaman pemutar video, mirror server, dan download.</p>
+            </div>
             @if(!empty($detail['episodes']))
-            <div class="text-xs text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded border border-zinc-800">
-                Total: <span class="text-purple-400 font-bold">{{ count($detail['episodes']) }}</span> Episode
+            <div class="text-xs text-zinc-400 bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800">
+                Total: <span class="text-red-400 font-bold">{{ count($detail['episodes']) }}</span> Episode
             </div>
             @endif
         </div>
 
         @if(!empty($detail['episodes']))
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
                 @foreach($detail['episodes'] as $ep)
-                    <button
-                        type="button"
-                        class="group flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left w-full cursor-pointer"
-                        :class="selectedEpisode === '{{ $ep['episode'] }}'
-                            ? 'bg-purple-600/15 border-purple-500/30 shadow-lg shadow-purple-950/20'
-                            : 'bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800/80 hover:border-zinc-700'"
-                        @click="
-                            loadingVideo = true;
-                            selectedEpisode = '{{ $ep['episode'] }}';
-                            videoUrl = '';
-                            fetch('{{ route('api.anime.episode-video', ['url' => '']) }}' + encodeURIComponent('{{ $ep['url'] }}'))
-                                .then(r => r.json())
-                                .then(data => {
-                                    videoUrl = data.video_url || '';
-                                    loadingVideo = false;
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                })
-                                .catch(() => { loadingVideo = false; });
-                        "
-                    >
-                        <!-- Episode Number -->
-                        <div class="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-extrabold text-sm transition-colors duration-200"
-                             :class="selectedEpisode === '{{ $ep['episode'] }}'
-                                 ? 'bg-purple-600 text-white'
-                                 : 'bg-zinc-800 text-zinc-400 group-hover:bg-purple-600/20 group-hover:text-purple-400'">
+                    @php
+                        $epSlug = basename(rtrim($ep['url'], '/'));
+                        $watchUrl = \App\Filament\Streaming\Pages\WatchAnime::getUrl([
+                            'anime_slug' => $animeSlug,
+                            'episode_slug' => $epSlug,
+                        ], panel: 'streaming');
+                    @endphp
+                    <a href="{{ $watchUrl }}"
+                       class="group flex items-center gap-4 p-4 rounded-2xl border bg-zinc-900/40 border-zinc-800 hover:border-red-600/50 hover:bg-zinc-900/80 transition-all duration-300 text-left w-full cursor-pointer hover:scale-[1.02] shadow-lg">
+                        
+                        <!-- Episode Number Badge -->
+                        <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-zinc-800/90 text-zinc-300 group-hover:bg-red-600 group-hover:text-white flex items-center justify-center font-black text-sm transition-all duration-300 shadow-md">
                             {{ $ep['episode'] }}
                         </div>
 
-                        <!-- Info -->
+                        <!-- Episode Title & Date -->
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-bold truncate transition-colors duration-200"
-                               :class="selectedEpisode === '{{ $ep['episode'] }}' ? 'text-purple-300' : 'text-gray-200 group-hover:text-white'">
+                            <p class="text-sm font-bold truncate text-gray-200 group-hover:text-white transition-colors duration-200">
                                 {{ $ep['title'] ?: 'Episode ' . $ep['episode'] }}
                             </p>
                             @if(!empty($ep['date']))
-                            <p class="text-xs text-zinc-500 mt-0.5">{{ $ep['date'] }}</p>
+                                <p class="text-xs text-zinc-500 mt-0.5">{{ $ep['date'] }}</p>
                             @endif
                         </div>
 
-                        <!-- Play Icon -->
-                        <div class="flex-shrink-0 transition-colors duration-200"
-                             :class="selectedEpisode === '{{ $ep['episode'] }}' ? 'text-purple-400' : 'text-zinc-600 group-hover:text-purple-500'">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <!-- Play Icon Action -->
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-zinc-950 flex items-center justify-center text-zinc-500 group-hover:text-white group-hover:bg-red-600 transition-all duration-200">
+                            <svg class="w-4 h-4 fill-current translate-x-0.5" viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z"/>
                             </svg>
                         </div>
-                    </button>
+                    </a>
                 @endforeach
             </div>
         @else
             <div class="flex flex-col items-center justify-center py-16 text-zinc-500 bg-zinc-900/50 rounded-xl border border-dashed border-zinc-800">
                 <svg class="w-12 h-12 mb-3 stroke-current opacity-60 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0118 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-3.75 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 8.25 6 7.746 6 7.125v-1.5M4.875 8.25C5.496 8.25 6 8.754 6 9.375v1.5m0-5.25v5.25m0-5.25C6 5.004 6.504 4.5 7.125 4.5h9.75c.621 0 1.125.504 1.125 1.125m1.125 2.625h1.5m-1.5 0A1.125 1.125 0 0118 7.125v-1.5m1.125 2.625c-.621 0-1.125.504-1.125 1.125v1.5m2.625-2.625c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125M18 5.625v5.25M7.125 12h9.75m-9.75 0A1.125 1.125 0 016 10.875M7.125 12C6.504 12 6 12.504 6 13.125m0-2.25C6 11.496 5.496 12 4.875 12M18 10.875c0 .621-.504 1.125-1.125 1.125M18 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m-12 5.25v-5.25m0 5.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125m-12 0v-1.5c0-.621-.504-1.125-1.125-1.125M18 18.375v-5.25m0 5.25v-1.5c0-.621.504-1.125 1.125-1.125M18 13.125v1.5c0 .621.504 1.125 1.125 1.125M18 13.125c0-.621.504-1.125 1.125-1.125M6 13.125v1.5c0 .621-.504 1.125-1.125 1.125M6 13.125C6 12.504 5.496 12 4.875 12m-1.5 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M19.125 12h1.5m0 0c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h1.5m14.25 0h1.5" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h-14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
                 <p class="text-sm font-medium">Daftar episode tidak ditemukan.</p>
                 <p class="text-xs text-zinc-600 mt-1">Coba kunjungi link sumber secara langsung.</p>
