@@ -1,11 +1,14 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import os from 'os';
+import fs from 'fs';
 
 // Fix for www-data and restricted environment permissions
-process.env.HOME = os.tmpdir();
-process.env.XDG_CONFIG_HOME = os.tmpdir();
-process.env.XDG_CACHE_HOME = os.tmpdir();
+process.env.TMPDIR = '/tmp';
+process.env.HOME = '/tmp';
+process.env.XDG_CONFIG_HOME = '/tmp';
+process.env.XDG_CACHE_HOME = '/tmp';
+process.env.XDG_DATA_HOME = '/tmp/.local/share';
 
 puppeteer.use(StealthPlugin());
 
@@ -21,19 +24,27 @@ if (!url) {
     let browser;
     try {
         const launchOptions = {
-            headless: true,
+            headless: 'new',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-blink-features=AutomationControlled',
                 '--disable-dev-shm-usage',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--no-zygote',
+                '--single-process'
             ]
         };
 
-        if (executablePath && executablePath !== 'undefined' && executablePath !== '') {
-            launchOptions.executablePath = executablePath;
+        let chromePath = '/opt/puppeteer-chrome/chrome';
+        if (executablePath && executablePath !== 'undefined' && executablePath !== '' && fs.existsSync(executablePath) && executablePath !== '/usr/bin/google-chrome') {
+            chromePath = executablePath;
+        } else if (fs.existsSync('/opt/puppeteer-chrome/chrome')) {
+            chromePath = '/opt/puppeteer-chrome/chrome';
+        } else {
+            chromePath = '/usr/bin/google-chrome';
         }
+        launchOptions.executablePath = chromePath;
 
         browser = await puppeteer.launch(launchOptions);
 
@@ -52,47 +63,59 @@ if (!url) {
         // Parse origin to navigate to base domain first if needed
         const urlObj = new URL(url);
         const origin = urlObj.origin;
+        const initialNavUrl = url.includes('/api/') ? `${origin}/korean-drama` : url;
 
-        // Navigate directly to the requested URL
-        await page.goto(url, {
-            waitUntil: 'domcontentloaded',
-            timeout: 30000
-        });
+        // Navigate to get clearance cookies
+        try {
+            await page.goto(initialNavUrl, {
+                waitUntil: 'domcontentloaded',
+                timeout: 25000
+            });
+        } catch (navErr) {
+            // Proceed even if full domcontentloaded timed out
+        }
 
-        let title = await page.title();
-        if (title.includes('Just a moment') || title.includes('Attention Required') || title.includes('Cloudflare')) {
-            // Wait for Cloudflare challenge to pass
+        // Wait for page to be settled (title not Just a moment...)
+        for (let i = 0; i < 15; i++) {
+            await new Promise(r => setTimeout(r, 1000));
             try {
-                await page.waitForFunction(
-                    () => !document.title.includes('Just a moment') && !document.title.includes('Cloudflare') && !document.title.includes('Attention Required'),
-                    { timeout: 20000, polling: 1000 }
-                );
+                const title = await page.title();
+                if (title && !title.includes('Just a moment') && !title.includes('Cloudflare')) {
+                    break;
+                }
+            } catch (e) {}
+        }
+
+        // Fetch target JSON inside page context with retry in case frame navigates
+        let jsonText = null;
+        for (let attempt = 0; attempt < 6; attempt++) {
+            try {
+                jsonText = await page.evaluate(async (targetUrl) => {
+                    const res = await fetch(targetUrl, {
+                        headers: { 'Accept': 'application/json, text/plain, */*' }
+                    });
+                    if (res.ok) {
+                        return await res.text();
+                    }
+                    return null;
+                }, url);
+                if (jsonText) break;
             } catch (e) {
-                // If it times out, we'll just try to fetch anyway
+                await new Promise(r => setTimeout(r, 1000));
             }
         }
 
-        // Once challenge is passed (or if there was none), the cookies are set.
-        // We use fetch inside evaluate to guarantee we get raw JSON without HTML wrappers.
-        const jsonText = await page.evaluate(async (targetUrl) => {
+        if (!jsonText) {
             try {
-                const res = await fetch(targetUrl, {
-                    headers: { 'Accept': 'application/json' }
+                jsonText = await page.evaluate(() => {
+                    const pre = document.querySelector('pre');
+                    if (pre) return pre.innerText;
+                    return document.body.innerText;
                 });
-                if (res.ok) {
-                    return await res.text();
-                }
-            } catch (e) {
-                // ignored
-            }
-            
-            // Fallback to reading the body
-            const pre = document.querySelector('pre');
-            if (pre) return pre.innerText;
-            return document.body.innerText;
-        }, url);
+            } catch (e) {}
+        }
         
-        process.stdout.write(jsonText);
+        process.stdout.write(jsonText || '');
 
     } catch (error) {
         console.error('Puppeteer JSON scraping error:', error.message);

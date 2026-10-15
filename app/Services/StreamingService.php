@@ -83,6 +83,27 @@ class StreamingService
                         'items' => array_slice($rbIndo, 0, 18),
                     ];
                 }
+
+                // Ganti/tambahkan kategori Drakor (menggantikan Trending di Singapura)
+                try {
+                    $kdrama = self::getKoreanDrama(1, 18)['data'] ?? [];
+                    if (!empty($kdrama)) {
+                        if (!empty($data['sections'])) {
+                            $data['sections'] = array_values(array_filter(
+                                $data['sections'],
+                                fn($s) => ($s['slug'] ?? '') !== 'trending-country'
+                            ));
+                        }
+                        $data['sections'][] = [
+                            'id' => 'drakor',
+                            'slug' => 'drakor',
+                            'title' => 'Drakor',
+                            'items' => $kdrama,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Merge Drakor to home failed: ' . $e->getMessage());
+                }
             } catch (\Exception $e) {
                 Log::warning('Merge Rebahin to home failed: ' . $e->getMessage());
             }
@@ -474,6 +495,94 @@ class StreamingService
             Log::warning("mergeRebahinMedia {$type} failed: " . $e->getMessage());
         }
         return $results;
+    }
+
+    /**
+     * Fetch Korean Drama list from IDLIX (/korean-drama -> /api/browse?genre=drama&country=KR&language=ko)
+     */
+    public static function getKoreanDrama(int $page = 1, int $limit = 36, string $sort = 'latest'): array
+    {
+        $fetchLimit = ($page === 1 && $limit < 36) ? 36 : $limit;
+        $baseCacheKey = "idlix_korean_drama_p{$page}_l{$fetchLimit}_s{$sort}";
+
+        $result = Cache::remember($baseCacheKey, 1800, function () use ($page, $fetchLimit, $sort) {
+            $domain = ScraperSetting::getInstance()->idlix_domain;
+            $url = rtrim($domain, '/') . "/api/browse?page={$page}&limit={$fetchLimit}&sort={$sort}&genre=drama&country=KR&language=ko";
+
+            try {
+                $scriptPath = base_path('scraper_korean_drama.js');
+                if (file_exists($scriptPath)) {
+                    $cmd = 'node --dns-result-order=ipv4first ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg((string)$page) . ' ' . escapeshellarg((string)$fetchLimit) . ' ' . escapeshellarg($sort) . ' ' . escapeshellarg($domain) . ' 2>&1';
+                    $output = [];
+                    $returnVar = 0;
+                    exec($cmd, $output, $returnVar);
+                    if ($returnVar === 0) {
+                        $json = implode("\n", $output);
+                        $data = json_decode($json, true);
+                        if (!empty($data) && isset($data['data'])) {
+                            $results = [];
+                            foreach ($data['data'] as $item) {
+                                $mapped = self::mapMediaItem($item);
+                                if ($mapped) {
+                                    $results[] = $mapped;
+                                }
+                            }
+                            return [
+                                'data' => $results,
+                                'pagination' => $data['pagination'] ?? [
+                                    'page' => $page,
+                                    'limit' => $fetchLimit,
+                                    'total' => count($results),
+                                    'totalPages' => $data['pagination']['totalPages'] ?? 1,
+                                ]
+                            ];
+                        }
+                    }
+                }
+
+                // Fallback to fetchJsonWithPuppeteer
+                $json = self::fetchJsonWithPuppeteer($url);
+                $data = json_decode($json, true);
+                $results = [];
+                if (!empty($data['data'])) {
+                    foreach ($data['data'] as $item) {
+                        $mapped = self::mapMediaItem($item);
+                        if ($mapped) {
+                            $results[] = $mapped;
+                        }
+                    }
+                }
+                return [
+                    'data' => $results,
+                    'pagination' => $data['pagination'] ?? [
+                        'page' => $page,
+                        'limit' => $fetchLimit,
+                        'total' => count($results),
+                        'totalPages' => $data['pagination']['totalPages'] ?? 1,
+                    ]
+                ];
+            } catch (\Exception $e) {
+                Log::error('getKoreanDrama failed: ' . $e->getMessage());
+                return [
+                    'data' => [],
+                    'pagination' => [
+                        'page' => $page,
+                        'limit' => $fetchLimit,
+                        'total' => 0,
+                        'totalPages' => 1,
+                    ]
+                ];
+            }
+        });
+
+        if ($limit < $fetchLimit && !empty($result['data'])) {
+            return [
+                'data' => array_slice($result['data'], 0, $limit),
+                'pagination' => array_merge($result['pagination'] ?? [], ['limit' => $limit]),
+            ];
+        }
+
+        return $result;
     }
 
     /**
@@ -976,7 +1085,7 @@ class StreamingService
     {
         $scriptPath = base_path('puppeteer_json_scraper.js');
         $executablePath = env('PUPPETEER_EXECUTABLE_PATH', '/usr/bin/google-chrome');
-        $cmd = 'node ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($url) . ' ' . escapeshellarg($executablePath ?? '') . ' 2>&1';
+        $cmd = 'node --dns-result-order=ipv4first ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($url) . ' ' . escapeshellarg($executablePath ?? '') . ' 2>&1';
 
         $output = [];
         $returnVar = 0;
@@ -1005,8 +1114,8 @@ class StreamingService
         foreach ($allSections as $section) {
             $type = $section['type'] ?? '';
             
-            // Skip ads
-            if ($type === 'ads') {
+            // Skip ads and unwanted sections
+            if ($type === 'ads' || ($section['slug'] ?? '') === 'trending-country') {
                 continue;
             }
 
@@ -1450,7 +1559,7 @@ class StreamingService
     {
         $scriptPath = base_path('puppeteer_stream_scraper.js');
         $executablePath = env('PUPPETEER_EXECUTABLE_PATH', '/usr/bin/google-chrome');
-        $cmd = 'cd ' . escapeshellarg(base_path()) . ' && node ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($domain) . ' ' . escapeshellarg($playInfoPath) . ' ' . escapeshellarg($executablePath) . ' 2>&1';
+        $cmd = 'cd ' . escapeshellarg(base_path()) . ' && node --dns-result-order=ipv4first ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($domain) . ' ' . escapeshellarg($playInfoPath) . ' ' . escapeshellarg($executablePath) . ' 2>&1';
 
         $output = [];
         $returnVar = 0;

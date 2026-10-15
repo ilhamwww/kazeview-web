@@ -17,6 +17,7 @@ Route::get(
 
 // Legacy redirects from /streaming to clean root URLs
 Route::redirect('/streaming', '/');
+Route::redirect('/drakor', '/korean-drama');
 Route::get('/streaming/{any}', function ($any) {
     return redirect('/' . $any);
 })->where('any', '.*');
