@@ -382,6 +382,39 @@ Route::get('/dmca', function () {
     ])->render());
 })->name('streaming.dmca');
 
+// TV Indonesia Live Streaming Catalog (100% PUBLIC)
+Route::get('/tv', function () {
+    $channels = \App\Services\LiveTvService::getAll();
+    $categories = \App\Services\LiveTvService::getCategories();
+    return response(view('filament.streaming.layout', [
+        'title' => 'TV Indonesia Live Streaming 24 Jam - KZSTRM',
+        'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.live-tv', [
+            'channels' => $channels,
+            'categories' => $categories,
+        ])->render())
+    ])->render());
+})->name('streaming.tv');
+
+Route::get('/live-tv', fn() => redirect('/tv'));
+
+// TV Indonesia Live Player (100% PUBLIC)
+Route::get('/tv/{slug}', function ($slug) {
+    $channel = \App\Services\LiveTvService::findBySlug($slug);
+    if (!$channel) {
+        return redirect('/tv');
+    }
+    $allChannels = \App\Services\LiveTvService::getAll();
+    return response(view('filament.streaming.layout', [
+        'title' => 'Nonton ' . $channel['name'] . ' Live Streaming - KZSTRM',
+        'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.watch-tv', [
+            'channel' => $channel,
+            'allChannels' => $allChannels,
+        ])->render())
+    ])->render());
+})->name('streaming.tv.watch');
+
+Route::get('/live-tv/{slug}', fn($slug) => redirect('/tv/' . $slug));
+
 Route::get('/stats', fn() => redirect('/traffic'));
 Route::get('/bookmark', fn() => redirect('/watchlist'));
 Route::get('/bookmarks', fn() => redirect('/watchlist'));
