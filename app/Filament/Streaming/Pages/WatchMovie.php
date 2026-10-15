@@ -20,6 +20,7 @@ class WatchMovie extends Page
     public array $recommendations = [];
     public bool $isFavorited = false;
     public array $servers = [];
+    public float $savedProgressSeconds = 0;
 
     public function mount($slug)
     {
@@ -135,6 +136,15 @@ class WatchMovie extends Page
             $user = auth()->user();
             $movieTitle = $this->media['title'] ?? 'Movie';
             $thumbnail = $this->media['poster'] ?? $this->media['thumbnail'] ?? null;
+
+            $existing = $user->watchHistories()
+                ->where('item_id', $this->movieSlug)
+                ->where('item_type', 'movie')
+                ->first();
+
+            if ($existing && $existing->progress_seconds > 10 && $existing->progress_percent < 95) {
+                $this->savedProgressSeconds = (float) $existing->progress_seconds;
+            }
 
             $user->watchHistories()->updateOrCreate(
                 [

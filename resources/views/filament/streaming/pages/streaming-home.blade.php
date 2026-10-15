@@ -132,7 +132,7 @@
             <div class="mb-4 flex items-end justify-between">
                 <div>
                     <h2 class="text-xl md:text-2xl font-extrabold tracking-tight">Lanjutkan Menonton</h2>
-                    <p class="mt-0.5 text-xs text-zinc-400">Lanjut dari episode terakhir yang kamu tonton</p>
+                    <p class="mt-0.5 text-xs text-zinc-400">Lanjut dari posisi terakhir kamu berhenti</p>
                 </div>
             </div>
             <div class="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-5 px-5 md:-mx-10 md:px-10 scroll-px-5 md:scroll-px-10 snap-x [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
@@ -141,6 +141,10 @@
                     <div class="relative aspect-[3/4] overflow-hidden rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-950 ring-1 ring-white/5">
                         @if(!empty($cw['thumbnail']))
                         <img src="{{ $cw['thumbnail'] }}" alt="" loading="lazy" onerror="this.remove()" class="relative h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                        @else
+                        <div class="absolute inset-0 flex items-center justify-center text-zinc-700">
+                            <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
+                        </div>
                         @endif
                         <div class="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
                         <span class="absolute left-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-zinc-200">{{ $cw['label'] }}</span>
@@ -150,9 +154,17 @@
                             </span>
                         </div>
                         <div class="absolute inset-x-2 bottom-2">
-                            <p class="text-[11px] font-extrabold text-white drop-shadow">Episode {{ $cw['episode'] }}</p>
-                            @if($cw['ago'])<p class="text-[10px] font-medium text-zinc-300">{{ $cw['ago'] }}</p>@endif
+                            @if(!empty($cw['episode']) && $cw['label'] !== 'Film')
+                                <p class="text-[11px] font-extrabold text-white drop-shadow">Episode {{ $cw['episode'] }}</p>
+                            @endif
+                            @if($cw['ago'])<p class="text-[10px] font-medium text-zinc-300 drop-shadow">{{ $cw['ago'] }}</p>@endif
                         </div>
+                        {{-- Progress bar merah ala Netflix di bawah poster --}}
+                        @if(!empty($cw['has_progress']))
+                        <div class="absolute inset-x-0 bottom-0 h-[3px] bg-zinc-700/60 rounded-b-xl overflow-hidden">
+                            <div class="h-full bg-[#E50914] rounded-b-xl" style="width: {{ min(100, $cw['progress_percent']) }}%"></div>
+                        </div>
+                        @endif
                     </div>
                     <h3 class="mt-2 truncate text-xs md:text-[13px] font-semibold text-zinc-200" title="{{ $cw['title'] }}">{{ $cw['title'] }}</h3>
                 </a>

@@ -157,6 +157,83 @@ Route::get('/api/player-log', function (\Illuminate\Http\Request $request) {
     return response()->noContent();
 })->middleware('throttle:30,1')->name('api.player-log');
 
+// ============ SAVE PLAYBACK PROGRESS ============
+// Dipanggil periodik dari player (tiap 10 detik & saat pause/unload) untuk menyimpan posisi menonton.
+Route::post('/api/watch-progress', function (\Illuminate\Http\Request $request) {
+    if (!auth()->check()) {
+        return response()->json(['ok' => false], 401);
+    }
+
+    $data = $request->validate([
+        'item_id'    => 'required|string|max:255',
+        'item_type'  => 'required|string|in:movie,series,anime,dracin',
+        'progress'   => 'required|numeric|min:0',
+        'duration'   => 'required|numeric|min:1',
+        'episode'    => 'nullable|string|max:64',
+        'title'      => 'nullable|string|max:500',
+        'thumbnail'  => 'nullable|string|max:1000',
+        'url'        => 'nullable|string|max:1000',
+    ]);
+
+    $percent = min(100, round(($data['progress'] / $data['duration']) * 100, 1));
+
+    $updatePayload = [
+        'progress_seconds'  => round($data['progress'], 1),
+        'duration_seconds'  => round($data['duration'], 1),
+        'progress_percent'  => $percent,
+    ];
+
+    // Juga update metadata judul/thumbnail/url kalau dikirim
+    if (!empty($data['title']))     $updatePayload['title'] = $data['title'];
+    if (!empty($data['thumbnail'])) $updatePayload['thumbnail'] = $data['thumbnail'];
+    if (!empty($data['url']))       $updatePayload['url'] = $data['url'];
+    if (!empty($data['episode']))   $updatePayload['last_episode'] = $data['episode'];
+
+    auth()->user()->watchHistories()->updateOrCreate(
+        [
+            'item_id'   => $data['item_id'],
+            'item_type' => $data['item_type'],
+        ],
+        $updatePayload
+    );
+
+    return response()->json(['ok' => true]);
+})->middleware(['auth', 'throttle:60,1'])->name('api.watch-progress');
+
+// ============ GET CONTINUE WATCHING DATA ============
+// Dipanggil oleh beranda untuk menampilkan kartu "Lanjutkan Menonton"
+Route::get('/api/continue-watching', function () {
+    if (!auth()->check()) {
+        return response()->json([]);
+    }
+
+    $histories = auth()->user()->watchHistories()
+        ->where('progress_percent', '>', 3)     // minimal 3% supaya gak noise
+        ->where('progress_percent', '<', 95)     // di bawah 95% (belum selesai)
+        ->where('duration_seconds', '>', 0)
+        ->orderByDesc('updated_at')
+        ->take(20)
+        ->get();
+
+    $items = $histories->map(function ($h) {
+        return [
+            'item_id'    => $h->item_id,
+            'item_type'  => $h->item_type,
+            'title'      => $h->title,
+            'thumbnail'  => $h->thumbnail,
+            'url'        => $h->url,
+            'episode'    => $h->last_episode,
+            'progress'   => $h->formatted_progress,
+            'duration'   => $h->formatted_duration,
+            'percent'    => round($h->progress_percent, 1),
+            'seconds'    => round($h->progress_seconds),
+            'ago'        => $h->updated_at->diffForHumans(),
+        ];
+    });
+
+    return response()->json($items);
+})->middleware('auth')->name('api.continue-watching');
+
 Route::get('/api/streaming/embed', function (\Illuminate\Http\Request $request) {
     $url = $request->query('url');
     if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {

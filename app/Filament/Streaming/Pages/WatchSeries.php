@@ -25,6 +25,7 @@ class WatchSeries extends Page
     public ?array $activeEpisode = null;
     public array $episodes = [];
     public array $servers = [];
+    public float $savedProgressSeconds = 0;
 
     public function mount($slug, $seasonNumber, $episodeNumber)
     {
@@ -158,6 +159,10 @@ class WatchSeries extends Page
                 $watchedList = $history && is_array($history->watched_episodes) ? $history->watched_episodes : [];
                 if (!in_array($epNum, $watchedList, true)) {
                     $watchedList[] = $epNum;
+                }
+
+                if ($history && $history->last_episode == $epNum && $history->progress_seconds > 10 && $history->progress_percent < 95) {
+                    $this->savedProgressSeconds = (float) $history->progress_seconds;
                 }
 
                 $user->watchHistories()->updateOrCreate(

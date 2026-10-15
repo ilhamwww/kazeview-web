@@ -285,3 +285,49 @@
 
     </div>
 </div>
+
+@push('scripts')
+<script>
+    (function() {
+        const v = document.querySelector('video[src]');
+        if (!v) return;
+
+        let lastSavedTime = 0;
+        const saveAnimeProgress = (force = false) => {
+            const ct = v.currentTime || 0;
+            const dur = v.duration || 0;
+            if (dur < 10 || ct < 3) return;
+            if (!force && Math.abs(ct - lastSavedTime) < 8) return;
+            lastSavedTime = ct;
+
+            const body = JSON.stringify({
+                item_id: 'anime_v1:{{ $animeSlug }}',
+                item_type: 'anime',
+                episode: '{{ $episodeDetail["episode_number"] ?? $episodeSlug }}',
+                title: {!! json_encode($seriesDetail['title'] ?? ($episodeDetail['title'] ?? 'Anime')) !!},
+                thumbnail: {!! json_encode($seriesDetail['thumbnail'] ?? '') !!},
+                url: window.location.pathname,
+                progress: ct,
+                duration: dur,
+            });
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            if (navigator.sendBeacon && force) {
+                navigator.sendBeacon('/api/watch-progress', new Blob([body], { type: 'application/json' }));
+            } else {
+                fetch('/api/watch-progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body, keepalive: true,
+                }).catch(() => {});
+            }
+        };
+
+        v.addEventListener('timeupdate', () => {
+            if (Math.floor(v.currentTime) % 10 === 0) saveAnimeProgress();
+        });
+        v.addEventListener('pause', () => saveAnimeProgress(true));
+        window.addEventListener('beforeunload', () => saveAnimeProgress(true));
+    })();
+</script>
+@endpush

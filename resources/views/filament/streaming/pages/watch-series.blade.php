@@ -493,6 +493,7 @@
                     activeServer: '{{ $servers[0]["id"] ?? "server1" }}',
                     isEmbed: {{ !empty($servers[0]["type"]) && $servers[0]["type"] === "embed" ? "true" : "false" }},
                     currentEmbedUrl: '{{ $servers[0]["embed_url"] ?? "" }}',
+                    savedProgressSeconds: {{ (float) ($savedProgressSeconds ?? 0) }},
                     useProxy: false,
                     streamError: '',
                     _prefetch: null,
@@ -975,6 +976,19 @@
                         };
                         this.art.on('setting', stampSettingNames);
 
+                        // Auto-resume ke posisi menit terakhir ditonton
+                        if (this.savedProgressSeconds > 5) {
+                            this.art.once('video:loadedmetadata', () => {
+                                if (self.art && self.savedProgressSeconds > 0) {
+                                    self.art.currentTime = self.savedProgressSeconds;
+                                    const m = Math.floor(self.savedProgressSeconds / 60);
+                                    const s = Math.floor(self.savedProgressSeconds % 60);
+                                    const formatted = `${m}:${s < 10 ? '0' : ''}${s}`;
+                                    self.art.notice.show = `Melanjutkan dari ${formatted}`;
+                                }
+                            });
+                        }
+
                         // Kalau browser menolak autoplay bersuara, putar tanpa suara dulu; laporkan kalau macet
                         this.art.on('ready', () => {
                             const v = self.art && self.art.video;
@@ -1027,6 +1041,49 @@
                         if (this.art.video) {
                             this.art.video.addEventListener('play', enterWebFs);
                         }
+
+                        // ============ SAVE PLAYBACK PROGRESS (SERIES) ============
+                        const progressMeta = {
+                            item_id: '{{ $seriesSlug ?? "" }}',
+                            item_type: 'series',
+                            episode: '{{ $episodeNumber ?? "1" }}',
+                            title: {!! json_encode($series['title'] ?? '') !!},
+                            thumbnail: {!! json_encode($series['poster'] ?? $series['thumbnail'] ?? '') !!},
+                            url: window.location.pathname,
+                        };
+                        let _lastSavedTime = 0;
+                        const _csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+                        const saveProgress = (force = false) => {
+                            if (!self.art || !self.art.video) return;
+                            const ct = self.art.currentTime || 0;
+                            const dur = self.art.duration || 0;
+                            if (dur < 10 || ct < 5) return;
+                            if (!force && Math.abs(ct - _lastSavedTime) < 8) return;
+                            _lastSavedTime = ct;
+                            const body = JSON.stringify({ ...progressMeta, progress: ct, duration: dur });
+                            if (navigator.sendBeacon && force) {
+                                navigator.sendBeacon('/api/watch-progress', new Blob([body], { type: 'application/json' }));
+                            } else {
+                                fetch('/api/watch-progress', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _csrfToken },
+                                    body, keepalive: true,
+                                }).catch(() => {});
+                            }
+                        };
+                        const _progressInterval = setInterval(() => {
+                            if (self.art && !self.art.video?.paused) saveProgress();
+                        }, 10000);
+                        this.art.on('video:pause', () => saveProgress(true));
+                        this.art.on('video:ended', () => saveProgress(true));
+                        const _beforeUnload = () => saveProgress(true);
+                        window.addEventListener('beforeunload', _beforeUnload);
+                        this.art.on('destroy', () => {
+                            clearInterval(_progressInterval);
+                            window.removeEventListener('beforeunload', _beforeUnload);
+                            saveProgress(true);
+                        });
                     }
                 });
 

@@ -186,7 +186,12 @@ class StreamingHome extends BaseDashboard
         foreach ($rows as $row) {
             $url = null;
             try {
-                if ($row->item_type === 'dracin' && str_contains($row->item_id, ':')) {
+                if (!empty($row->url) && !str_contains($row->url, '/livewire/')) {
+                    $url = preg_replace('#^https?://[^/]+(?:/streaming)?/#', '/', $row->url);
+                    if (!str_starts_with($url, '/')) {
+                        $url = '/' . $url;
+                    }
+                } elseif ($row->item_type === 'dracin' && str_contains($row->item_id, ':')) {
                     [$net, $id] = explode(':', $row->item_id, 2);
                     $url = DracinDetail::getUrl(parameters: ['network_slug' => $net, 'id' => $id], panel: 'streaming');
                 } elseif ($row->item_type === 'bstation') {
@@ -194,9 +199,8 @@ class StreamingHome extends BaseDashboard
                 } elseif ($row->item_type === 'movie') {
                     $url = url('/movie/' . $row->item_id);
                 } elseif ($row->item_type === 'series') {
-                    $url = url('/series/' . $row->item_id);
-                } elseif (!empty($row->url) && !str_contains($row->url, '/livewire/')) {
-                    $url = preg_replace('#^https?://[^/]+/streaming/#', '/', $row->url);
+                    $ep = $row->last_episode ?: 1;
+                    $url = url('/series/' . $row->item_id . '/season/1/episode/' . $ep);
                 }
             } catch (\Throwable $e) {
                 $url = null;
@@ -213,6 +217,12 @@ class StreamingHome extends BaseDashboard
                 'label' => $labels[$row->item_type] ?? ucfirst($row->item_type),
                 'url' => $url,
                 'ago' => $row->updated_at ? $row->updated_at->locale('id')->diffForHumans() : null,
+                'progress_seconds' => round($row->progress_seconds),
+                'duration_seconds' => round($row->duration_seconds),
+                'progress_percent' => round($row->progress_percent, 1),
+                'progress_display' => $row->formatted_progress,
+                'duration_display' => $row->formatted_duration,
+                'has_progress' => $row->progress_seconds > 0 && $row->duration_seconds > 0,
             ];
         }
 

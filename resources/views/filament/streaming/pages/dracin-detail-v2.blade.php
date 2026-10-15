@@ -570,7 +570,40 @@
                     const v = this.$refs.video;
                     if (!v) return;
 
-                    v.addEventListener('timeupdate', () => { this.currentTime = v.currentTime; });
+                    // Progress saving untuk dracin
+                    let lastSavedTime = 0;
+                    const saveDracinProgress = (force = false) => {
+                        const ct = v.currentTime || 0;
+                        const dur = v.duration || 0;
+                        if (dur < 10 || ct < 3) return;
+                        if (!force && Math.abs(ct - lastSavedTime) < 8) return;
+                        lastSavedTime = ct;
+                        const body = JSON.stringify({
+                            item_id: '{{ $networkSlug }}:{{ $dramaId }}',
+                            item_type: 'dracin',
+                            episode: String(this.currentEpisode || 1),
+                            title: this.drama?.title || this.drama?.name || 'Dracin',
+                            thumbnail: this.drama?.cover || null,
+                            url: window.location.pathname,
+                            progress: ct,
+                            duration: dur,
+                        });
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                        if (navigator.sendBeacon && force) {
+                            navigator.sendBeacon('/api/watch-progress', new Blob([body], { type: 'application/json' }));
+                        } else {
+                            fetch('/api/watch-progress', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                body, keepalive: true,
+                            }).catch(() => {});
+                        }
+                    };
+
+                    v.addEventListener('timeupdate', () => {
+                        this.currentTime = v.currentTime;
+                        if (Math.floor(v.currentTime) % 10 === 0) saveDracinProgress();
+                    });
                     v.addEventListener('durationchange', () => { this.duration = v.duration || 0; });
                     v.addEventListener('loadedmetadata', () => { this.duration = v.duration || 0; });
                     v.addEventListener('play', () => {
@@ -580,7 +613,9 @@
                     v.addEventListener('pause', () => {
                         this.isPaused = true;
                         this.showControls();
+                        saveDracinProgress(true);
                     });
+                    window.addEventListener('beforeunload', () => saveDracinProgress(true));
                     v.addEventListener('waiting', () => {
                         this.isBuffering = true;
                         this.showControls();

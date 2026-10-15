@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/v1/public/preview/*/ai-photo-search',
             'api/streaming/embed-proxy',
+            'api/watch-progress',
         ]);
 
         $middleware->alias([
