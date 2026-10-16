@@ -159,7 +159,10 @@
             @if(empty($episodes))
                 <div class="py-16 text-center text-zinc-500 bg-zinc-900/40 rounded-2xl border border-dashed border-zinc-800">Belum ada episode untuk season ini.</div>
             @else
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-5"
+                     x-data="{ prewarm(e) { const el = e.target.closest('[data-stream-id]'); if (!el || !el.dataset.streamId) return; const id = el.dataset.streamId; el.removeAttribute('data-stream-id'); fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(id), { priority: 'low' }).catch(()=>{}); } }"
+                     x-on:mouseover.passive="prewarm($event)"
+                     x-on:touchstart.passive="prewarm($event)">
                     @foreach($episodes as $ep)
                         @php
                             $epUrl = WatchSeries::getUrl(['slug' => $seriesSlug, 'seasonNumber' => $selectedSeasonNumber ?? 1, 'episodeNumber' => $ep['episodeNumber']], panel: 'streaming');
@@ -168,6 +171,7 @@
                             $epName = $ep['name'] ?? ('Episode ' . $ep['episodeNumber']);
                         @endphp
                         <a href="{{ $epUrl }}" wire:key="ep-{{ $selectedSeasonNumber }}-{{ $ep['episodeNumber'] }}"
+                           @if(!empty($ep['id'])) data-stream-id="{{ $ep['id'] }}" @endif
                            class="group flex flex-col bg-zinc-900/50 hover:bg-zinc-900 rounded-xl overflow-hidden ring-1 ring-white/5 hover:ring-red-600/50 transition">
                             <div class="relative aspect-video bg-zinc-950 overflow-hidden">
                                 @if($still)
@@ -265,14 +269,23 @@
             .kz-noscroll::-webkit-scrollbar { display: none; }
         </style>
     @endpush
-    @if(!empty($firstEpisode['id']))
+    @if(!empty($episodes))
         @push('scripts')
             <script>
                 (function() {
-                    // Pre-warm episode 1 stream in background so clicking "Mulai Nonton" starts immediately
                     setTimeout(function() {
-                        if (navigator.onLine) {
-                            fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(@json($firstEpisode['id'])), { priority: 'low' }).catch(function() {});
+                        const ep1 = @json($episodes[0]['id'] ?? null);
+                        const ep2 = @json($episodes[1]['id'] ?? null);
+                        if (ep1 && navigator.onLine) {
+                            fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(ep1), { priority: 'low' })
+                                .then(function() {
+                                    if (ep2 && navigator.onLine) {
+                                        setTimeout(function() {
+                                            fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(ep2), { priority: 'low' }).catch(function() {});
+                                        }, 1200);
+                                    }
+                                })
+                                .catch(function() {});
                         }
                     }, 800);
                 })();

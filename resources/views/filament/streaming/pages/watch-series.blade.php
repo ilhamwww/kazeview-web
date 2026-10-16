@@ -64,10 +64,16 @@
                         <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
                     </div>
 
-                    <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/85 flex flex-col items-center justify-center gap-3">
-                        <div class="w-12 h-12 rounded-full border-4 border-red-600/25 border-t-red-600 animate-spin"></div>
-                        <p class="text-sm font-semibold">Menyiapkan episode…</p>
-                        <p class="text-[11px] text-zinc-400 -mt-2">Biasanya 10–20 detik</p>
+                    <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center gap-3.5 p-6 text-center">
+                        <div class="relative w-14 h-14 flex items-center justify-center">
+                            <div class="w-14 h-14 rounded-full border-4 border-red-600/20"></div>
+                            <div class="absolute inset-0 w-14 h-14 rounded-full border-4 border-red-500 border-t-transparent animate-spin"></div>
+                            <span class="absolute font-mono font-black text-white text-base" x-text="loadingSeconds > 0 ? loadingSeconds : '...'"></span>
+                        </div>
+                        <div>
+                            <p class="text-sm md:text-base font-bold text-white">Menyiapkan stream episode…</p>
+                            <p class="text-xs text-zinc-400 mt-1">Membuka resolusi HD & buffer (<span x-text="loadingSeconds > 0 ? loadingSeconds + ' detik' : 'sebentar lagi...'"></span>)</p>
+                        </div>
                     </div>
 
                     <button type="button" x-show="!isPlaying && !isLoadingStream" @click="playVideo()"
@@ -154,8 +160,8 @@
                         @endif
                         @if($nextEpisode)
                             <a href="{{ $epUrl($nextEpisode['episodeNumber']) }}"
-                               @mouseenter.once="prefetchNextEpisode()"
-                               @touchstart.passive.once="prefetchNextEpisode()"
+                               x-on:mouseenter.once="prefetchNextEpisode()"
+                               x-on:touchstart.passive.once="prefetchNextEpisode()"
                                class="inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-600 text-sm font-bold shadow-lg shadow-red-600/25 active:bg-red-700 hover:bg-red-700 transition">
                                 Ep {{ $nextEpisode['episodeNumber'] }}
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
@@ -219,7 +225,10 @@
                         </div>
                     @endif
 
-                    <ol class="mt-3 space-y-2 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto lg:pr-1 kz-thin lg:kz-fade-y" x-init="$nextTick(() => { const a = $el.querySelector('[data-active]'); if (a && window.innerWidth >= 1024) a.scrollIntoView({ block: 'center' }) })">
+                    <ol class="mt-3 space-y-2 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto lg:pr-1 kz-thin lg:kz-fade-y"
+                        x-on:mouseover.passive="prewarmFromTarget($event)"
+                        x-on:touchstart.passive="prewarmFromTarget($event)"
+                        x-init="$nextTick(() => { const a = $el.querySelector('[data-active]'); if (a && window.innerWidth >= 1024) a.scrollIntoView({ block: 'center' }) })">
                         @foreach($episodes as $ep)
                             @php
                                 $n = (int) $ep['episodeNumber'];
@@ -228,10 +237,7 @@
                             @endphp
                             <li>
                                 <a href="{{ $epUrl($n) }}" @if($isActive) data-active aria-current="true" @endif
-                                   @if(!$isActive && !empty($ep['id']))
-                                       @mouseenter.once="fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(@json($ep['id'])), { priority: 'low' }).catch(()=>{})"
-                                       @touchstart.passive.once="fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(@json($ep['id'])), { priority: 'low' }).catch(()=>{})"
-                                   @endif
+                                   @if(!$isActive && !empty($ep['id'])) data-stream-id="{{ $ep['id'] }}" @endif
                                    class="group flex gap-3 p-2 -mx-2 lg:mx-0 rounded-xl transition {{ $isActive ? 'bg-red-600/10 ring-1 ring-red-500/40' : 'hover:bg-white/[0.04] active:bg-white/[0.06]' }}">
                                     <div class="relative w-32 sm:w-36 aspect-video shrink-0 self-start rounded-lg overflow-hidden bg-zinc-800">
                                         @if($still)
@@ -508,16 +514,44 @@
                     _hasPrefetchedNext: false,
                     _stallTimer: null,
                     _proxyRestarted: false,
+                    loadingSeconds: 0,
+                    _loadingTimer: null,
 
                     init() {
                         // Ambil stream sejak halaman dibuka supaya saat tombol play ditekan video langsung jalan (khusus HLS)
                         if (!this.isEmbed && !this.videoSrc && this.episodeId) this._prefetch = this.fetchStreamAsync(false);
                     },
 
+                    startLoadingCountdown() {
+                        this.loadingSeconds = 18;
+                        if (this._loadingTimer) clearInterval(this._loadingTimer);
+                        this._loadingTimer = setInterval(() => {
+                            if (this.loadingSeconds > 1) {
+                                this.loadingSeconds--;
+                            }
+                        }, 1000);
+                    },
+
+                    stopLoadingCountdown() {
+                        if (this._loadingTimer) {
+                            clearInterval(this._loadingTimer);
+                            this._loadingTimer = null;
+                        }
+                        this.loadingSeconds = 0;
+                    },
+
                     prefetchNextEpisode() {
                         if (!this.nextEpisodeId || this._hasPrefetchedNext) return;
                         this._hasPrefetchedNext = true;
                         fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(this.nextEpisodeId), { priority: 'low' }).catch(() => {});
+                    },
+
+                    prewarmFromTarget(e) {
+                        const el = e.target.closest('[data-stream-id]');
+                        if (!el || !el.dataset.streamId) return;
+                        const id = el.dataset.streamId;
+                        el.removeAttribute('data-stream-id');
+                        fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(id), { priority: 'low' }).catch(() => {});
                     },
 
                     switchServer(id, embedUrl, isEmbedServer) {
@@ -613,7 +647,10 @@
 
                     async fetchStreamAsync(autoPlayAfter = true, force = false) {
                         if (!this.episodeId) return;
-                        if (autoPlayAfter) this.isLoadingStream = true;
+                        if (autoPlayAfter) {
+                            this.isLoadingStream = true;
+                            this.startLoadingCountdown();
+                        }
                         try {
                             const ctrl = new AbortController();
                             const timer = setTimeout(() => ctrl.abort(), 60000);
@@ -631,7 +668,10 @@
                         } catch (e) {
                             this.report('stream-api-exc', e && e.name);
                         } finally {
-                            if (autoPlayAfter) this.isLoadingStream = false;
+                            if (autoPlayAfter) {
+                                this.stopLoadingCountdown();
+                                this.isLoadingStream = false;
+                            }
                         }
                         if (autoPlayAfter && this.videoSrc) {
                             this.isPlaying = true;
@@ -654,8 +694,10 @@
 
                         if (!this.videoSrc) {
                             this.isLoadingStream = true;
+                            this.startLoadingCountdown();
                             if (this._prefetch) await this._prefetch;
                             if (!this.videoSrc) await this.fetchStreamAsync(false);
+                            this.stopLoadingCountdown();
                             this.isLoadingStream = false;
                             if (!this.videoSrc) {
                                 this.isPlaying = false;
