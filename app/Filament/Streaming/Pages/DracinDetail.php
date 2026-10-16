@@ -6,6 +6,7 @@ use Filament\Pages\Page;
 use App\Models\ScraperSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use function Livewire\store;
 
 class DracinDetail extends Page
 {
@@ -28,6 +29,9 @@ class DracinDetail extends Page
     public bool $isFavorited = false;
     public ?string $lastWatchedEpisode = null;
     public array $watchedEpisodes = [];
+
+    /** True selama prefetchEpisode() berjalan: blokir efek samping (riwayat tonton). */
+    protected bool $isPrefetching = false;
 
     public function mount(string $network_slug, string $id): void
     {
@@ -1373,7 +1377,7 @@ class DracinDetail extends Page
                 subtitles: []
             );
 
-            if (auth()->check()) {
+            if (auth()->check() && !$this->isPrefetching) {
                 $history = auth()->user()->watchHistories()
                     ->where('item_id', $this->networkSlug . ':' . $this->dramaId)
                     ->where('item_type', 'dracin')
@@ -1660,7 +1664,7 @@ class DracinDetail extends Page
                         subtitles: $videoData['subtitles'] ?? []
                     );
 
-                    if (auth()->check()) {
+                    if (auth()->check() && !$this->isPrefetching) {
                         $history = auth()->user()->watchHistories()
                             ->where('item_id', $this->networkSlug . ':' . $this->dramaId)
                             ->where('item_type', 'dracin')
@@ -1709,6 +1713,80 @@ class DracinDetail extends Page
         }
     }
 
+    /**
+     * Resolve stream episode untuk buffer 3-slot (prev/current/next) tanpa efek samping.
+     * Memakai logika playEpisode() yang sama, lalu menangkap payload 'init-player'
+     * dan membuang event, notifikasi, serta perubahan state yang ditimbulkannya.
+     */
+    public function prefetchEpisode(int $ep): ?array
+    {
+        $this->skipRender();
+
+        if ($ep < 1) {
+            return null;
+        }
+
+        $snapshot = [
+            'activeEpisode' => $this->activeEpisode,
+            'streamData' => $this->streamData,
+            'lastWatchedEpisode' => $this->lastWatchedEpisode,
+            'watchedEpisodes' => $this->watchedEpisodes,
+        ];
+        $hadNotifications = session()->has('filament.notifications');
+        $savedNotifications = session()->get('filament.notifications');
+        $dispatchedBefore = store($this)->get('dispatched', []);
+
+        $this->isPrefetching = true;
+
+        try {
+            $this->playEpisode($ep);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Dracin prefetch gagal: ' . $e->getMessage(), ['ep' => $ep]);
+        } finally {
+            $this->isPrefetching = false;
+        }
+
+        $dispatched = store($this)->get('dispatched', []);
+        $newEvents = array_slice($dispatched, count($dispatchedBefore));
+        store($this)->set('dispatched', $dispatchedBefore);
+
+        foreach ($snapshot as $property => $value) {
+            $this->{$property} = $value;
+        }
+
+        if ($hadNotifications) {
+            session()->put('filament.notifications', $savedNotifications);
+        } else {
+            session()->forget('filament.notifications');
+        }
+
+        foreach ($newEvents as $event) {
+            $serialized = $event->serialize();
+            if (($serialized['name'] ?? null) === 'init-player') {
+                $payload = $serialized['params'] ?? [];
+
+                return !empty($payload['videoUrl']) ? $payload : null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Dipanggil client setelah episode dari buffer diputar instan (tanpa round-trip playEpisode).
+     */
+    public function markEpisodeWatched(int $ep): void
+    {
+        if ($ep < 1 || (auth()->check() && auth()->user()->isSubscriptionExpired())) {
+            $this->skipRender();
+
+            return;
+        }
+
+        $this->activeEpisode = collect($this->drama['videos'] ?? [])->firstWhere('episode', $ep) ?? ['episode' => $ep];
+        $this->saveWatchHistory($ep);
+    }
+
     protected function findNextEpisode(int $episode): ?int
     {
         $videos = $this->drama['videos'] ?? [];
@@ -1728,7 +1806,7 @@ class DracinDetail extends Page
 
     protected function saveWatchHistory(int $episode): void
     {
-        if (!auth()->check()) {
+        if (!auth()->check() || $this->isPrefetching) {
             return;
         }
 
