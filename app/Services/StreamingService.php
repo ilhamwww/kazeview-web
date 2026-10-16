@@ -1084,7 +1084,7 @@ class StreamingService
     private static function fetchJsonWithPuppeteer(string $url): string
     {
         $scriptPath = base_path('puppeteer_json_scraper.js');
-        $executablePath = env('PUPPETEER_EXECUTABLE_PATH', '/usr/bin/google-chrome');
+        $executablePath = env('PUPPETEER_EXECUTABLE_PATH', file_exists('/opt/puppeteer-chrome/chrome') ? '/opt/puppeteer-chrome/chrome' : '/usr/bin/google-chrome');
         $cmd = 'node --dns-result-order=ipv4first ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($url) . ' ' . escapeshellarg($executablePath ?? '') . ' 2>&1';
 
         $output = [];
@@ -1560,7 +1560,7 @@ class StreamingService
     private static function fetchStreamWithPuppeteer(string $domain, string $playInfoPath): ?array
     {
         $scriptPath = base_path('puppeteer_stream_scraper.js');
-        $executablePath = env('PUPPETEER_EXECUTABLE_PATH', '/usr/bin/google-chrome');
+        $executablePath = env('PUPPETEER_EXECUTABLE_PATH', file_exists('/opt/puppeteer-chrome/chrome') ? '/opt/puppeteer-chrome/chrome' : '/usr/bin/google-chrome');
         $cmd = 'cd ' . escapeshellarg(base_path()) . ' && node --dns-result-order=ipv4first ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($domain) . ' ' . escapeshellarg($playInfoPath) . ' ' . escapeshellarg($executablePath) . ' 2>&1';
 
         $output = [];

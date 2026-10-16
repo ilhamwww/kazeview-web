@@ -153,7 +153,10 @@
                             <span class="inline-flex items-center justify-center h-11 rounded-xl bg-zinc-950 ring-1 ring-white/5 text-sm font-bold text-zinc-500">Episode pertama</span>
                         @endif
                         @if($nextEpisode)
-                            <a href="{{ $epUrl($nextEpisode['episodeNumber']) }}" class="inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-600 text-sm font-bold shadow-lg shadow-red-600/25 active:bg-red-700 hover:bg-red-700 transition">
+                            <a href="{{ $epUrl($nextEpisode['episodeNumber']) }}"
+                               @mouseenter.once="prefetchNextEpisode()"
+                               @touchstart.passive.once="prefetchNextEpisode()"
+                               class="inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-600 text-sm font-bold shadow-lg shadow-red-600/25 active:bg-red-700 hover:bg-red-700 transition">
                                 Ep {{ $nextEpisode['episodeNumber'] }}
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                             </a>
@@ -225,6 +228,10 @@
                             @endphp
                             <li>
                                 <a href="{{ $epUrl($n) }}" @if($isActive) data-active aria-current="true" @endif
+                                   @if(!$isActive && !empty($ep['id']))
+                                       @mouseenter.once="fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(@json($ep['id'])), { priority: 'low' }).catch(()=>{})"
+                                       @touchstart.passive.once="fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(@json($ep['id'])), { priority: 'low' }).catch(()=>{})"
+                                   @endif
                                    class="group flex gap-3 p-2 -mx-2 lg:mx-0 rounded-xl transition {{ $isActive ? 'bg-red-600/10 ring-1 ring-red-500/40' : 'hover:bg-white/[0.04] active:bg-white/[0.06]' }}">
                                     <div class="relative w-32 sm:w-36 aspect-video shrink-0 self-start rounded-lg overflow-hidden bg-zinc-800">
                                         @if($still)
@@ -489,6 +496,7 @@
                     videoSrc: '{{ $streamData['video_url'] ?? '' }}',
                     subtitles: @json($streamData['subtitles'] ?? []),
                     episodeId: '{{ $activeEpisode['id'] ?? '' }}',
+                    nextEpisodeId: '{{ $nextEpisode['id'] ?? '' }}',
                     activeSubtitleLang: 'id',
                     activeServer: '{{ $servers[0]["id"] ?? "server1" }}',
                     isEmbed: {{ !empty($servers[0]["type"]) && $servers[0]["type"] === "embed" ? "true" : "false" }},
@@ -497,12 +505,19 @@
                     useProxy: false,
                     streamError: '',
                     _prefetch: null,
+                    _hasPrefetchedNext: false,
                     _stallTimer: null,
                     _proxyRestarted: false,
 
                     init() {
                         // Ambil stream sejak halaman dibuka supaya saat tombol play ditekan video langsung jalan (khusus HLS)
                         if (!this.isEmbed && !this.videoSrc && this.episodeId) this._prefetch = this.fetchStreamAsync(false);
+                    },
+
+                    prefetchNextEpisode() {
+                        if (!this.nextEpisodeId || this._hasPrefetchedNext) return;
+                        this._hasPrefetchedNext = true;
+                        fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(this.nextEpisodeId), { priority: 'low' }).catch(() => {});
                     },
 
                     switchServer(id, embedUrl, isEmbedServer) {
@@ -890,8 +905,10 @@
                                             },
                                             enableWorker: true,
                                             lowLatencyMode: false,
-                                            maxBufferLength: 60,
-                                            backBufferLength: 30,
+                                            startFragPrefetch: true,
+                                            maxBufferLength: 30,
+                                            maxMaxBufferLength: 60,
+                                            backBufferLength: 15,
                                         });
                                         artInstance.hls = hls;
                                         self.hls = hls;
@@ -1058,6 +1075,7 @@
                             if (!self.art || !self.art.video) return;
                             const ct = self.art.currentTime || 0;
                             const dur = self.art.duration || 0;
+                            if (ct >= 20) self.prefetchNextEpisode();
                             if (dur < 10 || ct < 5) return;
                             if (!force && Math.abs(ct - _lastSavedTime) < 8) return;
                             _lastSavedTime = ct;

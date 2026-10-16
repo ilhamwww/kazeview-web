@@ -1,11 +1,14 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import os from 'os';
+import fs from 'fs';
 
 // Fix for www-data and restricted environment permissions
-process.env.HOME = os.tmpdir();
-process.env.XDG_CONFIG_HOME = os.tmpdir();
-process.env.XDG_CACHE_HOME = os.tmpdir();
+process.env.TMPDIR = '/tmp';
+process.env.HOME = '/tmp';
+process.env.XDG_CONFIG_HOME = '/tmp';
+process.env.XDG_CACHE_HOME = '/tmp';
+process.env.XDG_DATA_HOME = '/tmp/.local/share';
 
 puppeteer.use(StealthPlugin());
 
@@ -14,15 +17,25 @@ const playInfoPath = process.argv[3];
 const executablePath = process.argv[4];
 
 if (!domain || !playInfoPath) {
-    console.error('Error: Domain and Play Info Path are required.');
+    console.error(JSON.stringify({ error: 'Domain and Play Info Path are required.' }));
     process.exit(1);
+}
+
+let chromePath = '/opt/puppeteer-chrome/chrome';
+if (executablePath && executablePath !== 'undefined' && executablePath !== '' && fs.existsSync(executablePath) && executablePath !== '/usr/bin/google-chrome') {
+    chromePath = executablePath;
+} else if (fs.existsSync('/opt/puppeteer-chrome/chrome')) {
+    chromePath = '/opt/puppeteer-chrome/chrome';
+} else {
+    chromePath = '/usr/bin/google-chrome';
 }
 
 (async () => {
     let browser;
     try {
         const launchOptions = {
-            headless: true,
+            headless: 'new',
+            executablePath: chromePath,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -30,14 +43,10 @@ if (!domain || !playInfoPath) {
                 '--disable-web-security',
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
-                '--no-first-run',
-                '--disable-extensions'
+                '--no-zygote',
+                '--single-process'
             ]
         };
-
-        if (executablePath && executablePath !== 'undefined' && executablePath !== '') {
-            launchOptions.executablePath = executablePath;
-        }
 
         browser = await puppeteer.launch(launchOptions);
 
@@ -64,22 +73,22 @@ if (!domain || !playInfoPath) {
         });
 
         // 1. Visit the main domain homepage to pass the Cloudflare challenge and get cookies
-        await page.goto(domain, {
-            waitUntil: 'domcontentloaded',
-            timeout: 30000
-        });
+        try {
+            await page.goto(domain, {
+                waitUntil: 'domcontentloaded',
+                timeout: 10000
+            });
+        } catch (e) {}
 
-        // Check if CF challenge page is showing
-        let title = await page.title();
-        if (title.includes('Just a moment') || title.includes('Attention Required') || title.includes('Cloudflare')) {
+        // Poll until Cloudflare challenge passes
+        for (let i = 0; i < 15; i++) {
+            await new Promise(r => setTimeout(r, 500));
             try {
-                await page.waitForFunction(
-                    () => !document.title.includes('Just a moment') && !document.title.includes('Cloudflare') && !document.title.includes('Attention Required'),
-                    { timeout: 20000, polling: 1000 }
-                );
-            } catch (e) {
-                // If it times out, we'll just try to continue
-            }
+                const title = await page.title();
+                if (title && !title.includes('Just a moment') && !title.includes('Cloudflare') && title.length > 0) {
+                    break;
+                }
+            } catch (e) {}
         }
 
         // 2. Perform the API requests using page.evaluate to benefit from the browser session/cookies/bypass CORS
@@ -98,8 +107,12 @@ if (!domain || !playInfoPath) {
                     throw new Error('No gateToken in play-info response');
                 }
 
-                // Wait 16 seconds to bypass the unlock/claim countdown block
-                await new Promise(resolve => setTimeout(resolve, 16000));
+                // Dynamic wait based on unlockAt countdown from IDLIX API
+                let waitMs = 15200;
+                if (playInfo.unlockAt && playInfo.serverNow) {
+                    waitMs = Math.max(0, playInfo.unlockAt - playInfo.serverNow) + 200;
+                }
+                await new Promise(resolve => setTimeout(resolve, waitMs));
 
                 // Step 2: claim
                 const claimRes = await fetch('/api/watch/session/claim', {

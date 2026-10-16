@@ -265,4 +265,18 @@
             .kz-noscroll::-webkit-scrollbar { display: none; }
         </style>
     @endpush
+    @if(!empty($firstEpisode['id']))
+        @push('scripts')
+            <script>
+                (function() {
+                    // Pre-warm episode 1 stream in background so clicking "Mulai Nonton" starts immediately
+                    setTimeout(function() {
+                        if (navigator.onLine) {
+                            fetch('/api/streaming/stream?type=episode&id=' + encodeURIComponent(@json($firstEpisode['id'])), { priority: 'low' }).catch(function() {});
+                        }
+                    }, 800);
+                })();
+            </script>
+        @endpush
+    @endif
 @endonce
