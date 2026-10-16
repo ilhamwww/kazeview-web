@@ -1216,6 +1216,8 @@ class StreamingService
             'genre' => $genreStr,
             'thumbnail' => $thumbnail,
             'banner' => $banner,
+            // Logo judul transparan dari TMDB (dipakai hero slider sebagai pengganti teks)
+            'logo' => !empty($content['logoPath'] ?? $item['logoPath'] ?? null) ? 'https://image.tmdb.org/t/p/w500' . ($content['logoPath'] ?? $item['logoPath']) : null,
             'description' => $content['overview'] ?? '',
             'video_url' => 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // Default demo url
             'slug' => $content['slug'] ?? '',

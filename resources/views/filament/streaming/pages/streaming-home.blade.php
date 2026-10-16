@@ -60,7 +60,15 @@
                         @endif
                     </div>
 
+                    @if(!empty($hero['logo']))
+                    <h1 class="mt-4">
+                        <img src="{{ $hero['logo'] }}" alt="{{ $hero['title'] ?? '' }}" loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
+                             class="block h-auto w-auto max-w-[70%] sm:max-w-[420px] max-h-[90px] sm:max-h-[140px] lg:max-h-[170px] object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]"
+                             onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'block text-3xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight line-clamp-2 drop-shadow-lg',textContent:this.alt}))">
+                    </h1>
+                    @else
                     <h1 class="mt-4 text-3xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight line-clamp-2 drop-shadow-lg">{{ $hero['title'] ?? '' }}</h1>
+                    @endif
 
                     <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm font-semibold text-zinc-300">
                         @if(!empty($hero['rating']))

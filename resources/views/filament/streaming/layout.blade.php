@@ -243,82 +243,71 @@
                 <span class="text-red-600 font-extrabold text-2xl tracking-wider">KZSTRM</span>
             </a>
 
-            <!-- Nav Links -->
-            <nav class="hidden lg:flex items-center gap-6">
-                <a href="{{ \App\Filament\Streaming\Pages\StreamingHome::getUrl(panel: 'streaming') }}"
-                    class="{{ $isHome ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                    Home
-                </a>
-                <a href="{{ \App\Filament\Streaming\Pages\Movies::getUrl(panel: 'streaming') }}"
-                    class="{{ $isMovie ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z" />
-                    </svg>
-                    Movies
-                </a>
-                <a href="{{ \App\Filament\Streaming\Pages\TVSeries::getUrl(panel: 'streaming') }}" class="{{ $isSeries ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    TV Series
-                </a>
-                <a href="{{ \App\Filament\Streaming\Pages\Indonesia::getUrl(panel: 'streaming') }}" class="{{ $isIndonesia ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3" />
-                    </svg>
-                    Indonesia
-                </a>
-                <a href="{{ \App\Filament\Streaming\Pages\KoreanDrama::getUrl(panel: 'streaming') }}" class="{{ $isDrakor ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Drakor
-                </a>
-                <a href="{{ \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming') }}"
-                    class="{{ $isCollection ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    Collections
-                </a>
-                <a href="{{ \App\Filament\Streaming\Pages\Network::getUrl(panel: 'streaming') }}"
-                    class="{{ $isNetwork ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    Network
-                </a>
-                <a href="{{ \App\Filament\Streaming\Pages\Dracin::getUrl(panel: 'streaming') }}"
-                    class="{{ $isDracin ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z" />
-                    </svg>
-                    Dracin
-                </a>
-                <a href="{{ \App\Filament\Streaming\Pages\AnimeSources::getUrl(panel: 'streaming') }}"
-                    class="{{ $isAnime ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
-                    </svg>
-                    Anime
-                </a>
+            <!-- Nav Links (primary + Jelajahi dropdown) -->
+            @php
+                $primaryNav = [
+                    ['Home', \App\Filament\Streaming\Pages\StreamingHome::getUrl(panel: 'streaming'), $isHome, 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'],
+                    ['Movies', \App\Filament\Streaming\Pages\Movies::getUrl(panel: 'streaming'), $isMovie, 'M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z'],
+                    ['TV Series', \App\Filament\Streaming\Pages\TVSeries::getUrl(panel: 'streaming'), $isSeries, 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'],
+                    ['Indonesia', \App\Filament\Streaming\Pages\Indonesia::getUrl(panel: 'streaming'), $isIndonesia, 'M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3'],
+                    ['Anime', \App\Filament\Streaming\Pages\AnimeSources::getUrl(panel: 'streaming'), $isAnime, 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z'],
+                    ['Dracin', \App\Filament\Streaming\Pages\Dracin::getUrl(panel: 'streaming'), $isDracin, 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3'],
+                ];
+                $exploreNav = [
+                    ['Live TV', 'Siaran TV nasional', '/tv', $isTv, 'M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z'],
+                    ['Drakor', 'Drama Korea terbaru', \App\Filament\Streaming\Pages\KoreanDrama::getUrl(panel: 'streaming'), $isDrakor, 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'],
+                    ['Collections', 'Koleksi pilihan', \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming'), $isCollection, 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
+                    ['Network', 'Original dari network', \App\Filament\Streaming\Pages\Network::getUrl(panel: 'streaming'), $isNetwork, 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
+                ];
+                $activeExplore = collect($exploreNav)->first(fn ($i) => $i[3]);
+            @endphp
+            <nav class="hidden lg:flex items-center gap-1 xl:gap-2" aria-label="Navigasi desktop">
+                @foreach ($primaryNav as [$label, $url, $active, $icon])
+                    <a href="{{ $url }}" @if ($active) aria-current="page" @endif
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide whitespace-nowrap transition {{ $active ? 'text-white bg-red-600/80 border border-red-500/25 font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent' }}">
+                        <svg class="hidden xl:block w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}" />
+                        </svg>
+                        {{ $label }}
+                    </a>
+                @endforeach
 
-                <a href="/tv" class="{{ $isTv ? $activeClass : $inactiveClass }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z" />
-                    </svg>
-                    Live TV
-                </a>
+                <!-- Jelajahi dropdown (click to open) -->
+                <div class="relative" x-data="{ exploreOpen: false }" @click.away="exploreOpen = false" @keydown.escape.window="exploreOpen = false">
+                    <button type="button" @click="exploreOpen = !exploreOpen" :aria-expanded="exploreOpen.toString()" aria-haspopup="true" :class="exploreOpen && 'bg-white/10 text-white'"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide whitespace-nowrap transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 {{ $activeExplore ? 'text-white bg-red-600/80 border border-red-500/25 font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent' }}">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                        </svg>
+                        {{ $activeExplore[0] ?? 'Jelajahi' }}
+                        <svg class="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200" :class="exploreOpen && 'rotate-180'" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <div x-show="exploreOpen" style="display: none;"
+                        x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                        class="absolute left-1/2 -translate-x-1/2 mt-5 w-[440px] bg-[#111111] border border-zinc-800 rounded-2xl p-3 shadow-[0_10px_40px_rgba(0,0,0,0.9)] z-50">
+                        <p class="px-2.5 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Jelajahi Kategori</p>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            @foreach ($exploreNav as [$label, $desc, $url, $active, $icon])
+                                <a href="{{ $url }}" @if ($active) aria-current="page" @endif
+                                    class="group flex items-center gap-3 p-2.5 rounded-xl border transition {{ $active ? 'bg-red-600/15 border-red-500/30' : 'border-transparent hover:bg-white/5 hover:border-white/10' }}">
+                                    <span class="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 {{ $active ? 'bg-red-600 text-white' : 'bg-zinc-800/80 text-zinc-300 group-hover:text-white' }}">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}" />
+                                        </svg>
+                                    </span>
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-bold {{ $active ? 'text-white' : 'text-zinc-200' }}">{{ $label }}</span>
+                                        <span class="block text-[11px] text-zinc-400 truncate">{{ $desc }}</span>
+                                    </span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
             </nav>
 
             <!-- Right Side -->
@@ -379,7 +368,7 @@
                                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                                         </svg>
                                     </div>
-                                    <span>Daftar Tontonan 📑</span>
+                                    <span>Daftar Tontonan</span>
                                 </a>
 
                                 <a href="/traffic"
@@ -390,7 +379,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                                         </svg>
                                     </div>
-                                    <span>Traffic Stats 📊</span>
+                                    <span>Traffic Stats</span>
                                 </a>
 
                                 <a href="/dmca"
@@ -401,7 +390,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
                                         </svg>
                                     </div>
-                                    <span>DMCA & Disclaimer ⚖️</span>
+                                    <span>DMCA & Disclaimer</span>
                                 </a>
 
                                 <!-- PWA Install Trigger -->
@@ -413,7 +402,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
                                         </svg>
                                     </div>
-                                    <span>Install App 📲</span>
+                                    <span>Install App</span>
                                 </button>
 
                                 <!-- button clear cache -->
@@ -478,7 +467,7 @@
                                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                                         </svg>
                                     </div>
-                                    <span>Daftar Tontonan 📑</span>
+                                    <span>Daftar Tontonan</span>
                                 </a>
 
                                 <a href="/traffic"
@@ -489,7 +478,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                                         </svg>
                                     </div>
-                                    <span>Traffic Stats 📊</span>
+                                    <span>Traffic Stats</span>
                                 </a>
 
                                 <a href="/dmca"
@@ -500,7 +489,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
                                         </svg>
                                     </div>
-                                    <span>DMCA & Disclaimer ⚖️</span>
+                                    <span>DMCA & Disclaimer</span>
                                 </a>
 
                                 <!-- PWA Install Trigger -->
@@ -512,7 +501,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
                                         </svg>
                                     </div>
-                                    <span>Install App 📲</span>
+                                    <span>Install App</span>
                                 </button>
 
                                 <a href="/login"
@@ -936,7 +925,7 @@
     @endphp
     <nav aria-label="Navigasi utama"
          class="lg:hidden fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] pointer-events-none">
-        <div class="pointer-events-auto mx-auto max-w-md grid grid-cols-5 gap-1 p-1.5 rounded-[22px] bg-[#111113]/95 backdrop-blur-2xl ring-1 ring-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.75)]">
+        <div class="pointer-events-auto mx-auto max-w-md grid grid-cols-6 gap-1 p-1.5 rounded-[22px] bg-[#111113]/95 backdrop-blur-2xl ring-1 ring-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.75)]">
             @foreach($dockLinks as [$label, $href, $active, $path])
                 <a href="{{ $href }}" @if($active) aria-current="page" @endif
                    class="relative flex flex-col items-center justify-center gap-1 h-[52px] rounded-2xl transition active:scale-90 {{ $active ? 'text-white' : 'text-zinc-400' }}">
@@ -949,6 +938,20 @@
                     <span class="relative text-[10px] leading-none {{ $active ? 'font-bold' : 'font-semibold' }}">{{ $label }}</span>
                 </a>
             @endforeach
+
+            {{-- More: buka sheet menu lengkap (Jelajah + Lainnya) --}}
+            @php $moreActive = !collect($dockLinks)->contains(fn ($l) => $l[2]); @endphp
+            <button type="button" @click="mobileMenuOpen = true" aria-label="Menu lainnya" aria-haspopup="dialog" :aria-expanded="mobileMenuOpen.toString()"
+                    class="relative flex flex-col items-center justify-center gap-1 h-[52px] rounded-2xl transition active:scale-90 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 {{ $moreActive ? 'text-white' : 'text-zinc-400' }}"
+                    :class="mobileMenuOpen && 'text-white'">
+                @if($moreActive)
+                    <span class="absolute inset-0 rounded-2xl bg-gradient-to-b from-red-600/30 to-red-600/5 ring-1 ring-red-500/30" aria-hidden="true"></span>
+                @endif
+                <svg class="relative w-[22px] h-[22px] {{ $moreActive ? 'text-red-500' : '' }}" fill="none" stroke="currentColor" stroke-width="{{ $moreActive ? '2' : '1.7' }}" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z"/>
+                </svg>
+                <span class="relative text-[10px] leading-none {{ $moreActive ? 'font-bold' : 'font-semibold' }}">More</span>
+            </button>
         </div>
     </nav>
 

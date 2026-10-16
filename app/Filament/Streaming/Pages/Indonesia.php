@@ -48,7 +48,7 @@ class Indonesia extends Page
         $response = RebahinService::getIndonesia($this->page);
         
         $this->items = $response['data'] ?? [];
-        $this->trending = array_slice($this->items, 0, 6);
+        $this->trending = array_slice($this->items, 0, 10);
         $this->hasMorePages = count($this->items) > 0;
     }
 }

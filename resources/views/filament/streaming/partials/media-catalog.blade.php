@@ -72,7 +72,15 @@
                                 <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-400">{{ $label }}</span>
                             </div>
 
-                            <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[0.95] text-white drop-shadow-2xl line-clamp-2">{{ $h['title'] ?? '' }}</h1>
+                            @if(!empty($h['logo']))
+                                <h1>
+                                    <img src="{{ $h['logo'] }}" alt="{{ $h['title'] ?? '' }}" loading="{{ $i === 0 ? 'eager' : 'lazy' }}"
+                                         class="block h-auto w-auto max-w-[75%] sm:max-w-[460px] max-h-[100px] sm:max-h-[150px] lg:max-h-[180px] object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]"
+                                         onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'block text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[0.95] text-white drop-shadow-2xl line-clamp-2',textContent:this.alt}))">
+                                </h1>
+                            @else
+                                <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[0.95] text-white drop-shadow-2xl line-clamp-2">{{ $h['title'] ?? '' }}</h1>
+                            @endif
 
                             <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mt-5 text-sm font-semibold text-zinc-300">
                                 @if($hasRating($h['rating'] ?? null))
@@ -142,12 +150,22 @@
                 <h2 class="text-xl md:text-2xl font-black tracking-tight">Top 10 {{ $label }} Minggu Ini</h2>
                 <span class="hidden sm:inline text-[10px] font-black uppercase tracking-[0.2em] text-red-500 border border-red-600/40 bg-red-600/10 px-2 py-1 rounded">Trending</span>
             </div>
-            <div class="flex gap-2 md:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory kz-noscroll">
+            {{-- Disamakan dengan Top 10 di Beranda: angka absolute di dalam kartu, scroll horizontal saja --}}
+            <div class="flex gap-2 md:gap-3 overflow-x-auto overflow-y-hidden pb-2 -mx-6 px-6 md:-mx-12 md:px-12 scroll-px-6 md:scroll-px-12 snap-x kz-noscroll">
                 @foreach(array_slice($trending, 0, 10) as $i => $t)
-                    <a href="{{ $urlFor($t) }}" class="group snap-start shrink-0 flex items-end w-[190px] md:w-[250px]">
-                        <span class="kz-rank select-none text-[120px] md:text-[160px] leading-[0.8] font-black -mr-3 md:-mr-4 z-0" aria-hidden="true">{{ $i + 1 }}</span>
-                        <div class="relative z-10 w-[118px] md:w-[150px] aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 shadow-2xl shadow-black ring-1 ring-white/5 group-hover:ring-red-600/70 transition">
-                            <img src="{{ $t['thumbnail'] ?? '' }}" alt="{{ $t['title'] ?? '' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                    <a href="{{ $urlFor($t) }}" class="group relative block w-[150px] md:w-[214px] shrink-0 snap-start">
+                        <div class="relative flex items-end">
+                            <span class="pointer-events-none select-none absolute left-0 bottom-[-6px] md:bottom-[-10px] text-[104px] md:text-[150px] font-black leading-none tracking-tighter text-[#050505]"
+                                  style="-webkit-text-stroke: 3px rgba(255,255,255,0.55);" aria-hidden="true">{{ $i + 1 }}</span>
+                            <div class="relative z-10 ml-auto w-[96px] md:w-[136px] aspect-[2/3] overflow-hidden rounded-lg bg-zinc-900 ring-1 ring-white/10 shadow-xl shadow-black/70">
+                                @if(!empty($t['thumbnail']))
+                                    <img src="{{ $t['thumbnail'] }}" alt="{{ $t['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                                @endif
+                            </div>
+                        </div>
+                        <div class="ml-auto mt-2 w-[96px] md:w-[136px]">
+                            <h3 class="truncate text-xs md:text-[13px] font-semibold text-zinc-200 group-hover:text-white" title="{{ $t['title'] ?? '' }}">{{ $t['title'] ?? '' }}</h3>
+                            <p class="text-[11px] text-zinc-500">{{ $isSeries ? 'Series' : 'Film' }}@if(!empty($t['year'])) · {{ $t['year'] }}@endif</p>
                         </div>
                     </a>
                 @endforeach
