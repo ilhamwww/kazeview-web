@@ -670,6 +670,11 @@
                         }
 
                         const self = this;
+                        let savedSubStyle = 'art-subtitle-style-clean';
+                        try {
+                            savedSubStyle = localStorage.getItem('kz_sub_style') || 'art-subtitle-style-clean';
+                        } catch (e) {}
+
                         const subList = Array.isArray(this.subtitles) 
                             ? this.subtitles 
                             : Object.values(this.subtitles || {});
@@ -863,11 +868,11 @@
                                     html: 'Subtitle style',
                                     name: 'subtitle-style',
                                     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-7-7-8 8 7 7 8-8z"/><path d="m19 11 2 2-2 2-2-2z"/><line x1="2" y1="21" x2="22" y2="21"/></svg>',
-                                    tooltip: 'Custom',
+                                    tooltip: savedSubStyle === 'art-subtitle-style-solid' ? 'Solid Black' : (savedSubStyle === 'custom' ? 'Custom' : 'Clean Outline'),
                                     selector: [
-                                        { default: true, html: 'Custom', cls: '' },
-                                        { html: 'Clean Outline', cls: 'art-subtitle-style-clean' },
-                                        { html: 'Solid Black', cls: 'art-subtitle-style-solid' },
+                                        { default: savedSubStyle === 'art-subtitle-style-clean', html: 'Clean Outline', cls: 'art-subtitle-style-clean' },
+                                        { default: savedSubStyle === 'custom', html: 'Custom', cls: '' },
+                                        { default: savedSubStyle === 'art-subtitle-style-solid', html: 'Solid Black', cls: 'art-subtitle-style-solid' },
                                     ],
                                     onSelect: function (item) {
                                         const subEl = self.art.template.$subtitle;
@@ -875,6 +880,9 @@
                                             subEl.classList.remove('art-subtitle-style-clean', 'art-subtitle-style-solid');
                                             if (item.cls) subEl.classList.add(item.cls);
                                         }
+                                        try {
+                                            localStorage.setItem('kz_sub_style', item.cls || 'custom');
+                                        } catch (e) {}
                                         return item.html;
                                     },
                                 },
@@ -1019,6 +1027,10 @@
                         // Subtitle box wrapper observer (IDLIX & Netflix style)
                         const subEl = this.art.template.$subtitle;
                         if (subEl) {
+                            subEl.classList.remove('art-subtitle-style-clean', 'art-subtitle-style-solid');
+                            if (savedSubStyle !== 'custom') {
+                                subEl.classList.add(savedSubStyle || 'art-subtitle-style-clean');
+                            }
                             let updating = false;
                             const subObserver = new MutationObserver(() => {
                                 if (updating) return;
