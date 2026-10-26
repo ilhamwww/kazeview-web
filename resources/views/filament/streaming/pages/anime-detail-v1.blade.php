@@ -157,8 +157,52 @@
         </div>
     </section>
 
+    <!-- Episode List Section -->
+    <main class="w-full max-w-[1800px] mx-auto px-6 pt-12 pb-6">
+        <div class="mb-6 flex items-center justify-between border-b border-zinc-800 pb-4">
+            <div>
+                <h2 class="text-xl md:text-2xl font-black tracking-tight">Daftar Episode</h2>
+                <p class="text-xs text-zinc-400 mt-1">Pilih episode untuk langsung memutar di Server 1 (Direct HD)</p>
+            </div>
+            @if(!empty($detail['episodes']))
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-950/60 text-red-400 border border-red-500/30">
+                    Total {{ count($detail['episodes']) }} Episode
+                </span>
+            @endif
+        </div>
+
+        @if(!empty($detail['episodes']))
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                @foreach($detail['episodes'] as $ep)
+                    @php
+                        $epNum = $ep['episode'] ?? '1';
+                        $epWatchUrl = \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $epNum], panel: 'streaming');
+                    @endphp
+                    <a href="{{ $epWatchUrl }}"
+                       class="group flex flex-col p-3.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/90 border border-zinc-800 hover:border-red-500/40 transition active:scale-95 shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] font-black uppercase text-red-400 tracking-wider">
+                                EPS {{ $ep['episode'] }}
+                            </span>
+                            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:text-red-400 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                            </svg>
+                        </div>
+                        <p class="text-xs font-semibold text-zinc-300 group-hover:text-white line-clamp-2 leading-tight">
+                            {{ $ep['title'] }}
+                        </p>
+                    </a>
+                @endforeach
+            </div>
+        @else
+            <div class="py-12 text-center text-zinc-500 bg-zinc-900/40 rounded-xl border border-dashed border-zinc-800">
+                <p class="text-sm font-medium">Belum ada episode yang tersedia untuk anime ini.</p>
+            </div>
+        @endif
+    </main>
+
     <!-- Download Section -->
-    <section id="download-section" class="w-full max-w-[1800px] mx-auto px-6 pt-12">
+    <section id="download-section" class="w-full max-w-[1800px] mx-auto px-6 pt-6 pb-16">
         <div class="p-6 md:p-8 rounded-2xl bg-zinc-900/70 border border-zinc-800/80 shadow-2xl backdrop-blur">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-5 mb-6">
                 <div>
@@ -260,48 +304,4 @@
             @endif
         </div>
     </section>
-
-    <!-- Episode List Section -->
-    <main class="w-full max-w-[1800px] mx-auto px-6 py-12">
-        <div class="mb-6 flex items-center justify-between border-b border-zinc-800 pb-4">
-            <div>
-                <h2 class="text-xl md:text-2xl font-black tracking-tight">Daftar Episode</h2>
-                <p class="text-xs text-zinc-400 mt-1">Pilih episode untuk langsung memutar di Server 1 (Direct HD)</p>
-            </div>
-            @if(!empty($detail['episodes']))
-                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-950/60 text-red-400 border border-red-500/30">
-                    Total {{ count($detail['episodes']) }} Episode
-                </span>
-            @endif
-        </div>
-
-        @if(!empty($detail['episodes']))
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                @foreach($detail['episodes'] as $ep)
-                    @php
-                        $epNum = $ep['episode'] ?? '1';
-                        $epWatchUrl = \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $epNum], panel: 'streaming');
-                    @endphp
-                    <a href="{{ $epWatchUrl }}"
-                       class="group flex flex-col p-3.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/90 border border-zinc-800 hover:border-red-500/40 transition active:scale-95 shadow-lg">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-[10px] font-black uppercase text-red-400 tracking-wider">
-                                EPS {{ $ep['episode'] }}
-                            </span>
-                            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:text-red-400 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </div>
-                        <p class="text-xs font-semibold text-zinc-300 group-hover:text-white line-clamp-2 leading-tight">
-                            {{ $ep['title'] }}
-                        </p>
-                    </a>
-                @endforeach
-            </div>
-        @else
-            <div class="py-12 text-center text-zinc-500 bg-zinc-900/40 rounded-xl border border-dashed border-zinc-800">
-                <p class="text-sm font-medium">Belum ada episode yang tersedia untuk anime ini.</p>
-            </div>
-        @endif
-    </main>
 </div>

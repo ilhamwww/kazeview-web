@@ -373,6 +373,37 @@
             </div>
         </div>
 
+        <!-- All Episodes Navigation Section -->
+        @if(!empty($seriesDetail['episodes']))
+        <div class="px-4 md:px-0 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg md:text-xl font-extrabold text-white">Semua Episode ({{ count($seriesDetail['episodes']) }})</h2>
+                    <p class="text-xs text-zinc-400">Pindah ke episode lain</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                @foreach($seriesDetail['episodes'] as $ep)
+                    @php
+                        $epNum = (string)($ep['episode'] ?? '');
+                        $isActive = $epNum === (string)$episodeSlug;
+                        $epUrl = !empty($epNum)
+                            ? \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $epNum], panel: 'streaming')
+                            : '#';
+                    @endphp
+                    <a href="{{ $epUrl }}"
+                       class="px-3 py-2.5 rounded-xl text-center text-xs font-bold transition border
+                       {{ $isActive
+                           ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30 ring-2 ring-red-500/40'
+                           : 'bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800' }}">
+                        EPS {{ $ep['episode'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         <!-- Downloads for this Episode -->
         @if(!empty($downloads['episode']))
             <div id="episode-downloads" class="px-4 md:px-0">
@@ -407,37 +438,6 @@
                     </div>
                 </div>
             </div>
-        @endif
-
-        <!-- All Episodes Navigation Section -->
-        @if(!empty($seriesDetail['episodes']))
-        <div class="px-4 md:px-0 space-y-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-lg md:text-xl font-extrabold text-white">Semua Episode ({{ count($seriesDetail['episodes']) }})</h2>
-                    <p class="text-xs text-zinc-400">Pindah ke episode lain</p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 max-h-72 overflow-y-auto pr-1">
-                @foreach($seriesDetail['episodes'] as $ep)
-                    @php
-                        $epNum = (string)($ep['episode'] ?? '');
-                        $isActive = $epNum === (string)$episodeSlug;
-                        $epUrl = !empty($epNum)
-                            ? \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $epNum], panel: 'streaming')
-                            : '#';
-                    @endphp
-                    <a href="{{ $epUrl }}"
-                       class="px-3 py-2.5 rounded-xl text-center text-xs font-bold transition border
-                       {{ $isActive
-                           ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30 ring-2 ring-red-500/40'
-                           : 'bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800' }}">
-                        EPS {{ $ep['episode'] }}
-                    </a>
-                @endforeach
-            </div>
-        </div>
         @endif
     </div>
 </div>
