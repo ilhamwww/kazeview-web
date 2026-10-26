@@ -564,7 +564,7 @@
            class="fixed inset-x-0 bottom-0 z-[61] lg:hidden max-h-[88dvh] overflow-y-auto overscroll-contain bg-[#0c0c0d] border-t border-white/10 rounded-t-3xl shadow-[0_-20px_60px_rgba(0,0,0,0.8)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
            style="display:none;">
 
-        <div class="sticky top-0 z-10 bg-[#0c0c0d] pt-3 pb-2 px-5">
+        <div class="sticky top-0 z-10 bg-[#0c0c0d] pt-3.5 pb-2.5 px-5">
             <div class="mx-auto w-10 h-1.5 rounded-full bg-zinc-700" aria-hidden="true"></div>
             <div class="mt-3 flex items-center justify-between">
                 <div class="flex items-center gap-2">
@@ -578,7 +578,7 @@
             </div>
         </div>
 
-        <div class="px-5 space-y-5">
+        <div class="px-5 pt-3 space-y-5">
             {{-- Akun --}}
             @auth
                 <a href="{{ \App\Filament\Streaming\Pages\Profile::getUrl(panel: 'streaming') }}"
