@@ -45,45 +45,64 @@ class WatchAnime extends Page
 
         $scraper = new MirainimeScraperService();
 
+        // 1. Coba ambil episode langsung dari Mirainime
         $cacheKey = "v1_ep_{$anime_slug}_{$episode_slug}";
         $this->episodeDetail = Cache::remember($cacheKey, 3600, function () use ($scraper, $anime_slug, $episode_slug) {
-            return $scraper->scrapeEpisodeDetail($anime_slug, $episode_slug);
+            $data = $scraper->scrapeEpisodeDetail($anime_slug, $episode_slug);
+            if ($data && (($data['title'] ?? '') === '404' || empty($data['video_url']))) {
+                return null;
+            }
+            return $data;
         });
 
-        // Re-scrape jika cached video_url kosong atau gagal
-        if (empty($this->episodeDetail['video_url'])) {
-            $fresh = $scraper->scrapeEpisodeDetail($anime_slug, $episode_slug);
-            if ($fresh && !empty($fresh['video_url'])) {
-                $this->episodeDetail = $fresh;
-                Cache::put($cacheKey, $fresh, 3600);
-            }
-        }
-
-        // Fallback jika tidak ada di Mirainime, ambil dari Otakudesu
-        if (!$this->episodeDetail || empty($this->episodeDetail['video_url'])) {
+        // 2. Jika tidak ditemukan atau 404, coba cari lewat Otakudesu & mapping judul Mirainime
+        if (!$this->episodeDetail || empty($this->episodeDetail['video_url']) || ($this->episodeDetail['title'] ?? '') === '404') {
             $otakuScraper = new \App\Services\OtakudesuScraperService();
             $otakuSeries = Cache::remember('otaku_series_' . md5($anime_slug), 43200, function () use ($otakuScraper, $anime_slug) {
                 return $otakuScraper->scrapeAnimeSeriesDetail('https://otakudesu.blog/anime/' . $anime_slug . '/');
             });
-            if ($otakuSeries && !empty($otakuSeries['episodes'])) {
-                $matchedEp = null;
-                foreach ($otakuSeries['episodes'] as $ep) {
-                    $epNum = (string)($ep['episode'] ?? '');
-                    if ($epNum === (string)$episode_slug || str_contains($ep['title'] ?? '', 'Episode ' . $episode_slug)) {
-                        $matchedEp = $ep;
-                        break;
+
+            // Coba cari apakah judul ini ada di Mirainime dengan slug lain
+            if ($otakuSeries && !empty($otakuSeries['title'])) {
+                $cleanTitle = AnimeMetadataService::cleanTitle($otakuSeries['title']);
+                $miraiMatches = $scraper->searchAnime($cleanTitle);
+                if (!empty($miraiMatches[0]['slug'])) {
+                    $matchedMiraiSlug = $miraiMatches[0]['slug'];
+                    $freshMiraiEp = $scraper->scrapeEpisodeDetail($matchedMiraiSlug, $episode_slug);
+                    if ($freshMiraiEp && !empty($freshMiraiEp['video_url']) && ($freshMiraiEp['title'] ?? '') !== '404') {
+                        $this->episodeDetail = $freshMiraiEp;
+                        $anime_slug = $matchedMiraiSlug;
+                        $this->animeSlug = $matchedMiraiSlug;
+                        Cache::put($cacheKey, $freshMiraiEp, 3600);
                     }
                 }
-                if ($matchedEp && !empty($matchedEp['url'])) {
-                    $epFull = $otakuScraper->scrapeEpisodeDetail($matchedEp['url']);
-                    if ($epFull) {
-                        $this->episodeDetail = [
-                            'title' => $matchedEp['title'] ?? ($otakuSeries['title'] . ' Episode ' . $episode_slug),
-                            'episode_number' => $episode_slug,
-                            'video_url' => $epFull['stream_url'] ?? '',
-                            'anime_slug' => $anime_slug,
-                            'source_url' => $matchedEp['url'],
-                        ];
+            }
+
+            // Jika masih belum ada di Mirainime, ambil stream video dari Otakudesu
+            if (!$this->episodeDetail || empty($this->episodeDetail['video_url']) || ($this->episodeDetail['title'] ?? '') === '404') {
+                if ($otakuSeries && !empty($otakuSeries['episodes'])) {
+                    $matchedEp = null;
+                    foreach ($otakuSeries['episodes'] as $ep) {
+                        $epNum = (string)($ep['episode'] ?? '');
+                        if ($epNum === (string)$episode_slug || str_contains($ep['title'] ?? '', 'Episode ' . $episode_slug)) {
+                            $matchedEp = $ep;
+                            break;
+                        }
+                    }
+                    if ($matchedEp && !empty($matchedEp['url'])) {
+                        $epFull = $otakuScraper->scrapeEpisodeDetail($matchedEp['url']);
+                        if ($epFull) {
+                            $stream = $epFull['video_url'] ?? ($epFull['default_stream']['stream_url'] ?? ($epFull['direct_mp4'] ?? ($epFull['iframe_url'] ?? '')));
+                            $this->episodeDetail = [
+                                'title' => $matchedEp['title'] ?? ($otakuSeries['title'] . ' Episode ' . $episode_slug),
+                                'episode_number' => $episode_slug,
+                                'video_url' => $stream,
+                                'anime_slug' => $anime_slug,
+                                'source_url' => $matchedEp['url'],
+                                'mirrors' => $epFull['mirrors'] ?? [],
+                                'iframe_url' => $epFull['iframe_url'] ?? '',
+                            ];
+                        }
                     }
                 }
             }
@@ -153,32 +172,49 @@ class WatchAnime extends Page
         }
 
         $rawStream = $this->episodeDetail['video_url'] ?? '';
+        $isDirect = false;
         if (!empty($rawStream)) {
-            if (str_contains($rawStream, '/api/proxy-stream')) {
-                $this->currentStreamUrl = $rawStream;
+            if (str_starts_with($rawStream, 'http') && (str_contains($rawStream, '.mp4') || str_contains($rawStream, 'suzune.web.id') || str_contains($rawStream, 'erisboreas.my.id') || str_contains($rawStream, 'archive.org'))) {
+                $isDirect = true;
+                if (str_contains($rawStream, '/api/proxy-stream')) {
+                    $this->currentStreamUrl = $rawStream;
+                } else {
+                    $this->currentStreamUrl = url('/api/proxy-stream?url=' . urlencode($rawStream));
+                }
             } else {
-                $this->currentStreamUrl = url('/api/proxy-stream?url=' . urlencode($rawStream));
+                $this->currentStreamUrl = $rawStream;
             }
         } else {
             $this->currentStreamUrl = '';
         }
 
         // Servers List setup (Server 1 Direct HD as default)
-        $servers = [
-            [
+        $servers = [];
+        if (!empty($this->currentStreamUrl) && $isDirect) {
+            $servers[] = [
                 'id' => 'server1',
                 'name' => 'Server 1 (Direct HD - V1)',
                 'type' => 'mp4',
                 'stream_url' => $this->currentStreamUrl,
                 'embed_url' => '',
-            ]
-        ];
+            ];
+        }
+
+        if (!empty($this->episodeDetail['iframe_url'])) {
+            $servers[] = [
+                'id' => 'server_otaku_embed',
+                'name' => 'Server ' . (count($servers) + 1) . ' (DesuStream)',
+                'type' => 'embed',
+                'stream_url' => '',
+                'embed_url' => $this->episodeDetail['iframe_url'],
+            ];
+        }
 
         // Otakudesu Hub if available
         if (!empty($this->downloads['otaku_url'])) {
             $servers[] = [
                 'id' => 'server_otaku',
-                'name' => 'Server 2 (Otakudesu Hub)',
+                'name' => 'Server ' . (count($servers) + 1) . ' (Otakudesu Hub)',
                 'type' => 'embed',
                 'stream_url' => '',
                 'embed_url' => $this->downloads['otaku_url'],
@@ -188,19 +224,27 @@ class WatchAnime extends Page
         // Mirror servers if available in episodeDetail
         if (!empty($this->episodeDetail['mirrors'])) {
             foreach ($this->episodeDetail['mirrors'] as $idx => $m) {
-                $servers[] = [
-                    'id' => 'server_mirror_' . ($idx + 1),
-                    'name' => 'Server ' . ($idx + 2) . ' (' . ($m['name'] ?? 'Mirror') . ')',
-                    'type' => 'embed',
-                    'stream_url' => '',
-                    'embed_url' => $m['url'] ?? '',
-                ];
+                if (!empty($m['url'])) {
+                    $servers[] = [
+                        'id' => 'server_mirror_' . ($idx + 1),
+                        'name' => 'Server ' . (count($servers) + 1) . ' (' . ($m['name'] ?? ($m['label'] ?? 'Mirror')) . ')',
+                        'type' => 'embed',
+                        'stream_url' => '',
+                        'embed_url' => $m['url'],
+                    ];
+                }
             }
         }
 
         $this->servers = $servers;
-        $this->activeServer = 'server1';
-        $this->isEmbed = false;
+        if (!empty($servers)) {
+            $this->activeServer = $servers[0]['id'];
+            $this->isEmbed = ($servers[0]['type'] === 'embed');
+            $this->currentEmbedUrl = $servers[0]['embed_url'] ?? '';
+            if (!$this->isEmbed && !empty($servers[0]['stream_url'])) {
+                $this->currentStreamUrl = $servers[0]['stream_url'];
+            }
+        }
 
         // Check favorite
         $this->isFavorited = auth()->user()

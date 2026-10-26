@@ -48,28 +48,41 @@ class AnimeDetail extends Page
                 return $otakuScraper->scrapeAnimeSeriesDetail($otakuUrl);
             });
             if ($otakuDetail && !empty($otakuDetail['title'])) {
-                // Pastikan episode diurutkan ascending (Eps 1, 2, 3...)
-                $rawEpisodes = $otakuDetail['episodes'] ?? [];
-                usort($rawEpisodes, function ($a, $b) {
-                    $ea = (int)preg_replace('/[^\d]/', '', (string)($a['episode'] ?? '0'));
-                    $eb = (int)preg_replace('/[^\d]/', '', (string)($b['episode'] ?? '0'));
-                    return $ea <=> $eb;
-                });
+                // Cek apakah Mirainime punya judul ini tapi dengan slug berbeda (misal: tempal-chikara vs temppal-item-no-chikara)
+                $cleanTitle = AnimeMetadataService::cleanTitle($otakuDetail['title']);
+                $miraiMatches = $scraper->searchAnime($cleanTitle);
+                if (!empty($miraiMatches[0]['slug'])) {
+                    $matchedMiraiSlug = $miraiMatches[0]['slug'];
+                    $miraiDetail = $scraper->scrapeAnimeSeriesDetail($matchedMiraiSlug);
+                    if ($miraiDetail && !empty($miraiDetail['episodes']) && ($miraiDetail['title'] ?? '') !== '404') {
+                        $this->detail = $miraiDetail;
+                        $this->animeSlug = $matchedMiraiSlug;
+                    }
+                }
 
-                $this->detail = [
-                    'title' => $otakuDetail['title'] ?? '',
-                    'thumbnail' => $otakuDetail['thumbnail'] ?? ($otakuDetail['poster'] ?? ''),
-                    'description' => $otakuDetail['synopsis'] ?? '',
-                    'genres' => $otakuDetail['genres'] ?? [],
-                    'episodes' => array_map(function ($ep) {
-                        return [
-                            'episode' => (string)($ep['episode'] ?? '1'),
-                            'title' => $ep['title'] ?? ('Episode ' . ($ep['episode'] ?? '1')),
-                            'url' => $ep['url'] ?? '',
-                        ];
-                    }, $rawEpisodes),
-                    'is_otakudesu' => true,
-                ];
+                if (!$this->detail) {
+                    $rawEpisodes = $otakuDetail['episodes'] ?? [];
+                    usort($rawEpisodes, function ($a, $b) {
+                        $ea = (int)preg_replace('/[^\d]/', '', (string)($a['episode'] ?? '0'));
+                        $eb = (int)preg_replace('/[^\d]/', '', (string)($b['episode'] ?? '0'));
+                        return $ea <=> $eb;
+                    });
+
+                    $this->detail = [
+                        'title' => $otakuDetail['title'] ?? '',
+                        'thumbnail' => $otakuDetail['thumbnail'] ?? ($otakuDetail['poster'] ?? ''),
+                        'description' => $otakuDetail['synopsis'] ?? '',
+                        'genres' => $otakuDetail['genres'] ?? [],
+                        'episodes' => array_map(function ($ep) {
+                            return [
+                                'episode' => (string)($ep['episode'] ?? '1'),
+                                'title' => $ep['title'] ?? ('Episode ' . ($ep['episode'] ?? '1')),
+                                'url' => $ep['url'] ?? '',
+                            ];
+                        }, $rawEpisodes),
+                        'is_otakudesu' => true,
+                    ];
+                }
             }
         }
 
