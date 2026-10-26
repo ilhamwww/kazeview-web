@@ -1,4 +1,60 @@
-<div class="min-h-screen bg-[#050505] text-white pb-28 md:pb-20">
+@push('styles')
+    <style>
+        .art-video-player .art-mask { z-index: 20 !important; }
+        .art-video-player .art-bottom { z-index: 30 !important; }
+        .art-video-player .art-progress { height: 4px !important; }
+        .art-video-player .art-progress:hover { height: 6px !important; }
+        .art-video-player .art-progress-played { background: #10B981 !important; }
+        .art-video-player .art-progress-highlight { background: #10B981 !important; }
+        .art-video-player .art-volume-slider-handle { background: #10B981 !important; }
+        .art-video-player .art-settings {
+            height: auto !important;
+            max-height: 380px !important;
+            overflow: visible !important;
+        }
+        .art-video-player .art-setting-panel {
+            min-width: 255px !important;
+            width: 255px !important;
+            max-width: 92vw !important;
+            height: auto !important;
+            max-height: 380px !important;
+            overflow: visible !important;
+            border-radius: 12px !important;
+            backdrop-filter: blur(18px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+            background: rgba(18, 18, 22, 0.88) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+            padding: 6px 6px !important;
+        }
+        .art-video-player .art-setting-item {
+            height: 38px !important;
+            min-height: 38px !important;
+            padding: 0 10px !important;
+            border-radius: 8px !important;
+            margin: 1px 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            transition: background 0.15s ease !important;
+            cursor: pointer !important;
+        }
+        .art-video-player .art-setting-item:hover {
+            background: rgba(255, 255, 255, 0.09) !important;
+        }
+        .art-video-player .art-setting-item-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+    </style>
+@endpush
+
+<div class="min-h-screen bg-[#050505] text-white pb-28 md:pb-20"
+     x-data="initWatchAnimeComponent()"
+     x-init="init()">
     <!-- Top Bar Navigation (Desktop & Mobile) -->
     <div class="w-full max-w-[1800px] mx-auto px-4 md:px-6 pt-20 md:pt-28 pb-3 md:pb-4 flex flex-wrap items-center justify-between gap-3">
         <a href="{{ \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $animeSlug], panel: 'streaming') }}"
@@ -37,53 +93,51 @@
     <!-- Main Content Container -->
     <div class="w-full max-w-[1800px] mx-auto px-0 md:px-6 space-y-6 md:space-y-8">
 
-        <!-- Video Player Card Container -->
-        <div data-kz-fs wire:ignore.self class="w-full bg-black md:rounded-2xl overflow-hidden shadow-2xl aspect-video border-y md:border border-zinc-800/80 relative">
+        <!-- Video Player Card Container with Artplayer -->
+        <div data-kz-fs x-ref="playerShell" wire:ignore.self class="w-full bg-black md:rounded-2xl overflow-hidden shadow-2xl aspect-video border-y md:border border-zinc-800/80 relative">
             <button type="button" data-kz-rotate aria-pressed="false" aria-label="Layar penuh landscape"
                     class="kz-fs-btn absolute top-2 right-2 z-[60] items-center gap-1.5 h-9 px-3 rounded-full bg-black/65 backdrop-blur text-white text-xs font-bold ring-1 ring-white/20 active:bg-black/80">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="10" rx="2"/><path d="M20 4v5h-5"/><path d="M20 9a8 8 0 0 0-8-6"/></svg>
                 <span>Layar penuh</span>
             </button>
 
-            <div class="w-full h-full bg-black relative flex items-center justify-center">
-                @if($isEmbed && !empty($currentEmbedUrl))
-                    <iframe src="{{ $currentEmbedUrl }}" class="w-full h-full border-0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>
-                @elseif(!empty($currentStreamUrl))
-                    <video key="{{ $currentStreamUrl }}"
-                           src="{{ $currentStreamUrl }}"
-                           controls
-                           autoplay
-                           playsinline
-                           class="w-full h-full object-contain bg-black">
-                    </video>
-                @else
-                    <div class="flex flex-col items-center justify-center text-zinc-500 p-6 text-center">
+            <!-- Embed Player -->
+            <template x-if="isEmbed && currentEmbedUrl">
+                <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>
+            </template>
+
+            <!-- Native Artplayer Player -->
+            <template x-if="!isEmbed">
+                <div class="w-full h-full bg-black relative flex items-center justify-center">
+                    <div x-ref="artContainer" class="w-full h-full" x-show="videoSrc"></div>
+                    <div x-show="!videoSrc" class="flex flex-col items-center justify-center text-zinc-500 p-6 text-center">
                         <svg class="w-12 h-12 mb-3 stroke-current opacity-60 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h-14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                         </svg>
                         <p class="text-sm font-medium text-white">Stream video belum tersedia</p>
                         <p class="text-xs text-zinc-500 mt-1">Silakan coba ganti server atau pilih episode lain.</p>
                     </div>
-                @endif
-            </div>
+                </div>
+            </template>
         </div>
 
         <!-- ================= SERVER SWITCHER ================= -->
-        @if(!empty($servers))
+        <template x-if="serversList && serversList.length > 0">
             <div class="px-4 md:px-0 flex items-center gap-2 overflow-x-auto kz-noscroll -mt-2 pb-1">
                 <span class="text-xs font-bold text-zinc-400 mr-1 flex items-center gap-1.5 shrink-0">
                     <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
                     Pilihan Server:
                 </span>
-                @foreach($servers as $s)
-                    <button type="button" wire:click="switchServer('{{ $s['id'] }}')"
-                            class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition flex items-center gap-1.5 {{ $activeServer === $s['id'] ? 'bg-emerald-600 text-white ring-emerald-500 shadow-lg shadow-emerald-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white' }}">
-                        <span class="w-1.5 h-1.5 rounded-full {{ $activeServer === $s['id'] ? 'bg-white' : 'bg-zinc-500' }}"></span>
-                        {{ $s['name'] }}
+                <template x-for="s in serversList" :key="s.id">
+                    <button type="button" @click="switchServer(s.id)"
+                            class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition flex items-center gap-1.5"
+                            :class="activeServer === s.id ? 'bg-emerald-600 text-white ring-emerald-500 shadow-lg shadow-emerald-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white'">
+                        <span class="w-1.5 h-1.5 rounded-full" :class="activeServer === s.id ? 'bg-white' : 'bg-zinc-500'"></span>
+                        <span x-text="s.name"></span>
                     </button>
-                @endforeach
+                </template>
             </div>
-        @endif
+        </template>
 
         <!-- Episode Info & Metadata Bar -->
         <div class="px-4 md:px-0 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
@@ -200,17 +254,168 @@
 </div>
 
 @push('scripts')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script src="/js/kz-fullscreen.js?v=1"></script>
     <script>
-        // Video langsung (MP4): saat user menekan play pertama kali di HP, masuk fullscreen landscape
-        document.addEventListener('play', (e) => {
-            const v = e.target;
-            if (!(v instanceof HTMLVideoElement) || v.dataset.kzFsAuto || !window.KzFs || !KzFs.isTouch()) return;
-            const shell = v.closest('[data-kz-fs]');
-            if (!shell || KzFs.current()) return;
-            if (navigator.userActivation && !navigator.userActivation.isActive) return;
-            v.dataset.kzFsAuto = '1';
-            KzFs.enter(shell, { video: v });
-        }, true);
+        (function() {
+            let _isAuthorizedNav = false;
+            window.addEventListener('beforeunload', function(e) {
+                if (!_isAuthorizedNav && document.querySelector('iframe')) {
+                    e.preventDefault();
+                    e.returnValue = 'Batalkan pengalihan ke situs iklan?';
+                    return e.returnValue;
+                }
+            });
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('a, button, [wire\\:click], input, select, textarea')) {
+                    _isAuthorizedNav = true;
+                    setTimeout(() => { _isAuthorizedNav = false; }, 3000);
+                }
+            }, true);
+
+            window.initWatchAnimeComponent = function() {
+                return {
+                    art: null,
+                    hls: null,
+                    videoSrc: {!! json_encode($currentStreamUrl) !!},
+                    serversList: @js($servers),
+                    activeServer: '{{ $activeServer }}',
+                    isEmbed: {{ $isEmbed ? 'true' : 'false' }},
+                    currentEmbedUrl: {!! json_encode($currentEmbedUrl) !!},
+
+                    init() {
+                        this.$nextTick(() => {
+                            if (!this.isEmbed && this.videoSrc) {
+                                this.initPlayer();
+                            }
+                        });
+                    },
+
+                    switchServer(id) {
+                        const target = Array.isArray(this.serversList) ? this.serversList.find(s => s.id === id) : null;
+                        if (!target) return;
+
+                        this.activeServer = target.id;
+                        this.isEmbed = (target.type === 'embed');
+                        this.currentEmbedUrl = target.embed_url || '';
+                        if (!this.isEmbed && target.stream_url) {
+                            this.videoSrc = target.stream_url;
+                        }
+
+                        if (this.isEmbed) {
+                            if (this.art) {
+                                try { this.art.destroy(false); } catch(e) {}
+                                this.art = null;
+                            }
+                        } else {
+                            this.$nextTick(() => {
+                                this.initPlayer();
+                            });
+                        }
+                    },
+
+                    useNativeFs() {
+                        return !!(window.KzFs && window.KzFs.isTouch() && window.KzFs.supportsElement(this.$refs.playerShell));
+                    },
+
+                    enterNativeFs() {
+                        if (window.KzFs && this.$refs.playerShell) window.KzFs.enter(this.$refs.playerShell);
+                    },
+
+                    toggleNativeFs() {
+                        if (!window.KzFs) return;
+                        if (window.KzFs.isActive(this.$refs.playerShell)) window.KzFs.exit();
+                        else this.enterNativeFs();
+                    },
+
+                    initPlayer() {
+                        if (this.isEmbed || !this.videoSrc) return;
+                        const artContainer = this.$refs.artContainer;
+                        if (!artContainer) return;
+
+                        if (this.art) {
+                            try { this.art.destroy(false); } catch(e) {}
+                            this.art = null;
+                        }
+
+                        const self = this;
+                        const isHls = this.videoSrc.includes('.m3u8');
+
+                        this.art = new Artplayer({
+                            container: artContainer,
+                            url: this.videoSrc,
+                            type: isHls ? 'm3u8' : 'mp4',
+                            theme: '#10B981',
+                            volume: 0.8,
+                            isLive: false,
+                            muted: false,
+                            autoplay: true,
+                            pip: true,
+                            setting: true,
+                            loop: false,
+                            flip: true,
+                            playbackRate: true,
+                            aspectRatio: true,
+                            fullscreen: !self.useNativeFs(),
+                            fullscreenWeb: !self.useNativeFs(),
+                            miniProgressBar: true,
+                            playsInline: true,
+                            airplay: true,
+                            hotkey: true,
+                            customType: {
+                                m3u8: function (video, url, art) {
+                                    if (Hls.isSupported()) {
+                                        if (art.hls) art.hls.destroy();
+                                        const hls = new Hls({ enableWorker: true });
+                                        hls.loadSource(url);
+                                        hls.attachMedia(video);
+                                        art.hls = hls;
+                                        art.on('destroy', () => hls.destroy());
+                                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                                        video.src = url;
+                                    }
+                                }
+                            },
+                            controls: [
+                                {
+                                    name: 'kz-fs',
+                                    position: 'right',
+                                    index: 70,
+                                    html: '<svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="14" height="10" rx="2"/><path d="M20 4v5h-5"/><path d="M20 9a8 8 0 0 0-8-6"/></svg>',
+                                    tooltip: 'Layar penuh',
+                                    style: self.useNativeFs() ? {} : { display: 'none' },
+                                    click: () => self.toggleNativeFs(),
+                                },
+                                {
+                                    position: 'left',
+                                    index: 10,
+                                    html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>',
+                                    tooltip: 'Mundur 10 Detik',
+                                    click: function (art) {
+                                        art.seek = Math.max(0, art.currentTime - 10);
+                                    },
+                                },
+                                {
+                                    position: 'left',
+                                    index: 11,
+                                    html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg>',
+                                    tooltip: 'Maju 10 Detik',
+                                    click: function (art) {
+                                        art.seek = Math.min(art.duration || 999999, art.currentTime + 10);
+                                    },
+                                },
+                            ],
+                        });
+
+                        this.art.on('play', () => {
+                            if (self.useNativeFs() && window.KzFs && !KzFs.current()) {
+                                self.enterNativeFs();
+                            }
+                        });
+                    }
+                };
+            };
+        })();
     </script>
 @endpush
