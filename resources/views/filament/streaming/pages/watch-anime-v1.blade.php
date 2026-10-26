@@ -1,17 +1,91 @@
 @push('styles')
     <style>
-        .art-video-player .art-mask { z-index: 20 !important; }
-        .art-video-player .art-bottom { z-index: 30 !important; }
+        .artplayer-app {
+            width: 100% !important;
+            height: 100% !important;
+            background: #000 !important;
+        }
+
+        /* 1. Hapus total gradien hitam tebal dari art-bottom agar video jernih dan subtitle tidak tertutup */
+        .art-video-player .art-bottom {
+            background: none !important;
+            background-image: none !important;
+        }
+
+        /* 2. Hanya saat kontrol aktif, berikan gradien halus di bilah tombol kontrol bawah (bukan di layar video) */
+        .art-video-player.art-control-show .art-controls,
+        .art-video-player.art-hover .art-controls {
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, transparent 100%) !important;
+        }
+
+        /* Progress Bar KZSTRM Signature Red */
         .art-video-player .art-progress { height: 4px !important; }
         .art-video-player .art-progress:hover { height: 6px !important; }
-        .art-video-player .art-progress-played { background: #10B981 !important; }
-        .art-video-player .art-progress-highlight { background: #10B981 !important; }
-        .art-video-player .art-volume-slider-handle { background: #10B981 !important; }
+        .art-video-player .art-progress-played { background: #E50914 !important; }
+        .art-video-player .art-progress-highlight { background: #E50914 !important; }
+        .art-video-player .art-volume-slider-handle { background: #E50914 !important; }
+
+        /* 3. Subtitle styling */
+        .art-video-player .art-subtitle {
+            z-index: 75 !important;
+            pointer-events: none !important;
+            text-align: center !important;
+            bottom: 35px !important;
+            padding: 0 4% !important;
+            white-space: pre-line !important;
+            transition: bottom 0.2s ease !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            text-shadow: none !important;
+        }
+
+        .art-video-player.art-control-show .art-subtitle {
+            bottom: 72px !important;
+        }
+
+        .art-subtitle-inner-box {
+            display: inline-block !important;
+            background: rgba(0, 0, 0, 0.75) !important;
+            padding: 4px 14px !important;
+            border-radius: 8px !important;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            font-size: 22px !important;
+            font-weight: 600 !important;
+            color: #ffffff !important;
+            line-height: 1.42 !important;
+            text-align: center !important;
+            box-decoration-break: clone !important;
+            -webkit-box-decoration-break: clone !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .art-subtitle-style-clean .art-subtitle-inner-box {
+            background: transparent !important;
+            box-shadow: none !important;
+            text-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.95),
+                0 0 4px rgba(0, 0, 0, 0.9),
+                1px 1px 2px rgba(0, 0, 0, 0.95),
+                -1px -1px 2px rgba(0, 0, 0, 0.95),
+                1px -1px 2px rgba(0, 0, 0, 0.95),
+                -1px 1px 2px rgba(0, 0, 0, 0.95),
+                0 0 8px rgba(0, 0, 0, 0.9) !important;
+        }
+
+        .art-subtitle-style-solid .art-subtitle-inner-box {
+            background: #000000 !important;
+        }
+
+        /* 5. Menu settings popup Artplayer 100% Persis Movie (Pixel-Perfect) */
         .art-video-player .art-settings {
             height: auto !important;
             max-height: 380px !important;
             overflow: visible !important;
         }
+
         .art-video-player .art-setting-panel {
             min-width: 255px !important;
             width: 255px !important;
@@ -27,6 +101,7 @@
             box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
             padding: 6px 6px !important;
         }
+
         .art-video-player .art-setting-item {
             height: 38px !important;
             min-height: 38px !important;
@@ -39,15 +114,95 @@
             transition: background 0.15s ease !important;
             cursor: pointer !important;
         }
+
         .art-video-player .art-setting-item:hover {
             background: rgba(255, 255, 255, 0.09) !important;
         }
+
         .art-video-player .art-setting-item-left {
             display: flex !important;
             align-items: center !important;
             gap: 12px !important;
             flex: 1 1 auto !important;
             min-width: 0 !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon {
+            flex-shrink: 0 !important;
+            width: 18px !important;
+            height: 18px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #ffffff !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon svg {
+            width: 18px !important;
+            height: 18px !important;
+            display: block !important;
+            fill: none !important;
+            stroke: #ffffff !important;
+            stroke-width: 2 !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon svg rect,
+        .art-video-player .art-setting-item-left-icon svg circle,
+        .art-video-player .art-setting-item-left-icon svg path,
+        .art-video-player .art-setting-item-left-icon svg line,
+        .art-video-player .art-setting-item-left-icon svg polyline {
+            fill: none !important;
+            stroke: #ffffff !important;
+        }
+
+        .art-video-player .art-setting-item-left-text {
+            font-size: 13.5px !important;
+            font-weight: 500 !important;
+            color: #ffffff !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        .art-video-player .art-setting-item-right {
+            flex-shrink: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+
+        .art-video-player .art-setting-item-right-tooltip {
+            font-size: 12.5px !important;
+            font-weight: 400 !important;
+            color: rgba(255, 255, 255, 0.78) !important;
+            white-space: nowrap !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        .art-video-player .art-setting-item-right-icon {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .art-video-player .art-setting-item-right-icon svg {
+            display: none !important;
+        }
+        .art-video-player .art-setting-item-right-icon::after {
+            content: '';
+            display: block;
+            width: 5.5px;
+            height: 5.5px;
+            border-top: 1.8px solid rgba(255, 255, 255, 0.75);
+            border-right: 1.8px solid rgba(255, 255, 255, 0.75);
+            transform: rotate(45deg);
+            margin-right: 2px;
+        }
+
+        .art-video-player .art-setting-item[data-name="pip"] .art-setting-item-right-icon::after,
+        .art-video-player .art-setting-item:nth-child(6) .art-setting-item-right-icon::after {
+            display: none !important;
         }
     </style>
 @endpush
@@ -76,13 +231,13 @@
             @endif
 
             <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs font-mono">
-                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                 <span class="font-bold text-white">Eps {{ $episodeDetail['episode_number'] ?? $episodeSlug }}</span>
             </div>
 
             @if(!empty($nextEpisodeSlug))
                 <a href="{{ \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $nextEpisodeSlug], panel: 'streaming') }}"
-                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 transition">
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white shadow-lg shadow-red-600/30 transition">
                     <span>Eps Selanjutnya</span>
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                 </a>
@@ -93,7 +248,7 @@
     <!-- Main Content Container -->
     <div class="w-full max-w-[1800px] mx-auto px-0 md:px-6 space-y-6 md:space-y-8">
 
-        <!-- Video Player Card Container with Artplayer -->
+        <!-- Video Player Card Container with Artplayer (Persis Movie) -->
         <div data-kz-fs x-ref="playerShell" wire:ignore.self class="w-full bg-black md:rounded-2xl overflow-hidden shadow-2xl aspect-video border-y md:border border-zinc-800/80 relative">
             <button type="button" data-kz-rotate aria-pressed="false" aria-label="Layar penuh landscape"
                     class="kz-fs-btn absolute top-2 right-2 z-[60] items-center gap-1.5 h-9 px-3 rounded-full bg-black/65 backdrop-blur text-white text-xs font-bold ring-1 ring-white/20 active:bg-black/80">
@@ -125,13 +280,13 @@
         <template x-if="serversList && serversList.length > 0">
             <div class="px-4 md:px-0 flex items-center gap-2 overflow-x-auto kz-noscroll -mt-2 pb-1">
                 <span class="text-xs font-bold text-zinc-400 mr-1 flex items-center gap-1.5 shrink-0">
-                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
                     Pilihan Server:
                 </span>
                 <template x-for="s in serversList" :key="s.id">
                     <button type="button" @click="switchServer(s.id)"
                             class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition flex items-center gap-1.5"
-                            :class="activeServer === s.id ? 'bg-emerald-600 text-white ring-emerald-500 shadow-lg shadow-emerald-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white'">
+                            :class="activeServer === s.id ? 'bg-red-600 text-white ring-red-500 shadow-lg shadow-red-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white'">
                         <span class="w-1.5 h-1.5 rounded-full" :class="activeServer === s.id ? 'bg-white' : 'bg-zinc-500'"></span>
                         <span x-text="s.name"></span>
                     </button>
@@ -143,7 +298,7 @@
         <div class="px-4 md:px-0 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
             <div class="space-y-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <span class="px-2.5 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider">
+                    <span class="px-2.5 py-0.5 rounded-md bg-red-600 text-white text-[10px] font-black uppercase tracking-wider">
                         SERVER 1 (V1 DIRECT HD)
                     </span>
                     @if(!empty($metadata['score']))
@@ -151,7 +306,7 @@
                             ★ {{ $metadata['score'] }} MAL
                         </span>
                     @endif
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold uppercase">
+                    <span class="px-2 py-0.5 rounded-md bg-red-950 text-red-400 border border-red-500/30 text-[10px] font-extrabold uppercase">
                         STREAMING AKTIF
                     </span>
                 </div>
@@ -161,7 +316,7 @@
                 </h1>
                 @if(!empty($seriesDetail['title']))
                     <p class="text-xs md:text-sm text-zinc-400">
-                        Dari serial: <a href="{{ \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $animeSlug], panel: 'streaming') }}" class="text-emerald-400 hover:underline font-semibold">{{ $seriesDetail['title'] }}</a>
+                        Dari serial: <a href="{{ \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $animeSlug], panel: 'streaming') }}" class="text-red-400 hover:underline font-semibold">{{ $seriesDetail['title'] }}</a>
                     </p>
                 @endif
             </div>
@@ -170,7 +325,7 @@
             <div class="flex items-center gap-3">
                 <a href="#episode-downloads"
                    class="px-4 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white text-xs font-bold transition flex items-center gap-2">
-                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
                     <span>Download Episode Ini</span>
                 </a>
 
@@ -189,16 +344,16 @@
             <div id="episode-downloads" class="px-4 md:px-0">
                 <div class="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/80">
                     <div class="flex items-center gap-2 mb-3">
-                        <span class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                        <span class="p-1.5 rounded-lg bg-red-500/20 text-red-400">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
                         </span>
-                        <h3 class="text-sm font-black text-white">Download Episode {{ $episodeSlug }} (Otakudesu)</h3>
+                        <h3 class="text-sm font-black text-white">Download Episode {{ $episodeSlug }}</h3>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         @foreach($downloads['episode'] as $dl)
                             <div class="p-3.5 rounded-xl bg-zinc-950/70 border border-zinc-800">
                                 <div class="flex items-center justify-between mb-2.5">
-                                    <span class="px-2 py-0.5 rounded text-[11px] font-black bg-emerald-950/80 text-emerald-400 border border-emerald-500/30">
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-black bg-red-950/80 text-red-400 border border-red-500/30">
                                         {{ $dl['format'] ?? 'MP4' }}
                                     </span>
                                     @if(!empty($dl['size']))
@@ -208,7 +363,7 @@
                                 <div class="flex flex-wrap gap-1.5">
                                     @foreach($dl['links'] ?? [] as $lk)
                                         <a href="{{ $lk['url'] }}" target="_blank" rel="noopener noreferrer"
-                                           class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-900 hover:bg-emerald-600 text-zinc-300 hover:text-white text-[11px] font-bold border border-zinc-800 transition">
+                                           class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-900 hover:bg-red-600 text-zinc-300 hover:text-white text-[11px] font-bold border border-zinc-800 transition">
                                             <span>{{ $lk['host'] }}</span>
                                         </a>
                                     @endforeach
@@ -242,7 +397,7 @@
                     <a href="{{ $epUrl }}"
                        class="px-3 py-2.5 rounded-xl text-center text-xs font-bold transition border
                        {{ $isActive
-                           ? 'bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-500/40'
+                           ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30 ring-2 ring-red-500/40'
                            : 'bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800' }}">
                         EPS {{ $ep['episode'] }}
                     </a>
@@ -346,7 +501,7 @@
                             container: artContainer,
                             url: this.videoSrc,
                             type: isHls ? 'm3u8' : 'mp4',
-                            theme: '#10B981',
+                            theme: '#E50914',
                             volume: 0.8,
                             isLive: false,
                             muted: false,
@@ -354,11 +509,12 @@
                             pip: true,
                             setting: true,
                             loop: false,
-                            flip: true,
-                            playbackRate: true,
-                            aspectRatio: true,
+                            flip: false,
+                            playbackRate: false,
+                            aspectRatio: false,
                             fullscreen: !self.useNativeFs(),
                             fullscreenWeb: !self.useNativeFs(),
+                            subtitleOffset: false,
                             miniProgressBar: true,
                             playsInline: true,
                             airplay: true,
@@ -406,6 +562,70 @@
                                     },
                                 },
                             ],
+                            settings: [
+                                {
+                                    html: 'Playback speed',
+                                    name: 'playback-speed',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>',
+                                    tooltip: '1x',
+                                    selector: [
+                                        { html: '0.5x', speed: 0.5 },
+                                        { html: '0.75x', speed: 0.75 },
+                                        { default: true, html: '1x', speed: 1.0 },
+                                        { html: '1.25x', speed: 1.25 },
+                                        { html: '1.5x', speed: 1.5 },
+                                        { html: '2x', speed: 2.0 },
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.playbackRate = item.speed;
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Picture-in-Picture',
+                                    name: 'pip',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="11" y="9" width="9" height="6" rx="1" stroke="currentColor" fill="none"/></svg>',
+                                    tooltip: 'Off',
+                                    selector: [
+                                        { html: 'On' },
+                                        { default: true, html: 'Off' }
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.pip = !self.art.pip;
+                                        return self.art.pip ? 'On' : 'Off';
+                                    },
+                                },
+                                {
+                                    html: 'Flip Video',
+                                    name: 'flip',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+                                    tooltip: 'Normal',
+                                    selector: [
+                                        { default: true, html: 'Normal', flip: 'normal' },
+                                        { html: 'Horizontal', flip: 'horizontal' },
+                                        { html: 'Vertical', flip: 'vertical' },
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.flip = item.flip;
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Aspect Ratio',
+                                    name: 'aspect-ratio',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>',
+                                    tooltip: 'Default',
+                                    selector: [
+                                        { default: true, html: 'Default', ratio: 'default' },
+                                        { html: '16:9', ratio: '16:9' },
+                                        { html: '4:3', ratio: '4:3' },
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.aspectRatio = item.ratio;
+                                        return item.html;
+                                    },
+                                }
+                            ]
                         });
 
                         this.art.on('play', () => {
