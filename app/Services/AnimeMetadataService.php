@@ -180,4 +180,103 @@ GRAPHQL;
             }
         });
     }
+
+    /**
+     * Ambil jadwal tayang mingguan anime (Senin - Minggu) dari AniList GraphQL
+     */
+    public static function getWeeklySchedule(): array
+    {
+        return Cache::remember('anime_weekly_schedule_v1', 21600, function () {
+            try {
+                $now = time();
+                $monday = strtotime('monday this week 00:00:00 UTC', $now);
+                $sunday = $monday + (7 * 86400) - 1;
+
+                $query = <<<'GRAPHQL'
+query ($start: Int, $end: Int, $page: Int) {
+  Page(page: $page, perPage: 50) {
+    pageInfo { hasNextPage }
+    airingSchedules(airingAt_greater: $start, airingAt_lesser: $end, sort: TIME) {
+      id
+      airingAt
+      episode
+      media {
+        id
+        idMal
+        title { romaji english userPreferred }
+        coverImage { extraLarge large }
+        format
+        genres
+        averageScore
+        popularity
+      }
+    }
+  }
+}
+GRAPHQL;
+
+                $allSchedules = [];
+                for ($page = 1; $page <= 3; $page++) {
+                    $response = Http::withHeaders([
+                        'Content-Type' => 'application/json',
+                        'Accept' => 'application/json',
+                        'User-Agent' => 'KZSTRM-AnimeHub/1.0',
+                    ])->timeout(8)->post(self::$endpoint, [
+                        'query' => $query,
+                        'variables' => [
+                            'start' => $monday,
+                            'end' => $sunday,
+                            'page' => $page,
+                        ],
+                    ]);
+
+                    if (!$response->successful()) break;
+                    $data = $response->json();
+                    $items = $data['data']['Page']['airingSchedules'] ?? [];
+                    $allSchedules = array_merge($allSchedules, $items);
+                    if (!($data['data']['Page']['pageInfo']['hasNextPage'] ?? false)) break;
+                }
+
+                $dayMap = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+                $byDay = [];
+                foreach ($dayMap as $name) {
+                    $byDay[$name] = [];
+                }
+
+                foreach ($allSchedules as $s) {
+                    $media = $s['media'] ?? null;
+                    if (!$media) continue;
+                    $fmt = $media['format'] ?? '';
+                    if (!in_array($fmt, ['TV', 'ONA', 'TV_SHORT'])) continue;
+
+                    $dt = (new \DateTime())->setTimestamp($s['airingAt'])->setTimezone(new \DateTimeZone('Asia/Jakarta'));
+                    $dIndex = (int)$dt->format('N');
+                    $dName = $dayMap[$dIndex] ?? 'Senin';
+                    $time = $dt->format('H:i') . ' WIB';
+
+                    $title = $media['title']['userPreferred'] ?? ($media['title']['romaji'] ?? ($media['title']['english'] ?? 'Anime'));
+                    $score = !empty($media['averageScore']) ? number_format($media['averageScore'] / 10, 1) : null;
+
+                    $byDay[$dName][] = [
+                        'title' => $title,
+                        'time' => $time,
+                        'episode' => $s['episode'],
+                        'poster' => $media['coverImage']['large'] ?? ($media['coverImage']['extraLarge'] ?? ''),
+                        'score' => $score,
+                        'popularity' => $media['popularity'] ?? 0,
+                        'genres' => array_slice($media['genres'] ?? [], 0, 2),
+                    ];
+                }
+
+                foreach ($byDay as $d => &$list) {
+                    usort($list, fn($a, $b) => $b['popularity'] <=> $a['popularity']);
+                }
+
+                return $byDay;
+            } catch (\Throwable $e) {
+                Log::warning('AnimeMetadataService getWeeklySchedule error: ' . $e->getMessage());
+                return [];
+            }
+        });
+    }
 }

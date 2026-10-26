@@ -114,6 +114,13 @@
             <span class="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider">SERVER 1</span>
             <span class="bg-white/10 text-zinc-200 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider border border-white/10">DIRECT MP4 HD</span>
             <span class="bg-emerald-600/20 text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider border border-emerald-500/30">ONLINE</span>
+            @if($showHome && !empty($weeklySchedule))
+                <a href="#jadwal-tayang"
+                   class="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-300 bg-purple-950/70 border border-purple-500/30 px-3 py-1 rounded-full hover:bg-purple-900/60 transition">
+                    <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" /></svg>
+                    Jadwal Tayang
+                </a>
+            @endif
         </div>
 
         @unless($showHome && count($hero))
@@ -194,6 +201,111 @@
                             </div>
                         </a>
                     @endforeach
+                </div>
+            </section>
+        @endif
+
+        {{-- ============ JADWAL TAYANG ANIME (MINGGUAN) ============ --}}
+        @if(!empty($weeklySchedule))
+            <section id="jadwal-tayang" class="w-full max-w-[1800px] mx-auto px-6 pt-12">
+                <div class="p-6 md:p-8 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 shadow-2xl backdrop-blur relative overflow-hidden">
+                    <!-- Glowing ambient background -->
+                    <div class="absolute -top-24 -right-24 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <!-- Section Header & Day Selector Pills -->
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5 border-b border-zinc-800 pb-5 mb-6">
+                        <div>
+                            <div class="flex items-center gap-2.5">
+                                <span class="p-2 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" /></svg>
+                                </span>
+                                <h2 class="text-xl md:text-2xl font-black tracking-tight text-white">Jadwal Tayang Anime</h2>
+                            </div>
+                            <p class="text-xs text-zinc-400 mt-1">Jadwal rilis episode baru mingguan waktu Indonesia (WIB) • Klik anime untuk mencari & tonton</p>
+                        </div>
+
+                        <!-- Day Selector Pills (Senin s/d Minggu) -->
+                        <div class="flex items-center gap-2 overflow-x-auto kz-noscroll pb-1">
+                            @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $d)
+                                @php
+                                    $isToday = $d === $currentDayName;
+                                    $isSelected = $d === $selectedScheduleDay;
+                                    $countDay = count($weeklySchedule[$d] ?? []);
+                                @endphp
+                                <button type="button" wire:click="selectScheduleDay('{{ $d }}')"
+                                        class="relative shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5
+                                        {{ $isSelected
+                                            ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-500/40'
+                                            : 'bg-zinc-800/80 text-zinc-300 hover:text-white hover:bg-zinc-700/80 border border-zinc-700/60' }}">
+                                    <span>{{ $d }}</span>
+                                    <span class="text-[10px] opacity-75 font-mono">({{ $countDay }})</span>
+                                    @if($isToday)
+                                        <span class="absolute -top-1.5 -right-1 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase bg-red-600 text-white ring-1 ring-black">HARI INI</span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <!-- Anime Grid for Selected Day -->
+                    @php
+                        $activeDayAnime = $weeklySchedule[$selectedScheduleDay] ?? [];
+                    @endphp
+
+                    @if(!empty($activeDayAnime))
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3.5">
+                            @foreach($activeDayAnime as $item)
+                                <a href="{{ \App\Filament\Streaming\Pages\ExploreAnime::getUrl(['search' => $item['title']], panel: 'streaming') }}"
+                                   class="group flex flex-col rounded-xl overflow-hidden bg-zinc-950/70 border border-zinc-800/90 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-950/20 transition active:scale-[0.98]">
+                                    <!-- Poster Container -->
+                                    <div class="relative aspect-[2/3] w-full overflow-hidden bg-zinc-900">
+                                        <img src="{{ $item['poster'] }}" alt="{{ $item['title'] }}" loading="lazy"
+                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/30"></div>
+
+                                        <!-- Top Badges: Airing Time & Rating -->
+                                        <div class="absolute top-2 inset-x-2 flex items-center justify-between gap-1">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur">
+                                                {{ $item['time'] }}
+                                            </span>
+                                            @if(!empty($item['score']))
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-black/80 text-amber-300 border border-amber-500/30 backdrop-blur flex items-center gap-0.5">
+                                                    ★ {{ $item['score'] }}
+                                                </span>
+                                            @endif
+                                        </div>
+
+                                        <!-- Bottom Badge: Upcoming Episode -->
+                                        <div class="absolute bottom-2 left-2">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-600/90 text-white shadow-md shadow-purple-900/50">
+                                                Eps {{ $item['episode'] }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Title & Genres Info -->
+                                    <div class="p-2.5 flex-1 flex flex-col justify-between">
+                                        <h3 class="text-xs font-bold text-zinc-200 group-hover:text-emerald-400 transition line-clamp-2 leading-tight">
+                                            {{ $item['title'] }}
+                                        </h3>
+                                        @if(!empty($item['genres']))
+                                            <div class="flex flex-wrap gap-1 mt-2">
+                                                @foreach($item['genres'] as $g)
+                                                    <span class="text-[9px] font-semibold text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800">
+                                                        {{ $g }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                </a>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="py-12 text-center text-zinc-500">
+                            <p class="text-sm font-medium">Tidak ada anime yang dijadwalkan tayang pada hari {{ $selectedScheduleDay }}.</p>
+                        </div>
+                    @endif
                 </div>
             </section>
         @endif
