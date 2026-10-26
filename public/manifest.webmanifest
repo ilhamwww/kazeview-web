@@ -49,7 +49,7 @@
       "name": "Anime 720p HD",
       "short_name": "Anime",
       "description": "Koleksi Anime Lengkap Otakudesu",
-      "url": "/streaming/anime",
+      "url": "/anime",
       "icons": [{ "src": "/icons/kaze-app-192.png", "sizes": "192x192" }]
     },
     {
