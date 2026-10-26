@@ -50,7 +50,7 @@
     <div class="relative w-full max-w-[1600px] mx-auto px-0 md:px-8 space-y-8" x-data="watchPlayerInit()">
 
         {{-- ================= PLAYER ================= --}}
-        <div class="w-full bg-black md:rounded-2xl overflow-hidden aspect-video relative ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = true)">
+        <div class="w-full bg-black md:rounded-2xl overflow-hidden aspect-video relative ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
             <div x-show="isPlaying && !isEmbed" class="w-full h-full relative" style="display: none;">
                 <div x-ref="artContainer" id="movieArtPlayer" class="w-full h-full"></div>
             </div>
@@ -108,6 +108,10 @@
                         {{ $s['name'] }}
                     </button>
                 @endforeach
+            </div>
+            <div x-show="isEmbed" class="px-4 md:px-0 flex items-center gap-2 text-[11px] text-zinc-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2 -mt-2">
+                <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                <span><strong>Tips Bebas Iklan</strong>: Server global gratisan dapat memicu pop-up/redirect ke e-commerce. Disarankan gunakan browser <strong>Brave</strong> atau pasang <strong>AdGuard / uBlock</strong> di HP agar bebas iklan 100%. Jika terganggu, coba ganti Server 2 atau 3.</span>
             </div>
         @endif
 
@@ -225,6 +229,20 @@
         }
 
         /* 1. Hapus total gradien hitam tebal dari art-bottom agar video jernih dan subtitle tidak tertutup */
+        /* Bar waktu gaya YouTube/Netflix + area sentuh 22px agar mudah di-drag di HP (garis visual tetap 4px) */
+        .art-video-player .art-progress { height: 22px !important; }
+        .art-video-player .art-control-progress { height: 22px !important; touch-action: none !important; }
+        .art-video-player .art-control-progress-inner {
+            height: 4px !important; background: rgba(255, 255, 255, 0.25) !important;
+            border-radius: 2px !important; transition: height 0.15s ease !important;
+        }
+        .art-video-player .art-control-progress:hover .art-control-progress-inner,
+        .art-video-player .art-control-progress:active .art-control-progress-inner { height: 6px !important; }
+        .art-video-player .art-progress-loaded { background: rgba(255, 255, 255, 0.45) !important; }
+        .art-video-player .art-progress-played { background: #E50914 !important; }
+        .art-video-player .art-progress-highlight { background: transparent !important; }
+        .art-video-player .art-progress-indicator { background-color: #E50914 !important; }
+
         .art-video-player .art-bottom {
             background: none !important;
             background-image: none !important;
@@ -426,23 +444,42 @@
 
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
-    <script src="/js/kz-fullscreen.js?v=1"></script>
+    <script src="/js/kz-fullscreen.js?v=2"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
         (function() {
+            // Anti-Redirect Hijack Guard: Cegah skrip iklan iframe membajak window.top ke Shopee / PLEASE WAIT
+            let _isAuthorizedNav = false;
+            window.addEventListener('beforeunload', function(e) {
+                if (!_isAuthorizedNav && document.querySelector('iframe')) {
+                    e.preventDefault();
+                    e.returnValue = 'Batalkan pengalihan ke situs iklan?';
+                    return e.returnValue;
+                }
+            });
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('a, button, [wire\\:click], input, select, textarea')) {
+                    _isAuthorizedNav = true;
+                    setTimeout(() => { _isAuthorizedNav = false; }, 3000);
+                }
+            }, true);
+
             function initWatchMovieComponent() {
                 const componentDefinition = () => ({
                     isPlaying: false,
                     isLoadingStream: false,
                     art: null,
                     hls: null,
-                    videoSrc: '{{ $media['video_url'] ?? '' }}',
+                    videoSrc: {!! json_encode($media['video_url'] ?? '') !!},
                     subtitles: @json($media['subtitles'] ?? []),
                     movieId: '{{ $media['id'] ?? '' }}',
+                    movieTitle: {!! json_encode($media['title'] ?? '') !!},
+                    movieYear: {!! json_encode($media['year'] ?? '') !!},
                     activeSubtitleLang: 'id',
+                    serversList: @js($servers),
                     activeServer: '{{ $servers[0]["id"] ?? "server1" }}',
                     isEmbed: {{ !empty($servers[0]["type"]) && $servers[0]["type"] === "embed" ? "true" : "false" }},
-                    currentEmbedUrl: '{{ $servers[0]["embed_url"] ?? "" }}',
+                    currentEmbedUrl: {!! json_encode($servers[0]["embed_url"] ?? "") !!},
                     savedProgressSeconds: {{ (float) ($savedProgressSeconds ?? 0) }},
                     useProxy: false,
                     streamError: '',
@@ -451,15 +488,26 @@
                     _proxyRestarted: false,
 
                     init() {
+                        // HP diputar balik ke potret saat fullscreen → keluar (gaya YouTube)
+                        window.addEventListener('kz-fs-portrait', () => {
+                            if (this.art && this.art.fullscreenWeb) this.art.fullscreenWeb = false;
+                        });
                         // Ambil stream sejak halaman dibuka supaya saat tombol play ditekan video langsung jalan (khusus HLS)
                         if (!this.isEmbed && !this.videoSrc && this.movieId) this._prefetch = this.fetchStreamAsync(false);
                     },
 
                     switchServer(id, embedUrl, isEmbedServer) {
-                        this.activeServer = id;
-                        this.isEmbed = isEmbedServer;
-                        this.currentEmbedUrl = embedUrl;
-                        if (isEmbedServer) {
+                        const target = Array.isArray(this.serversList) ? this.serversList.find(s => s.id === id) : null;
+                        if (target) {
+                            this.activeServer = target.id;
+                            this.isEmbed = target.type === 'embed';
+                            this.currentEmbedUrl = target.embed_url || '';
+                        } else {
+                            this.activeServer = id;
+                            this.isEmbed = isEmbedServer;
+                            this.currentEmbedUrl = embedUrl;
+                        }
+                        if (this.isEmbed) {
                             if (this.art) {
                                 try { this.art.destroy(false); } catch(e) {}
                                 this.art = null;
@@ -491,9 +539,9 @@
                     afterInitFs() {
                         if (!this.art) return;
                         if (this.useNativeFs()) {
-                            if (!window.KzFs.isActive(this.$refs.playerShell)) this.art.fullscreenWeb = true;
+                            if (!window.KzFs.isActive(this.$refs.playerShell)) this.art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs());
                         } else {
-                            this.art.fullscreenWeb = true;
+                            this.art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs());
                         }
                     },
 
@@ -524,7 +572,9 @@
                         const sub = list.find(s => s && (s.lang === lang || (lang === 'id' && (s.label || '').toLowerCase().includes('indo'))
                             || (lang === 'en' && (s.label || '').toLowerCase().includes('eng')))) || list[0];
                         if (!sub) return;
-                        this.art.subtitle.switch('/api/streaming/subtitle?url=' + encodeURIComponent(sub.path), { type: 'vtt' });
+                        const subPath = sub.path || sub.url || '';
+                        if (!subPath) return;
+                        this.art.subtitle.switch('/api/streaming/subtitle?url=' + encodeURIComponent(subPath), { type: 'vtt' });
                         this.art.subtitle.show = true;
                     },
 
@@ -552,7 +602,11 @@
                         try {
                             const ctrl = new AbortController();
                             const timer = setTimeout(() => ctrl.abort(), 60000);
-                            const res = await fetch('/api/streaming/stream?type=movie&id=' + encodeURIComponent(this.movieId) + (force ? '&force=1' : ''), { signal: ctrl.signal });
+                            const url = '/api/streaming/stream?type=movie&id=' + encodeURIComponent(this.movieId) + 
+                                (force ? '&force=1' : '') + 
+                                (this.movieTitle ? '&title=' + encodeURIComponent(this.movieTitle) : '') + 
+                                (this.movieYear ? '&year=' + encodeURIComponent(this.movieYear) : '');
+                            const res = await fetch(url, { signal: ctrl.signal });
                             clearTimeout(timer);
                             if (res.ok) {
                                 const data = await res.json();
@@ -622,17 +676,19 @@
 
                         // Prefer Indonesian as default subtitle
                         const defaultSub = subList.find(s => s && (s.lang === 'id' || s.label?.toLowerCase().includes('indo'))) || subList[0];
-                        const defaultSubUrl = defaultSub ? ('/api/streaming/subtitle?url=' + encodeURIComponent(defaultSub.path)) : '';
+                        const defaultSubPath = defaultSub ? (defaultSub.path || defaultSub.url || '') : '';
+                        const defaultSubUrl = defaultSubPath ? ('/api/streaming/subtitle?url=' + encodeURIComponent(defaultSubPath)) : '';
 
                         // Build subtitles options for setting menu
                         const captionOptions = [
                             ...subList.map(s => {
                                 const label = s.label || (s.lang === 'id' ? 'Indonesia' : (s.lang === 'en' ? 'English' : s.lang));
-                                const isDef = defaultSub && (s.lang === defaultSub.lang || s.path === defaultSub.path);
+                                const sPath = s.path || s.url || '';
+                                const isDef = defaultSub && (s.lang === defaultSub.lang || sPath === defaultSubPath);
                                 return {
                                     default: isDef,
                                     html: label,
-                                    url: '/api/streaming/subtitle?url=' + encodeURIComponent(s.path),
+                                    url: sPath ? ('/api/streaming/subtitle?url=' + encodeURIComponent(sPath)) : '',
                                 };
                             }),
                             {
@@ -690,8 +746,8 @@
                                     index: 10,
                                     html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>',
                                     tooltip: 'Mundur 10 Detik',
-                                    click: function (art) {
-                                        art.seek = Math.max(0, art.currentTime - 10);
+                                    click: function () {
+                                        if (self.art) self.art.seek = Math.max(0, self.art.currentTime - 10);
                                     },
                                 },
                                 {
@@ -699,8 +755,8 @@
                                     index: 11,
                                     html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg>',
                                     tooltip: 'Maju 10 Detik',
-                                    click: function (art) {
-                                        art.seek = Math.min(art.duration, art.currentTime + 10);
+                                    click: function () {
+                                        if (self.art) self.art.seek = Math.min(self.art.duration || 999999, self.art.currentTime + 10);
                                     },
                                 },
                             ],
@@ -985,7 +1041,7 @@
                             if (!hasTriggeredAutoWebFs) {
                                 hasTriggeredAutoWebFs = true;
                                 if (self.useNativeFs() && window.KzFs.isActive(self.$refs.playerShell)) return;
-                                self.art.fullscreenWeb = true;
+                                self.art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs());
                             }
                         };
                         this.art.on('video:play', enterWebFs);

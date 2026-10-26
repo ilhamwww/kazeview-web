@@ -445,7 +445,7 @@
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
-    <script src="/js/kz-fullscreen.js?v=1"></script>
+    <script src="/js/kz-fullscreen.js?v=2"></script>
     <script>
         (function() {
             let _isAuthorizedNav = false;
@@ -474,6 +474,10 @@
                     currentEmbedUrl: {!! json_encode($currentEmbedUrl) !!},
 
                     init() {
+                        // HP diputar balik ke potret saat fullscreen → keluar (gaya YouTube)
+                        window.addEventListener('kz-fs-portrait', () => {
+                            if (_art && _art.fullscreenWeb) _art.fullscreenWeb = false;
+                        });
                         this.$nextTick(() => {
                             if (!this.isEmbed && this.videoSrc) {
                                 this.initPlayer();
