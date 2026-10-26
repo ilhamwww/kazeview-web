@@ -23,16 +23,23 @@
            - Buffered / Loaded: Abu-abu terang (rgba(255, 255, 255, 0.45))
            - Played (sudah ditonton): Merah signature (#E50914)
         */
+        /* Area sentuh bar tetap tinggi (22px) agar mudah di-drag di HP; garis visual tetap tipis 4px */
         .art-video-player .art-progress {
-            height: 4px !important;
-            transition: height 0.15s ease !important;
+            height: 22px !important;
         }
-        .art-video-player .art-progress:hover {
-            height: 6px !important;
+        .art-video-player .art-control-progress {
+            height: 22px !important;
+            touch-action: none !important;
         }
         .art-video-player .art-control-progress-inner {
+            height: 4px !important;
             background: rgba(255, 255, 255, 0.25) !important;
             border-radius: 2px !important;
+            transition: height 0.15s ease !important;
+        }
+        .art-video-player .art-control-progress:hover .art-control-progress-inner,
+        .art-video-player .art-control-progress:active .art-control-progress-inner {
+            height: 6px !important;
         }
         .art-video-player .art-progress-loaded {
             background: rgba(255, 255, 255, 0.45) !important;
@@ -236,8 +243,7 @@
 @endpush
 
 <div class="min-h-screen bg-[#050505] text-white pb-28 md:pb-20"
-     x-data="initWatchAnimeComponent()"
-     x-init="init()">
+     x-data="initWatchAnimeComponent()">
     <!-- Top Bar Navigation (Desktop & Mobile) -->
     <div class="w-full max-w-[1800px] mx-auto px-4 md:px-6 pt-20 md:pt-28 pb-3 md:pb-4 flex flex-wrap items-center justify-between gap-3">
         <a href="{{ \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $animeSlug], panel: 'streaming') }}"
@@ -443,6 +449,7 @@
     <script>
         (function() {
             let _isAuthorizedNav = false;
+            let _art = null; // instance Artplayer non-reaktif
             window.addEventListener('beforeunload', function(e) {
                 if (!_isAuthorizedNav && document.querySelector('iframe')) {
                     e.preventDefault();
@@ -459,7 +466,6 @@
 
             window.initWatchAnimeComponent = function() {
                 return {
-                    art: null,
                     hls: null,
                     videoSrc: {!! json_encode($currentStreamUrl) !!},
                     serversList: @js($servers),
@@ -487,9 +493,9 @@
                         }
 
                         if (this.isEmbed) {
-                            if (this.art) {
-                                try { this.art.destroy(false); } catch(e) {}
-                                this.art = null;
+                            if (_art) {
+                                try { _art.destroy(false); } catch(e) {}
+                                _art = null;
                             }
                         } else {
                             this.$nextTick(() => {
@@ -517,15 +523,15 @@
                         const artContainer = this.$refs.artContainer;
                         if (!artContainer) return;
 
-                        if (this.art) {
-                            try { this.art.destroy(false); } catch(e) {}
-                            this.art = null;
+                        if (_art) {
+                            try { _art.destroy(false); } catch(e) {}
+                            _art = null;
                         }
 
                         const self = this;
                         const isHls = this.videoSrc.includes('.m3u8');
 
-                        this.art = new Artplayer({
+                        _art = new Artplayer({
                             container: artContainer,
                             url: this.videoSrc,
                             type: isHls ? 'm3u8' : 'mp4',
@@ -576,8 +582,9 @@
                                     index: 10,
                                     html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>',
                                     tooltip: 'Mundur 10 Detik',
-                                    click: function (art) {
-                                        art.seek = Math.max(0, art.currentTime - 10);
+                                    // Artplayer 5: argumen click() = komponen kontrol, bukan player → pakai _art
+                                    click: function () {
+                                        if (_art) _art.seek = Math.max(0, _art.currentTime - 10);
                                     },
                                 },
                                 {
@@ -585,8 +592,8 @@
                                     index: 11,
                                     html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg>',
                                     tooltip: 'Maju 10 Detik',
-                                    click: function (art) {
-                                        art.seek = Math.min(art.duration || 999999, art.currentTime + 10);
+                                    click: function () {
+                                        if (_art) _art.seek = Math.min(_art.duration || 999999, _art.currentTime + 10);
                                     },
                                 },
                             ],
@@ -605,7 +612,7 @@
                                         { html: '2x', speed: 2.0 },
                                     ],
                                     onSelect: function (item) {
-                                        self.art.playbackRate = item.speed;
+                                        _art.playbackRate = item.speed;
                                         return item.html;
                                     },
                                 },
@@ -619,8 +626,8 @@
                                         { default: true, html: 'Off' }
                                     ],
                                     onSelect: function (item) {
-                                        self.art.pip = !self.art.pip;
-                                        return self.art.pip ? 'On' : 'Off';
+                                        _art.pip = !_art.pip;
+                                        return _art.pip ? 'On' : 'Off';
                                     },
                                 },
                                 {
@@ -634,7 +641,7 @@
                                         { html: 'Vertical', flip: 'vertical' },
                                     ],
                                     onSelect: function (item) {
-                                        self.art.flip = item.flip;
+                                        _art.flip = item.flip;
                                         return item.html;
                                     },
                                 },
@@ -649,14 +656,14 @@
                                         { html: '4:3', ratio: '4:3' },
                                     ],
                                     onSelect: function (item) {
-                                        self.art.aspectRatio = item.ratio;
+                                        _art.aspectRatio = item.ratio;
                                         return item.html;
                                     },
                                 }
                             ]
                         });
 
-                        this.art.on('play', () => {
+                        _art.on('play', () => {
                             if (self.useNativeFs() && window.KzFs && !KzFs.current()) {
                                 self.enterNativeFs();
                             }
