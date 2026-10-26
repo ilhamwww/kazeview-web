@@ -37,6 +37,63 @@ class MirainimeScraperService
     }
 
     /**
+     * Ambil poster (og:image) beberapa anime sekaligus secara paralel.
+     * Hasil per slug di-cache 7 hari supaya halaman /anime tetap cepat.
+     *
+     * @param  string[]  $slugs
+     * @return array<string, string> slug => poster URL
+     */
+    public function fetchPosters(array $slugs): array
+    {
+        $out = [];
+        $todo = [];
+        foreach (array_unique(array_filter($slugs)) as $slug) {
+            $cached = \Illuminate\Support\Facades\Cache::get('v1_poster_' . $slug);
+            if ($cached) {
+                $out[$slug] = $cached;
+            } else {
+                $todo[] = $slug;
+            }
+        }
+
+        if (empty($todo)) {
+            return $out;
+        }
+
+        $requests = function () use ($todo) {
+            foreach ($todo as $slug) {
+                yield $slug => new \GuzzleHttp\Psr7\Request('GET', 'anime/' . rawurlencode($slug));
+            }
+        };
+
+        $pool = new \GuzzleHttp\Pool($this->client, $requests(), [
+            'concurrency' => 6,
+            'options' => ['timeout' => 8],
+            'fulfilled' => function ($response, $slug) use (&$out) {
+                if ($response->getStatusCode() !== 200) {
+                    return;
+                }
+                try {
+                    $node = (new Crawler((string) $response->getBody()))->filter('meta[property="og:image"]');
+                    $poster = $node->count() ? trim($node->first()->attr('content') ?? '') : '';
+                } catch (\Throwable $e) {
+                    $poster = '';
+                }
+                if ($poster !== '') {
+                    $out[$slug] = $poster;
+                    \Illuminate\Support\Facades\Cache::put('v1_poster_' . $slug, $poster, 604800);
+                }
+            },
+            'rejected' => function ($reason, $slug) {
+                \Log::warning("V1 poster fetch gagal ({$slug}): " . (is_object($reason) && method_exists($reason, 'getMessage') ? $reason->getMessage() : 'unknown'));
+            },
+        ]);
+        $pool->promise()->wait();
+
+        return $out;
+    }
+
+    /**
      * Get genre list
      */
     public function scrapeGenres(): array

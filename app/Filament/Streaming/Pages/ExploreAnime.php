@@ -26,6 +26,7 @@ class ExploreAnime extends Page
     public string $status = '';
     public array $home = [];
     public array $recent = [];
+    public array $updates = [];
     public array $weeklySchedule = [];
     public string $selectedScheduleDay = 'Senin';
     public string $currentDayName = 'Senin';
@@ -63,6 +64,17 @@ class ExploreAnime extends Page
             return (new MirainimeScraperService())->scrapeRecentFeed(24);
         }) ?? [];
 
+        // Feed "Baru Update" berposter (prioritas utama halaman /anime)
+        $this->updates = Cache::get('v1_updates_feed') ?? [];
+        if (empty($this->updates)) {
+            $this->updates = $this->buildUpdates();
+            // Kalau ada poster yang gagal diambil (timeout upstream), cache singkat supaya cepat dicoba ulang
+            $complete = !collect($this->updates)->contains(fn ($u) => empty($u['poster']));
+            if (!empty($this->updates)) {
+                Cache::put('v1_updates_feed', $this->updates, $complete ? 600 : 60);
+            }
+        }
+
         // Jadwal Tayang Mingguan dari Otakudesu (Senin - Minggu & Random)
         $dayMap = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
         $nowDay = (int) (new \DateTime('now', new \DateTimeZone('Asia/Jakarta')))->format('N');
@@ -71,6 +83,81 @@ class ExploreAnime extends Page
         $this->weeklySchedule = (new OtakudesuScraperService())->scrapeWeeklySchedule();
 
         $this->loadAnimes();
+    }
+
+    /**
+     * Gabungkan RSS episode terbaru + "latest" homepage jadi satu daftar per serial,
+     * urut paling baru, lengkap dengan poster (yang kosong diambil paralel & di-cache).
+     */
+    protected function buildUpdates(): array
+    {
+        $posters = [];
+        foreach (['latest', 'hero', 'trending', 'season', 'top'] as $key) {
+            foreach ($this->home[$key] ?? [] as $it) {
+                if (!empty($it['slug']) && !empty($it['poster']) && empty($posters[$it['slug']])) {
+                    $posters[$it['slug']] = $it['poster'];
+                }
+            }
+        }
+
+        $meta = [];
+        foreach ($this->home['latest'] ?? [] as $it) {
+            if (!empty($it['slug'])) {
+                $meta[$it['slug']] = $it;
+            }
+        }
+
+        $isNew = function (?int $ts, string $ago): bool {
+            if ($ts) {
+                return $ts > time() - 86400;
+            }
+            return (bool) preg_match('/menit|jam|detik/i', $ago);
+        };
+
+        $items = [];
+        foreach ($this->recent as $r) {
+            $slug = $r['slug'] ?? '';
+            if ($slug === '') {
+                continue;
+            }
+            $m = $meta[$slug] ?? [];
+            $items[$slug] = [
+                'slug' => $slug,
+                'title' => ($r['series'] ?? '') ?: ($m['series'] ?? $slug),
+                'episode' => (string) ($r['episode'] ?? ''),
+                'poster' => $posters[$slug] ?? '',
+                'type' => $m['type'] ?? '',
+                'rating' => $m['rating'] ?? '',
+                'ago' => $r['ago'] ?? '',
+                'is_new' => $isNew($r['timestamp'] ?? null, $r['ago'] ?? ''),
+            ];
+        }
+
+        foreach ($this->home['latest'] ?? [] as $it) {
+            $slug = $it['slug'] ?? '';
+            if ($slug === '' || isset($items[$slug])) {
+                continue;
+            }
+            $items[$slug] = [
+                'slug' => $slug,
+                'title' => ($it['series'] ?? '') ?: ($it['title'] ?? $slug),
+                'episode' => (string) ($it['episode'] ?? ''),
+                'poster' => $it['poster'] ?? '',
+                'type' => $it['type'] ?? '',
+                'rating' => $it['rating'] ?? '',
+                'ago' => $it['ago'] ?? '',
+                'is_new' => $isNew(null, $it['ago'] ?? ''),
+            ];
+        }
+
+        $missing = array_keys(array_filter($items, fn ($i) => empty($i['poster'])));
+        if (!empty($missing)) {
+            foreach ((new MirainimeScraperService())->fetchPosters($missing) as $slug => $poster) {
+                $items[$slug]['poster'] = $poster;
+            }
+        }
+
+        return array_values($items);
     }
 
     public function selectScheduleDay(string $day): void
