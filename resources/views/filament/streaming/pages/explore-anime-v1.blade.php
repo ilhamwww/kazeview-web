@@ -221,12 +221,12 @@
                                 </span>
                                 <h2 class="text-xl md:text-2xl font-black tracking-tight text-white">Jadwal Tayang Anime</h2>
                             </div>
-                            <p class="text-xs text-zinc-400 mt-1">Jadwal rilis episode baru mingguan waktu Indonesia (WIB) • Klik anime untuk mencari & tonton</p>
+                            <p class="text-xs text-zinc-400 mt-1">Jadwal rilis episode baru mingguan via Otakudesu • Klik anime untuk langsung tonton & detail</p>
                         </div>
 
-                        <!-- Day Selector Pills (Senin s/d Minggu) -->
+                        <!-- Day Selector Pills (Senin s/d Minggu & Random) -->
                         <div class="flex items-center gap-2 overflow-x-auto kz-noscroll pb-1">
-                            @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $d)
+                            @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu', 'Random'] as $d)
                                 @php
                                     $isSelected = $d === $selectedScheduleDay;
                                     $countDay = count($weeklySchedule[$d] ?? []);
@@ -251,7 +251,7 @@
                     @if(!empty($activeDayAnime))
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3.5">
                             @foreach($activeDayAnime as $item)
-                                <a href="{{ \App\Filament\Streaming\Pages\ExploreAnime::getUrl(['search' => $item['title']], panel: 'streaming') }}"
+                                <a href="{{ $item['detail_url'] }}"
                                    class="group flex flex-col rounded-xl overflow-hidden bg-zinc-950/70 border border-zinc-800/90 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-950/20 transition active:scale-[0.98]">
                                     <!-- Poster Container -->
                                     <div class="relative aspect-[2/3] w-full overflow-hidden bg-zinc-900">
@@ -259,40 +259,32 @@
                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/30"></div>
 
-                                        <!-- Top Badges: Airing Time & Rating -->
-                                        <div class="absolute top-2 inset-x-2 flex items-center justify-between gap-1">
-                                            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur">
-                                                {{ $item['time'] }}
+                                        <!-- Top Badge: Otakudesu Source -->
+                                        <div class="absolute top-2 left-2">
+                                            <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 backdrop-blur">
+                                                OTAKUDESU
                                             </span>
-                                            @if(!empty($item['score']))
-                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-black/80 text-amber-300 border border-amber-500/30 backdrop-blur flex items-center gap-0.5">
-                                                    ★ {{ $item['score'] }}
-                                                </span>
-                                            @endif
                                         </div>
 
-                                        <!-- Bottom Badge: Upcoming Episode -->
+                                        <!-- Bottom Badge: Latest Episode -->
                                         <div class="absolute bottom-2 left-2">
                                             <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-600/90 text-white shadow-md shadow-purple-900/50">
-                                                Eps {{ $item['episode'] }}
+                                                {{ $item['episode'] }}
                                             </span>
                                         </div>
                                     </div>
 
-                                    <!-- Title & Genres Info -->
+                                    <!-- Title Info -->
                                     <div class="p-2.5 flex-1 flex flex-col justify-between">
                                         <h3 class="text-xs font-bold text-zinc-200 group-hover:text-emerald-400 transition line-clamp-2 leading-tight">
                                             {{ $item['title'] }}
                                         </h3>
-                                        @if(!empty($item['genres']))
-                                            <div class="flex flex-wrap gap-1 mt-2">
-                                                @foreach($item['genres'] as $g)
-                                                    <span class="text-[9px] font-semibold text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800">
-                                                        {{ $g }}
-                                                    </span>
-                                                @endforeach
-                                            </div>
-                                        @endif
+                                        <div class="mt-2 flex items-center justify-between text-[10px] text-zinc-500">
+                                            <span class="text-emerald-400 font-semibold flex items-center gap-1">
+                                                <span>Lihat Detail</span>
+                                                <svg class="w-3 h-3 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                                            </span>
+                                        </div>
                                     </div>
                                 </a>
                             @endforeach

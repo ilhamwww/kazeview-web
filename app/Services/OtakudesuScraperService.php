@@ -613,4 +613,90 @@ class OtakudesuScraperService
             }
         });
     }
+
+    /**
+     * Scrape weekly release schedule (Jadwal Rilis) from Otakudesu
+     * with poster thumbnails and direct anime detail links
+     */
+    public function scrapeWeeklySchedule(): array
+    {
+        return Cache::remember('otakudesu_weekly_schedule_v3', 21600, function () {
+            try {
+                // 1. Ambil peta poster dari ongoing-anime (page 1-5)
+                $posterMap = [];
+                for ($p = 1; $p <= 5; $p++) {
+                    $pageUrl = $this->baseUrl . ($p > 1 ? "/ongoing-anime/page/{$p}/" : '/ongoing-anime/');
+                    try {
+                        $htmlOngoing = $this->fetchHtml($pageUrl);
+                        $crawler = new Crawler($htmlOngoing);
+                        $crawler->filter('.venz ul li')->each(function (Crawler $li) use (&$posterMap) {
+                            $a = $li->filter('.thumb a');
+                            $img = $li->filter('.thumb img');
+                            $h2 = $li->filter('h2.jdlflm');
+                            $epz = $li->filter('.epz');
+
+                            if ($a->count() && $img->count()) {
+                                $href = $a->attr('href');
+                                $slug = basename(rtrim($href, '/'));
+                                $poster = $img->attr('src') ?: $img->attr('data-src');
+                                $title = $h2->count() ? trim($h2->text()) : '';
+                                $epText = $epz->count() ? trim($epz->text()) : '';
+
+                                $posterMap[$slug] = [
+                                    'poster' => $poster,
+                                    'title' => $title,
+                                    'episode' => $epText,
+                                ];
+                            }
+                        });
+                    } catch (\Throwable $e) {
+                        break;
+                    }
+                }
+
+                // 2. Ambil jadwal dari /jadwal-rilis/
+                $htmlSchedule = $this->fetchHtml($this->baseUrl . '/jadwal-rilis/');
+                $scheduleCrawler = new Crawler($htmlSchedule);
+
+                $dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu', 'Random'];
+                $byDay = [];
+                foreach ($dayOrder as $d) {
+                    $byDay[$d] = [];
+                }
+
+                $scheduleCrawler->filter('.kglist321')->each(function (Crawler $block) use (&$byDay, $posterMap) {
+                    $h2 = $block->filter('h2');
+                    if (!$h2->count()) return;
+                    $dayName = trim($h2->text());
+
+                    $block->filter('ul li a')->each(function (Crawler $a) use (&$byDay, $dayName, $posterMap) {
+                        $href = $a->attr('href');
+                        $title = trim($a->text());
+                        $slug = basename(rtrim($href, '/'));
+
+                        $posterInfo = $posterMap[$slug] ?? null;
+                        $poster = $posterInfo['poster'] ?? 'https://otakudesu.blog/wp-content/uploads/2026/01/default.jpg';
+                        $episode = $posterInfo['episode'] ?? 'Ongoing';
+                        preg_match('/\d+/', $episode, $m);
+                        $epNum = $m[0] ?? '';
+
+                        $detailUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $slug], panel: 'streaming');
+
+                        $byDay[$dayName][] = [
+                            'slug' => $slug,
+                            'title' => $title,
+                            'poster' => $poster,
+                            'episode' => $epNum ? "Eps {$epNum}" : 'Ongoing',
+                            'detail_url' => $detailUrl,
+                        ];
+                    });
+                });
+
+                return $byDay;
+            } catch (\Throwable $e) {
+                Log::error('Otakudesu scrapeWeeklySchedule error: ' . $e->getMessage());
+                return [];
+            }
+        });
+    }
 }

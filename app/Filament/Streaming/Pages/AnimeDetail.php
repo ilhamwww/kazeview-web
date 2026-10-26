@@ -5,6 +5,7 @@ namespace App\Filament\Streaming\Pages;
 use App\Services\AnimeDownloadResolverService;
 use App\Services\AnimeMetadataService;
 use App\Services\MirainimeScraperService;
+use App\Services\OtakudesuScraperService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
 
@@ -32,10 +33,47 @@ class AnimeDetail extends Page
         $scraper = new MirainimeScraperService();
         $cacheKey = 'v1_detail_' . md5($slug);
         $this->detail = Cache::remember($cacheKey, 43200, function () use ($scraper, $slug) {
-            return $scraper->scrapeAnimeSeriesDetail($slug);
+            $data = $scraper->scrapeAnimeSeriesDetail($slug);
+            if ($data && (($data['title'] ?? '') === '404' || empty($data['episodes']))) {
+                return null;
+            }
+            return $data;
         });
 
-        if (!$this->detail) {
+        // Fallback jika tidak ditemukan atau 404 di Mirainime, ambil dari Otakudesu
+        if (!$this->detail || ($this->detail['title'] ?? '') === '404' || empty($this->detail['episodes'])) {
+            $otakuScraper = new OtakudesuScraperService();
+            $otakuUrl = 'https://otakudesu.blog/anime/' . $slug . '/';
+            $otakuDetail = Cache::remember('otaku_series_' . md5($slug), 43200, function () use ($otakuScraper, $otakuUrl) {
+                return $otakuScraper->scrapeAnimeSeriesDetail($otakuUrl);
+            });
+            if ($otakuDetail && !empty($otakuDetail['title'])) {
+                // Pastikan episode diurutkan ascending (Eps 1, 2, 3...)
+                $rawEpisodes = $otakuDetail['episodes'] ?? [];
+                usort($rawEpisodes, function ($a, $b) {
+                    $ea = (int)preg_replace('/[^\d]/', '', (string)($a['episode'] ?? '0'));
+                    $eb = (int)preg_replace('/[^\d]/', '', (string)($b['episode'] ?? '0'));
+                    return $ea <=> $eb;
+                });
+
+                $this->detail = [
+                    'title' => $otakuDetail['title'] ?? '',
+                    'thumbnail' => $otakuDetail['thumbnail'] ?? ($otakuDetail['poster'] ?? ''),
+                    'description' => $otakuDetail['synopsis'] ?? '',
+                    'genres' => $otakuDetail['genres'] ?? [],
+                    'episodes' => array_map(function ($ep) {
+                        return [
+                            'episode' => (string)($ep['episode'] ?? '1'),
+                            'title' => $ep['title'] ?? ('Episode ' . ($ep['episode'] ?? '1')),
+                            'url' => $ep['url'] ?? '',
+                        ];
+                    }, $rawEpisodes),
+                    'is_otakudesu' => true,
+                ];
+            }
+        }
+
+        if (!$this->detail || ($this->detail['title'] ?? '') === '404') {
             abort(404, 'Detail anime tidak ditemukan');
         }
 

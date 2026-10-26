@@ -4,6 +4,7 @@ namespace App\Filament\Streaming\Pages;
 
 use App\Services\AnimeMetadataService;
 use App\Services\MirainimeScraperService;
+use App\Services\OtakudesuScraperService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
 
@@ -62,12 +63,12 @@ class ExploreAnime extends Page
             return (new MirainimeScraperService())->scrapeRecentFeed(24);
         }) ?? [];
 
-        // Jadwal Tayang Mingguan (Senin - Minggu)
+        // Jadwal Tayang Mingguan dari Otakudesu (Senin - Minggu & Random)
         $dayMap = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
         $nowDay = (int) (new \DateTime('now', new \DateTimeZone('Asia/Jakarta')))->format('N');
         $this->currentDayName = $dayMap[$nowDay] ?? 'Senin';
         $this->selectedScheduleDay = $this->currentDayName;
-        $this->weeklySchedule = AnimeMetadataService::getWeeklySchedule();
+        $this->weeklySchedule = (new OtakudesuScraperService())->scrapeWeeklySchedule();
 
         $this->loadAnimes();
     }

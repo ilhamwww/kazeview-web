@@ -59,6 +59,36 @@ class WatchAnime extends Page
             }
         }
 
+        // Fallback jika tidak ada di Mirainime, ambil dari Otakudesu
+        if (!$this->episodeDetail || empty($this->episodeDetail['video_url'])) {
+            $otakuScraper = new \App\Services\OtakudesuScraperService();
+            $otakuSeries = Cache::remember('otaku_series_' . md5($anime_slug), 43200, function () use ($otakuScraper, $anime_slug) {
+                return $otakuScraper->scrapeAnimeSeriesDetail('https://otakudesu.blog/anime/' . $anime_slug . '/');
+            });
+            if ($otakuSeries && !empty($otakuSeries['episodes'])) {
+                $matchedEp = null;
+                foreach ($otakuSeries['episodes'] as $ep) {
+                    $epNum = (string)($ep['episode'] ?? '');
+                    if ($epNum === (string)$episode_slug || str_contains($ep['title'] ?? '', 'Episode ' . $episode_slug)) {
+                        $matchedEp = $ep;
+                        break;
+                    }
+                }
+                if ($matchedEp && !empty($matchedEp['url'])) {
+                    $epFull = $otakuScraper->scrapeEpisodeDetail($matchedEp['url']);
+                    if ($epFull) {
+                        $this->episodeDetail = [
+                            'title' => $matchedEp['title'] ?? ($otakuSeries['title'] . ' Episode ' . $episode_slug),
+                            'episode_number' => $episode_slug,
+                            'video_url' => $epFull['stream_url'] ?? '',
+                            'anime_slug' => $anime_slug,
+                            'source_url' => $matchedEp['url'],
+                        ];
+                    }
+                }
+            }
+        }
+
         if (!$this->episodeDetail) {
             abort(404, 'Episode tidak ditemukan');
         }
@@ -66,8 +96,38 @@ class WatchAnime extends Page
         // Load series detail
         $seriesCacheKey = 'v1_detail_' . md5($anime_slug);
         $this->seriesDetail = Cache::remember($seriesCacheKey, 43200, function () use ($scraper, $anime_slug) {
-            return $scraper->scrapeAnimeSeriesDetail($anime_slug);
+            $d = $scraper->scrapeAnimeSeriesDetail($anime_slug);
+            if ($d && (($d['title'] ?? '') === '404' || empty($d['episodes']))) {
+                return null;
+            }
+            return $d;
         });
+
+        // Series Detail Fallback ke Otakudesu jika 404 / kosong
+        if (!$this->seriesDetail || ($this->seriesDetail['title'] ?? '') === '404' || empty($this->seriesDetail['episodes'])) {
+            $otakuScraper = new \App\Services\OtakudesuScraperService();
+            $otakuSeries = Cache::remember('otaku_series_' . md5($anime_slug), 43200, function () use ($otakuScraper, $anime_slug) {
+                return $otakuScraper->scrapeAnimeSeriesDetail('https://otakudesu.blog/anime/' . $anime_slug . '/');
+            });
+            if ($otakuSeries && !empty($otakuSeries['title'])) {
+                $rawEpisodes = $otakuSeries['episodes'] ?? [];
+                usort($rawEpisodes, function ($a, $b) {
+                    $ea = (int)preg_replace('/[^\d]/', '', (string)($a['episode'] ?? '0'));
+                    $eb = (int)preg_replace('/[^\d]/', '', (string)($b['episode'] ?? '0'));
+                    return $ea <=> $eb;
+                });
+                $this->seriesDetail = [
+                    'title' => $otakuSeries['title'] ?? '',
+                    'thumbnail' => $otakuSeries['thumbnail'] ?? ($otakuSeries['poster'] ?? ''),
+                    'episodes' => array_map(function ($ep) {
+                        return [
+                            'episode' => (string)($ep['episode'] ?? '1'),
+                            'title' => $ep['title'] ?? ('Episode ' . ($ep['episode'] ?? '1')),
+                        ];
+                    }, $rawEpisodes),
+                ];
+            }
+        }
 
         $animeTitle = $this->seriesDetail['title'] ?? ($this->episodeDetail['title'] ?? '');
 
