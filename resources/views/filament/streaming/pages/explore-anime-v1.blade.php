@@ -228,20 +228,16 @@
                         <div class="flex items-center gap-2 overflow-x-auto kz-noscroll pb-1">
                             @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $d)
                                 @php
-                                    $isToday = $d === $currentDayName;
                                     $isSelected = $d === $selectedScheduleDay;
                                     $countDay = count($weeklySchedule[$d] ?? []);
                                 @endphp
                                 <button type="button" wire:click="selectScheduleDay('{{ $d }}')"
-                                        class="relative shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5
+                                        class="shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5
                                         {{ $isSelected
                                             ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-500/40'
                                             : 'bg-zinc-800/80 text-zinc-300 hover:text-white hover:bg-zinc-700/80 border border-zinc-700/60' }}">
                                     <span>{{ $d }}</span>
                                     <span class="text-[10px] opacity-75 font-mono">({{ $countDay }})</span>
-                                    @if($isToday)
-                                        <span class="absolute -top-1.5 -right-1 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase bg-red-600 text-white ring-1 ring-black">HARI INI</span>
-                                    @endif
                                 </button>
                             @endforeach
                         </div>
