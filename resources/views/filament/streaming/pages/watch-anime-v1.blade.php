@@ -18,12 +18,40 @@
             background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, transparent 100%) !important;
         }
 
-        /* Progress Bar KZSTRM Signature Red */
-        .art-video-player .art-progress { height: 4px !important; }
-        .art-video-player .art-progress:hover { height: 6px !important; }
-        .art-video-player .art-progress-played { background: #E50914 !important; }
-        .art-video-player .art-progress-highlight { background: #E50914 !important; }
-        .art-video-player .art-volume-slider-handle { background: #E50914 !important; }
+        /* YouTube / Netflix Style Video Progress Bar:
+           - Unplayed (belum ditonton): Abu-abu netral (rgba(255, 255, 255, 0.25))
+           - Buffered / Loaded: Abu-abu terang (rgba(255, 255, 255, 0.45))
+           - Played (sudah ditonton): Merah signature (#E50914)
+        */
+        .art-video-player .art-progress {
+            height: 4px !important;
+            transition: height 0.15s ease !important;
+        }
+        .art-video-player .art-progress:hover {
+            height: 6px !important;
+        }
+        .art-video-player .art-control-progress-inner {
+            background: rgba(255, 255, 255, 0.25) !important;
+            border-radius: 2px !important;
+        }
+        .art-video-player .art-progress-loaded {
+            background: rgba(255, 255, 255, 0.45) !important;
+            border-radius: 2px !important;
+        }
+        .art-video-player .art-progress-played {
+            background: #E50914 !important;
+            border-radius: 2px 0 0 2px !important;
+        }
+        .art-video-player .art-progress-highlight {
+            background: transparent !important;
+        }
+        .art-video-player .art-progress-indicator {
+            background-color: #E50914 !important;
+            box-shadow: 0 0 8px rgba(229, 9, 20, 0.8) !important;
+        }
+        .art-video-player .art-volume-slider-handle {
+            background: #E50914 !important;
+        }
 
         /* 3. Subtitle styling */
         .art-video-player .art-subtitle {
