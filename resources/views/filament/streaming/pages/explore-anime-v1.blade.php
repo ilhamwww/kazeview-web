@@ -221,7 +221,7 @@
                                 </span>
                                 <h2 class="text-xl md:text-2xl font-black tracking-tight text-white">Jadwal Tayang Anime</h2>
                             </div>
-                            <p class="text-xs text-zinc-400 mt-1">Jadwal rilis episode baru mingguan via Otakudesu • Klik anime untuk langsung tonton & detail</p>
+                            <p class="text-xs text-zinc-400 mt-1">Jadwal rilis episode baru mingguan • Klik anime untuk langsung tonton & detail</p>
                         </div>
 
                         <!-- Day Selector Pills (Senin s/d Minggu & Random) -->
@@ -258,13 +258,6 @@
                                         <img src="{{ $item['poster'] }}" alt="{{ $item['title'] }}" loading="lazy"
                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/30"></div>
-
-                                        <!-- Top Badge: Otakudesu Source -->
-                                        <div class="absolute top-2 left-2">
-                                            <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 backdrop-blur">
-                                                OTAKUDESU
-                                            </span>
-                                        </div>
 
                                         <!-- Bottom Badge: Latest Episode -->
                                         <div class="absolute bottom-2 left-2">
