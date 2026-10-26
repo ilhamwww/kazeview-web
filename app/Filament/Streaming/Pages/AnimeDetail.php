@@ -2,6 +2,8 @@
 
 namespace App\Filament\Streaming\Pages;
 
+use App\Services\AnimeDownloadResolverService;
+use App\Services\AnimeMetadataService;
 use App\Services\MirainimeScraperService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
@@ -9,15 +11,18 @@ use Illuminate\Support\Facades\Cache;
 class AnimeDetail extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';
-    protected static ?string $navigationLabel = 'Anime Detail V1';
+    protected static ?string $navigationLabel = 'Anime Detail';
     protected static ?string $title = 'Anime Detail';
-    protected static ?string $slug = 'anime-v1/{slug}';
+    protected static ?string $slug = 'anime/{slug}';
     protected static string $view = 'filament.streaming.pages.anime-detail-v1';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
     public string $animeSlug = '';
     public ?array $detail = null;
+    public ?array $metadata = null;
+    public ?array $downloads = null;
+    public string $selectedDownloadEp = '1';
     public bool $isFavorited = false;
 
     public function mount($slug): void
@@ -34,12 +39,29 @@ class AnimeDetail extends Page
             abort(404, 'Detail anime tidak ditemukan');
         }
 
+        $title = $this->detail['title'] ?? '';
+
+        // 1. Ambil Metadata Resmi (MyAnimeList / AniList)
+        $this->metadata = AnimeMetadataService::getMetadata($title);
+
+        // 2. Ambil Opsi Download Resolusi Otakudesu (Episode 1 & Batch)
+        $firstEp = !empty($this->detail['episodes'][0]['episode']) ? (string) $this->detail['episodes'][0]['episode'] : '1';
+        $this->selectedDownloadEp = $firstEp;
+        $this->downloads = AnimeDownloadResolverService::getDownloads($title, $this->selectedDownloadEp);
+
         $this->isFavorited = auth()->user()
             ? auth()->user()->favorites()
                 ->where('item_id', 'v1:' . $this->animeSlug)
                 ->where('item_type', 'anime')
                 ->exists()
             : false;
+    }
+
+    public function selectDownloadEpisode(string $ep): void
+    {
+        $this->selectedDownloadEp = $ep;
+        $title = $this->detail['title'] ?? '';
+        $this->downloads = AnimeDownloadResolverService::getDownloads($title, $ep);
     }
 
     public function toggleFavorite(): void

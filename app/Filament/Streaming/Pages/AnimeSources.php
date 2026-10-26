@@ -9,10 +9,10 @@ use Filament\Pages\Page;
  */
 class AnimeSources extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
-    protected static ?string $navigationLabel = 'Anime';
-    protected static ?string $title = 'Anime';
-    protected static ?string $slug = 'anime';
+    protected static ?string $navigationIcon = 'heroicon-o-server-stack';
+    protected static ?string $navigationLabel = 'Anime Sources';
+    protected static ?string $title = 'Pilih Server Anime';
+    protected static ?string $slug = 'anime-sources';
     protected static string $view = 'filament.streaming.pages.anime-sources';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
@@ -54,6 +54,28 @@ class AnimeSources extends Page
                 'url' => ExploreAnimeV3::getUrl(panel: 'streaming'),
                 'accent' => 'from-purple-700/30 via-zinc-900 to-zinc-950',
                 'color' => '#9333EA',
+            ],
+            [
+                'key' => 'v4',
+                'label' => 'V4',
+                'name' => 'Server 4',
+                'description' => 'Koleksi anime populer dengan resolusi hingga 1080p FHD, multi mirror Mega/Blogger & link download lengkap.',
+                'features' => ['1080p FHD', 'Multi Mirror', 'Download Lengkap'],
+                'available' => true,
+                'url' => ExploreAnimeV4::getUrl(panel: 'streaming'),
+                'accent' => 'from-cyan-700/30 via-zinc-900 to-zinc-950',
+                'color' => '#06B6D4',
+            ],
+            [
+                'key' => 'v5',
+                'label' => 'V5',
+                'name' => 'Server 5',
+                'description' => 'Koleksi anime & donghua lengkap dengan multi-resolusi 360p-1080p FHD dan direct VPS stream relay.',
+                'features' => ['1080p FHD', 'Stream Relay VPS', 'Bebas Iklan'],
+                'available' => true,
+                'url' => ExploreAnimeV5::getUrl(panel: 'streaming'),
+                'accent' => 'from-rose-700/30 via-zinc-900 to-zinc-950',
+                'color' => '#F43F5E',
             ],
         ];
     }

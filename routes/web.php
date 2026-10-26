@@ -63,6 +63,11 @@ Route::get('/test-calendar', function () {
     return Event::get();
 });
 
+// Legacy Anime V1 Redirects to Unified Anime Hub
+Route::redirect('/anime-v1', '/anime');
+Route::redirect('/anime-v1/{slug}', '/anime/{slug}');
+Route::redirect('/anime-v1/{anime_slug}/episode/{episode_slug}', '/anime/{anime_slug}/episode/{episode_slug}');
+
 // Anime episode video URL endpoint (used by Filament admin modal)
 Route::get('/api/anime/episode-video', function (\Illuminate\Http\Request $request) {
     $url = $request->query('url');
@@ -119,9 +124,15 @@ Route::get('/api/streaming/stream', function (\Illuminate\Http\Request $request)
     $type = $request->query('type');
     $id = $request->query('id');
     $force = $request->boolean('force') || $request->query('force') === '1';
+    $title = $request->query('title');
+    $year = $request->query('year');
 
     if (empty($id)) {
         return response()->json(['error' => 'ID is required'], 400);
+    }
+
+    if (!empty($title)) {
+        \Illuminate\Support\Facades\Cache::put('movie_meta_by_id_' . $id, ['title' => $title, 'year' => $year], 86400);
     }
 
     try {
@@ -715,7 +726,7 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
     $scheme = $parsedUrl['scheme'] ?? 'https';
 
     // Domain HLS yang diperbolehkan.
-    $allowedDomains = ['shorttv.live', 'goodbos.online', 'dramabos.fun', 'netshort.com', 'b-cdn.net', 'ibyteimg.com', 'tiktokcdn.com', 'goodshort.com', 'goodreels.com', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'stardust-tv.com', 'stardusttv.cc', 'vibeshort.live'];
+    $allowedDomains = ['flextv.cc', 'shortswave.com', 'mydramawave.com', 'majorplay.net', 'farsunpteltd.net', 'wolftv.online', 'shorttv.live', 'goodbos.online', 'dramabos.fun', 'netshort.com', 'b-cdn.net', 'ibyteimg.com', 'tiktokcdn.com', 'goodshort.com', 'goodreels.com', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'stardust-tv.com', 'stardusttv.cc', 'vibeshort.live'];
     $allowed = false;
     foreach ($allowedDomains as $domain) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {
@@ -746,6 +757,17 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
     }
 
     $body = $response->body();
+
+    $effectiveUri = $response->effectiveUri();
+    if ($effectiveUri) {
+        $effStr = (string) $effectiveUri;
+        $parsedEff = parse_url($effStr);
+        if (!empty($parsedEff['host'])) {
+            $host = $parsedEff['host'];
+            $scheme = $parsedEff['scheme'] ?? $scheme;
+            $url = $effStr;
+        }
+    }
 
     // Direktori base (untuk URL relatif) dan host base (untuk URL absolute path).
     $basePath = parse_url($url, PHP_URL_PATH) ?: '/';
@@ -786,6 +808,22 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
     };
 
     $wrap = function (string $absUrl): string {
+        $absHost = parse_url($absUrl, PHP_URL_HOST);
+        if ($absHost && (
+            str_contains($absUrl, '/cdn/') ||
+            str_contains($absHost, 'akademivo') || 
+            str_contains($absHost, 'academy') || 
+            str_contains($absHost, 'edubambu') || 
+            str_contains($absHost, 'eduspark') || 
+            str_contains($absHost, 'lorekeeper') || 
+            str_contains($absHost, 'knowledgequest') || 
+            str_contains($absHost, 'mindbloom') || 
+            str_contains($absHost, 'skillsprout') || 
+            str_contains($absHost, 'onlinestudy') ||
+            str_contains($absHost, 'learning')
+        )) {
+            return $absUrl;
+        }
         return url('/api/proxy-stream?url=' . urlencode($absUrl));
     };
 
@@ -809,7 +847,7 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
                 } else {
                     $line = preg_replace_callback('/URI="([^"]+)"/i', function ($m) use ($resolve, $wrap, $videoKey) {
                         $abs = $resolve($m[1]);
-                        $target = preg_match('~\.m3u8(\?|$)~i', $abs)
+                        $target = (preg_match('~\.m3u8(\?|$)~i', $abs) || preg_match('~(config|data)-[0-9]+\.json(\?|$)~i', $abs))
                             ? url('/api/proxy-hls?url=' . urlencode($abs) . ($videoKey ? '&key=' . urlencode($videoKey) : ''))
                             : $wrap($abs);
 
@@ -825,7 +863,7 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
         // proxy-stream saja karena segmen di dalamnya sudah URL absolute setelah rewrite oleh
         // proxy-stream tidak dilakukan — jadi jika file adalah m3u8, biarkan tetap proxy-hls.
         $abs = $resolve($trimmed);
-        $isPlaylist = preg_match('~\.m3u8(\?|$)~i', $abs);
+        $isPlaylist = preg_match('~\.m3u8(\?|$)~i', $abs) || preg_match('~(config|data)-[0-9]+\.json(\?|$)~i', $abs);
         $out[] = $isPlaylist
             ? url('/api/proxy-hls?url=' . urlencode($abs) . ($videoKey ? '&key=' . urlencode($videoKey) : ''))
             : $wrap($abs);
@@ -857,7 +895,7 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
 
     $parsedUrl = parse_url($url);
     $host = $parsedUrl['host'] ?? '';
-    $allowedDomains = ['dramabuzz.sbs', 'goodbos.online', 'dramabos.fun', 'wsrv.nl', 'lh3.googleusercontent.com', 'tiktokcdn.com', 'ibyteimg.com', 'netshort.com', 'shorttv.live', 'raptdrama.com', 'goodreels.com', 'goodshort.com', 'dramaboxdb.com', 'dramabox.com', 'shortolol.com', 'kintoto.xyz', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'assets.stardusttv.cc', 'stardusttv.cc', 'stardust-tv.com', 'vibeshort.live', 'rebahinxxi3.mom', 'rebahinxxi.mom', 'rebahinxxi3.pics', 'rebahinxxi3.casa', 'serealshort.com', 'serealplus.com'];
+    $allowedDomains = ['flextv.cc', 'shortswave.com', 'mydramawave.com', 'farsunpteltd.com', 'farsunpteltd.net', 'wolftv.online', 'cubetv.cc', 'vividshort.com', '198.252.99.106', 'dramabuzz.sbs', 'goodbos.online', 'dramabos.fun', 'wsrv.nl', 'lh3.googleusercontent.com', 'tiktokcdn.com', 'ibyteimg.com', 'netshort.com', 'shorttv.live', 'raptdrama.com', 'goodreels.com', 'goodshort.com', 'dramaboxdb.com', 'dramabox.com', 'shortolol.com', 'kintoto.xyz', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'assets.stardusttv.cc', 'stardusttv.cc', 'stardust-tv.com', 'vibeshort.live', 'rebahinxxi3.mom', 'rebahinxxi.mom', 'rebahinxxi3.pics', 'rebahinxxi3.casa', 'serealshort.com', 'serealplus.com', 'nontonanimeid.my.id', 'nontonanimeid.boats', 'wp.com', 'rumble.cloud', 'kotakanimeid.link'];
     $allowed = false;
     foreach ($allowedDomains as $domain) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {
@@ -880,10 +918,22 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
                     'Accept' => 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
                 ])
                 ->get($url);
-            if ($response->successful()) {
+            $ct = $response->header('Content-Type') ?: '';
+            if ($response->successful() && str_starts_with($ct, 'image/')) {
                 return [
                     'content' => base64_encode($response->body()),
-                    'content_type' => $response->header('Content-Type') ?: 'image/png'
+                    'content_type' => $ct
+                ];
+            }
+
+            // Fallback via wsrv.nl jika upstream terblokir / menolak direct image request (misal Tencent EdgeOne / Cloudflare WAF)
+            $wsrvUrl = 'https://wsrv.nl/?url=' . urlencode($url);
+            $wsrvRes = \Illuminate\Support\Facades\Http::timeout(10)->get($wsrvUrl);
+            $wsrvCt = $wsrvRes->header('Content-Type') ?: '';
+            if ($wsrvRes->successful() && str_starts_with($wsrvCt, 'image/')) {
+                return [
+                    'content' => base64_encode($wsrvRes->body()),
+                    'content_type' => $wsrvCt
                 ];
             }
         } catch (\Exception $e) {
@@ -910,7 +960,7 @@ Route::get('/api/proxy-subtitle', function (\Illuminate\Http\Request $request) {
 
     $parsedUrl = parse_url($url);
     $host = $parsedUrl['host'] ?? '';
-    $allowedDomains = ['netshort.com', 'goodbos.online', 'dramabos.fun', 'dramabuzz.sbs'];
+    $allowedDomains = ['netshort.com', 'goodbos.online', 'dramabos.fun', 'dramabuzz.sbs', 'mydramawave.com'];
     $allowed = false;
     foreach ($allowedDomains as $domain) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {
@@ -950,9 +1000,25 @@ Route::get('/api/proxy-subtitle', function (\Illuminate\Http\Request $request) {
         $body = substr($body, 3);
     }
 
-    // Ensure WEBVTT header (some sources return plain text SRT-like — but netshort uses WebVTT)
+    // Handle JSON formatted subtitles (e.g. itemVOList)
+    $decodedJson = json_decode($body, true);
+    if (isset($decodedJson['data']['itemVOList']) && is_array($decodedJson['data']['itemVOList'])) {
+        $lines = ["WEBVTT\n"];
+        foreach ($decodedJson['data']['itemVOList'] as $item) {
+            $start = str_replace(',', '.', $item['startTime'] ?? '');
+            $end = str_replace(',', '.', $item['endTime'] ?? '');
+            $text = $item['text'] ?? '';
+            if ($start && $end && $text) {
+                $lines[] = "{$start} --> {$end}\n{$text}\n";
+            }
+        }
+        $body = implode("\n", $lines);
+    }
+
+    // Convert SRT timestamp commas to dots (00:00:05,766 -> 00:00:05.766) and ensure WEBVTT header
+    $body = preg_replace('/(\d{2}:\d{2}:\d{2}),(\d{3})/', '$1.$2', $body);
     if (!str_starts_with(ltrim($body), 'WEBVTT')) {
-        $body = "WEBVTT\n\n" . $body;
+        $body = "WEBVTT\n\n" . ltrim($body);
     }
 
     return response($body, 200, [

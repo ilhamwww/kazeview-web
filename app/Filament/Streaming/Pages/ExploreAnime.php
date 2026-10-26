@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Cache;
 class ExploreAnime extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
-    protected static ?string $navigationLabel = 'Anime V1';
-    protected static ?string $title = 'Explore Anime V1';
-    protected static ?string $slug = 'anime-v1';
+    protected static ?string $navigationLabel = 'Anime';
+    protected static ?string $title = 'Anime';
+    protected static ?string $slug = 'anime';
     protected static string $view = 'filament.streaming.pages.explore-anime-v1';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;

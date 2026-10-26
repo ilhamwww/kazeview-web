@@ -2,6 +2,8 @@
 
 namespace App\Filament\Streaming\Pages;
 
+use App\Services\AnimeDownloadResolverService;
+use App\Services\AnimeMetadataService;
 use App\Services\MirainimeScraperService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
@@ -9,9 +11,9 @@ use Illuminate\Support\Facades\Cache;
 class WatchAnime extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';
-    protected static ?string $navigationLabel = 'Watch Anime V1';
+    protected static ?string $navigationLabel = 'Nonton Anime';
     protected static ?string $title = 'Nonton Anime';
-    protected static ?string $slug = 'anime-v1/{anime_slug}/episode/{episode_slug}';
+    protected static ?string $slug = 'anime/{anime_slug}/episode/{episode_slug}';
     protected static string $view = 'filament.streaming.pages.watch-anime-v1';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
@@ -20,6 +22,13 @@ class WatchAnime extends Page
     public string $episodeSlug = '';
     public ?array $episodeDetail = null;
     public ?array $seriesDetail = null;
+    public ?array $metadata = null;
+    public ?array $downloads = null;
+
+    public array $servers = [];
+    public string $activeServer = 'server1';
+    public bool $isEmbed = false;
+    public string $currentEmbedUrl = '';
 
     public string $currentStreamUrl = '';
     public string $currentServer = 'Direct HD (MP4)';
@@ -60,6 +69,14 @@ class WatchAnime extends Page
             return $scraper->scrapeAnimeSeriesDetail($anime_slug);
         });
 
+        $animeTitle = $this->seriesDetail['title'] ?? ($this->episodeDetail['title'] ?? '');
+
+        // Official metadata
+        $this->metadata = AnimeMetadataService::getMetadata($animeTitle);
+
+        // Otakudesu downloads for this episode
+        $this->downloads = AnimeDownloadResolverService::getDownloads($animeTitle, $this->episodeSlug);
+
         // Determine Prev & Next episodes
         $episodes = $this->seriesDetail['episodes'] ?? [];
         $currentIndex = null;
@@ -86,6 +103,45 @@ class WatchAnime extends Page
             $this->currentStreamUrl = '';
         }
 
+        // Servers List setup (Server 1 Direct HD as default)
+        $servers = [
+            [
+                'id' => 'server1',
+                'name' => 'Server 1 (Direct HD - V1)',
+                'type' => 'mp4',
+                'stream_url' => $this->currentStreamUrl,
+                'embed_url' => '',
+            ]
+        ];
+
+        // Otakudesu Hub if available
+        if (!empty($this->downloads['otaku_url'])) {
+            $servers[] = [
+                'id' => 'server_otaku',
+                'name' => 'Server 2 (Otakudesu Hub)',
+                'type' => 'embed',
+                'stream_url' => '',
+                'embed_url' => $this->downloads['otaku_url'],
+            ];
+        }
+
+        // Mirror servers if available in episodeDetail
+        if (!empty($this->episodeDetail['mirrors'])) {
+            foreach ($this->episodeDetail['mirrors'] as $idx => $m) {
+                $servers[] = [
+                    'id' => 'server_mirror_' . ($idx + 1),
+                    'name' => 'Server ' . ($idx + 2) . ' (' . ($m['name'] ?? 'Mirror') . ')',
+                    'type' => 'embed',
+                    'stream_url' => '',
+                    'embed_url' => $m['url'] ?? '',
+                ];
+            }
+        }
+
+        $this->servers = $servers;
+        $this->activeServer = 'server1';
+        $this->isEmbed = false;
+
         // Check favorite
         $this->isFavorited = auth()->user()
             ? auth()->user()->favorites()
@@ -97,7 +153,6 @@ class WatchAnime extends Page
         // Record Watch History
         if (auth()->check()) {
             $user = auth()->user();
-            $animeTitle = $this->seriesDetail['title'] ?? ($this->episodeDetail['title'] ?? 'Anime V1');
             $thumbnail = $this->seriesDetail['thumbnail'] ?? null;
             $epNum = (string) ($this->episodeDetail['episode_number'] ?? $this->episodeSlug);
 
@@ -123,6 +178,21 @@ class WatchAnime extends Page
                     'url' => request()->url(),
                 ]
             );
+        }
+    }
+
+    public function switchServer(string $serverId): void
+    {
+        $this->activeServer = $serverId;
+        foreach ($this->servers as $s) {
+            if ($s['id'] === $serverId) {
+                $this->isEmbed = ($s['type'] === 'embed');
+                $this->currentEmbedUrl = $s['embed_url'] ?? '';
+                if (!$this->isEmbed && !empty($s['stream_url'])) {
+                    $this->currentStreamUrl = $s['stream_url'];
+                }
+                break;
+            }
         }
     }
 

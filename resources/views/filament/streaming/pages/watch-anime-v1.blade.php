@@ -46,7 +46,9 @@
             </button>
 
             <div class="w-full h-full bg-black relative flex items-center justify-center">
-                @if(!empty($currentStreamUrl))
+                @if($isEmbed && !empty($currentEmbedUrl))
+                    <iframe src="{{ $currentEmbedUrl }}" class="w-full h-full border-0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>
+                @elseif(!empty($currentStreamUrl))
                     <video key="{{ $currentStreamUrl }}"
                            src="{{ $currentStreamUrl }}"
                            controls
@@ -60,22 +62,41 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h-14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                         </svg>
                         <p class="text-sm font-medium text-white">Stream video belum tersedia</p>
-                        <p class="text-xs text-zinc-500 mt-1">Silakan coba episode lain atau kembali nanti.</p>
+                        <p class="text-xs text-zinc-500 mt-1">Silakan coba ganti server atau pilih episode lain.</p>
                     </div>
                 @endif
             </div>
         </div>
+
+        <!-- ================= SERVER SWITCHER ================= -->
+        @if(!empty($servers))
+            <div class="px-4 md:px-0 flex items-center gap-2 overflow-x-auto kz-noscroll -mt-2 pb-1">
+                <span class="text-xs font-bold text-zinc-400 mr-1 flex items-center gap-1.5 shrink-0">
+                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
+                    Pilihan Server:
+                </span>
+                @foreach($servers as $s)
+                    <button type="button" wire:click="switchServer('{{ $s['id'] }}')"
+                            class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition flex items-center gap-1.5 {{ $activeServer === $s['id'] ? 'bg-emerald-600 text-white ring-emerald-500 shadow-lg shadow-emerald-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white' }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ $activeServer === $s['id'] ? 'bg-white' : 'bg-zinc-500' }}"></span>
+                        {{ $s['name'] }}
+                    </button>
+                @endforeach
+            </div>
+        @endif
 
         <!-- Episode Info & Metadata Bar -->
         <div class="px-4 md:px-0 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
             <div class="space-y-1">
                 <div class="flex items-center gap-2 flex-wrap">
                     <span class="px-2.5 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider">
-                        SERVER 1
+                        SERVER 1 (V1 DIRECT HD)
                     </span>
-                    <span class="px-2.5 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[10px] font-bold border border-zinc-700">
-                        DIRECT MP4 720P HD
-                    </span>
+                    @if(!empty($metadata['score']))
+                        <span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold uppercase">
+                            ★ {{ $metadata['score'] }} MAL
+                        </span>
+                    @endif
                     <span class="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold uppercase">
                         STREAMING AKTIF
                     </span>
@@ -91,8 +112,14 @@
                 @endif
             </div>
 
-            <!-- Favorite Button -->
+            <!-- Actions (Favorite & Download Jump) -->
             <div class="flex items-center gap-3">
+                <a href="#episode-downloads"
+                   class="px-4 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white text-xs font-bold transition flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    <span>Download Episode Ini</span>
+                </a>
+
                 <button wire:click="toggleFavorite"
                         class="px-4 py-2.5 rounded-xl border {{ $isFavorited ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800' }} text-xs font-bold transition flex items-center gap-2">
                     <svg class="w-4 h-4 {{ $isFavorited ? 'fill-current' : 'fill-none stroke-current' }}" viewBox="0 0 24 24" stroke-width="2">
@@ -102,6 +129,42 @@
                 </button>
             </div>
         </div>
+
+        <!-- Downloads for this Episode -->
+        @if(!empty($downloads['episode']))
+            <div id="episode-downloads" class="px-4 md:px-0">
+                <div class="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/80">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                        </span>
+                        <h3 class="text-sm font-black text-white">Download Episode {{ $episodeSlug }} (Otakudesu)</h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach($downloads['episode'] as $dl)
+                            <div class="p-3.5 rounded-xl bg-zinc-950/70 border border-zinc-800">
+                                <div class="flex items-center justify-between mb-2.5">
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-black bg-emerald-950/80 text-emerald-400 border border-emerald-500/30">
+                                        {{ $dl['format'] ?? 'MP4' }}
+                                    </span>
+                                    @if(!empty($dl['size']))
+                                        <span class="text-xs font-mono font-bold text-zinc-400">{{ $dl['size'] }}</span>
+                                    @endif
+                                </div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    @foreach($dl['links'] ?? [] as $lk)
+                                        <a href="{{ $lk['url'] }}" target="_blank" rel="noopener noreferrer"
+                                           class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-900 hover:bg-emerald-600 text-zinc-300 hover:text-white text-[11px] font-bold border border-zinc-800 transition">
+                                            <span>{{ $lk['host'] }}</span>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <!-- All Episodes Navigation Section -->
         @if(!empty($seriesDetail['episodes']))
@@ -145,7 +208,7 @@
             if (!(v instanceof HTMLVideoElement) || v.dataset.kzFsAuto || !window.KzFs || !KzFs.isTouch()) return;
             const shell = v.closest('[data-kz-fs]');
             if (!shell || KzFs.current()) return;
-            if (navigator.userActivation && !navigator.userActivation.isActive) return; // autoplay tanpa tap: jangan paksa
+            if (navigator.userActivation && !navigator.userActivation.isActive) return;
             v.dataset.kzFsAuto = '1';
             KzFs.enter(shell, { video: v });
         }, true);
