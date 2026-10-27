@@ -35,7 +35,7 @@
     @endif
 
     {{-- Top bar --}}
-    <div class="relative w-full max-w-[1600px] mx-auto px-4 md:px-8 pt-20 md:pt-28 pb-4 flex items-center justify-between">
+    <div class="relative w-full max-w-[1400px] mx-auto px-4 lg:px-8 pt-20 md:pt-24 pb-2 flex items-center justify-between">
         <a href="{{ Movies::getUrl(panel: 'streaming') }}"
            class="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
@@ -47,83 +47,84 @@
         </span>
     </div>
 
-    <div class="relative w-full max-w-[1600px] mx-auto px-0 md:px-8 space-y-8" x-data="watchPlayerInit()">
+    <div class="relative w-full max-w-[1400px] mx-auto px-0 lg:px-8 space-y-8" x-data="watchPlayerInit()">
 
-        {{-- ================= PLAYER ================= --}}
-        <div class="w-full bg-black md:rounded-2xl overflow-hidden aspect-video relative ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
-            <div x-show="isPlaying && !isEmbed" class="w-full h-full relative" style="display: none;">
-                <div x-ref="artContainer" id="movieArtPlayer" class="w-full h-full"></div>
-            </div>
+        {{-- ============ TWO-COLUMN GRID: LEFT (PLAYER & DETAILS) + RIGHT (SIDEBAR) ============ --}}
+        <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8">
 
-            <div x-show="isPlaying && isEmbed" class="w-full h-full relative bg-black" style="display: none;">
-                <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
-            </div>
-
-            <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
-                @include('filament.streaming.partials.server-loading-indicator', [
-                    'title' => 'Memilih server terbaik',
-                    'subtitle' => 'Mengambil jalur stream film tercepat & subtitle Indonesia',
-                ])
-            </div>
-
-            <div x-show="!isPlaying && !isLoadingStream" class="absolute inset-0 z-20">
-                @if($mBanner)
-                    <img src="{{ $mBanner }}" alt="" class="absolute inset-0 w-full h-full object-cover">
-                @endif
-                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/30 to-black/10"></div>
-                <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/70 via-transparent to-transparent"></div>
-
-                <button type="button" @click="playVideo()" aria-label="Putar {{ $media['title'] }}"
-                        class="absolute inset-0 m-auto w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/15 hover:bg-red-600 backdrop-blur-md ring-1 ring-white/40 flex items-center justify-center transition duration-300 hover:scale-110 group cursor-pointer z-20">
-                    <span class="pointer-events-none absolute inset-0 rounded-full ring-2 ring-white/20 animate-ping"></span>
-                    <svg class="pointer-events-none w-9 h-9 md:w-11 md:h-11 fill-white ml-1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-                </button>
-
-                <div class="absolute left-4 right-4 bottom-4 md:left-8 md:bottom-7 flex items-end justify-between gap-4">
-                    <div class="min-w-0">
-                        <p class="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-red-500">Movie</p>
-                        <p class="text-lg md:text-3xl font-black tracking-tight line-clamp-1 drop-shadow-lg">{{ $media['title'] }}</p>
+            {{-- ============ LEFT COLUMN: PLAYER + SERVER SWITCHER + MOVIE INFO ============ --}}
+            <div class="min-w-0 space-y-4">
+                {{-- Video Player Container --}}
+                <div class="w-full bg-black lg:rounded-2xl overflow-hidden aspect-video relative ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
+                    <div x-show="isPlaying && !isEmbed" class="w-full h-full relative" style="display: none;">
+                        <div x-ref="artContainer" id="movieArtPlayer" class="w-full h-full"></div>
                     </div>
-                    @if($mRuntime)
-                        <span class="hidden sm:inline shrink-0 text-xs font-bold bg-black/60 backdrop-blur px-2.5 py-1 rounded-full border border-white/10">{{ $mRuntime }}</span>
-                    @endif
+
+                    <div x-show="isPlaying && isEmbed" class="w-full h-full relative bg-black" style="display: none;">
+                        <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+                    </div>
+
+                    <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                        @include('filament.streaming.partials.server-loading-indicator', [
+                            'title' => 'Memilih server terbaik',
+                            'subtitle' => 'Mengambil jalur stream film tercepat & subtitle Indonesia',
+                        ])
+                    </div>
+
+                    <div x-show="!isPlaying && !isLoadingStream" class="absolute inset-0 z-20">
+                        @if($mBanner)
+                            <img src="{{ $mBanner }}" alt="" class="absolute inset-0 w-full h-full object-cover">
+                        @endif
+                        <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/30 to-black/10"></div>
+                        <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/70 via-transparent to-transparent"></div>
+
+                        <button type="button" @click="playVideo()" aria-label="Putar {{ $media['title'] }}"
+                                class="absolute inset-0 m-auto w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/15 hover:bg-red-600 backdrop-blur-md ring-1 ring-white/40 flex items-center justify-center transition duration-300 hover:scale-110 group cursor-pointer z-20">
+                            <span class="pointer-events-none absolute inset-0 rounded-full ring-2 ring-white/20 animate-ping"></span>
+                            <svg class="pointer-events-none w-9 h-9 md:w-11 md:h-11 fill-white ml-1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+
+                        <div class="absolute left-4 right-4 bottom-4 md:left-8 md:bottom-7 flex items-end justify-between gap-4">
+                            <div class="min-w-0">
+                                <p class="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-red-500">Movie</p>
+                                <p class="text-lg md:text-3xl font-black tracking-tight line-clamp-1 drop-shadow-lg">{{ $media['title'] }}</p>
+                            </div>
+                            @if($mRuntime)
+                                <span class="hidden sm:inline shrink-0 text-xs font-bold bg-black/60 backdrop-blur px-2.5 py-1 rounded-full border border-white/10">{{ $mRuntime }}</span>
+                            @endif
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- ================= SERVER SWITCHER ================= --}}
-        @if(!empty($servers) && count($servers) > 1)
-            <div class="px-4 md:px-0 flex items-center gap-2 overflow-x-auto kz-noscroll -mt-4 pb-1">
-                <span class="text-xs font-bold text-zinc-400 mr-1 flex items-center gap-1.5 shrink-0">
-                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
-                    Pilihan Server:
-                </span>
-                @foreach($servers as $s)
-                    <button type="button"
-                            @click="switchServer('{{ $s['id'] }}', '{{ $s['embed_url'] ?? '' }}', {{ $s['type'] === 'embed' ? 'true' : 'false' }})"
-                            :class="activeServer === '{{ $s['id'] }}' ? 'bg-red-600 text-white ring-red-500 shadow-lg shadow-red-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white'"
-                            class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition flex items-center gap-1.5">
-                        <span class="w-1.5 h-1.5 rounded-full" :class="activeServer === '{{ $s['id'] }}' ? 'bg-white' : 'bg-zinc-500'"></span>
-                        {{ $s['name'] }}
-                    </button>
-                @endforeach
-            </div>
-            <div x-show="isEmbed" class="px-4 md:px-0 flex items-center gap-2 text-[11px] text-zinc-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2 -mt-2">
-                <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
-                <span><strong>Tips Bebas Iklan</strong>: Server global gratisan dapat memicu pop-up/redirect ke e-commerce. Disarankan gunakan browser <strong>Brave</strong> atau pasang <strong>AdGuard / uBlock</strong> di HP agar bebas iklan 100%. Jika terganggu, coba ganti Server 2 atau 3.</span>
-            </div>
-        @endif
+                {{-- Server Switcher --}}
+                @if(!empty($servers) && count($servers) > 1)
+                    <div class="px-4 lg:px-0 flex items-center gap-2 overflow-x-auto kz-noscroll pt-1 pb-1">
+                        <span class="text-xs font-bold text-zinc-400 mr-1 flex items-center gap-1.5 shrink-0">
+                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
+                            Pilihan Server:
+                        </span>
+                        @foreach($servers as $s)
+                            <button type="button"
+                                    @click="switchServer('{{ $s['id'] }}', '{{ $s['embed_url'] ?? '' }}', {{ $s['type'] === 'embed' ? 'true' : 'false' }})"
+                                    :class="activeServer === '{{ $s['id'] }}' ? 'bg-red-600 text-white ring-red-500 shadow-lg shadow-red-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white'"
+                                    class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full" :class="activeServer === '{{ $s['id'] }}' ? 'bg-white' : 'bg-zinc-500'"></span>
+                                {{ $s['name'] }}
+                            </button>
+                        @endforeach
+                    </div>
+                    <div x-show="isEmbed" class="px-4 lg:px-0 flex items-center gap-2 text-[11px] text-zinc-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2 -mt-1">
+                        <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                        <span><strong>Tips Bebas Iklan</strong>: Server global gratisan dapat memicu pop-up/redirect ke e-commerce. Disarankan gunakan browser <strong>Brave</strong> atau pasang <strong>AdGuard / uBlock</strong> di HP agar bebas iklan 100%. Jika terganggu, coba ganti Server 2 atau 3.</span>
+                    </div>
+                @endif
 
-        {{-- ================= INFO ================= --}}
-        <div class="px-4 md:px-0 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
-            <div class="min-w-0">
-                <div class="flex items-start gap-5">
-                    @if(!empty($media['thumbnail']))
-                        <img src="{{ $media['thumbnail'] }}" alt="" class="hidden sm:block w-28 md:w-32 aspect-[2/3] object-cover rounded-xl ring-1 ring-white/10 shadow-xl shrink-0">
-                    @endif
-                    <div class="min-w-0">
-                        <h1 class="text-2xl md:text-4xl font-black tracking-tight leading-tight">{{ $media['title'] }}</h1>
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mt-3 text-sm font-semibold text-zinc-300">
+                {{-- Movie Details Block --}}
+                <div class="px-4 lg:px-0 pt-2 space-y-4">
+                    <div>
+                        <p class="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-red-500 mb-1">Movie</p>
+                        <h1 class="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight">{{ $media['title'] }}</h1>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mt-2 text-sm font-semibold text-zinc-300">
                             @if($mRating > 0)
                                 <span class="inline-flex items-center gap-1 text-yellow-400">
                                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
@@ -135,60 +136,68 @@
                             <span class="px-1.5 py-0.5 text-[10px] font-black border border-emerald-500/50 text-emerald-400 rounded">{{ $media['quality'] ?? 'HD' }}</span>
                         </div>
                         @if(count($mGenres))
-                            <div class="flex flex-wrap gap-2 mt-4">
+                            <div class="flex flex-wrap gap-1.5 mt-3">
                                 @foreach($mGenres as $g)
-                                    <span class="px-3 py-1 text-xs font-semibold text-zinc-200 bg-white/5 border border-white/10 rounded-full">{{ $g }}</span>
+                                    <span class="px-2.5 py-0.5 text-xs font-semibold text-zinc-200 bg-white/5 border border-white/10 rounded-full">{{ $g }}</span>
                                 @endforeach
                             </div>
                         @endif
                     </div>
-                </div>
 
-                @if(!empty($media['description']))
-                    <div class="mt-6">
-                        <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2">Sinopsis</h2>
-                        <p x-data="{ more: false }" @click="more = !more" :class="more ? '' : 'line-clamp-4'"
-                           class="text-sm md:text-base text-zinc-300 leading-relaxed cursor-pointer">{{ $media['description'] }}</p>
-                    </div>
-                @endif
+                    @if(!empty($media['description']))
+                        <div class="mt-4 pt-4 border-t border-zinc-800/80">
+                            <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2">Sinopsis</h2>
+                            <p x-data="{ more: false }" @click="more = !more" :class="more ? '' : 'line-clamp-4'"
+                               class="text-sm md:text-base text-zinc-300 leading-relaxed cursor-pointer">{{ $media['description'] }}</p>
+                        </div>
+                    @endif
+                </div>
             </div>
 
-            {{-- Side panel: actions + subtitle --}}
-            <aside class="bg-zinc-900/50 backdrop-blur rounded-2xl ring-1 ring-white/5 p-5 space-y-5 self-start">
-                <button type="button" @click="playVideo()" x-show="!isPlaying"
-                        class="w-full inline-flex items-center justify-center gap-2 py-3 bg-white text-black hover:bg-zinc-200 active:scale-[0.98] rounded-xl font-bold text-sm transition">
-                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-                    Putar Film
-                </button>
+            {{-- ============ RIGHT COLUMN: SIDEBAR (POSTER + ACTIONS + SUBTITLE) ============ --}}
+            <aside class="px-4 lg:px-0 pt-6 lg:pt-0 min-w-0" aria-label="Informasi & Kontrol">
+                <div class="lg:sticky lg:top-24 bg-zinc-900/50 backdrop-blur rounded-2xl ring-1 ring-white/5 p-5 space-y-5">
+                    @if(!empty($media['thumbnail']))
+                        <div class="w-full aspect-[2/3] max-h-[280px] overflow-hidden rounded-xl ring-1 ring-white/10 shadow-xl hidden lg:block bg-zinc-950">
+                            <img src="{{ $media['thumbnail'] }}" alt="{{ $media['title'] }}" class="w-full h-full object-cover">
+                        </div>
+                    @endif
 
-                <div>
-                    <p class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Subtitle</p>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button type="button" @click="setSubtitle('id')"
-                                :class="activeSubtitleLang === 'id' ? 'bg-red-600 border-red-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-600'"
-                                class="py-2 rounded-lg text-xs font-bold border transition">Indonesia</button>
-                        <button type="button" @click="setSubtitle('en')"
-                                :class="activeSubtitleLang === 'en' ? 'bg-red-600 border-red-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-600'"
-                                class="py-2 rounded-lg text-xs font-bold border transition">English</button>
-                        <button type="button" @click="setSubtitle('off')"
-                                :class="activeSubtitleLang === 'off' ? 'bg-zinc-700 border-zinc-600 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600'"
-                                class="py-2 rounded-lg text-xs font-bold border transition">Mati</button>
+                    <button type="button" @click="playVideo()" x-show="!isPlaying"
+                            class="w-full inline-flex items-center justify-center gap-2 py-3 bg-white text-black hover:bg-zinc-200 active:scale-[0.98] rounded-xl font-bold text-sm transition shadow-lg shadow-white/10">
+                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                        Putar Film
+                    </button>
+
+                    <div>
+                        <p class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Subtitle</p>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" @click="setSubtitle('id')"
+                                    :class="activeSubtitleLang === 'id' ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30' : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-600'"
+                                    class="py-2 rounded-lg text-xs font-bold border transition">Indonesia</button>
+                            <button type="button" @click="setSubtitle('en')"
+                                    :class="activeSubtitleLang === 'en' ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30' : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-600'"
+                                    class="py-2 rounded-lg text-xs font-bold border transition">English</button>
+                            <button type="button" @click="setSubtitle('off')"
+                                    :class="activeSubtitleLang === 'off' ? 'bg-zinc-700 border-zinc-600 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600'"
+                                    class="py-2 rounded-lg text-xs font-bold border transition">Mati</button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-2 gap-2">
-                    <button wire:click="toggleFavorite" type="button"
-                            class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border transition {{ $isFavorited ? 'bg-red-600/15 border-red-600/50 text-red-400' : 'bg-zinc-950 border-zinc-800 text-zinc-200 hover:border-zinc-600' }}">
-                        <svg class="w-4 h-4 {{ $isFavorited ? 'fill-current' : 'fill-none stroke-current' }}" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                        </svg>
-                        {{ $isFavorited ? 'Tersimpan' : 'Favorit' }}
-                    </button>
-                    <button type="button" x-data="{ ok: false }"
-                            @click="navigator.clipboard.writeText(window.location.href); ok = true; setTimeout(() => ok = false, 1800)"
-                            class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-zinc-950 border border-zinc-800 text-zinc-200 hover:border-zinc-600 transition">
-                        <span x-text="ok ? 'Link disalin' : 'Bagikan'">Bagikan</span>
-                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button wire:click="toggleFavorite" type="button"
+                                class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border transition {{ $isFavorited ? 'bg-red-600/15 border-red-600/50 text-red-400' : 'bg-zinc-950 border-zinc-800 text-zinc-200 hover:border-zinc-600' }}">
+                            <svg class="w-4 h-4 {{ $isFavorited ? 'fill-current' : 'fill-none stroke-current' }}" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                            </svg>
+                            {{ $isFavorited ? 'Tersimpan' : 'Favorit' }}
+                        </button>
+                        <button type="button" x-data="{ ok: false }"
+                                @click="navigator.clipboard.writeText(window.location.href); ok = true; setTimeout(() => ok = false, 1800)"
+                                class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-zinc-950 border border-zinc-800 text-zinc-200 hover:border-zinc-600 transition">
+                            <span x-text="ok ? 'Link disalin' : 'Bagikan'">Bagikan</span>
+                        </button>
+                    </div>
                 </div>
             </aside>
         </div>
