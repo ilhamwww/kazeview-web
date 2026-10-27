@@ -200,30 +200,34 @@ class WatchAnime extends Page
             ];
         }
 
-        if (!empty($this->episodeDetail['iframe_url'])) {
+        // Server Otakudesu (Direct HD / DesuStream / Embed)
+        $otakuStream = $this->downloads['stream_url'] ?? ($this->episodeDetail['direct_mp4'] ?? null);
+        $otakuIframe = $this->downloads['iframe_url'] ?? ($this->episodeDetail['iframe_url'] ?? null);
+
+        if (!empty($otakuStream)) {
+            // Direct MP4 dari Otakudesu / Archive.org
+            $servers[] = [
+                'id' => 'server_otaku_direct',
+                'name' => 'Server ' . (count($servers) + 1) . ' (Otakudesu Direct HD)',
+                'type' => 'mp4',
+                'stream_url' => $otakuStream,
+                'embed_url' => '',
+            ];
+        } elseif (!empty($otakuIframe)) {
+            // Embed DesuStream jika ada
             $servers[] = [
                 'id' => 'server_otaku_embed',
                 'name' => 'Server ' . (count($servers) + 1) . ' (DesuStream)',
                 'type' => 'embed',
                 'stream_url' => '',
-                'embed_url' => $this->episodeDetail['iframe_url'],
+                'embed_url' => $otakuIframe,
             ];
         }
 
-        // Otakudesu Hub if available
-        if (!empty($this->downloads['otaku_url'])) {
-            $servers[] = [
-                'id' => 'server_otaku',
-                'name' => 'Server ' . (count($servers) + 1) . ' (Otakudesu Hub)',
-                'type' => 'embed',
-                'stream_url' => '',
-                'embed_url' => $this->downloads['otaku_url'],
-            ];
-        }
-
-        // Mirror servers if available in episodeDetail
-        if (!empty($this->episodeDetail['mirrors'])) {
-            foreach ($this->episodeDetail['mirrors'] as $idx => $m) {
+        // Mirror servers if available in episodeDetail or downloads
+        $mirrors = $this->episodeDetail['mirrors'] ?? ($this->downloads['mirrors'] ?? []);
+        if (!empty($mirrors)) {
+            foreach ($mirrors as $idx => $m) {
                 if (!empty($m['url'])) {
                     $servers[] = [
                         'id' => 'server_mirror_' . ($idx + 1),

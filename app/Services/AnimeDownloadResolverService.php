@@ -18,7 +18,7 @@ class AnimeDownloadResolverService
             return ['episode' => [], 'batch' => []];
         }
 
-        $cacheKey = 'anime_dl_' . md5(strtolower($cleanTitle) . '_' . ($episodeNum ?? 'all'));
+        $cacheKey = 'anime_dl_v2_' . md5(strtolower($cleanTitle) . '_' . ($episodeNum ?? 'all'));
 
         return Cache::remember($cacheKey, 43200, function () use ($cleanTitle, $episodeNum) {
             try {
@@ -77,6 +77,7 @@ class AnimeDownloadResolverService
                 }
 
                 $episodeDownloads = [];
+                $epDetail = null;
                 if ($targetEpUrl) {
                     $epDetail = $scraper->scrapeEpisodeDetail($targetEpUrl);
                     $episodeDownloads = $epDetail['downloads'] ?? [];
@@ -95,6 +96,26 @@ class AnimeDownloadResolverService
                     }
                 }
 
+                // Coba ambil direct video MP4 dari DesuStream jika ada
+                $otakuStreamUrl = $epDetail['direct_mp4'] ?? null;
+                $otakuIframeUrl = $epDetail['iframe_url'] ?? null;
+
+                if (empty($otakuStreamUrl) && !empty($otakuIframeUrl) && str_contains($otakuIframeUrl, 'desustream.net')) {
+                    try {
+                        $desuClient = new \GuzzleHttp\Client([
+                            'timeout' => 8,
+                            'headers' => [
+                                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                'Referer' => 'https://otakudesu.blog/',
+                            ],
+                        ]);
+                        $desuHtml = (string) $desuClient->get($otakuIframeUrl)->getBody();
+                        if (preg_match('/file\s*:\s*["\']([^"\']+)["\']/', $desuHtml, $vm)) {
+                            $otakuStreamUrl = trim($vm[1]);
+                        }
+                    } catch (\Throwable $e) {}
+                }
+
                 return [
                     'source' => 'Otakudesu',
                     'otaku_title' => $match['title'] ?? '',
@@ -102,6 +123,9 @@ class AnimeDownloadResolverService
                     'episode_num' => $episodeNum,
                     'episode' => $episodeDownloads,
                     'batch' => $batchDownloads,
+                    'stream_url' => $otakuStreamUrl,
+                    'iframe_url' => $otakuIframeUrl,
+                    'mirrors' => $epDetail['mirrors'] ?? [],
                 ];
 
             } catch (\Throwable $e) {
