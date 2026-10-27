@@ -195,7 +195,7 @@ class WatchAnime extends Page
             $currentStreamUrl = '';
             $isDirect = false;
             if (!empty($rawStream)) {
-                if (str_starts_with($rawStream, 'http') && (str_contains($rawStream, '.mp4') || str_contains($rawStream, 'suzune.') || str_contains($rawStream, 'erisboreas.') || str_contains($rawStream, 'arianeglenys.') || str_contains($rawStream, 'archive.org'))) {
+                if (str_starts_with($rawStream, 'http')) {
                     $isDirect = true;
                     if (str_contains($rawStream, '/api/proxy-stream')) {
                         $currentStreamUrl = $rawStream;

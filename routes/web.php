@@ -582,146 +582,219 @@ Route::get('/api/proxy-stream', function (\Illuminate\Http\Request $request) {
     $parsedUrl = parse_url($url);
     $host = $parsedUrl['host'] ?? '';
     $scheme = $parsedUrl['scheme'] ?? 'https';
+    $query = $parsedUrl['query'] ?? '';
 
-    // Referer/Origin sesuai host asal (khusus untuk bilibili.tv dan CDN anime Mirainime gunakan domain kanonisnya).
+    // =========================================================================
+    // SOLUSI 2: Pattern Signature Matching
+    // Mengenali sidik jari khas token CDN Mirainime (file=, expiry=, mac=)
+    // dan cluster domain upstream. Kebal otomatis terhadap pergantian nama domain!
+    // =========================================================================
+    $isMirainimeSignature = (str_contains($query, 'file=') && str_contains($query, 'expiry=') && str_contains($query, 'mac='))
+        || str_contains($url, 'mirainime')
+        || str_contains($host, 'suzune.')
+        || str_contains($host, 'suguha.')
+        || str_contains($host, 'arianeglenys.')
+        || str_contains($host, 'erisboreas.')
+        || (preg_match('/^b\d+\./i', $host) && (str_contains($host, '.my.id') || str_contains($host, '.web.id')));
+
+    // =========================================================================
+    // SOLUSI 1 & 3: Profil Header Kandidat + Auto-Retry Self-Healing jika 403
+    // Urutan profil prioritas yang akan dicoba berurutan di latar belakang
+    // jika upstream sempat merespons 403 / 401.
+    // =========================================================================
+    $profiles = [];
+
+    // Solusi 1: Jika pemanggil mengirim referer eksplisit (misal dari WatchAnime)
     if ($request->filled('referer')) {
-        $referer = $request->get('referer');
-        $origin = rtrim($referer, '/');
-    } elseif (str_contains($host, 'bilibili.tv')) {
-        $referer = 'https://www.bilibili.tv/';
-        $origin = 'https://www.bilibili.tv';
-    } elseif (
-        str_contains($host, 'erisboreas.') ||
-        str_contains($host, 'suzune.') ||
-        str_contains($host, 'arianeglenys.') ||
-        str_contains($host, 'mirainime') ||
-        str_contains($host, 'b2.') ||
-        str_contains($host, 'b3.')
-    ) {
-        $referer = 'https://mirainime.com/';
-        $origin = 'https://mirainime.com';
-    } else {
-        $referer = "{$scheme}://{$host}/";
-        $origin = "{$scheme}://{$host}";
+        $ref = $request->get('referer');
+        $profiles[] = [
+            'name' => 'explicit_caller_referer',
+            'referer' => $ref,
+            'origin' => rtrim($ref, '/'),
+        ];
     }
 
-    $reqHeaders = [
-        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept: */*',
-        'Connection: keep-alive',
-        'Referer: ' . $referer,
-        'Origin: ' . $origin,
+    if ($isMirainimeSignature) {
+        $profiles[] = [
+            'name' => 'mirainime_canonical',
+            'referer' => 'https://mirainime.com/',
+            'origin' => 'https://mirainime.com',
+        ];
+        $profiles[] = [
+            'name' => 'mirainime_no_origin',
+            'referer' => 'https://mirainime.com/',
+            'origin' => null,
+        ];
+    } elseif (str_contains($host, 'bilibili.tv')) {
+        $profiles[] = [
+            'name' => 'bilibili',
+            'referer' => 'https://www.bilibili.tv/',
+            'origin' => 'https://www.bilibili.tv',
+        ];
+    } else {
+        $profiles[] = [
+            'name' => 'host_canonical',
+            'referer' => "{$scheme}://{$host}/",
+            'origin' => "{$scheme}://{$host}",
+        ];
+        $profiles[] = [
+            'name' => 'mirainime_fallback',
+            'referer' => 'https://mirainime.com/',
+            'origin' => 'https://mirainime.com',
+        ];
+    }
+
+    // Fallback universal: tanpa referer dan tanpa origin
+    $profiles[] = [
+        'name' => 'bare_no_referer',
+        'referer' => null,
+        'origin' => null,
     ];
-    if ($request->hasHeader('Range')) {
-        $reqHeaders[] = 'Range: ' . $request->header('Range');
+
+    // Deduplikasi profil
+    $uniqueProfiles = [];
+    $seenKey = [];
+    foreach ($profiles as $p) {
+        $k = ($p['referer'] ?? '') . '|' . ($p['origin'] ?? '');
+        if (!isset($seenKey[$k])) {
+            $seenKey[$k] = true;
+            $uniqueProfiles[] = $p;
+        }
     }
 
     // Handle HEAD request to avoid downloading the body
     $isHeadRequest = $request->isMethod('HEAD');
 
-    // Direct cURL → php://output. Menghindari overhead Guzzle + response()->stream
-    // yang biasanya menjadi bottleneck untuk banyak segmen HLS berjalan paralel.
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
 
-    $statusCode = 200;
-    $headersSent = false;
-    $headersBuffer = [];
     $forwardHeaders = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'etag', 'last-modified'];
+    $clientRange = $request->header('Range');
 
-    $ch = curl_init();
-    $curlOptions = [
-        CURLOPT_URL => $url,
-        CURLOPT_HTTPHEADER => $reqHeaders,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS => 5,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_TIMEOUT => 60,
-        CURLOPT_BUFFERSIZE => 131072, // 128 KB per read
-        CURLOPT_ACCEPT_ENCODING => '', // izinkan gzip/deflate/br dari upstream, auto-decode
-        CURLOPT_HEADERFUNCTION => function ($_ch, $headerLine) use (&$statusCode, &$headersBuffer, &$headersSent, $forwardHeaders) {
-            $trim = trim($headerLine);
-            
-            // Baris kosong menandakan akhir dari header block HTTP response ini
-            if ($trim === '') {
-                // Hanya kirim header ke client jika response BUKAN redirect (3xx)
-                if ($statusCode < 300 || $statusCode >= 400) {
-                    if (!headers_sent() && !$headersSent) {
-                        http_response_code($statusCode);
-                        header('Access-Control-Allow-Origin: *');
-                        header('Access-Control-Allow-Methods: GET, HEAD, OPTIONS');
-                        header('Access-Control-Allow-Headers: Origin, Content-Type, Accept, Range');
-                        header('Access-Control-Expose-Headers: Content-Length, Content-Range, Accept-Ranges');
-                        // Segment .ts memiliki auth_key yang stabil; cache di browser 1 jam mempercepat seek/replay.
-                        header('Cache-Control: public, max-age=3600');
-                        
-                        foreach ($headersBuffer as $h) {
-                            header($h);
+    $totalAttempts = count($uniqueProfiles);
+    $headersSent = false;
+    $lastError = '';
+
+    for ($attempt = 0; $attempt < $totalAttempts; $attempt++) {
+        $p = $uniqueProfiles[$attempt];
+
+        $reqHeaders = [
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept: */*',
+            'Connection: keep-alive',
+        ];
+        if (!empty($p['referer'])) {
+            $reqHeaders[] = 'Referer: ' . $p['referer'];
+        }
+        if (!empty($p['origin'])) {
+            $reqHeaders[] = 'Origin: ' . $p['origin'];
+        }
+        if (!empty($clientRange)) {
+            $reqHeaders[] = 'Range: ' . $clientRange;
+        }
+
+        $statusCode = 200;
+        $headersBuffer = [];
+        $shouldRetry = false;
+
+        $ch = curl_init();
+        $curlOptions = [
+            CURLOPT_URL => $url,
+            CURLOPT_HTTPHEADER => $reqHeaders,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 5,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 60,
+            CURLOPT_BUFFERSIZE => 131072, // 128 KB per read
+            CURLOPT_ACCEPT_ENCODING => '', // izinkan gzip/deflate/br dari upstream, auto-decode
+            CURLOPT_HEADERFUNCTION => function ($_ch, $headerLine) use (&$statusCode, &$headersBuffer, &$headersSent, &$shouldRetry, $forwardHeaders, $attempt, $totalAttempts) {
+                $trim = trim($headerLine);
+
+                if (stripos($trim, 'HTTP/') === 0) {
+                    if (preg_match('~HTTP/\S+\s+(\d+)~', $trim, $m)) {
+                        $statusCode = (int) $m[1];
+                    }
+                    $headersBuffer = [];
+                    return strlen($headerLine);
+                }
+
+                // Baris kosong menandakan akhir dari header block HTTP response ini
+                if ($trim === '') {
+                    // Solusi 3: Jika terdeteksi 401/403 dan masih ada profil kandidat lain, batalkan transfer ini untuk self-heal
+                    if ($statusCode >= 400 && $statusCode <= 403 && $attempt < $totalAttempts - 1) {
+                        $shouldRetry = true;
+                        return 0; // Abort cURL
+                    }
+
+                    if ($statusCode < 300 || $statusCode >= 400) {
+                        if (!headers_sent() && !$headersSent) {
+                            http_response_code($statusCode);
+                            header('Access-Control-Allow-Origin: *');
+                            header('Access-Control-Allow-Methods: GET, HEAD, OPTIONS');
+                            header('Access-Control-Allow-Headers: Origin, Content-Type, Accept, Range');
+                            header('Access-Control-Expose-Headers: Content-Length, Content-Range, Accept-Ranges');
+                            header('Cache-Control: public, max-age=3600');
+
+                            foreach ($headersBuffer as $h) {
+                                header($h);
+                            }
+                            $headersSent = true;
                         }
-                        $headersSent = true;
+                    }
+                    return strlen($headerLine);
+                }
+
+                if (str_contains($trim, ':')) {
+                    [$name, $value] = explode(':', $trim, 2);
+                    if (in_array(strtolower(trim($name)), $forwardHeaders, true)) {
+                        $headersBuffer[] = $trim;
                     }
                 }
                 return strlen($headerLine);
-            }
+            },
+            CURLOPT_WRITEFUNCTION => function ($_ch, $data) use (&$headersSent, &$statusCode, &$headersBuffer) {
+                if (!$headersSent && !headers_sent()) {
+                    http_response_code($statusCode);
+                    header('Access-Control-Allow-Origin: *');
+                    header('Access-Control-Allow-Methods: GET, HEAD, OPTIONS');
+                    header('Access-Control-Allow-Headers: Origin, Content-Type, Accept, Range');
+                    header('Access-Control-Expose-Headers: Content-Length, Content-Range, Accept-Ranges');
+                    header('Cache-Control: public, max-age=3600');
 
-            if (stripos($trim, 'HTTP/') === 0) {
-                if (preg_match('~HTTP/\S+\s+(\d+)~', $trim, $m)) {
-                    $statusCode = (int) $m[1];
+                    foreach ($headersBuffer as $h) {
+                        header($h);
+                    }
+                    $headersSent = true;
                 }
-                // Bersihkan buffer header karena ini bisa jadi respon redirect baru
-                $headersBuffer = [];
-                return strlen($headerLine);
-            }
+                $len = strlen($data);
+                echo $data;
+                return $len;
+            },
+        ];
 
-            if (str_contains($trim, ':')) {
-                [$name, $value] = explode(':', $trim, 2);
-                if (in_array(strtolower(trim($name)), $forwardHeaders, true)) {
-                    $headersBuffer[] = $trim;
-                }
-            }
-            return strlen($headerLine);
-        },
-        CURLOPT_WRITEFUNCTION => function ($_ch, $data) use (&$headersSent, &$statusCode, &$headersBuffer) {
-            if (!$headersSent && !headers_sent()) {
-                http_response_code($statusCode);
-                header('Access-Control-Allow-Origin: *');
-                header('Access-Control-Allow-Methods: GET, HEAD, OPTIONS');
-                header('Access-Control-Allow-Headers: Origin, Content-Type, Accept, Range');
-                header('Access-Control-Expose-Headers: Content-Length, Content-Range, Accept-Ranges');
-                header('Cache-Control: public, max-age=3600');
-                foreach ($headersBuffer as $h) {
-                    header($h);
-                }
-                $headersSent = true;
-            }
-            $len = strlen($data);
-            echo $data;
-            return $len;
-        },
-    ];
+        if ($isHeadRequest) {
+            $curlOptions[CURLOPT_NOBODY] = true;
+        }
 
-    if ($isHeadRequest) {
-        $curlOptions[CURLOPT_NOBODY] = true;
-    }
+        curl_setopt_array($ch, $curlOptions);
+        curl_exec($ch);
+        $lastError = curl_error($ch);
+        curl_close($ch);
 
-    curl_setopt_array($ch, $curlOptions);
-
-    curl_exec($ch);
-    $err = curl_error($ch);
-    curl_close($ch);
-
-    if ($err && !$headersSent) {
-        if (!headers_sent()) {
-            http_response_code(502);
-            header('Content-Type: text/plain');
-            echo 'Upstream error: ' . $err;
+        // Jika berhasil streaming atau status sukses, hentikan retry loop
+        if ($headersSent || ($statusCode >= 200 && $statusCode < 400 && !$shouldRetry)) {
+            exit;
         }
     }
-    // Handler cURL sudah mengirim body langsung ke output. Hentikan Laravel di sini
-    // agar tidak menambahkan wrapper response tambahan.
+
+    if (!$headersSent && !headers_sent()) {
+        http_response_code(502);
+        header('Content-Type: text/plain');
+        echo 'Upstream stream failed: ' . ($lastError ?: 'Forbidden / Unreachable');
+    }
     exit;
 })->name('api.proxy-stream');
 
