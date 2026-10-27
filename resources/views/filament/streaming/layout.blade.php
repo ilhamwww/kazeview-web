@@ -1202,6 +1202,24 @@
                 }, 400);
             }
 
+            // Track horizontal scrolling across carousels (drag, swipe, mousewheel)
+            let lastScrollTime = 0;
+            window.addEventListener('scroll', (e) => {
+                const t = e.target;
+                if (t && t !== document && t !== window && t.scrollWidth > t.clientWidth) {
+                    lastScrollTime = Date.now();
+                }
+            }, { capture: true, passive: true });
+
+            // Suppress click immediately after dragging/scrolling so loader & navigation are not triggered
+            window.addEventListener('click', (e) => {
+                if (window.__kzJustDragged || (Date.now() - lastScrollTime < 200)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    window.__kzJustDragged = false;
+                }
+            }, true);
+
             // Intercept standard navigation link clicks
             document.addEventListener('click', (e) => {
                 const anchor = e.target.closest('a');
@@ -1211,8 +1229,8 @@
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                 // Ignore non-left click
                 if (e.button !== 0) return;
-                // Ignore default prevented
-                if (e.defaultPrevented) return;
+                // Ignore default prevented or drag-scrolling
+                if (e.defaultPrevented || window.__kzJustDragged || (Date.now() - lastScrollTime < 200) || anchor.closest('.kz-dragging')) return;
 
                 const href = anchor.getAttribute('href');
                 if (!href) return;
@@ -1278,7 +1296,7 @@
     </script>
 
     @livewireScripts
-    <script src="/js/kz-drag-scroll.js?v=1"></script>
+    <script src="/js/kz-drag-scroll.js?v=2"></script>
     @stack('scripts')
 </body>
 

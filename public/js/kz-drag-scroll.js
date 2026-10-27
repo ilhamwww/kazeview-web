@@ -1,6 +1,6 @@
 /**
  * KZSTRM Mouse Drag-to-Scroll for Horizontal Carousels
- * Allows smooth click & drag scrolling on desktop without triggering link clicks.
+ * Allows smooth click & drag scrolling on desktop without triggering link clicks or top loader bar.
  */
 (function () {
     if (window.KzDragScroll) return;
@@ -71,6 +71,7 @@
 
             if (!hasDragged && Math.abs(delta) > 5) {
                 hasDragged = true;
+                window.__kzJustDragged = true;
                 el.style.scrollSnapType = 'none';
             }
 
@@ -93,6 +94,8 @@
             el.classList.remove('kz-dragging');
 
             if (hasDragged) {
+                window.__kzJustDragged = true;
+
                 // Smooth momentum decay
                 if (Math.abs(velocity) > 0.15) {
                     let v = velocity * 14;
@@ -113,18 +116,18 @@
                 // Suppress any click event immediately following a drag
                 setTimeout(() => {
                     hasDragged = false;
-                }, 80);
+                    window.__kzJustDragged = false;
+                }, 200);
             }
         };
 
         window.addEventListener('mouseup', endDrag);
 
-        // Intercept and cancel clicks on child elements if user was dragging
+        // Fallback container-level click blocker
         el.addEventListener('click', (e) => {
-            if (hasDragged) {
+            if (hasDragged || window.__kzJustDragged) {
                 e.preventDefault();
-                e.stopPropagation();
-                hasDragged = false;
+                e.stopImmediatePropagation();
             }
         }, true);
     }
