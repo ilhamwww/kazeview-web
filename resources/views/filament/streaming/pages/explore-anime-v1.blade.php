@@ -181,7 +181,7 @@
 
                 @php $activeDayAnime = $weeklySchedule[$selectedScheduleDay] ?? []; @endphp
                 @if(!empty($activeDayAnime))
-                    <div class="flex gap-3 overflow-x-auto kz-noscroll pb-2 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
+                    <div data-drag-scroll class="flex gap-3 overflow-x-auto kz-noscroll pb-2 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
                         @foreach($activeDayAnime as $item)
                             <a href="{{ $item['detail_url'] }}" class="snap-start shrink-0 w-[112px] sm:w-[128px] md:w-[144px]">
                                 <div class="relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-white/10">
@@ -207,7 +207,7 @@
         @if(count($hero))
             <section class="w-full max-w-[1800px] mx-auto px-4 md:px-6 pt-12">
                 <h2 class="text-xl md:text-2xl font-extrabold tracking-tight mb-4">Sorotan</h2>
-                <div class="flex gap-4 overflow-x-auto kz-noscroll pb-2 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
+                <div data-drag-scroll class="flex gap-4 overflow-x-auto kz-noscroll pb-2 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
                     @foreach($hero as $h)
                         <a href="{{ $detailUrl($h['slug']) }}"
                            class="snap-start shrink-0 relative w-[300px] sm:w-[420px] md:w-[520px] h-[180px] md:h-[220px] rounded-2xl overflow-hidden ring-1 ring-white/10 bg-zinc-900">
@@ -244,7 +244,7 @@
                     <span class="rounded-md bg-red-600 px-2 py-0.5 text-xs font-black tracking-wider text-white">TOP 10</span>
                     <h2 class="text-xl md:text-2xl font-extrabold tracking-tight">Trending Minggu Ini</h2>
                 </div>
-                <div class="flex gap-2 md:gap-3 overflow-x-auto overflow-y-hidden kz-noscroll pb-2 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
+                <div data-drag-scroll class="flex gap-2 md:gap-3 overflow-x-auto overflow-y-hidden kz-noscroll pb-2 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
                     @foreach($trending as $t)
                         @php $rankNum = ltrim($t['rank'], '#'); @endphp
                         <a href="{{ $detailUrl($t['slug']) }}" aria-label="#{{ $rankNum }} {{ $t['title'] }}"
@@ -274,7 +274,7 @@
                         <span class="text-[11px] font-bold text-red-400 bg-red-950/60 ring-1 ring-red-500/30 px-2.5 py-1 rounded-full">{{ $seasonTitle }}</span>
                     @endif
                 </div>
-                <div class="flex gap-3 overflow-x-auto overflow-y-hidden kz-noscroll pb-2 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
+                <div data-drag-scroll class="flex gap-3 overflow-x-auto overflow-y-hidden kz-noscroll pb-2 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
                     @foreach($season as $s)
                         <a href="{{ $detailUrl($s['slug']) }}" class="snap-start shrink-0 w-[112px] sm:w-[128px] md:w-[144px]">
                             <div class="relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-white/10">
@@ -297,7 +297,7 @@
                     <h2 class="text-xl md:text-2xl font-extrabold tracking-tight">Top Rating</h2>
                     <span class="text-[11px] font-bold text-amber-400 bg-amber-950/60 ring-1 ring-amber-500/30 px-2.5 py-1 rounded-full">★ Paling Populer</span>
                 </div>
-                <div class="flex gap-3 overflow-x-auto overflow-y-hidden kz-noscroll pb-2 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
+                <div data-drag-scroll class="flex gap-3 overflow-x-auto overflow-y-hidden kz-noscroll pb-2 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
                     @foreach($top as $t)
                         <a href="{{ $detailUrl($t['slug']) }}" class="snap-start shrink-0 w-[112px] sm:w-[128px] md:w-[144px]">
                             <div class="relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-white/10 group-active:scale-[0.98] transition">

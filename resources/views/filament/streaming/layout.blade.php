@@ -1278,6 +1278,7 @@
     </script>
 
     @livewireScripts
+    <script src="/js/kz-drag-scroll.js?v=1"></script>
     @stack('scripts')
 </body>
 
