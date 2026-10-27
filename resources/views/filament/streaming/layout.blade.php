@@ -229,7 +229,11 @@
          Full-width, transparan di atas hero lalu solid saat discroll.
          Sembunyi saat scroll ke bawah, muncul lagi saat scroll ke atas. --}}
     @php
-        $hideMobileTop = str_contains($currentUrl, '/movie/') || str_contains($currentUrl, '/season/');
+        $hideMobileTop = str_contains($currentUrl, '/movie/')
+            || str_contains($currentUrl, '/season/')
+            || (str_contains($currentUrl, '/anime/') && str_contains($currentUrl, '/episode/'))
+            || str_contains($currentUrl, '/drama/')
+            || str_contains($currentUrl, '/bstation/');
     @endphp
     <header x-data="{
                 hide: false,
