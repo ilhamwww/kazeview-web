@@ -296,15 +296,21 @@
                     <template x-if="!isEmbed">
                         <div class="w-full h-full bg-black relative flex items-center justify-center">
                             <div x-ref="artContainer" class="w-full h-full" x-show="videoSrc"></div>
-                            <div x-show="!videoSrc" class="flex flex-col items-center justify-center text-zinc-500 p-6 text-center">
-                                <svg class="w-12 h-12 mb-3 stroke-current opacity-60 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h-14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                                </svg>
-                                <p class="text-sm font-medium text-white">Stream video belum tersedia</p>
-                                <p class="text-xs text-zinc-500 mt-1">Silakan coba ganti server atau pilih episode lain.</p>
+                            <div x-show="!videoSrc" class="flex flex-col items-center justify-center p-6 text-center">
+                                @include('filament.streaming.partials.server-loading-indicator', [
+                                    'title' => 'Memilih server terbaik',
+                                    'subtitle' => 'Menghubungkan ke Server 1 Direct FHD & buffer episode',
+                                ])
                             </div>
                         </div>
                     </template>
+
+                    <div x-show="isSwitching" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                        @include('filament.streaming.partials.server-loading-indicator', [
+                            'title' => 'Memilih server terbaik',
+                            'subtitle' => 'Berpindah ke episode berikutnya & memuat stream',
+                        ])
+                    </div>
                 </div>
 
                 {{-- Server Switcher --}}
@@ -890,6 +896,11 @@
                                 }
                             ]
                         });
+
+                        // Pasang custom animated server loading indicator
+                        if (window.kzServerLoader) {
+                            window.kzServerLoader.applyToArtplayer(_art, 'Memilih server terbaik', 'Menyiapkan stream anime & buffer episode');
+                        }
 
                         _art.on('play', () => {
                             if (self.useNativeFs() && window.KzFs && !KzFs.current()) {

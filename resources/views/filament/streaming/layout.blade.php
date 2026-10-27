@@ -103,6 +103,35 @@
             border-radius: 50%;
             opacity: 1;
         }
+
+        /* Server Selection Loading Animation Keyframes */
+        @keyframes kz-pulse-glow {
+            0%, 100% { opacity: 0.35; transform: scale(0.98); }
+            50% { opacity: 0.95; transform: scale(1.03); }
+        }
+        @keyframes kz-wave-arc {
+            0%, 100% { opacity: 0.2; transform: scale(0.92); }
+            50% { opacity: 0.85; transform: scale(1.04); }
+        }
+        @keyframes kz-led-flash {
+            0%, 100% { opacity: 1; filter: drop-shadow(0 0 5px #ff2d55); }
+            50% { opacity: 0.35; filter: none; }
+        }
+        @keyframes kz-dot-step {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+            40% { transform: translateY(-3px); opacity: 1; }
+        }
+
+        /* Custom Artplayer Loading Overlay */
+        .art-video-player .art-loading {
+            background: rgba(5, 5, 5, 0.88) !important;
+            backdrop-filter: blur(6px) !important;
+            -webkit-backdrop-filter: blur(6px) !important;
+            z-index: 70 !important;
+        }
+        .art-video-player .art-loading > svg.art-icon-loading {
+            display: none !important;
+        }
     </style>
     @stack('styles')
 </head>
@@ -1297,6 +1326,7 @@
 
     @livewireScripts
     <script src="/js/kz-drag-scroll.js?v=2"></script>
+    <script src="/js/kz-server-loader.js?v=1"></script>
     @stack('scripts')
 </body>
 

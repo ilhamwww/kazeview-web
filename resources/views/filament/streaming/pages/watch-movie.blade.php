@@ -59,12 +59,11 @@
                 <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
             </div>
 
-            <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 flex flex-col items-center justify-center gap-3">
-                <div class="w-14 h-14 rounded-full border-4 border-red-600/30 border-t-red-600 animate-spin"></div>
-                <div class="text-center px-4">
-                    <p class="text-sm font-bold">Menyiapkan pemutar...</p>
-                    <p class="text-xs text-zinc-400 mt-1">Mengambil stream terbaik & subtitle Indonesia</p>
-                </div>
+            <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                @include('filament.streaming.partials.server-loading-indicator', [
+                    'title' => 'Memilih server terbaik',
+                    'subtitle' => 'Mengambil jalur stream film tercepat & subtitle Indonesia',
+                ])
             </div>
 
             <div x-show="!isPlaying && !isLoadingStream" class="absolute inset-0 z-20">
@@ -1021,6 +1020,11 @@
                                     self.art.notice.show = `Melanjutkan dari ${formatted}`;
                                 }
                             });
+                        }
+
+                        // Pasang custom animated server loading indicator
+                        if (window.kzServerLoader) {
+                            window.kzServerLoader.applyToArtplayer(this.art, 'Memilih server terbaik', 'Mengoptimalkan stream film & resolusi HD');
                         }
 
                         // Kalau browser menolak autoplay bersuara, putar tanpa suara dulu; laporkan kalau macet

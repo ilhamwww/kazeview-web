@@ -64,16 +64,12 @@
                         <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
                     </div>
 
-                    <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center gap-3.5 p-6 text-center">
-                        <div class="relative w-14 h-14 flex items-center justify-center">
-                            <div class="w-14 h-14 rounded-full border-4 border-red-600/20"></div>
-                            <div class="absolute inset-0 w-14 h-14 rounded-full border-4 border-red-500 border-t-transparent animate-spin"></div>
-                            <span class="absolute font-mono font-black text-white text-base" x-text="loadingSeconds > 0 ? loadingSeconds : '...'"></span>
-                        </div>
-                        <div>
-                            <p class="text-sm md:text-base font-bold text-white">Menyiapkan stream episode…</p>
-                            <p class="text-xs text-zinc-400 mt-1">Membuka resolusi HD & buffer (<span x-text="loadingSeconds > 0 ? loadingSeconds + ' detik' : 'sebentar lagi...'"></span>)</p>
-                        </div>
+                    <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                        @include('filament.streaming.partials.server-loading-indicator', [
+                            'title' => 'Memilih server terbaik',
+                            'subtitle' => 'Membuka resolusi HD & buffer episode',
+                            'showCountdown' => true,
+                        ])
                     </div>
 
                     <button type="button" x-show="!isPlaying && !isLoadingStream" @click="playVideo()"
@@ -1123,6 +1119,11 @@
                                     self.art.notice.show = `Melanjutkan dari ${formatted}`;
                                 }
                             });
+                        }
+
+                        // Pasang custom animated server loading indicator
+                        if (window.kzServerLoader) {
+                            window.kzServerLoader.applyToArtplayer(this.art, 'Memilih server terbaik', 'Mengoptimalkan stream episode & buffer');
                         }
 
                         // Kalau browser menolak autoplay bersuara, putar tanpa suara dulu; laporkan kalau macet
