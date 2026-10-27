@@ -21,6 +21,7 @@ class Profile extends Page
     public string $current_password = '';
     public string $new_password = '';
     public string $new_password_confirmation = '';
+    public bool $nsfw_enabled = false;
 
     public function mount(): void
     {
@@ -32,6 +33,7 @@ class Profile extends Page
 
         $this->name = $user->name;
         $this->email = $user->email;
+        $this->nsfw_enabled = (bool) ($user->nsfw_enabled ?? false);
     }
 
     public function updateProfile(): void
@@ -52,6 +54,25 @@ class Profile extends Page
             ->title('Profil Berhasil Diperbarui')
             ->success()
             ->send();
+    }
+
+    public function updatedNsfwEnabled(): void
+    {
+        $user = auth()->user();
+        if ($user) {
+            $user->update(['nsfw_enabled' => (bool)$this->nsfw_enabled]);
+            \Filament\Notifications\Notification::make()
+                ->title($this->nsfw_enabled ? 'Konten 18+ (NSFW) Diaktifkan' : 'Konten 18+ (NSFW) Dinonaktifkan')
+                ->body($this->nsfw_enabled ? 'Kategori dan konten dewasa sekarang dapat diakses.' : 'Konten dewasa disembunyikan dari akun Anda.')
+                ->color($this->nsfw_enabled ? 'danger' : 'success')
+                ->send();
+        }
+    }
+
+    public function toggleNsfw(): void
+    {
+        $this->nsfw_enabled = !$this->nsfw_enabled;
+        $this->updatedNsfwEnabled();
     }
 
     public function updatePassword(): void
@@ -105,7 +126,7 @@ class Profile extends Page
     {
         return [
             'favorites' => auth()->user() ? auth()->user()->favorites()->latest()->get() : collect([]),
-            'watchHistories' => auth()->user() ? auth()->user()->watchHistories()->orderBy('updated_at', 'desc')->get() : collect([]),
+            'watchHistories' => auth()->user() ? auth()->user()->watchHistories()->where('item_id', 'not like', 'lk:%')->orderBy('updated_at', 'desc')->get() : collect([]),
         ];
     }
 }

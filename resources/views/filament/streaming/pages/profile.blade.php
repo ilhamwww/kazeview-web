@@ -44,6 +44,25 @@
                         <p class="text-xs text-zinc-500 mt-2">Tidak ada batas waktu.</p>
                     @endif
                 </div>
+
+                <div class="w-full h-px bg-zinc-800 my-2"></div>
+
+                <div class="w-full text-left py-3">
+                    <p class="text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-1">Filter Konten 18+</p>
+                    <div class="flex items-center gap-2">
+                        @if($nsfw_enabled)
+                            <span class="px-2.5 py-1 bg-red-600/15 border border-red-500/30 text-red-400 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                Terbuka (18+)
+                            </span>
+                        @else
+                            <span class="px-2.5 py-1 bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Terkunci (Mode Aman)
+                            </span>
+                        @endif
+                    </div>
+                </div>
             </div>
 
             <!-- Login History Card -->
@@ -117,6 +136,47 @@
                         </button>
                     </div>
                 </form>
+            </div>
+
+            <!-- Preferensi Konten Dewasa (NSFW / 18+) -->
+            <div class="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 md:p-8 backdrop-blur-md">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider {{ $nsfw_enabled ? 'bg-red-600/20 text-red-400 border border-red-500/30' : 'bg-zinc-800 text-zinc-400 border border-zinc-700' }}">
+                                18+ RESTRICTED
+                            </span>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                Konten Dewasa (NSFW)
+                            </h3>
+                        </div>
+                        <p class="text-xs text-zinc-400 leading-relaxed max-w-xl">
+                            Aktifkan opsi ini untuk menampilkan komik dewasa, doujinshi, dan konten khusus 18+. Jika dimatikan, semua materi sensitif akan disembunyikan secara otomatis dari akun Anda.
+                        </p>
+                    </div>
+
+                    <!-- Toggle Button Switch -->
+                    <div class="flex items-center gap-3 shrink-0">
+                        <span class="text-xs font-bold {{ $nsfw_enabled ? 'text-red-400' : 'text-zinc-500' }}">
+                            {{ $nsfw_enabled ? 'Aktif' : 'Nonaktif' }}
+                        </span>
+                        <button type="button" wire:click="toggleNsfw"
+                                role="switch" aria-checked="{{ $nsfw_enabled ? 'true' : 'false' }}"
+                                class="relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none {{ $nsfw_enabled ? 'bg-red-600 shadow-lg shadow-red-600/30' : 'bg-zinc-700' }}">
+                            <span aria-hidden="true"
+                                  class="pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out {{ $nsfw_enabled ? 'translate-x-5' : 'translate-x-0' }}">
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-zinc-800/60 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full {{ $nsfw_enabled ? 'bg-red-500 animate-pulse' : 'bg-emerald-500' }}"></span>
+                        Status: <strong class="{{ $nsfw_enabled ? 'text-red-400' : 'text-emerald-400' }}">{{ $nsfw_enabled ? 'Mode 18+ Terbuka' : 'Mode Aman (Sensor Aktif)' }}</strong>
+                    </span>
+                    <span class="text-[11px] text-zinc-500">Perubahan tersimpan otomatis ke akun Anda</span>
+                </div>
             </div>
 
             <!-- Update Password Form -->

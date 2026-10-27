@@ -26,6 +26,7 @@ class User extends Authenticatable implements FilamentUser
         'email_verified_at',
         'subscription_expires_at',
         'is_approved',
+        'nsfw_enabled',
     ];
 
     /**
@@ -50,6 +51,7 @@ class User extends Authenticatable implements FilamentUser
             'subscription_expires_at' => 'datetime',
             'password' => 'hashed',
             'is_approved' => 'boolean',
+            'nsfw_enabled' => 'boolean',
         ];
     }
 
