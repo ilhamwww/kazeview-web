@@ -177,16 +177,9 @@
 
     <!-- Episode List Section -->
     <main class="w-full max-w-[1800px] mx-auto px-6 pt-12 pb-6">
-        <div class="mb-6 flex items-center justify-between border-b border-zinc-800 pb-4">
-            <div>
-                <h2 class="text-xl md:text-2xl font-black tracking-tight">Daftar Episode</h2>
-                <p class="text-xs text-zinc-400 mt-1">Pilih episode untuk langsung memutar di Server 1 (Direct FHD - Slow)</p>
-            </div>
-            @if(!empty($detail['episodes']))
-                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-950/60 text-red-400 border border-red-500/30">
-                    Total {{ count($detail['episodes']) }} Episode
-                </span>
-            @endif
+        <div class="mb-6 border-b border-zinc-800 pb-4">
+            <h2 class="text-xl md:text-2xl font-black tracking-tight">Daftar Episode</h2>
+            <p class="text-xs text-zinc-400 mt-1">Pilih episode untuk langsung memutar</p>
         </div>
 
         @if(!empty($detail['episodes']))
