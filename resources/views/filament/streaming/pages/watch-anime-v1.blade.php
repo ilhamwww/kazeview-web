@@ -280,7 +280,7 @@
             {{-- ============ LEFT: PLAYER + SERVER + INFO + DOWNLOADS ============ --}}
             <div class="min-w-0">
                 {{-- Video Player Card Container with Artplayer --}}
-                <div data-kz-fs x-ref="playerShell" wire:ignore.self class="relative w-full aspect-video bg-black lg:rounded-2xl overflow-hidden lg:ring-1 lg:ring-white/10 shadow-2xl border-y lg:border-0 border-zinc-800/80">
+                <div data-kz-fs x-ref="playerShell" wire:ignore.self class="relative isolate z-10 w-full aspect-video bg-black lg:rounded-2xl overflow-hidden lg:ring-1 lg:ring-white/10 shadow-2xl border-y lg:border-0 border-zinc-800/80">
                     <button type="button" data-kz-rotate aria-pressed="false" aria-label="Layar penuh landscape"
                             class="kz-fs-btn absolute top-2 right-2 z-[60] items-center gap-1.5 h-9 px-3 rounded-full bg-black/65 backdrop-blur text-white text-xs font-bold ring-1 ring-white/20 active:bg-black/80">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="10" rx="2"/><path d="M20 4v5h-5"/><path d="M20 9a8 8 0 0 0-8-6"/></svg>

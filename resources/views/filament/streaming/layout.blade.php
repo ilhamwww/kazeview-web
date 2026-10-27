@@ -142,6 +142,12 @@
             pointer-events: none !important;
         }
 
+        /* Artplayer Global Stacking Context: Isolate all internal controls (controls, seekbar, time, subtitle)
+           so they never leak through modals, drawers, or mobile menus */
+        .art-video-player {
+            isolation: isolate !important;
+        }
+
         /* Saat seeking / geser bar waktu, pastikan bar kontrol (.art-bottom) tetap terlihat jelas */
         .art-video-player.art-control-show .art-bottom,
         .art-video-player.art-hover .art-bottom {
@@ -600,7 +606,7 @@
     <div x-show="mobileMenuOpen"
          x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm lg:hidden" @click="mobileMenuOpen = false" style="display:none;"></div>
+         class="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm lg:hidden" @click="mobileMenuOpen = false" style="display:none;"></div>
 
     <aside x-show="mobileMenuOpen"
            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
@@ -611,7 +617,7 @@
            @touchend="if (dy > 90 && $el.scrollTop <= 0) mobileMenuOpen = false; dy = 0"
            :style="dy ? `transform: translateY(${dy}px)` : ''"
            role="dialog" aria-modal="true" aria-label="Menu"
-           class="fixed inset-x-0 bottom-0 z-[61] lg:hidden max-h-[88dvh] overflow-y-auto overscroll-contain bg-[#0c0c0d] border-t border-white/10 rounded-t-3xl shadow-[0_-20px_60px_rgba(0,0,0,0.8)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
+           class="fixed inset-x-0 bottom-0 z-[151] lg:hidden max-h-[88dvh] overflow-y-auto overscroll-contain bg-[#0c0c0d] border-t border-white/10 rounded-t-3xl shadow-[0_-20px_60px_rgba(0,0,0,0.8)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
            style="display:none;">
 
         <div class="sticky top-0 z-10 bg-[#0c0c0d] pt-3.5 pb-2.5 px-5">

@@ -55,7 +55,7 @@
             {{-- ============ LEFT: player + info ============ --}}
             <div class="min-w-0">
                 {{-- Player --}}
-                <div class="relative w-full aspect-video bg-black lg:rounded-2xl overflow-hidden lg:ring-1 lg:ring-white/10 shadow-2xl" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
+                <div class="relative isolate z-10 w-full aspect-video bg-black lg:rounded-2xl overflow-hidden lg:ring-1 lg:ring-white/10 shadow-2xl" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
                     <div x-show="isPlaying && !isEmbed" class="absolute inset-0" style="display:none;">
                         <div x-ref="artContainer" id="seriesArtPlayer" class="w-full h-full"></div>
                     </div>

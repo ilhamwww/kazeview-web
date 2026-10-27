@@ -55,7 +55,7 @@
             {{-- ============ LEFT COLUMN: PLAYER + SERVER SWITCHER + MOVIE INFO ============ --}}
             <div class="min-w-0 space-y-4">
                 {{-- Video Player Container --}}
-                <div class="w-full bg-black lg:rounded-2xl overflow-hidden aspect-video relative ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
+                <div class="w-full bg-black lg:rounded-2xl overflow-hidden aspect-video relative isolate z-10 ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
                     <div x-show="isPlaying && !isEmbed" class="w-full h-full relative" style="display: none;">
                         <div x-ref="artContainer" id="movieArtPlayer" class="w-full h-full"></div>
                     </div>
