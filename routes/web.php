@@ -584,10 +584,20 @@ Route::get('/api/proxy-stream', function (\Illuminate\Http\Request $request) {
     $scheme = $parsedUrl['scheme'] ?? 'https';
 
     // Referer/Origin sesuai host asal (khusus untuk bilibili.tv dan CDN anime Mirainime gunakan domain kanonisnya).
-    if (str_contains($host, 'bilibili.tv')) {
+    if ($request->filled('referer')) {
+        $referer = $request->get('referer');
+        $origin = rtrim($referer, '/');
+    } elseif (str_contains($host, 'bilibili.tv')) {
         $referer = 'https://www.bilibili.tv/';
         $origin = 'https://www.bilibili.tv';
-    } elseif (str_contains($host, 'erisboreas.my.id') || str_contains($host, 'suzune.web.id') || str_contains($host, 'mirainime')) {
+    } elseif (
+        str_contains($host, 'erisboreas.') ||
+        str_contains($host, 'suzune.') ||
+        str_contains($host, 'arianeglenys.') ||
+        str_contains($host, 'mirainime') ||
+        str_contains($host, 'b2.') ||
+        str_contains($host, 'b3.')
+    ) {
         $referer = 'https://mirainime.com/';
         $origin = 'https://mirainime.com';
     } else {
