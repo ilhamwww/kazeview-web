@@ -62,9 +62,8 @@ class Profile extends Page
         if ($user) {
             $user->update(['nsfw_enabled' => (bool)$this->nsfw_enabled]);
             \Filament\Notifications\Notification::make()
-                ->title($this->nsfw_enabled ? 'Konten 18+ (NSFW) Diaktifkan' : 'Konten 18+ (NSFW) Dinonaktifkan')
-                ->body($this->nsfw_enabled ? 'Kategori dan konten dewasa sekarang dapat diakses.' : 'Konten dewasa disembunyikan dari akun Anda.')
-                ->color($this->nsfw_enabled ? 'danger' : 'success')
+                ->title($this->nsfw_enabled ? 'NSFW ON' : 'NSFW OFF')
+                ->color($this->nsfw_enabled ? 'danger' : 'gray')
                 ->send();
         }
     }
