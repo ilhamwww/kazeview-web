@@ -269,9 +269,9 @@
             </a>
             <div class="min-w-0 flex-1">
                 <p class="text-sm font-bold leading-tight truncate">{{ $seriesDetail['title'] ?? 'Anime' }}</p>
-                <p class="text-[11px] text-zinc-400 leading-tight truncate">Episode {{ $epNo }}</p>
+                <p class="text-[11px] text-zinc-400 leading-tight truncate" x-text="'Episode ' + currentEp">Episode {{ $epNo }}</p>
             </div>
-            <span class="shrink-0 text-[10px] font-black tracking-wider text-red-300 bg-red-600/15 ring-1 ring-red-500/30 px-2 py-1 rounded-md tabular-nums">EP {{ $epNo }}</span>
+            <span class="shrink-0 text-[10px] font-black tracking-wider text-red-300 bg-red-600/15 ring-1 ring-red-500/30 px-2 py-1 rounded-md tabular-nums" x-text="'EP ' + currentEp">EP {{ $epNo }}</span>
         </div>
 
         {{-- ============ TWO-COLUMN GRID: LEFT (PLAYER & INFO) + RIGHT (EPISODE PLAYLIST) ============ --}}
@@ -329,7 +329,7 @@
                 <div class="px-4 lg:px-0 pt-4 space-y-4">
                     <div>
                         <p class="text-[11px] font-black uppercase tracking-[0.2em] text-red-400 mb-1">{{ $seriesDetail['title'] ?? 'Anime' }}</p>
-                        <h1 class="text-xl md:text-2xl lg:text-3xl font-black tracking-tight leading-tight">
+                        <h1 class="text-xl md:text-2xl lg:text-3xl font-black tracking-tight leading-tight" x-text="episodeTitle || ('{{ $seriesDetail['title'] ?? 'Anime' }} Episode ' + currentEp)">
                             {{ $episodeDetail['title'] ?? ($seriesDetail['title'] . ' Episode ' . $epNo) }}
                         </h1>
                         <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
@@ -357,25 +357,29 @@
 
                     {{-- Action & Navigation Bar (Prev / Next / Favorite / Share) --}}
                     <div class="grid grid-cols-[1fr_1fr_auto_auto] gap-2">
-                        @if(!empty($prevEpisodeSlug))
-                            <a href="{{ \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $prevEpisodeSlug], panel: 'streaming') }}"
-                               class="inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-zinc-900 ring-1 ring-white/10 text-sm font-bold active:bg-zinc-800 hover:bg-zinc-800 transition">
+                        <template x-if="prevEp">
+                            <a :href="'/anime/' + animeSlug + '/episode/' + prevEp"
+                               @click.prevent="selectEpisode(prevEp)"
+                               class="inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-zinc-900 ring-1 ring-white/10 text-sm font-bold active:bg-zinc-800 hover:bg-zinc-800 transition cursor-pointer">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
-                                Ep {{ $prevEpisodeSlug }}
+                                <span x-text="'Ep ' + prevEp"></span>
                             </a>
-                        @else
+                        </template>
+                        <template x-if="!prevEp">
                             <span class="inline-flex items-center justify-center h-11 rounded-xl bg-zinc-950 ring-1 ring-white/5 text-sm font-bold text-zinc-500">Episode pertama</span>
-                        @endif
+                        </template>
 
-                        @if(!empty($nextEpisodeSlug))
-                            <a href="{{ \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $nextEpisodeSlug], panel: 'streaming') }}"
-                               class="inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-600 text-sm font-bold shadow-lg shadow-red-600/25 active:bg-red-700 hover:bg-red-700 transition">
-                                Ep {{ $nextEpisodeSlug }}
+                        <template x-if="nextEp">
+                            <a :href="'/anime/' + animeSlug + '/episode/' + nextEp"
+                               @click.prevent="selectEpisode(nextEp)"
+                               class="inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-600 text-sm font-bold shadow-lg shadow-red-600/25 active:bg-red-700 hover:bg-red-700 transition cursor-pointer">
+                                <span x-text="'Ep ' + nextEp"></span>
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                             </a>
-                        @else
+                        </template>
+                        <template x-if="!nextEp">
                             <span class="inline-flex items-center justify-center h-11 rounded-xl bg-zinc-950 ring-1 ring-white/5 text-sm font-bold text-zinc-500">Episode terakhir</span>
-                        @endif
+                        </template>
 
                         <button wire:click="toggleFavorite" type="button" aria-label="Simpan favorit"
                                 class="w-11 h-11 inline-flex items-center justify-center rounded-xl {{ $isFavorited ? 'bg-red-600 text-white ring-1 ring-red-500 shadow-md shadow-red-600/30' : 'bg-zinc-900 ring-1 ring-white/10 text-zinc-300 hover:text-white' }} transition">
@@ -450,13 +454,16 @@
                                 $thumb = $seriesDetail['thumbnail'] ?? ($metadata['poster'] ?? '');
                             @endphp
                             <li>
-                                <a href="{{ $epUrl }}" @if($isActive) data-active aria-current="true" @endif
-                                   class="group flex gap-3 p-2 -mx-2 lg:mx-0 rounded-xl transition {{ $isActive ? 'bg-red-600/10 ring-1 ring-red-500/40' : 'hover:bg-white/[0.04] active:bg-white/[0.06]' }}">
+                                <a href="{{ $epUrl }}"
+                                   @click.prevent="selectEpisode('{{ $epItemNum }}')"
+                                   :class="String(currentEp) === '{{ $epItemNum }}' ? 'bg-red-600/10 ring-1 ring-red-500/40' : 'hover:bg-white/[0.04] active:bg-white/[0.06]'"
+                                   class="group flex gap-3 p-2 -mx-2 lg:mx-0 rounded-xl transition cursor-pointer">
                                     <div class="relative w-28 sm:w-32 aspect-video shrink-0 self-start rounded-lg overflow-hidden bg-zinc-800">
                                         @if($thumb)
-                                            <img src="{{ $thumb }}" alt="" class="w-full h-full object-cover {{ $isActive ? '' : 'opacity-85 group-hover:opacity-100' }}" loading="lazy">
+                                            <img src="{{ $thumb }}" alt="" class="w-full h-full object-cover"
+                                                 :class="String(currentEp) === '{{ $epItemNum }}' ? '' : 'opacity-85 group-hover:opacity-100'" loading="lazy">
                                         @endif
-                                        @if($isActive)
+                                        <template x-if="String(currentEp) === '{{ $epItemNum }}'">
                                             <span class="absolute inset-0 bg-black/50 flex items-center justify-center">
                                                 <span class="flex items-end gap-0.5 h-4" aria-hidden="true">
                                                     <span class="w-1 bg-red-500 rounded-sm animate-[kzbar_0.9s_ease-in-out_infinite]" style="height:60%"></span>
@@ -464,14 +471,17 @@
                                                     <span class="w-1 bg-red-500 rounded-sm animate-[kzbar_0.9s_ease-in-out_0.4s_infinite]" style="height:40%"></span>
                                                 </span>
                                             </span>
-                                        @endif
+                                        </template>
                                         <span class="absolute bottom-1 right-1 text-[9px] font-bold bg-black/75 text-white px-1 py-0.5 rounded">EP {{ $epItemNum }}</span>
                                     </div>
                                     <div class="min-w-0 flex-1 py-0.5">
-                                        <p class="text-[10px] font-black uppercase tracking-wider {{ $isActive ? 'text-red-400' : 'text-zinc-500' }}">
+                                        <p class="text-[10px] font-black uppercase tracking-wider"
+                                           :class="String(currentEp) === '{{ $epItemNum }}' ? 'text-red-400' : 'text-zinc-500'"
+                                           x-text="String(currentEp) === '{{ $epItemNum }}' ? 'Sedang diputar' : 'Episode {{ $epItemNum }}'">
                                             {{ $isActive ? 'Sedang diputar' : 'Episode ' . $epItemNum }}
                                         </p>
-                                        <p class="mt-0.5 text-sm font-bold leading-snug line-clamp-2 {{ $isActive ? 'text-white' : 'text-zinc-200' }}">
+                                        <p class="mt-0.5 text-sm font-bold leading-snug line-clamp-2"
+                                           :class="String(currentEp) === '{{ $epItemNum }}' ? 'text-white' : 'text-zinc-200'">
                                             {{ $ep['title'] ?? ('Episode ' . $epItemNum) }}
                                         </p>
                                     </div>
@@ -510,22 +520,194 @@
             window.initWatchAnimeComponent = function() {
                 return {
                     hls: null,
+                    animeSlug: '{{ $animeSlug }}',
+                    currentEp: '{{ $episodeSlug }}',
+                    prevEp: @js($prevEpisodeSlug),
+                    nextEp: @js($nextEpisodeSlug),
+                    episodesList: @js($seriesDetail['episodes'] ?? []),
+                    episodeTitle: @js($episodeDetail['title'] ?? ''),
+                    downloads: @js($downloads),
+
                     videoSrc: {!! json_encode($currentStreamUrl) !!},
                     serversList: @js($servers),
                     activeServer: '{{ $activeServer }}',
                     isEmbed: {{ $isEmbed ? 'true' : 'false' }},
                     currentEmbedUrl: {!! json_encode($currentEmbedUrl) !!},
 
+                    episodePayloads: {},
+                    isSwitching: false,
+                    preloadedUrls: new Set(),
+
                     init() {
+                        const self = this;
+
+                        // Simpan payload episode aktif pertama kali ke cache lokal
+                        this.episodePayloads[String(this.currentEp)] = {
+                            episode: String(this.currentEp),
+                            title: this.episodeTitle,
+                            stream_url: this.videoSrc,
+                            servers: this.serversList,
+                            downloads: this.downloads
+                        };
+
                         // HP diputar balik ke potret saat fullscreen → keluar (gaya YouTube)
                         window.addEventListener('kz-fs-portrait', () => {
                             if (_art && _art.fullscreenWeb) _art.fullscreenWeb = false;
                         });
+
+                        // Browser back / forward button navigation
+                        window.addEventListener('popstate', (e) => {
+                            const m = window.location.pathname.match(/\/episode\/([^\/]+)/);
+                            if (m && m[1] && String(m[1]) !== String(self.currentEp)) {
+                                self.selectEpisode(m[1], false);
+                            }
+                        });
+
                         this.$nextTick(() => {
                             if (!this.isEmbed && this.videoSrc) {
                                 this.initPlayer();
                             }
                         });
+
+                        // Background prefetch episode tetangga (prev & next) ala Dracin setelah video mulai
+                        setTimeout(() => {
+                            self.prefetchNeighbors();
+                        }, 800);
+                    },
+
+                    async prefetchNeighbors() {
+                        const curIdx = this.episodesList.findIndex(e => String(e.episode) === String(this.currentEp));
+                        const wanted = [];
+                        if (curIdx > 0 && this.episodesList[curIdx - 1]) {
+                            const p = String(this.episodesList[curIdx - 1].episode);
+                            if (!this.episodePayloads[p]) wanted.push(p);
+                        }
+                        if (curIdx !== -1 && curIdx < this.episodesList.length - 1 && this.episodesList[curIdx + 1]) {
+                            const n = String(this.episodesList[curIdx + 1].episode);
+                            if (!this.episodePayloads[n]) wanted.push(n);
+                        }
+                        if (wanted.length === 0) return;
+
+                        try {
+                            const res = await this.$wire.prefetchNeighborEpisodes(wanted);
+                            if (res && typeof res === 'object') {
+                                for (const [ep, data] of Object.entries(res)) {
+                                    if (data) {
+                                        this.episodePayloads[String(ep)] = data;
+                                        // Preload buffer awal video ke browser cache
+                                        if (data.stream_url) this.preloadStream(data.stream_url);
+                                        const s2 = data.servers?.find(s => s.id === 'server_otaku_direct');
+                                        if (s2?.stream_url) this.preloadStream(s2.stream_url);
+                                    }
+                                }
+                            }
+                        } catch (err) {
+                            console.warn('Anime prefetch error:', err);
+                        }
+                    },
+
+                    preloadStream(url) {
+                        if (!url || this.preloadedUrls.has(url)) return;
+                        this.preloadedUrls.add(url);
+                        try {
+                            const v = document.createElement('video');
+                            v.preload = 'auto';
+                            v.muted = true;
+                            v.style.position = 'fixed';
+                            v.style.left = '-9999px';
+                            v.style.width = '1px';
+                            v.style.height = '1px';
+                            v.src = url;
+                            const cleanup = () => {
+                                v.removeEventListener('canplay', cleanup);
+                                v.removeEventListener('error', cleanup);
+                                setTimeout(() => {
+                                    try { v.src = ''; v.remove(); } catch(e){}
+                                }, 10000);
+                            };
+                            v.addEventListener('canplay', cleanup);
+                            v.addEventListener('error', cleanup);
+                            document.body.appendChild(v);
+                        } catch (e) {}
+                    },
+
+                    async selectEpisode(epSlug, updateHistory = true) {
+                        epSlug = String(epSlug);
+                        if (epSlug === String(this.currentEp) || this.isSwitching) return;
+                        this.isSwitching = true;
+
+                        let data = this.episodePayloads[epSlug];
+                        if (!data) {
+                            try {
+                                data = await this.$wire.fetchEpisodeData(epSlug);
+                                if (data) this.episodePayloads[epSlug] = data;
+                            } catch (e) {}
+                        }
+
+                        if (!data) {
+                            window.location.href = `/anime/${this.animeSlug}/episode/${epSlug}`;
+                            return;
+                        }
+
+                        this.currentEp = epSlug;
+                        this.episodeTitle = data.title;
+                        this.serversList = data.servers || [];
+                        this.downloads = data.downloads || null;
+
+                        // Default active server
+                        const active = this.serversList.find(s => s.id === 'server1') || this.serversList[0];
+                        if (active) {
+                            this.activeServer = active.id;
+                            this.isEmbed = (active.type === 'embed');
+                            this.currentEmbedUrl = active.embed_url || '';
+                            this.videoSrc = active.stream_url || '';
+                        }
+
+                        // Update tetangga (prev & next)
+                        const curIdx = this.episodesList.findIndex(e => String(e.episode) === String(this.currentEp));
+                        this.prevEp = (curIdx > 0 && this.episodesList[curIdx - 1]) ? String(this.episodesList[curIdx - 1].episode) : null;
+                        this.nextEp = (curIdx !== -1 && curIdx < this.episodesList.length - 1 && this.episodesList[curIdx + 1]) ? String(this.episodesList[curIdx + 1].episode) : null;
+
+                        // Switch playback instan tanpa refresh halaman
+                        if (!this.isEmbed && this.videoSrc) {
+                            if (_art) {
+                                _art.switchUrl(this.videoSrc).then(() => {
+                                    _art.play();
+                                }).catch(() => {
+                                    _art.url = this.videoSrc;
+                                    _art.play();
+                                });
+                            } else {
+                                this.$nextTick(() => this.initPlayer());
+                            }
+                        } else if (this.isEmbed) {
+                            if (_art) {
+                                try { _art.destroy(false); } catch(e){}
+                                _art = null;
+                            }
+                        }
+
+                        if (updateHistory) {
+                            const newUrl = `/anime/${this.animeSlug}/episode/${epSlug}`;
+                            history.pushState({ ep: epSlug }, '', newUrl);
+                            const cleanDocTitle = data.title.startsWith('Nonton ') ? data.title : ('Nonton ' + data.title);
+                            document.title = `${cleanDocTitle} - KZSTRM`;
+                        }
+
+                        // Catat riwayat tontonan di background
+                        try { this.$wire.recordEpisodeWatched(epSlug); } catch(e){}
+
+                        // Scroll halus ke player jika di mobile
+                        if (window.innerWidth < 1024) {
+                            this.$refs.playerShell?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+
+                        this.isSwitching = false;
+
+                        // Otomatis prefetch episode tetangga baru di background
+                        setTimeout(() => {
+                            this.prefetchNeighbors();
+                        }, 500);
                     },
 
                     switchServer(id) {
@@ -712,6 +894,12 @@
                         _art.on('play', () => {
                             if (self.useNativeFs() && window.KzFs && !KzFs.current()) {
                                 self.enterNativeFs();
+                            }
+                        });
+
+                        _art.on('video:ended', () => {
+                            if (self.nextEp) {
+                                self.selectEpisode(self.nextEp);
                             }
                         });
                     }
