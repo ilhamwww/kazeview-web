@@ -136,49 +136,7 @@ class MirainimeScraperService
         try {
             $url = 'anime-list?q=' . urlencode(trim($query));
             $html = $this->fetchHtml($url);
-            $crawler = new Crawler($html);
-
-            $animes = [];
-            $seen = [];
-
-            $crawler->filter('a[href*="/anime/"]')->each(function (Crawler $a) use (&$animes, &$seen) {
-                $href = $a->attr('href') ?? '';
-                if (empty($href) || str_contains($href, '/download') || str_contains($href, '/episode/') || $href === 'https://mirainime.com/anime') {
-                    return;
-                }
-
-                $path = parse_url($href, PHP_URL_PATH) ?? '';
-                $slug = basename(trim($path, '/'));
-                if (empty($slug) || isset($seen[$slug])) {
-                    return;
-                }
-
-                $title = trim($a->text());
-                $title = preg_replace('/\s*[-–|]?\s*(?:Sub\s*Indo.*|Subtitle\s*Indonesia.*)$/i', '', $title);
-                $title = trim($title);
-
-                if (empty($title)) {
-                    $title = ucwords(str_replace('-', ' ', $slug));
-                }
-
-                $imgNode = $a->filter('img');
-                $thumbnail = '';
-                if ($imgNode->count() > 0) {
-                    $thumbnail = $imgNode->attr('src') ?? $imgNode->attr('data-src') ?? '';
-                }
-
-                $seen[$slug] = true;
-                $animes[] = [
-                    'title' => $title,
-                    'slug' => $slug,
-                    'url' => $href,
-                    'thumbnail' => $thumbnail,
-                    'type' => 'Anime',
-                    'status' => 'Available',
-                ];
-            });
-
-            return $animes;
+            return $this->parseAnimeCards($html);
         } catch (\Exception $e) {
             \Log::error('Mirainime search error: ' . $e->getMessage());
             return [];
@@ -219,7 +177,7 @@ class MirainimeScraperService
     }
 
     /**
-     * Parse cards from list / genre pages
+     * Parse cards from list / genre / search pages
      */
     protected function parseAnimeCards(string $html): array
     {
@@ -227,52 +185,133 @@ class MirainimeScraperService
         $animes = [];
         $seen = [];
 
-        $crawler->filter('a[href*="/anime/"]')->each(function (Crawler $a) use (&$animes, &$seen) {
-            $href = $a->attr('href') ?? '';
-            if (empty($href) || str_contains($href, '/download') || str_contains($href, '/episode/') || $href === 'https://mirainime.com/anime') {
-                return;
-            }
+        // 1. Prioritas utama: ekstrak dari kartu .ctx-card yang terstruktur
+        $cards = $crawler->filter('.ctx-card');
+        if ($cards->count() > 0) {
+            $cards->each(function (Crawler $card) use (&$animes, &$seen) {
+                // Link serial anime
+                $link = $card->filter('a[href*="/anime/"]');
+                if (!$link->count()) return;
 
-            $path = parse_url($href, PHP_URL_PATH) ?? '';
-            $slug = basename(trim($path, '/'));
-            if (empty($slug) || isset($seen[$slug])) {
-                return;
-            }
+                $animeHref = '';
+                $link->each(function (Crawler $a) use (&$animeHref) {
+                    $h = $a->attr('href') ?? '';
+                    if (!str_contains($h, '/episode/') && !str_contains($h, '/download') && !preg_match('#/anime/?$#', $h)) {
+                        if (empty($animeHref)) $animeHref = $h;
+                    }
+                });
+                if (empty($animeHref)) {
+                    $animeHref = $link->first()->attr('href') ?? '';
+                }
 
-            // Extract thumbnail
-            $thumbnail = '';
-            $imgNode = $a->filter('img');
-            if ($imgNode->count() > 0) {
-                $thumbnail = $imgNode->attr('src') ?? $imgNode->attr('data-src') ?? '';
-            }
+                $path = parse_url($animeHref, PHP_URL_PATH) ?? '';
+                $slug = preg_replace('#^/?anime/#', '', trim($path, '/'));
+                if (str_contains($slug, '/episode/')) {
+                    $slug = explode('/episode/', $slug)[0];
+                }
+                if (empty($slug) || isset($seen[$slug])) return;
 
-            // Extract title
-            $title = '';
-            $titleNode = $a->filter('h2, h3, h4, .title, span.font-semibold, span.font-bold');
-            if ($titleNode->count() > 0) {
-                $title = trim($titleNode->first()->text());
-            } else {
-                $title = trim($a->text());
-            }
+                // Thumbnail poster
+                $thumbnail = '';
+                $imgNode = $card->filter('img');
+                if ($imgNode->count()) {
+                    $thumbnail = $imgNode->first()->attr('src') ?: $imgNode->first()->attr('data-src') ?: '';
+                    if (!empty($thumbnail) && str_starts_with($thumbnail, '/')) {
+                        $thumbnail = rtrim($this->baseUrl, '/') . $thumbnail;
+                    }
+                }
 
-            $title = preg_replace('/\s*[-–|]?\s*(?:Sub\s*Indo.*|Subtitle\s*Indonesia.*)$/i', '', $title);
-            $title = preg_replace('/^(?:Tonton|Watch|Nonton)\s*/i', '', $title);
-            $title = trim($title);
+                // Judul serial
+                $title = '';
+                $titleNode = $card->filter('h2 a, h3 a, h2, h3, .title, p.font-semibold, p.text-sm, p.line-clamp-2');
+                if ($titleNode->count()) {
+                    $title = trim($titleNode->first()->text());
+                } elseif ($imgNode->count() && !empty($imgNode->first()->attr('alt'))) {
+                    $title = trim($imgNode->first()->attr('alt'));
+                }
 
-            if (empty($title)) {
-                $title = ucwords(str_replace(['-sub-indo', '-subtitle-indonesia', '-'], ['', '', ' '], $slug));
-            }
+                $title = preg_replace('/\s*[-–|]?\s*(?:Sub\s*Indo.*|Subtitle\s*Indonesia.*)$/i', '', $title);
+                $title = preg_replace('/^(?:Tonton|Watch|Nonton)\s*/i', '', $title);
+                $title = trim($title);
 
-            $seen[$slug] = true;
-            $animes[] = [
-                'title' => $title,
-                'slug' => $slug,
-                'url' => $href,
-                'thumbnail' => $thumbnail,
-                'type' => 'Anime',
-                'status' => 'Ongoing',
-            ];
-        });
+                // Jika judul kosong atau cuma teks rating (misal "⭐ 8.7")
+                if (empty($title) || preg_match('/^[⭐★\d\.\s]+$/u', $title)) {
+                    if ($imgNode->count() && !empty($imgNode->first()->attr('alt'))) {
+                        $title = trim($imgNode->first()->attr('alt'));
+                    } else {
+                        $title = ucwords(str_replace(['-sub-indo', '-subtitle-indonesia', '-'], ['', '', ' '], $slug));
+                    }
+                }
+
+                $seen[$slug] = true;
+                $animes[] = [
+                    'title' => $title,
+                    'slug' => $slug,
+                    'url' => $animeHref,
+                    'thumbnail' => $thumbnail,
+                    'type' => 'Anime',
+                    'status' => 'Available',
+                ];
+            });
+        }
+
+        // 2. Fallback jika halaman tidak memiliki .ctx-card
+        if (empty($animes)) {
+            $crawler->filter('a[href*="/anime/"]')->each(function (Crawler $a) use (&$animes, &$seen) {
+                $href = $a->attr('href') ?? '';
+                if (empty($href) || str_contains($href, '/download') || str_contains($href, '/episode/') || preg_match('#/anime/?$#', $href)) {
+                    return;
+                }
+
+                $path = parse_url($href, PHP_URL_PATH) ?? '';
+                $slug = basename(trim($path, '/'));
+                if (empty($slug) || isset($seen[$slug])) {
+                    return;
+                }
+
+                $imgNode = $a->filter('img');
+                $thumbnail = '';
+                if ($imgNode->count() > 0) {
+                    $thumbnail = $imgNode->first()->attr('src') ?: $imgNode->first()->attr('data-src') ?: '';
+                    if (!empty($thumbnail) && str_starts_with($thumbnail, '/')) {
+                        $thumbnail = rtrim($this->baseUrl, '/') . $thumbnail;
+                    }
+                }
+
+                $title = '';
+                $titleNode = $a->filter('h2, h3, h4, .title, span.font-semibold, span.font-bold');
+                if ($titleNode->count() > 0) {
+                    $title = trim($titleNode->first()->text());
+                } elseif ($imgNode->count() && !empty($imgNode->attr('alt'))) {
+                    $title = trim($imgNode->attr('alt'));
+                } else {
+                    $t = trim($a->text());
+                    if (!empty($t) && !preg_match('/^[⭐★\d\.\s]+$/u', $t)) {
+                        $title = $t;
+                    } else {
+                        $title = ucwords(str_replace(['-sub-indo', '-subtitle-indonesia', '-'], ['', '', ' '], $slug));
+                    }
+                }
+
+                $title = preg_replace('/\s*[-–|]?\s*(?:Sub\s*Indo.*|Subtitle\s*Indonesia.*)$/i', '', $title);
+                $title = preg_replace('/^(?:Tonton|Watch|Nonton)\s*/i', '', $title);
+                $title = trim($title);
+
+                if (empty($title)) {
+                    $title = ucwords(str_replace(['-sub-indo', '-subtitle-indonesia', '-'], ['', '', ' '], $slug));
+                }
+
+                $seen[$slug] = true;
+                $animes[] = [
+                    'title' => $title,
+                    'slug' => $slug,
+                    'url' => $href,
+                    'thumbnail' => $thumbnail,
+                    'type' => 'Anime',
+                    'status' => 'Available',
+                ];
+            });
+        }
 
         return $animes;
     }
