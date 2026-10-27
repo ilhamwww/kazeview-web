@@ -213,22 +213,23 @@
                            class="snap-start shrink-0 relative w-[300px] sm:w-[420px] md:w-[520px] h-[180px] md:h-[220px] rounded-2xl overflow-hidden ring-1 ring-white/10 bg-zinc-900">
                             <div class="absolute inset-0 bg-cover bg-center scale-110 blur-xl opacity-60" style="background-image:url('{{ $h['poster'] }}')"></div>
                             <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/20"></div>
-                            <div class="absolute inset-0 p-5 md:p-6 flex flex-col justify-end">
-                                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                                    @foreach($h['genres'] as $g)
-                                        <span class="text-[10px] font-bold text-red-300 bg-red-600/30 ring-1 ring-red-500/40 px-2 py-0.5 rounded-full">{{ $g }}</span>
-                                    @endforeach
-                                    @foreach($h['meta'] as $m)
-                                        <span class="text-[10px] font-medium text-zinc-400 bg-black/60 px-2 py-0.5 rounded-full">{{ $m }}</span>
-                                    @endforeach
+                            <div class="relative h-full flex gap-4 p-4">
+                                <img src="{{ $h['poster'] }}" alt="" loading="lazy" class="h-full aspect-[2/3] object-cover rounded-xl shadow-2xl shadow-black/70 ring-1 ring-white/10">
+                                <div class="min-w-0 flex flex-col justify-end">
+                                    <div class="flex flex-wrap gap-1.5 mb-2">
+                                        @foreach(array_slice($h['meta'] ?? [], 0, 3) as $m)
+                                            <span class="bg-white/10 text-zinc-200 text-[10px] font-bold px-2 py-0.5 rounded">{{ $m }}</span>
+                                        @endforeach
+                                    </div>
+                                    <h3 class="text-base md:text-xl font-extrabold leading-tight line-clamp-2">{{ $h['title'] }}</h3>
+                                    @if(!empty($h['synopsis']))
+                                        <p class="hidden sm:block mt-1.5 text-xs text-zinc-400 line-clamp-2">{{ $h['synopsis'] }}</p>
+                                    @endif
+                                    <span class="mt-3 inline-flex items-center gap-1.5 self-start h-8 px-3.5 rounded-lg bg-red-600 text-white text-xs font-bold">
+                                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                                        Tonton
+                                    </span>
                                 </div>
-                                <h3 class="text-lg md:text-2xl font-black text-white leading-tight line-clamp-1">{{ $h['title'] }}</h3>
-                                @if($h['alt_title'])
-                                    <p class="text-xs text-zinc-400 line-clamp-1 mt-0.5">{{ $h['alt_title'] }}</p>
-                                @endif
-                                @if($h['synopsis'])
-                                    <p class="text-xs text-zinc-300 line-clamp-2 mt-2 max-w-xl hidden sm:block">{{ $h['synopsis'] }}</p>
-                                @endif
                             </div>
                         </a>
                     @endforeach
@@ -249,15 +250,13 @@
                         <a href="{{ $detailUrl($t['slug']) }}" aria-label="#{{ $rankNum }} {{ $t['title'] }}"
                            class="group relative block w-[140px] sm:w-[160px] md:w-[180px] shrink-0 snap-start">
                             <div class="relative flex items-end">
-                                <span class="kz-rank-num text-zinc-600 select-none group-hover:text-red-600 transition -mr-3 sm:-mr-4 z-0">
-                                    {{ $rankNum }}
-                                </span>
-                                <div class="relative w-[100px] sm:w-[115px] md:w-[130px] aspect-[2/3] rounded-xl overflow-hidden ring-1 ring-white/10 group-active:scale-[0.98] transition shadow-xl bg-zinc-900 z-10 shrink-0">
-                                    <img src="{{ $t['poster'] }}" alt="" loading="lazy" class="w-full h-full object-cover">
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                                <span class="pointer-events-none select-none absolute left-0 bottom-[-6px] md:bottom-[-10px] text-[84px] sm:text-[96px] md:text-[112px] font-black leading-none tracking-tighter text-[#050505]"
+                                      style="-webkit-text-stroke: 2.5px rgba(255,255,255,0.55);">{{ $rankNum }}</span>
+                                <div class="relative z-10 ml-auto w-[90px] sm:w-[104px] md:w-[116px] aspect-[2/3] overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/10 shadow-xl shadow-black/70 group-active:scale-[0.98] transition">
+                                    <img src="{{ $t['poster'] }}" alt="" loading="lazy" class="w-full h-full object-cover transition duration-300 group-hover:scale-105">
                                 </div>
                             </div>
-                            <div class="mt-2 pl-3">
+                            <div class="ml-auto mt-2 w-[90px] sm:w-[104px] md:w-[116px]">
                                 <h3 class="truncate text-xs md:text-[13px] font-semibold text-zinc-200 group-hover:text-white" title="{{ $t['title'] }}">{{ $t['title'] }}</h3>
                             </div>
                         </a>
