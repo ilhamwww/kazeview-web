@@ -172,11 +172,23 @@
                                 $detailUrl = '#';
                                 try {
                                     if ($fav->item_type === 'movie') {
-                                        $detailUrl = \App\Filament\Streaming\Pages\WatchMovie::getUrl(['slug' => $fav->item_id], panel: 'streaming');
+                                        if (str_starts_with($fav->item_id, 'lk:')) {
+                                            $detailUrl = \App\Filament\Streaming\Pages\WatchServerLk::getUrl(['slug' => substr($fav->item_id, 3)], panel: 'streaming');
+                                        } else {
+                                            $detailUrl = \App\Filament\Streaming\Pages\WatchMovie::getUrl(['slug' => $fav->item_id], panel: 'streaming');
+                                        }
                                     } elseif ($fav->item_type === 'tv_series') {
                                         $detailUrl = \App\Filament\Streaming\Pages\ShowSeries::getUrl(['slug' => $fav->item_id], panel: 'streaming');
                                     } elseif ($fav->item_type === 'anime') {
-                                        $detailUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $fav->item_id], panel: 'streaming');
+                                        if (str_starts_with($fav->item_id, 'v4:')) {
+                                            $detailUrl = \App\Filament\Streaming\Pages\AnimeDetailV4::getUrl(['slug' => substr($fav->item_id, 3)], panel: 'streaming');
+                                        } elseif (str_starts_with($fav->item_id, 'v3:')) {
+                                            $detailUrl = \App\Filament\Streaming\Pages\AnimeDetailV3::getUrl(['slug' => substr($fav->item_id, 3)], panel: 'streaming');
+                                        } elseif (str_starts_with($fav->item_id, 'v2:')) {
+                                            $detailUrl = \App\Filament\Streaming\Pages\AnimeDetailV2::getUrl(['slug' => substr($fav->item_id, 3)], panel: 'streaming');
+                                        } else {
+                                            $detailUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $fav->item_id], panel: 'streaming');
+                                        }
                                     } elseif ($fav->item_type === 'bstation') {
                                         $detailUrl = \App\Filament\Streaming\Pages\BstationDetail::getUrl(['id' => $fav->item_id], panel: 'streaming');
                                     } elseif ($fav->item_type === 'dracin') {
@@ -246,12 +258,28 @@
                             @php
                                 $detailUrl = '#';
                                 try {
-                                    if ($history->item_type === 'movie') {
-                                        $detailUrl = \App\Filament\Streaming\Pages\WatchMovie::getUrl(['slug' => $history->item_id], panel: 'streaming');
+                                    if (!empty($history->url) && !str_contains($history->url, '/livewire/')) {
+                                        $detailUrl = str_replace('/anime-v1/', '/anime/', $history->url);
+                                    } elseif ($history->item_type === 'movie') {
+                                        if (str_starts_with($history->item_id, 'lk:')) {
+                                            $detailUrl = \App\Filament\Streaming\Pages\WatchServerLk::getUrl(['slug' => substr($history->item_id, 3)], panel: 'streaming');
+                                        } else {
+                                            $detailUrl = \App\Filament\Streaming\Pages\WatchMovie::getUrl(['slug' => $history->item_id], panel: 'streaming');
+                                        }
                                     } elseif ($history->item_type === 'tv_series' || $history->item_type === 'series') {
                                         $detailUrl = \App\Filament\Streaming\Pages\WatchSeries::getUrl(['seriesSlug' => $history->item_id], panel: 'streaming');
                                     } elseif ($history->item_type === 'anime') {
-                                        $detailUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $history->item_id], panel: 'streaming');
+                                        $cleanSlug = preg_replace('/^(?:anime_v\d+:|v\d+:|anime:)/', '', $history->item_id);
+                                        $ep = $history->last_episode ?: '1';
+                                        if (str_starts_with($history->item_id, 'anime_v4:')) {
+                                            $detailUrl = \App\Filament\Streaming\Pages\WatchAnimeV4::getUrl(['anime_slug' => $cleanSlug, 'episode_slug' => $ep], panel: 'streaming');
+                                        } elseif (str_starts_with($history->item_id, 'anime_v3:')) {
+                                            $detailUrl = \App\Filament\Streaming\Pages\WatchAnimeV3::getUrl(['anime_slug' => $cleanSlug, 'episode_slug' => $ep], panel: 'streaming');
+                                        } elseif (str_starts_with($history->item_id, 'anime_v2:')) {
+                                            $detailUrl = \App\Filament\Streaming\Pages\WatchAnimeV2::getUrl(['anime_slug' => $cleanSlug, 'episode_slug' => $ep], panel: 'streaming');
+                                        } else {
+                                            $detailUrl = \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $cleanSlug, 'episode_slug' => $ep], panel: 'streaming');
+                                        }
                                     } elseif ($history->item_type === 'bstation') {
                                         $detailUrl = \App\Filament\Streaming\Pages\BstationDetail::getUrl(['id' => $history->item_id], panel: 'streaming');
                                     } elseif ($history->item_type === 'dracin') {

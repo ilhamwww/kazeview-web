@@ -40,6 +40,7 @@ class WatchAnime extends Page
 
     public function mount(string $anime_slug, string $episode_slug): void
     {
+        $anime_slug = preg_replace('/^(?:anime_v\d+:|v\d+:|anime:)/', '', $anime_slug);
         $this->animeSlug = $anime_slug;
         $this->episodeSlug = $episode_slug;
 

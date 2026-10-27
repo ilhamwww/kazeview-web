@@ -28,6 +28,7 @@ class AnimeDetail extends Page
 
     public function mount($slug): void
     {
+        $slug = preg_replace('/^(?:anime_v\d+:|v\d+:|anime:)/', '', $slug);
         $this->animeSlug = $slug;
 
         $scraper = new MirainimeScraperService();
