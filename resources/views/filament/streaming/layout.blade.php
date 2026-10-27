@@ -1343,7 +1343,7 @@
 
     @livewireScripts
     <script src="/js/kz-drag-scroll.js?v=2"></script>
-    <script src="/js/kz-server-loader.js?v=1"></script>
+    <script src="/js/kz-server-loader.js?v=4"></script>
     @stack('scripts')
 </body>
 

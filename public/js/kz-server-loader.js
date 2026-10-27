@@ -1,10 +1,10 @@
 /**
  * KZSTRM Server Selection Loading Indicator for Artplayer & Streaming UI
  * - Initial load / server switch: Shows 3-server cluster ("Memilih server terbaik...")
- * - Seeking / scrubbing / mid-stream buffering: Shows clean circular rotating spinner while keeping time bar visible
+ * - Seeking / scrubbing / mid-stream buffering: Shows clean circular rotating spinner with "Loading..." while keeping time bar visible
  */
 (function() {
-    function getServerClusterHtml(title = 'Memilih server terbaik', subtitle = 'Mengoptimalkan stream film & resolusi HD') {
+    function getServerClusterHtml(title = 'Memilih server terbaik', subtitle = 'Mengoptimalkan stream & resolusi HD') {
         return `
         <div class="kz-server-loader-box relative flex flex-col items-center justify-center text-center select-none pointer-events-none max-w-sm w-full mx-auto p-4">
             <div class="relative w-44 h-32 md:w-52 md:h-36 flex items-center justify-center">
@@ -89,9 +89,12 @@
 
     function getCircularSpinnerHtml() {
         return `
-        <div class="kz-seek-spinner-wrap relative flex items-center justify-center pointer-events-none select-none">
-            <div class="w-12 h-12 md:w-14 md:h-14 rounded-full border-[3.5px] border-white/15"></div>
-            <div class="absolute inset-0 w-12 h-12 md:w-14 md:h-14 rounded-full border-[3.5px] border-[#E50914] border-t-transparent animate-spin" style="filter: drop-shadow(0 0 8px rgba(229, 9, 20, 0.7));"></div>
+        <div class="kz-seek-spinner-wrap relative flex flex-col items-center justify-center pointer-events-none select-none gap-2">
+            <div class="relative w-12 h-12 md:w-14 md:h-14 flex items-center justify-center">
+                <div class="w-12 h-12 md:w-14 md:h-14 rounded-full border-[3.5px] border-white/15"></div>
+                <div class="absolute inset-0 w-12 h-12 md:w-14 md:h-14 rounded-full border-[3.5px] border-[#E50914] border-t-transparent animate-spin" style="filter: drop-shadow(0 0 8px rgba(229, 9, 20, 0.7));"></div>
+            </div>
+            <span class="text-[11px] font-bold text-zinc-300 tracking-wider">Loading...</span>
         </div>
         `;
     }
@@ -100,11 +103,11 @@
         if (!art || !art.template || !art.template.$loading) return;
         const loadingEl = art.template.$loading;
 
-        // Pasang animasi 3-server untuk initial load
+        // 1. Initial connection / server selection state
         loadingEl.classList.add('kz-server-initial-loading');
         loadingEl.innerHTML = getServerClusterHtml(title, subtitle);
 
-        // Setelah video mulai berjalan (sudah mulai streaming), ganti ke circular spinner untuk seeking berikutnya
+        // 2. Transisi instan ke circular spinner segera setelah video mulai diputar ATAU ketika user mulai menggeser bar waktu (seeking)
         let hasSwitchedToSeekSpinner = false;
         const switchToSeekSpinner = () => {
             if (hasSwitchedToSeekSpinner) return;
@@ -113,17 +116,41 @@
             loadingEl.innerHTML = getCircularSpinnerHtml();
         };
 
+        // Event Artplayer
         art.once('video:playing', switchToSeekSpinner);
-        art.once('video:timeupdate', () => {
-            if (art.currentTime > 0.3) switchToSeekSpinner();
+        art.once('video:play', switchToSeekSpinner);
+        art.on('video:seeking', switchToSeekSpinner);
+        art.on('video:seeked', switchToSeekSpinner);
+        art.on('seek', switchToSeekSpinner);
+        art.on('video:timeupdate', () => {
+            if (art.currentTime > 0.1) switchToSeekSpinner();
         });
 
-        // Backup timer: maksimal 12 detik setelah ready, jika video jalan, switch otomatis
+        // Event langsung ke native video element untuk proteksi ganda
+        const bindVideoEvents = () => {
+            const v = art.video;
+            if (!v) return;
+            v.addEventListener('play', switchToSeekSpinner, { once: true });
+            v.addEventListener('playing', switchToSeekSpinner, { once: true });
+            v.addEventListener('seeking', switchToSeekSpinner);
+            v.addEventListener('seeked', switchToSeekSpinner);
+            v.addEventListener('timeupdate', () => {
+                if (v.currentTime > 0.1) switchToSeekSpinner();
+            });
+        };
+
+        if (art.video) {
+            bindVideoEvents();
+        } else {
+            art.once('ready', bindVideoEvents);
+        }
+
+        // Safety fallback timer: maksimal 5 detik setelah init, jika video sudah punya durasi atau currentTime, alihkan ke spinner
         setTimeout(() => {
-            if (art.video && !art.video.paused && art.video.currentTime > 0) {
+            if (art.video && (art.video.currentTime > 0 || !art.video.paused)) {
                 switchToSeekSpinner();
             }
-        }, 8000);
+        }, 5000);
     }
 
     window.kzServerLoader = {
