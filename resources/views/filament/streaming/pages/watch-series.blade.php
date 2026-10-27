@@ -306,15 +306,25 @@
         .art-video-player .art-progress-highlight { background: transparent !important; }
         .art-video-player .art-progress-indicator { background-color: #E50914 !important; }
 
+        /* 1. Reset default art-bottom background saat kontrol sembunyi agar video jernih dan subtitle bebas */
         .art-video-player .art-bottom {
             background: none !important;
             background-image: none !important;
+            transition: background-image 0.2s ease, opacity 0.2s ease !important;
         }
 
-        /* 2. Hanya saat kontrol aktif, berikan gradien halus di bilah tombol kontrol bawah (bukan di layar video) */
-        .art-video-player.art-control-show .art-controls,
-        .art-video-player.art-hover .art-controls {
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, transparent 100%) !important;
+        /* 2. Saat kontrol aktif/hover, berikan gradien halus full-width di art-bottom (bukan di art-controls agar samping tidak terpotong) */
+        .art-video-player.art-control-show .art-bottom,
+        .art-video-player.art-hover .art-bottom {
+            background-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.45) 50px, transparent 85px) !important;
+            background-size: 100% 85px !important;
+            background-repeat: no-repeat !important;
+            background-position: bottom !important;
+        }
+
+        .art-video-player .art-controls {
+            background: none !important;
+            background-image: none !important;
         }
 
         /* 3. Subtitle styling: Z-index tinggi agar selalu di atas layer kontrol & tidak pernah tertutup */
