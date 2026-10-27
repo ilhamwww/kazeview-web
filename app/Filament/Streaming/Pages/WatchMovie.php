@@ -4,6 +4,7 @@ namespace App\Filament\Streaming\Pages;
 
 use Filament\Pages\Page;
 use App\Services\StreamingService;
+use App\Services\DirectStreamResolverService;
 
 class WatchMovie extends Page
 {
@@ -26,21 +27,6 @@ class WatchMovie extends Page
     {
         $this->movieSlug = $slug;
 
-        // Auto-redirect Rebahin slug to canonical IDLIX movie if available
-        if (str_starts_with($slug, 'rb-')) {
-            try {
-                $rbDetail = StreamingService::getMovieDetail($slug);
-                if ($rbDetail) {
-                    $idlixMovie = StreamingService::findIdlixMovieByTitle($rbDetail['title'] ?? '', $rbDetail['year'] ?? null);
-                    if ($idlixMovie && !empty($idlixMovie['slug'])) {
-                        return redirect()->to(self::getUrl(['slug' => $idlixMovie['slug']], panel: 'streaming'));
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Ignore and proceed
-            }
-        }
-
         $this->media = StreamingService::getMovieDetail($slug);
 
         if (!$this->media) {
@@ -56,12 +42,28 @@ class WatchMovie extends Page
             return;
         }
 
+        // Fetch direct stream first if available (IDLIX via NUC Relay / Rebahin / LK21)
+        $stream = !empty($this->media['id']) ? StreamingService::getValidCachedMovieStream($this->media['id']) : null;
+        if (!$stream && !empty($this->media['id'])) {
+            $stream = StreamingService::getMovieStream($this->media['id']);
+        }
+        if (!$stream && !empty($this->media['title'])) {
+            $stream = DirectStreamResolverService::resolveMovieStream($this->media['title'], $this->media['year'] ?? null);
+        }
+        if ($stream && !empty($stream['video_url'])) {
+            $this->media['video_url'] = $stream['video_url'];
+            $this->media['subtitles'] = $stream['subtitles'] ?? [];
+        } else {
+            $this->media['video_url'] = '';
+            $this->media['subtitles'] = [];
+        }
+
         // Setup servers (HLS vs Embed)
         $servers = [];
         $isEmbedMovie = !empty($this->media['isEmbed']);
 
         if ($isEmbedMovie) {
-            // Server 1 (HD) uses native Artplayer via Stream Relay
+            // Server 1 (HD) uses native Artplayer via Stream Relay (Rebahin / Indonesia)
             $servers[] = [
                 'id' => 'server1',
                 'name' => 'Server 1 (HD)',
@@ -79,18 +81,64 @@ class WatchMovie extends Page
                 ];
             }
         } else {
-            $servers[] = [
-                'id' => 'server1',
-                'name' => 'Server 1 (HD)',
-                'type' => 'hls',
-                'embed_url' => '',
-            ];
+            // Jika ada Direct Stream HLS/Relay yang berhasil di-resolve, jadikan Server 1 Native Artplayer
+            $hasDirectRelay = !empty($this->media['video_url']);
+            if ($hasDirectRelay) {
+                $servers[] = [
+                    'id' => 'server_direct',
+                    'name' => 'Server 1 (Native HD - Bebas Iklan)',
+                    'type' => 'hls',
+                    'embed_url' => '',
+                ];
+            }
+
+            // Universal TMDB Embed Engine for Global Movies (Sebagai Server Cadangan)
+            $tmdbId = $this->media['tmdb_id'] ?? ($this->media['raw_detail']['tmdbId'] ?? null);
+            if (!$tmdbId && !empty($this->media['id']) && is_numeric($this->media['id'])) {
+                $tmdbId = $this->media['id'];
+            }
+
+            $offset = $hasDirectRelay ? 1 : 0;
+
+            if ($tmdbId) {
+                $servers[] = [
+                    'id' => 'server_vidlink',
+                    'name' => 'Server ' . (1 + $offset) . ' (VidLink HD)',
+                    'type' => 'embed',
+                    'embed_url' => 'https://vidlink.pro/movie/' . $tmdbId . '?primaryColor=E50914&autoplay=false',
+                ];
+                $servers[] = [
+                    'id' => 'server_2embed',
+                    'name' => 'Server ' . (2 + $offset) . ' (2Embed)',
+                    'type' => 'embed',
+                    'embed_url' => 'https://www.2embed.cc/embed/' . $tmdbId,
+                ];
+                $servers[] = [
+                    'id' => 'server_multiembed',
+                    'name' => 'Server ' . (3 + $offset) . ' (MultiEmbed)',
+                    'type' => 'embed',
+                    'embed_url' => 'https://multiembed.mov/?video_id=' . $tmdbId . '&tmdb=1',
+                ];
+                $servers[] = [
+                    'id' => 'server_vidsrc',
+                    'name' => 'Server ' . (4 + $offset) . ' (VidSrc)',
+                    'type' => 'embed',
+                    'embed_url' => 'https://vidsrc.sh/embed/movie/' . $tmdbId,
+                ];
+            } elseif (!$hasDirectRelay) {
+                $servers[] = [
+                    'id' => 'server1',
+                    'name' => 'Server 1 (HD)',
+                    'type' => 'hls',
+                    'embed_url' => '',
+                ];
+            }
 
             if (!empty($this->media['mirror_servers'])) {
                 foreach ($this->media['mirror_servers'] as $idx => $s) {
                     $servers[] = [
                         'id' => 'server_mirror_' . ($idx + 1),
-                        'name' => 'Server ' . ($idx + 2) . ' (Mirror)',
+                        'name' => 'Server ' . ($idx + 5 + $offset) . ' (Mirror)',
                         'type' => 'embed',
                         'embed_url' => $s['embed_url'] ?? '',
                     ];
@@ -98,18 +146,6 @@ class WatchMovie extends Page
             }
         }
         $this->servers = $servers;
-
-        $stream = !empty($this->media['id']) ? StreamingService::getValidCachedMovieStream($this->media['id']) : null;
-        if (!$stream && !empty($this->media['id']) && str_starts_with($this->media['id'], 'rb-')) {
-            $stream = StreamingService::getMovieStream($this->media['id']);
-        }
-        if ($stream) {
-            $this->media['video_url'] = $stream['video_url'] ?? '';
-            $this->media['subtitles'] = $stream['subtitles'] ?? [];
-        } else {
-            $this->media['video_url'] = '';
-            $this->media['subtitles'] = [];
-        }
 
         // Get recommendations
         $homeData = StreamingService::getHomepageData();
@@ -135,7 +171,7 @@ class WatchMovie extends Page
         if (auth()->check()) {
             $user = auth()->user();
             $movieTitle = $this->media['title'] ?? 'Movie';
-            $thumbnail = $this->media['poster'] ?? $this->media['thumbnail'] ?? null;
+            $thumbnail = $this->media['thumbnail'] ?? ($this->media['poster'] ?? ($this->media['posterPath'] ?? ($this->media['poster_path'] ?? ($this->media['banner'] ?? null))));
 
             $existing = $user->watchHistories()
                 ->where('item_id', $this->movieSlug)

@@ -222,9 +222,31 @@ class StreamingHome extends BaseDashboard
                 continue;
             }
 
+            $thumbnail = $row->thumbnail;
+            if (empty($thumbnail)) {
+                try {
+                    if (in_array($row->item_type, ['tv_series', 'tv', 'series'], true)) {
+                        $seriesDetail = StreamingService::getSeriesDetail($row->item_id);
+                        $thumbnail = $seriesDetail['posterPath'] ?? ($seriesDetail['poster_path'] ?? ($seriesDetail['poster'] ?? ($seriesDetail['thumbnail'] ?? null)));
+                    } elseif ($row->item_type === 'movie') {
+                        $movieDetail = StreamingService::getMovieDetail($row->item_id);
+                        $thumbnail = $movieDetail['thumbnail'] ?? ($movieDetail['poster'] ?? ($movieDetail['posterPath'] ?? ($movieDetail['poster_path'] ?? null)));
+                    } elseif ($row->item_type === 'anime') {
+                        $cleanSlug = preg_replace('/^(?:anime_v\d+:|v\d+:|anime:)/', '', $row->item_id);
+                        $animeDetail = app(\App\Services\MirainimeScraperService::class)->getAnimeDetail($cleanSlug);
+                        $thumbnail = $animeDetail['poster'] ?? null;
+                    }
+                    if (!empty($thumbnail)) {
+                        $row->update(['thumbnail' => $thumbnail]);
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+
             $result[] = [
                 'title' => $row->title,
-                'thumbnail' => $row->thumbnail,
+                'thumbnail' => $thumbnail,
                 'episode' => $row->last_episode,
                 'label' => $labels[$row->item_type] ?? ucfirst($row->item_type),
                 'url' => $url,

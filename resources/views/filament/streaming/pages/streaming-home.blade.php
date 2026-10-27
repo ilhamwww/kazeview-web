@@ -152,7 +152,7 @@
                 <a href="{{ $cw['url'] }}" class="group relative w-[124px] sm:w-[140px] md:w-[156px] shrink-0 snap-start">
                     <div class="relative aspect-[3/4] overflow-hidden rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-950 ring-1 ring-white/5">
                         @if(!empty($cw['thumbnail']))
-                        <img src="{{ $cw['thumbnail'] }}" alt="" loading="lazy" onerror="this.remove()" class="relative h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                        <img src="{{ $cw['thumbnail'] }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" class="relative h-full w-full object-cover transition duration-300 group-hover:scale-105">
                         @else
                         <div class="absolute inset-0 flex items-center justify-center text-zinc-700">
                             <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>

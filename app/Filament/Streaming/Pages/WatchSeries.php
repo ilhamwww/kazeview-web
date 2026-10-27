@@ -33,25 +33,6 @@ class WatchSeries extends Page
         $this->seasonNumber = (int)$seasonNumber;
         $this->episodeNumber = (int)$episodeNumber;
 
-        // Auto-redirect Rebahin series to canonical IDLIX series if available
-        if (str_starts_with($slug, 'rb-')) {
-            try {
-                $rbDetail = StreamingService::getSeriesDetail($slug);
-                if ($rbDetail) {
-                    $idlixSeries = StreamingService::findIdlixSeriesByTitle($rbDetail['title'] ?? '', $rbDetail['year'] ?? null);
-                    if ($idlixSeries && !empty($idlixSeries['slug'])) {
-                        return redirect()->to(self::getUrl([
-                            'slug' => $idlixSeries['slug'],
-                            'seasonNumber' => $this->seasonNumber,
-                            'episodeNumber' => $this->episodeNumber,
-                        ], panel: 'streaming'));
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Ignore and proceed
-            }
-        }
-
         $this->series = StreamingService::getSeriesDetail($slug);
 
         if (!$this->series) {
@@ -78,47 +59,6 @@ class WatchSeries extends Page
         }
 
         if ($this->activeEpisode) {
-            // Setup servers (HLS vs Embed)
-            $servers = [];
-            $isEmbedEpisode = !empty($this->activeEpisode['servers']);
-
-            if ($isEmbedEpisode) {
-                // Server 1 (HD) uses native Artplayer via Stream Relay
-                $servers[] = [
-                    'id' => 'server1',
-                    'name' => 'Server 1 (HD)',
-                    'type' => 'hls',
-                    'embed_url' => '',
-                ];
-
-                foreach ($this->activeEpisode['servers'] as $idx => $s) {
-                    $servers[] = [
-                        'id' => 'server_mirror_' . ($idx + 1),
-                        'name' => 'Server ' . ($idx + 2) . ' (Mirror)',
-                        'type' => 'embed',
-                        'embed_url' => $s['embed_url'] ?? '',
-                    ];
-                }
-            } else {
-                $servers[] = [
-                    'id' => 'server1',
-                    'name' => 'Server 1 (HD)',
-                    'type' => 'hls',
-                    'embed_url' => '',
-                ];
-                if (!empty($this->activeEpisode['mirror_servers'])) {
-                    foreach ($this->activeEpisode['mirror_servers'] as $idx => $s) {
-                        $servers[] = [
-                            'id' => 'server_mirror_' . ($idx + 1),
-                            'name' => 'Server ' . ($idx + 2) . ' (Mirror)',
-                            'type' => 'embed',
-                            'embed_url' => $s['embed_url'] ?? '',
-                        ];
-                    }
-                }
-            }
-            $this->servers = $servers;
-
             // Server-side subscription check
             if (auth()->check() && auth()->user()->isSubscriptionExpired()) {
                 $this->streamData = [
@@ -127,28 +67,122 @@ class WatchSeries extends Page
                     'title' => $this->activeEpisode['name'] ?? '',
                 ];
                 $this->servers = [];
-            } else {
-                $cachedStream = !empty($this->activeEpisode['id']) ? StreamingService::getValidCachedEpisodeStream($this->activeEpisode['id']) : null;
-                if (!$cachedStream && !empty($this->activeEpisode['id']) && str_starts_with($this->activeEpisode['id'], 'rb-')) {
-                    $cachedStream = StreamingService::getEpisodeStream($this->activeEpisode['id']);
-                }
+                return;
+            }
 
-                if ($cachedStream) {
-                    $this->streamData = $cachedStream;
-                } else {
-                    $this->streamData = [
-                        'video_url' => '',
-                        'subtitles' => [],
-                        'title' => $this->activeEpisode['name'] ?? '',
+            // 1. Fetch stream (Native IDLIX via NUC Resolver / Rebahin)
+            $cachedStream = !empty($this->activeEpisode['id']) ? StreamingService::getValidCachedEpisodeStream($this->activeEpisode['id']) : null;
+            if (!$cachedStream && !empty($this->activeEpisode['id'])) {
+                $cachedStream = StreamingService::getEpisodeStream($this->activeEpisode['id']);
+            }
+
+            if ($cachedStream) {
+                $this->streamData = $cachedStream;
+            } else {
+                $this->streamData = [
+                    'video_url' => '',
+                    'subtitles' => [],
+                    'title' => $this->activeEpisode['name'] ?? '',
+                ];
+            }
+
+            // 2. Setup servers (HLS vs Embed)
+            $servers = [];
+            $hasNativeStream = !empty($this->streamData['video_url']);
+            $isEmbedEpisode = !empty($this->activeEpisode['servers']);
+
+            if ($hasNativeStream) {
+                $servers[] = [
+                    'id' => 'server_direct',
+                    'name' => 'Server 1 (Native HD - Bebas Iklan)',
+                    'type' => 'hls',
+                    'embed_url' => '',
+                ];
+            }
+
+            if ($isEmbedEpisode) {
+                if (!$hasNativeStream) {
+                    $servers[] = [
+                        'id' => 'server1',
+                        'name' => 'Server 1 (HD)',
+                        'type' => 'hls',
+                        'embed_url' => '',
                     ];
                 }
+
+                foreach ($this->activeEpisode['servers'] as $idx => $s) {
+                    $servers[] = [
+                        'id' => 'server_mirror_' . ($idx + 1),
+                        'name' => 'Server ' . (count($servers) + 1) . ' (Mirror)',
+                        'type' => 'embed',
+                        'embed_url' => $s['embed_url'] ?? '',
+                    ];
+                }
+            } else {
+                // Universal TMDB Embed Engine for Global TV Series
+                $tmdbId = $this->series['tmdbId'] ?? ($this->series['tmdb_id'] ?? null);
+                if (!$tmdbId && !empty($this->series['id']) && is_numeric($this->series['id'])) {
+                    $tmdbId = $this->series['id'];
+                }
+                $season = (int)$this->seasonNumber;
+                $episode = (int)$this->episodeNumber;
+
+                if ($tmdbId) {
+                    $sOffset = count($servers) + 1;
+                    $servers[] = [
+                        'id' => 'server_vidlink',
+                        'name' => "Server {$sOffset} (VidLink HD)",
+                        'type' => 'embed',
+                        'embed_url' => "https://vidlink.pro/tv/{$tmdbId}/{$season}/{$episode}?primaryColor=E50914&nextbutton=true",
+                    ];
+                    $sOffset++;
+                    $servers[] = [
+                        'id' => 'server_2embed',
+                        'name' => "Server {$sOffset} (2Embed)",
+                        'type' => 'embed',
+                        'embed_url' => "https://www.2embed.cc/embedtv/{$tmdbId}&s={$season}&e={$episode}",
+                    ];
+                    $sOffset++;
+                    $servers[] = [
+                        'id' => 'server_multiembed',
+                        'name' => "Server {$sOffset} (MultiEmbed)",
+                        'type' => 'embed',
+                        'embed_url' => "https://multiembed.mov/?video_id={$tmdbId}&tmdb=1&s={$season}&e={$episode}",
+                    ];
+                    $sOffset++;
+                    $servers[] = [
+                        'id' => 'server_vidsrc',
+                        'name' => "Server {$sOffset} (VidSrc)",
+                        'type' => 'embed',
+                        'embed_url' => "https://vidsrc.sh/embed/tv/{$tmdbId}/{$season}/{$episode}",
+                    ];
+                } elseif (!$hasNativeStream) {
+                    $servers[] = [
+                        'id' => 'server1',
+                        'name' => 'Server 1 (HD)',
+                        'type' => 'hls',
+                        'embed_url' => '',
+                    ];
+                }
+
+                if (!empty($this->activeEpisode['mirror_servers'])) {
+                    foreach ($this->activeEpisode['mirror_servers'] as $idx => $s) {
+                        $servers[] = [
+                            'id' => 'server_mirror_' . ($idx + 1),
+                            'name' => 'Server ' . (count($servers) + 1) . ' (Mirror)',
+                            'type' => 'embed',
+                            'embed_url' => $s['embed_url'] ?? '',
+                        ];
+                    }
+                }
             }
+            $this->servers = $servers;
 
             // Record Watch History
             if (auth()->check()) {
                 $user = auth()->user();
                 $seriesTitle = $this->series['title'] ?? 'Series';
-                $thumbnail = $this->series['poster'] ?? ($this->series['thumbnail'] ?? null);
+                $thumbnail = $this->series['posterPath'] ?? ($this->series['poster_path'] ?? ($this->series['poster'] ?? ($this->series['thumbnail'] ?? ($this->series['backdropPath'] ?? null))));
                 $epNum = (string) ($this->activeEpisode['episodeNumber'] ?? $this->episodeNumber);
 
                 $history = $user->watchHistories()
