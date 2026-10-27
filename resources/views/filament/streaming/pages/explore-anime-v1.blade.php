@@ -16,6 +16,17 @@
 @endphp
 
 <div class="min-h-screen bg-[#050505] text-white pb-28 md:pb-16">
+    <style>
+        .kz-noscroll, [data-drag-scroll] {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+        }
+        .kz-noscroll::-webkit-scrollbar, [data-drag-scroll]::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+    </style>
 
     {{-- ============ HEADER: judul + cari + filter cepat ============ --}}
     <section class="relative w-full max-w-[1800px] mx-auto px-4 md:px-6 pt-20 md:pt-28">

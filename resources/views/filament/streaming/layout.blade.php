@@ -155,6 +155,22 @@
             opacity: 1 !important;
             pointer-events: auto !important;
         }
+
+        /* Global Hide Scrollbar Utility for smooth clean carousels across all mobile & desktop browsers */
+        .kz-noscroll,
+        .no-scrollbar,
+        [data-drag-scroll] {
+            -ms-overflow-style: none !important; /* IE and Edge */
+            scrollbar-width: none !important; /* Firefox */
+        }
+        .kz-noscroll::-webkit-scrollbar,
+        .no-scrollbar::-webkit-scrollbar,
+        [data-drag-scroll]::-webkit-scrollbar {
+            display: none !important; /* Chrome, Safari, Android WebKit, Samsung Browser */
+            width: 0 !important;
+            height: 0 !important;
+            background: transparent !important;
+        }
     </style>
     @stack('styles')
 </head>
