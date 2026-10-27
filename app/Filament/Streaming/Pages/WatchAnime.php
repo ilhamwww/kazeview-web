@@ -189,19 +189,19 @@ class WatchAnime extends Page
             $this->currentStreamUrl = '';
         }
 
-        // Servers List setup (Server 1 Direct HD as default)
+        // Servers List setup (Server 1 Direct FHD as default)
         $servers = [];
         if (!empty($this->currentStreamUrl) && $isDirect) {
             $servers[] = [
                 'id' => 'server1',
-                'name' => 'Server 1 (Direct HD - V1)',
+                'name' => 'Server 1 (Direct FHD - Slow)',
                 'type' => 'mp4',
                 'stream_url' => $this->currentStreamUrl,
                 'embed_url' => '',
             ];
         }
 
-        // Server Otakudesu (Direct HD / DesuStream / Embed)
+        // Server Otakudesu (Alt HD - Fast / DesuStream / Embed)
         $otakuStream = $this->downloads['stream_url'] ?? ($this->episodeDetail['direct_mp4'] ?? null);
         $otakuIframe = $this->downloads['iframe_url'] ?? ($this->episodeDetail['iframe_url'] ?? null);
 
@@ -209,7 +209,7 @@ class WatchAnime extends Page
             // Direct MP4 dari Otakudesu / Archive.org
             $servers[] = [
                 'id' => 'server_otaku_direct',
-                'name' => 'Server ' . (count($servers) + 1) . ' (Alt Direct HD)',
+                'name' => 'Server ' . (count($servers) + 1) . ' (Alt HD - Fast)',
                 'type' => 'mp4',
                 'stream_url' => $otakuStream,
                 'embed_url' => '',
