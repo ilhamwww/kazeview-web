@@ -1,11 +1,10 @@
 /**
  * KZSTRM Server Selection Loading Indicator for Artplayer & Streaming UI
- * Features 3-server cluster with highlighted active node, pulsing broadcast waves, and live status text.
+ * - Initial load / server switch: Shows 3-server cluster ("Memilih server terbaik...")
+ * - Seeking / scrubbing / mid-stream buffering: Shows clean circular rotating spinner while keeping time bar visible
  */
 (function() {
-    if (window.kzServerLoader) return;
-
-    function getHtml(title = 'Memilih server terbaik', subtitle = 'Menghubungkan ke jalur stream tercepat & resolusi HD') {
+    function getServerClusterHtml(title = 'Memilih server terbaik', subtitle = 'Mengoptimalkan stream film & resolusi HD') {
         return `
         <div class="kz-server-loader-box relative flex flex-col items-center justify-center text-center select-none pointer-events-none max-w-sm w-full mx-auto p-4">
             <div class="relative w-44 h-32 md:w-52 md:h-36 flex items-center justify-center">
@@ -88,13 +87,48 @@
         `;
     }
 
+    function getCircularSpinnerHtml() {
+        return `
+        <div class="kz-seek-spinner-wrap relative flex items-center justify-center pointer-events-none select-none">
+            <div class="w-12 h-12 md:w-14 md:h-14 rounded-full border-[3.5px] border-white/15"></div>
+            <div class="absolute inset-0 w-12 h-12 md:w-14 md:h-14 rounded-full border-[3.5px] border-[#E50914] border-t-transparent animate-spin" style="filter: drop-shadow(0 0 8px rgba(229, 9, 20, 0.7));"></div>
+        </div>
+        `;
+    }
+
     function applyToArtplayer(art, title, subtitle) {
         if (!art || !art.template || !art.template.$loading) return;
-        art.template.$loading.innerHTML = getHtml(title, subtitle);
+        const loadingEl = art.template.$loading;
+
+        // Pasang animasi 3-server untuk initial load
+        loadingEl.classList.add('kz-server-initial-loading');
+        loadingEl.innerHTML = getServerClusterHtml(title, subtitle);
+
+        // Setelah video mulai berjalan (sudah mulai streaming), ganti ke circular spinner untuk seeking berikutnya
+        let hasSwitchedToSeekSpinner = false;
+        const switchToSeekSpinner = () => {
+            if (hasSwitchedToSeekSpinner) return;
+            hasSwitchedToSeekSpinner = true;
+            loadingEl.classList.remove('kz-server-initial-loading');
+            loadingEl.innerHTML = getCircularSpinnerHtml();
+        };
+
+        art.once('video:playing', switchToSeekSpinner);
+        art.once('video:timeupdate', () => {
+            if (art.currentTime > 0.3) switchToSeekSpinner();
+        });
+
+        // Backup timer: maksimal 12 detik setelah ready, jika video jalan, switch otomatis
+        setTimeout(() => {
+            if (art.video && !art.video.paused && art.video.currentTime > 0) {
+                switchToSeekSpinner();
+            }
+        }, 8000);
     }
 
     window.kzServerLoader = {
-        getHtml,
+        getHtml: getServerClusterHtml,
+        getSeekSpinnerHtml: getCircularSpinnerHtml,
         applyToArtplayer
     };
 })();

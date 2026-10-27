@@ -122,7 +122,17 @@
             40% { transform: translateY(-3px); opacity: 1; }
         }
 
-        /* Artplayer Seeking & Buffering Spinner: Clean circular rotating spinner, no black backdrop, controls stay visible */
+        /* Artplayer Loading States */
+        /* 1. Initial Load: Full Dark Backdrop with 3-Server Cluster Animation */
+        .art-video-player .art-loading.kz-server-initial-loading {
+            background: rgba(5, 5, 5, 0.94) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+            z-index: 70 !important;
+            pointer-events: none !important;
+        }
+
+        /* 2. Seeking & Mid-Stream Buffering: Transparent backdrop, circular spinner in center, time bar remains 100% visible */
         .art-video-player .art-loading {
             background: transparent !important;
             background-image: none !important;
@@ -130,13 +140,6 @@
             -webkit-backdrop-filter: none !important;
             z-index: 35 !important;
             pointer-events: none !important;
-        }
-
-        .art-video-player .art-loading svg {
-            display: block !important;
-            width: 52px !important;
-            height: 52px !important;
-            filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.9)) !important;
         }
 
         /* Saat seeking / geser bar waktu, pastikan bar kontrol (.art-bottom) tetap terlihat jelas */

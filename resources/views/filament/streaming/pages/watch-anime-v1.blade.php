@@ -897,6 +897,11 @@
                             ]
                         });
 
+                        // Tampilkan animasi 3-server pada initial load stream (auto-switch ke circular spinner saat seeking)
+                        if (window.kzServerLoader) {
+                            window.kzServerLoader.applyToArtplayer(_art, 'Memilih server terbaik', 'Menyiapkan stream anime & buffer episode');
+                        }
+
                         _art.on('play', () => {
                             if (self.useNativeFs() && window.KzFs && !KzFs.current()) {
                                 self.enterNativeFs();
