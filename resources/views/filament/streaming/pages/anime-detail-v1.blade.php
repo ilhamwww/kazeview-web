@@ -30,7 +30,7 @@
             </div>
 
             <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-start md:items-end w-full">
-                <!-- High-Res Poster -->
+                <!-- High-Res Poster (Desktop: md:block) -->
                 @if(!empty($posterImg))
                 <div class="flex-shrink-0 hidden md:block">
                     <img src="{{ $posterImg }}" alt="{{ $detail['title'] ?? '' }}"
@@ -39,57 +39,81 @@
                 @endif
 
                 <!-- Info Column -->
-                <div class="flex-1 min-w-0">
-                    <!-- Badges Row -->
-                    <div class="flex flex-wrap items-center gap-2 mb-3">
-                        <span class="bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider shadow-md shadow-red-600/30">
-                            SERVER 1 (V1 DIRECT HD)
-                        </span>
-
-                        @if(!empty($metadata['score']))
-                            <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1">
-                                <svg class="w-3.5 h-3.5 fill-amber-400" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                                ★ {{ $metadata['score'] }} (MAL)
-                            </span>
+                <div class="flex-1 min-w-0 w-full">
+                    <!-- Mobile Header: Poster + Badges + Title (< md) -->
+                    <div class="flex md:hidden items-start gap-4 mb-4">
+                        @if(!empty($posterImg))
+                        <div class="flex-shrink-0 w-28 sm:w-32 aspect-[2/3] rounded-xl overflow-hidden border border-white/10 shadow-2xl shadow-black/80 ring-1 ring-white/10 bg-zinc-900">
+                            <img src="{{ $posterImg }}" alt="{{ $detail['title'] ?? '' }}" class="w-full h-full object-cover">
+                        </div>
                         @endif
+                        <div class="flex-1 min-w-0">
+                            <!-- Badges Row (Mobile: MAL score 1 star, Episodes, Airing day) -->
+                            <div class="flex flex-wrap items-center gap-1.5 mb-2">
+                                @if(!empty($metadata['score']))
+                                    <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider inline-flex items-center gap-1 shadow-sm">
+                                        <svg class="w-3.5 h-3.5 fill-amber-400 shrink-0" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                        <span>{{ $metadata['score'] }} (MAL)</span>
+                                    </span>
+                                @endif
 
-                        <span class="bg-red-950/80 text-red-400 border border-red-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">
-                            {{ $metadata['status'] ?? 'ONGOING' }}
-                        </span>
+                                @if(!empty($detail['episodes']))
+                                    <span class="bg-zinc-800 text-gray-300 text-[10px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider border border-zinc-700">
+                                        {{ count($detail['episodes']) }} Episode
+                                    </span>
+                                @endif
 
-                        @if(!empty($metadata['broadcast_day']))
-                            <span class="bg-purple-950/80 text-purple-300 border border-purple-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1">
-                                <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                {{ $metadata['broadcast_day'] }}
-                            </span>
-                        @endif
+                                @if(!empty($metadata['broadcast_day']))
+                                    <span class="bg-purple-950/80 text-purple-300 border border-purple-500/30 text-[10px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider inline-flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5 text-purple-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>{{ $metadata['broadcast_day'] }}</span>
+                                    </span>
+                                @endif
+                            </div>
 
-                        @if(!empty($metadata['release_date']))
-                            <span class="bg-zinc-800 text-zinc-300 border border-zinc-700 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">
-                                Rilis: {{ $metadata['release_date'] }}
-                            </span>
-                        @endif
-
-                        @if(!empty($metadata['studio']) && $metadata['studio'] !== 'N/A')
-                            <span class="bg-zinc-800 text-zinc-300 border border-zinc-700 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">
-                                Studio: {{ $metadata['studio'] }}
-                            </span>
-                        @endif
-
-                        @if(!empty($detail['episodes']))
-                            <span class="bg-zinc-800 text-gray-300 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider border border-zinc-700">
-                                {{ count($detail['episodes']) }} Episode
-                            </span>
-                        @endif
+                            <!-- Title (Mobile) -->
+                            <h1 class="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
+                                {{ $metadata['title'] ?? ($detail['title'] ?? 'Anime Detail') }}
+                            </h1>
+                            @if(!empty($metadata['english_title']) && $metadata['english_title'] !== ($metadata['title'] ?? ''))
+                                <p class="text-xs font-semibold text-zinc-400 mt-1 line-clamp-1">{{ $metadata['english_title'] }}</p>
+                            @endif
+                        </div>
                     </div>
 
-                    <!-- Title -->
-                    <h1 class="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
-                        {{ $metadata['title'] ?? ($detail['title'] ?? 'Anime Detail') }}
-                    </h1>
-                    @if(!empty($metadata['english_title']) && $metadata['english_title'] !== ($metadata['title'] ?? ''))
-                        <p class="text-sm font-semibold text-zinc-400 mt-1">{{ $metadata['english_title'] }}</p>
-                    @endif
+                    <!-- Desktop Header: Badges + Title (>= md) -->
+                    <div class="hidden md:block">
+                        <!-- Badges Row: Only MAL rating (1 star), Episodes, and Airing Day -->
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            @if(!empty($metadata['score']))
+                                <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm">
+                                    <svg class="w-3.5 h-3.5 fill-amber-400 shrink-0" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                    <span>{{ $metadata['score'] }} (MAL)</span>
+                                </span>
+                            @endif
+
+                            @if(!empty($detail['episodes']))
+                                <span class="bg-zinc-800 text-gray-300 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider border border-zinc-700">
+                                    {{ count($detail['episodes']) }} Episode
+                                </span>
+                            @endif
+
+                            @if(!empty($metadata['broadcast_day']))
+                                <span class="bg-purple-950/80 text-purple-300 border border-purple-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider inline-flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5 text-purple-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>{{ $metadata['broadcast_day'] }}</span>
+                                </span>
+                            @endif
+                        </div>
+
+                        <!-- Title (Desktop) -->
+                        <h1 class="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+                            {{ $metadata['title'] ?? ($detail['title'] ?? 'Anime Detail') }}
+                        </h1>
+                        @if(!empty($metadata['english_title']) && $metadata['english_title'] !== ($metadata['title'] ?? ''))
+                            <p class="text-sm font-semibold text-zinc-400 mt-1">{{ $metadata['english_title'] }}</p>
+                        @endif
+                    </div>
 
                     <!-- Next Airing Schedule Notification -->
                     @if(!empty($metadata['next_episode_schedule']))
@@ -123,8 +147,8 @@
                     </p>
                     @endif
 
-                    <!-- CTA Actions (Tonton & Download) -->
-                    <div class="flex flex-wrap items-center gap-3 mt-6">
+                    <!-- CTA Actions (Tonton & Favorit) -->
+                    <div class="flex items-center gap-3 mt-6">
                         @if(!empty($detail['episodes']))
                             @php
                                 $firstEp = $detail['episodes'][0] ?? null;
@@ -132,20 +156,14 @@
                                 $watchUrl = \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $firstEpNum], panel: 'streaming');
                             @endphp
                             <a href="{{ $watchUrl }}"
-                               class="inline-flex items-center gap-2 px-7 py-3.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-red-600/40 transition">
+                               class="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-red-600/40 transition">
                                 <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                                 <span>Tonton Episode 1</span>
                             </a>
                         @endif
 
-                        <a href="#download-section"
-                           class="inline-flex items-center gap-2 px-5 py-3.5 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-200 hover:text-white font-bold text-sm rounded-xl border border-zinc-700/80 transition">
-                            <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-                            <span>Unduh Resolusi</span>
-                        </a>
-
                         <button wire:click="toggleFavorite"
-                            class="inline-flex items-center gap-2 px-5 py-3.5 bg-zinc-900/90 hover:bg-zinc-800 text-white font-bold text-sm rounded-xl border border-zinc-700/80 transition">
+                            class="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-zinc-900/90 hover:bg-zinc-800 text-white font-bold text-sm rounded-xl border border-zinc-700/80 transition shrink-0">
                             <svg class="w-5 h-5 {{ $isFavorited ? 'text-red-500 fill-current' : 'text-zinc-400' }}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                             </svg>
