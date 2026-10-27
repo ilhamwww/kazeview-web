@@ -122,15 +122,29 @@
             40% { transform: translateY(-3px); opacity: 1; }
         }
 
-        /* Custom Artplayer Loading Overlay */
+        /* Artplayer Seeking & Buffering Spinner: Clean circular rotating spinner, no black backdrop, controls stay visible */
         .art-video-player .art-loading {
-            background: rgba(5, 5, 5, 0.88) !important;
-            backdrop-filter: blur(6px) !important;
-            -webkit-backdrop-filter: blur(6px) !important;
-            z-index: 70 !important;
+            background: transparent !important;
+            background-image: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            z-index: 35 !important;
+            pointer-events: none !important;
         }
-        .art-video-player .art-loading > svg.art-icon-loading {
-            display: none !important;
+
+        .art-video-player .art-loading svg {
+            display: block !important;
+            width: 52px !important;
+            height: 52px !important;
+            filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.9)) !important;
+        }
+
+        /* Saat seeking / geser bar waktu, pastikan bar kontrol (.art-bottom) tetap terlihat jelas */
+        .art-video-player.art-control-show .art-bottom,
+        .art-video-player.art-hover .art-bottom {
+            z-index: 65 !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
         }
     </style>
     @stack('styles')

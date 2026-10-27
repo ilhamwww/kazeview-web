@@ -897,11 +897,6 @@
                             ]
                         });
 
-                        // Pasang custom animated server loading indicator
-                        if (window.kzServerLoader) {
-                            window.kzServerLoader.applyToArtplayer(_art, 'Memilih server terbaik', 'Menyiapkan stream anime & buffer episode');
-                        }
-
                         _art.on('play', () => {
                             if (self.useNativeFs() && window.KzFs && !KzFs.current()) {
                                 self.enterNativeFs();

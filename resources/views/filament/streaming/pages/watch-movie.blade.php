@@ -1031,11 +1031,6 @@
                             });
                         }
 
-                        // Pasang custom animated server loading indicator
-                        if (window.kzServerLoader) {
-                            window.kzServerLoader.applyToArtplayer(this.art, 'Memilih server terbaik', 'Mengoptimalkan stream film & resolusi HD');
-                        }
-
                         // Kalau browser menolak autoplay bersuara, putar tanpa suara dulu; laporkan kalau macet
                         this.art.on('ready', () => {
                             const v = self.art && self.art.video;
