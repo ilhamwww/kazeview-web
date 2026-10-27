@@ -208,7 +208,7 @@ class WatchAnime extends Page
             // Direct MP4 dari Otakudesu / Archive.org
             $servers[] = [
                 'id' => 'server_otaku_direct',
-                'name' => 'Server ' . (count($servers) + 1) . ' (Otakudesu Direct HD)',
+                'name' => 'Server ' . (count($servers) + 1) . ' (Alt Direct HD)',
                 'type' => 'mp4',
                 'stream_url' => $otakuStream,
                 'embed_url' => '',
