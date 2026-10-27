@@ -509,7 +509,7 @@ class MirainimeScraperService
     }
 
     /**
-     * Scrape anime series detail
+     * Scrape anime series detail & comprehensive metadata
      */
     public function scrapeAnimeSeriesDetail(string $slug): ?array
     {
@@ -519,55 +519,154 @@ class MirainimeScraperService
             $html = $this->fetchHtml($url);
             $crawler = new Crawler($html);
 
-            // Title
-            $title = '';
-            $ogTitle = $crawler->filter('meta[property="og:title"]');
-            if ($ogTitle->count() > 0) {
-                $title = trim($ogTitle->first()->attr('content') ?? '');
-            } else {
-                $titleNode = $crawler->filter('h1, title');
-                if ($titleNode->count() > 0) {
-                    $title = trim($titleNode->first()->text());
+            // 1. JSON-LD Schema
+            $jsonLd = [];
+            $crawler->filter('script[type="application/ld+json"]')->each(function (Crawler $node) use (&$jsonLd) {
+                $raw = trim($node->text());
+                $decoded = json_decode($raw, true);
+                if (!empty($decoded['@graph'])) {
+                    foreach ($decoded['@graph'] as $item) {
+                        if (in_array($item['@type'] ?? '', ['TVSeries', 'Movie'])) {
+                            $jsonLd = $item;
+                            break;
+                        }
+                    }
                 }
+            });
+
+            // 2. Title
+            $title = $jsonLd['name'] ?? '';
+            if (empty($title)) {
+                $ogTitle = $crawler->filter('meta[property="og:title"]');
+                if ($ogTitle->count() > 0) {
+                    $title = trim($ogTitle->first()->attr('content') ?? '');
+                } else {
+                    $titleNode = $crawler->filter('h1, h2.text-xl, h2.text-2xl, title');
+                    if ($titleNode->count() > 0) {
+                        $title = trim($titleNode->first()->text());
+                    }
+                }
+                $title = preg_replace('/\s*[-–|:]?\s*(?:Episode\s*\d+.*|Sub\s*Indo.*|Mirainime.*)$/i', '', $title);
+                $title = trim($title);
             }
-
-            // Clean title
-            $title = preg_replace('/\s*[-–|:]?\s*(?:Episode\s*\d+.*|Sub\s*Indo.*|Mirainime.*)$/i', '', $title);
-            $title = trim($title);
-
             if (empty($title)) {
                 $title = ucwords(str_replace(['-sub-indo', '-subtitle-indonesia', '-'], ['', '', ' '], $slug));
             }
 
-            // Thumbnail
+            // 3. Japanese (Kanji) & English Titles
+            $japaneseTitle = $jsonLd['alternateName'][0] ?? '';
+            $englishTitle = '';
+            $crawler->filter('p.text-xs.text-gray-400')->each(function (Crawler $p) use (&$japaneseTitle) {
+                $t = trim($p->text());
+                if (!empty($t) && preg_match('/[\x{4E00}-\x{9FAF}\x{3040}-\x{309F}\x{30A0}-\x{30FF}]/u', $t)) {
+                    $japaneseTitle = $t;
+                }
+            });
+            $crawler->filter('p.text-xs.text-gray-500.italic')->each(function (Crawler $p) use (&$englishTitle) {
+                $parts = explode(',', trim($p->text()));
+                $englishTitle = trim($parts[0] ?? '');
+            });
+            if (empty($englishTitle) && !empty($jsonLd['alternateName'][1])) {
+                $parts = explode(',', $jsonLd['alternateName'][1]);
+                $englishTitle = trim($parts[0]);
+            }
+
+            // 4. Score / Rating
+            $score = '';
+            $crawler->filter('span')->each(function (Crawler $s) use (&$score) {
+                $t = trim($s->text());
+                if (preg_match('/[⭐★]\s*([\d\.]+)/u', $t, $m)) {
+                    if (empty($score)) $score = $m[1];
+                }
+            });
+
+            // 5. Studio, Season, Duration, Status
+            $studio = $jsonLd['author'][0]['name'] ?? '';
+            $season = '';
+            $duration = !empty($jsonLd['timeRequired']) ? preg_replace('/[^0-9]/', '', $jsonLd['timeRequired']) : '';
+            if ($duration) $duration .= ' Menit';
+
+            $status = 'Ongoing';
+            $crawler->filter('span')->each(function (Crawler $s) use (&$status) {
+                $t = strtolower(trim($s->text()));
+                if ($t === 'ongoing') $status = 'Ongoing';
+                elseif ($t === 'completed' || $t === 'tamat') $status = 'Completed';
+            });
+
+            $crawler->filter('.grid div')->each(function (Crawler $d) use (&$studio, &$season, &$duration) {
+                $label = trim($d->filter('span')->count() ? $d->filter('span')->first()->text() : '');
+                $val = trim($d->filter('p')->count() ? $d->filter('p')->first()->text() : '');
+                if (stripos($label, 'Studio') !== false && empty($studio)) $studio = $val;
+                if (stripos($label, 'Season') !== false && empty($season)) $season = $val;
+                if (stripos($label, 'Duration') !== false && (empty($duration) || $duration === 'Menit')) $duration = $val;
+            });
+
+            // 6. Next Episode Schedule & Airing Day
+            $nextEpisodeSchedule = '';
+            $broadcastDay = '';
+            $crawler->filter('div')->each(function (Crawler $d) use (&$nextEpisodeSchedule) {
+                $h = $d->filter('.font-semibold');
+                if ($h->count() && stripos($h->first()->text(), 'Episode Berikutnya') !== false) {
+                    $sub = $d->filter('.text-sm, p');
+                    if ($sub->count()) $nextEpisodeSchedule = trim(preg_replace('/\s+/', ' ', $sub->first()->text()));
+                }
+            });
+
+            if ($nextEpisodeSchedule) {
+                if (preg_match('/(\d+)\s+([A-Za-z]+)\s+(\d{4})/i', $nextEpisodeSchedule, $dm)) {
+                    $months = [
+                        'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4, 'mei' => 5, 'juni' => 6,
+                        'juli' => 7, 'agustus' => 8, 'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+                        'january' => 1, 'february' => 2, 'march' => 3, 'may' => 5, 'june' => 6, 'july' => 7, 'august' => 8, 'october' => 10, 'december' => 12
+                    ];
+                    $mNum = $months[strtolower($dm[2])] ?? 1;
+                    try {
+                        $dt = \Carbon\Carbon::create((int)$dm[3], $mNum, (int)$dm[1]);
+                        $broadcastDay = 'Setiap Hari ' . $dt->locale('id')->isoFormat('dddd');
+                    } catch (\Throwable $e) {}
+                }
+            }
+
+            // 7. Genres (Meta tags priority for clean series genres)
+            $genres = [];
+            $crawler->filter('meta[property="article:tag"]')->each(function (Crawler $node) use (&$genres) {
+                $t = trim($node->attr('content') ?? '');
+                if ($t && !in_array($t, $genres)) $genres[] = $t;
+            });
+            if (empty($genres) && !empty($jsonLd['genre'])) {
+                $genres = (array) $jsonLd['genre'];
+            }
+
+            // 8. Description / Synopsis (Indonesian)
+            $description = '';
+            $synNode = $crawler->filter('div[itemprop="description"], .text-gray-300.text-sm.leading-relaxed');
+            if ($synNode->count()) {
+                $description = trim(preg_replace('/\s+/', ' ', $synNode->first()->text()));
+                $description = preg_replace('/^.*?-\s*/', '', $description);
+            } elseif (!empty($jsonLd['description'])) {
+                $description = trim($jsonLd['description']);
+            } else {
+                $ogDesc = $crawler->filter('meta[property="og:description"]');
+                if ($ogDesc->count() > 0) {
+                    $description = trim($ogDesc->first()->attr('content') ?? '');
+                    $description = preg_replace('/Mirainime(?:\.[a-z]+)?/i', '', $description);
+                    $description = preg_replace('/(?:\bdan\s+)?download\s*(?:gratis)?/i', '', $description);
+                    $description = preg_replace('/\s+/', ' ', $description);
+                    $description = trim($description);
+                }
+            }
+
+            // 9. Thumbnail / Poster (High-Res WebP)
             $thumbnail = '';
             $ogImage = $crawler->filter('meta[property="og:image"]');
             if ($ogImage->count() > 0) {
                 $thumbnail = trim($ogImage->first()->attr('content') ?? '');
             }
-
-            // Description / Synopsis
-            $description = '';
-            $ogDesc = $crawler->filter('meta[property="og:description"]');
-            if ($ogDesc->count() > 0) {
-                $description = trim($ogDesc->first()->attr('content') ?? '');
-                $description = preg_replace('/Mirainime(?:\.[a-z]+)?/i', '', $description);
-                $description = preg_replace('/(?:\bdan\s+)?download\s*(?:gratis)?/i', '', $description);
-                $description = preg_replace('/\s+/', ' ', $description);
-                $description = trim($description);
+            if (empty($thumbnail) && !empty($jsonLd['image'][0])) {
+                $thumbnail = $jsonLd['image'][0];
             }
 
-            // Genres
-            $genres = [];
-            $crawler->filter('a[href*="/genre/"]')->each(function (Crawler $a) use (&$genres) {
-                $t = trim($a->text());
-                if ($t && !in_array($t, $genres)) {
-                    $genres[] = $t;
-                }
-            });
-            $genres = array_slice($genres, 0, 6);
-
-            // Episodes list
+            // 10. Episodes list
             $episodes = [];
             $seenEp = [];
 
@@ -599,9 +698,19 @@ class MirainimeScraperService
             return [
                 'title' => $title,
                 'slug' => $slug,
-                'thumbnail' => $thumbnail,
-                'description' => $description,
+                'japanese_title' => $japaneseTitle,
+                'english_title' => $englishTitle,
+                'score' => $score,
+                'status' => $status,
+                'studio' => $studio,
+                'season' => $season,
+                'duration' => $duration,
+                'broadcast_day' => $broadcastDay,
+                'next_episode_schedule' => $nextEpisodeSchedule,
                 'genres' => $genres,
+                'thumbnail' => $thumbnail,
+                'banner' => $thumbnail,
+                'description' => $description,
                 'episodes' => $episodes,
                 'source_url' => rtrim($this->baseUrl, '/') . '/' . $url,
             ];

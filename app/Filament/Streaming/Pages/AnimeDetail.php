@@ -71,7 +71,17 @@ class AnimeDetail extends Page
 
                     $this->detail = [
                         'title' => $otakuDetail['title'] ?? '',
+                        'japanese_title' => $otakuDetail['japanese_title'] ?? null,
+                        'english_title' => null,
+                        'score' => $otakuDetail['score'] ?? null,
+                        'status' => $otakuDetail['status'] ?? 'Ongoing',
+                        'studio' => $otakuDetail['studio'] ?? null,
+                        'season' => null,
+                        'duration' => $otakuDetail['duration'] ?? null,
+                        'broadcast_day' => null,
+                        'next_episode_schedule' => null,
                         'thumbnail' => $otakuDetail['thumbnail'] ?? ($otakuDetail['poster'] ?? ''),
+                        'banner' => $otakuDetail['thumbnail'] ?? ($otakuDetail['poster'] ?? ''),
                         'description' => $otakuDetail['synopsis'] ?? '',
                         'genres' => $otakuDetail['genres'] ?? [],
                         'episodes' => array_map(function ($ep) {
@@ -93,8 +103,23 @@ class AnimeDetail extends Page
 
         $title = $this->detail['title'] ?? '';
 
-        // 1. Ambil Metadata Resmi (MyAnimeList / AniList)
-        $this->metadata = AnimeMetadataService::getMetadata($title);
+        // 1. Metadata langsung dari Mirainime (atau Otakudesu saat fallback) — Zero External API latency
+        $this->metadata = [
+            'title' => $this->detail['title'] ?? '',
+            'english_title' => $this->detail['english_title'] ?? null,
+            'native_title' => $this->detail['japanese_title'] ?? null,
+            'score' => $this->detail['score'] ?? null,
+            'status' => $this->detail['status'] ?? 'Ongoing',
+            'studio' => $this->detail['studio'] ?? null,
+            'season' => $this->detail['season'] ?? null,
+            'duration' => $this->detail['duration'] ?? null,
+            'broadcast_day' => $this->detail['broadcast_day'] ?? null,
+            'next_episode_schedule' => $this->detail['next_episode_schedule'] ?? null,
+            'genres' => $this->detail['genres'] ?? [],
+            'synopsis' => $this->detail['description'] ?? '',
+            'poster' => $this->detail['thumbnail'] ?? null,
+            'banner' => $this->detail['banner'] ?? ($this->detail['thumbnail'] ?? null),
+        ];
 
         // 2. Ambil Opsi Download Resolusi Otakudesu (Episode 1 & Batch)
         $firstEp = !empty($this->detail['episodes'][0]['episode']) ? (string) $this->detail['episodes'][0]['episode'] : '1';

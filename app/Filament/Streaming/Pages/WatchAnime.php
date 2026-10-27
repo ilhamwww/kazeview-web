@@ -103,8 +103,19 @@ class WatchAnime extends Page
             }
         }
 
-        $animeTitle = $this->seriesDetail['title'] ?? '';
-        $this->metadata = AnimeMetadataService::getMetadata($animeTitle);
+        // Metadata langsung dari Mirainime / Otakudesu (Zero External API latency)
+        $this->metadata = [
+            'title' => $this->seriesDetail['title'] ?? '',
+            'english_title' => $this->seriesDetail['english_title'] ?? null,
+            'native_title' => $this->seriesDetail['japanese_title'] ?? null,
+            'score' => $this->seriesDetail['score'] ?? null,
+            'status' => $this->seriesDetail['status'] ?? 'Ongoing',
+            'studio' => $this->seriesDetail['studio'] ?? null,
+            'duration' => $this->seriesDetail['duration'] ?? null,
+            'genres' => $this->seriesDetail['genres'] ?? [],
+            'poster' => $this->seriesDetail['thumbnail'] ?? null,
+            'banner' => $this->seriesDetail['banner'] ?? ($this->seriesDetail['thumbnail'] ?? null),
+        ];
     }
 
     public function resolveEpisodeData(string $epSlug): ?array
