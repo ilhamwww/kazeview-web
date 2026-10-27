@@ -623,4 +623,76 @@ class MirainimeScraperService
             return null;
         }
     }
+
+    /**
+     * Scrape weekly release schedule from Mirainime (https://mirainime.com/jadwal-tayang-anime)
+     */
+    public function scrapeWeeklySchedule(): array
+    {
+        return \Illuminate\Support\Facades\Cache::remember('mirainime_weekly_schedule_v1', 21600, function () {
+            try {
+                $html = $this->fetchHtml('jadwal-tayang-anime');
+                $crawler = new Crawler($html);
+
+                $dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+                $byDay = [];
+                foreach ($dayOrder as $d) {
+                    $byDay[$d] = [];
+                }
+
+                $crawler->filter('#schedule-scroll > div')->each(function (Crawler $col) use (&$byDay) {
+                    $dayNameNode = $col->filter('.text-base, .text-lg');
+                    if (!$dayNameNode->count()) return;
+                    $dayName = trim($dayNameNode->first()->text());
+                    if (!isset($byDay[$dayName])) return;
+
+                    $col->filter('a.ctx-card')->each(function (Crawler $card) use (&$byDay, $dayName) {
+                        $href = $card->attr('href') ?? '';
+                        $slug = preg_replace('#^/?anime/#', '', trim($href, '/'));
+                        if (empty($slug)) return;
+
+                        $titleNode = $card->filter('h3, h4, .font-medium, .text-sm')->first();
+                        $title = $titleNode->count() ? trim($titleNode->text()) : ucwords(str_replace('-', ' ', $slug));
+
+                        $imgNode = $card->filter('img')->first();
+                        $poster = $imgNode->count() ? ($imgNode->attr('src') ?: $imgNode->attr('data-src') ?: '') : '';
+
+                        // Jam rilis (misal 19:30 WIB)
+                        $parent = $card->closest('div');
+                        $timeNode = $parent ? $parent->filter('span.font-bold, .text-\[10px\]') : null;
+                        $time = ($timeNode && $timeNode->count()) ? trim($timeNode->text()) : '';
+
+                        // Episode jika ada
+                        $episode = '';
+                        $card->filter('.text-xs, .text-gray-400, .text-purple-400')->each(function (Crawler $en) use (&$episode) {
+                            $t = trim($en->text());
+                            if (preg_match('/ep(isode)?\s*\d+/i', $t)) {
+                                $episode = $t;
+                            }
+                        });
+
+                        // Hindari duplikasi jika Mirainime menampilkan 2 kolom untuk hari yang sama
+                        $alreadyExists = collect($byDay[$dayName])->contains(fn ($x) => $x['slug'] === $slug);
+                        if ($alreadyExists) return;
+
+                        $detailUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $slug], panel: 'streaming');
+
+                        $byDay[$dayName][] = [
+                            'slug' => $slug,
+                            'title' => $title,
+                            'poster' => $poster,
+                            'time' => $time,
+                            'episode' => $time ?: ($episode ?: 'Tayang'),
+                            'detail_url' => $detailUrl,
+                        ];
+                    });
+                });
+
+                return $byDay;
+            } catch (\Throwable $e) {
+                \Log::error('Mirainime scrapeWeeklySchedule error: ' . $e->getMessage());
+                return [];
+            }
+        });
+    }
 }

@@ -75,12 +75,12 @@ class ExploreAnime extends Page
             }
         }
 
-        // Jadwal Tayang Mingguan dari Otakudesu (Senin - Minggu & Random)
+        // Jadwal Tayang Mingguan dari Mirainime (Senin - Minggu)
         $dayMap = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
         $nowDay = (int) (new \DateTime('now', new \DateTimeZone('Asia/Jakarta')))->format('N');
         $this->currentDayName = $dayMap[$nowDay] ?? 'Senin';
         $this->selectedScheduleDay = $this->currentDayName;
-        $this->weeklySchedule = (new OtakudesuScraperService())->scrapeWeeklySchedule();
+        $this->weeklySchedule = (new MirainimeScraperService())->scrapeWeeklySchedule();
 
         $this->loadAnimes();
     }

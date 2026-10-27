@@ -166,7 +166,7 @@
                         <p class="text-xs text-zinc-500 mt-1">Episode baru tiap minggu, pilih harinya</p>
                     </div>
                     <div class="flex items-center gap-2 overflow-x-auto kz-noscroll pb-1 -mx-4 px-4 md:mx-0 md:px-0">
-                        @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu', 'Random'] as $d)
+                        @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $d)
                             @php $isSelected = $d === $selectedScheduleDay; @endphp
                             <button type="button" wire:click="selectScheduleDay('{{ $d }}')"
                                     aria-pressed="{{ $isSelected ? 'true' : 'false' }}"
