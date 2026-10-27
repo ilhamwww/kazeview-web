@@ -313,9 +313,18 @@
             transition: background-image 0.2s ease, opacity 0.2s ease !important;
         }
 
+        /* Anti-spoiler: Sembunyikan mini progress bar di bagian bawah saat kontrol idle/tersembunyi */
+        .art-video-player .art-mini-progress-bar,
+        .art-video-player:not(.art-control-show):not(.art-hover) .art-bottom {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
         /* 2. Saat kontrol aktif/hover, berikan gradien halus full-width di art-bottom (bukan di art-controls agar samping tidak terpotong) */
         .art-video-player.art-control-show .art-bottom,
         .art-video-player.art-hover .art-bottom {
+            opacity: 1 !important;
+            pointer-events: auto !important;
             background-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.45) 50px, transparent 85px) !important;
             background-size: 100% 85px !important;
             background-repeat: no-repeat !important;
@@ -831,7 +840,7 @@
                             fullscreen: !self.useNativeFs(),
                             fullscreenWeb: !self.useNativeFs(),
                             subtitleOffset: false,
-                            miniProgressBar: true,
+                            miniProgressBar: false,
                             playsInline: true,
                             airplay: true,
                             hotkey: true,
