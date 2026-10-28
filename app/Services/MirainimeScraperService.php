@@ -177,6 +177,108 @@ class MirainimeScraperService
     }
 
     /**
+     * Scrape advanced anime directory from /anime-list with rich filters
+     */
+    public function scrapeAnimeDirectory(array $params = []): array
+    {
+        $filtered = array_filter($params, fn($v) => $v !== null && $v !== '');
+        $query = http_build_query($filtered);
+        $url = 'anime-list' . ($query ? '?' . $query : '');
+
+        try {
+            $html = $this->fetchHtml($url);
+            $crawler = new Crawler($html);
+
+            $cards = $crawler->filter('#search-grid a, .ctx-card');
+            $items = [];
+            $seen = [];
+
+            $cards->each(function (Crawler $card) use (&$items, &$seen) {
+                $href = $card->attr('href') ?? '';
+                if (!str_contains($href, '/anime/')) return;
+                $path = parse_url($href, PHP_URL_PATH);
+                $slug = basename(trim($path, '/'));
+                if (empty($slug) || isset($seen[$slug])) return;
+                $seen[$slug] = true;
+
+                // Title
+                $title = '';
+                $h3 = $card->filter('h3, h2, .font-medium');
+                if ($h3->count() > 0) {
+                    $title = trim($h3->last()->text());
+                }
+                $img = $card->filter('img');
+                if (empty($title) && $img->count() > 0) {
+                    $title = trim($img->attr('alt') ?? '');
+                }
+                if (empty($title)) {
+                    $title = ucwords(str_replace(['-sub-indo', '-subtitle-indonesia', '-'], ['', '', ' '], $slug));
+                }
+
+                // Poster
+                $poster = '';
+                if ($img->count() > 0) {
+                    $poster = $img->attr('src') ?: ($img->attr('data-src') ?: '');
+                }
+
+                // Status
+                $status = 'Available';
+                $card->filter('span')->each(function (Crawler $sp) use (&$status) {
+                    $t = trim($sp->text());
+                    if (in_array(strtolower($t), ['ongoing', 'completed', 'complete', 'tamat', 'upcoming'])) {
+                        $status = ucfirst(strtolower($t));
+                    }
+                });
+
+                // Rating
+                $rating = '';
+                $card->filter('span')->each(function (Crawler $sp) use (&$rating) {
+                    $t = trim($sp->text());
+                    if (preg_match('/[⭐★]\s*([\d\.]+)/u', $t, $m)) {
+                        $rating = $m[1];
+                    }
+                });
+
+                // Genres
+                $genres = [];
+                $card->filter('.text-\[10px\]')->each(function (Crawler $g) use (&$genres) {
+                    $t = trim(trim($g->text()), ',');
+                    if ($t && !str_starts_with($t, '+') && !in_array($t, $genres)) {
+                        $genres[] = $t;
+                    }
+                });
+
+                // Synopsis snippet
+                $synopsis = '';
+                $synNode = $card->filter('.line-clamp-3, p.text-xs');
+                if ($synNode->count() > 0) {
+                    $synopsis = trim($synNode->last()->text());
+                    if (str_starts_with($synopsis, 'Sinopsis :')) {
+                        $synopsis = trim(substr($synopsis, 10));
+                    }
+                }
+
+                $items[] = [
+                    'title' => $title,
+                    'slug' => $slug,
+                    'url' => $href,
+                    'thumbnail' => $poster,
+                    'status' => $status,
+                    'rating' => $rating,
+                    'genres' => $genres,
+                    'synopsis' => $synopsis,
+                    'type' => 'Anime',
+                ];
+            });
+
+            return $items;
+        } catch (\Exception $e) {
+            \Log::error('Mirainime anime-list error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Parse cards from list / genre / search pages
      */
     protected function parseAnimeCards(string $html): array

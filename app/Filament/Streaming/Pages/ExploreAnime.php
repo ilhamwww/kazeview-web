@@ -220,16 +220,12 @@ class ExploreAnime extends Page
 
     public function nextPage(): void
     {
-        $this->pageNumber++;
-        $this->loadAnimes();
+        // Pagination dipindah ke halaman /anime-list
     }
 
     public function previousPage(): void
     {
-        if ($this->pageNumber > 1) {
-            $this->pageNumber--;
-            $this->loadAnimes();
-        }
+        // Pagination dipindah ke halaman /anime-list
     }
 
     public function clearSearch(): void
