@@ -443,26 +443,14 @@
 
                             if (!keyHex) throw new Error("Key not found");
 
-                            if (meloloSwReady) {
-                                const swURL = '/sw-play?url=' + encodeURIComponent(this.videoUrl) + '&key=' + keyHex;
-                                video.src = swURL;
-                                video.load();
-                                await new Promise((resolve, reject) => {
-                                    video.oncanplay = resolve;
-                                    video.onerror = () => reject(new Error('SW error'));
-                                    setTimeout(() => reject(new Error('Timeout')), 15000);
-                                });
-                                this.attemptPlay(video);
-                            } else {
-                                // Fallback to JS decryption Blob
-                                const blob = await MeloloDecrypt.decrypt(this.videoUrl, keyHex, (stage, msg) => {
-                                    console.log("Decrypting...", msg);
-                                });
-                                if (video.src && video.src.startsWith('blob:')) URL.revokeObjectURL(video.src);
-                                video.src = URL.createObjectURL(blob);
-                                video.load();
-                                this.attemptPlay(video);
-                            }
+                            // Direct In-Memory Decryption: download file utuh dan dekripsi ke Blob
+                            const blob = await MeloloDecrypt.decrypt(this.videoUrl, keyHex, (stage, msg) => {
+                                console.log("Decrypting...", msg);
+                            });
+                            if (video.src && video.src.startsWith('blob:')) URL.revokeObjectURL(video.src);
+                            video.src = URL.createObjectURL(blob);
+                            video.load();
+                            this.attemptPlay(video);
                         } catch (e) {
                             console.error('Decryption failed:', e);
                             alert('Gagal mendekripsi video.');
@@ -556,7 +544,8 @@
                     try {
                         const tracks = this.player.getTextTracks();
                         if (tracks && tracks.length > 0) {
-                            this.player.selectTextTrack(tracks[0]);
+                            const indTrack = tracks.find(t => t.language === 'id' || t.label?.toLowerCase().includes('indonesia')) || tracks[0];
+                            this.player.selectTextTrack(indTrack);
                             this.player.setTextTrackVisibility(true);
                         }
                     } catch (err) {

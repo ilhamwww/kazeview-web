@@ -278,17 +278,33 @@
                     </p>
                 @endif
 
-                {{-- Progress bar --}}
+                {{-- Progress bar & Seeking Controls --}}
                 <div class="flex items-center gap-2 text-[11px] font-mono">
-                    <span x-text="fmtTime(currentTime)" class="w-9 text-white/80"></span>
-                    <div class="flex-1 h-1 bg-white/20 rounded-full cursor-pointer relative group"
+                    <button type="button" @click.stop="skip(-10)"
+                            class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white/90 hover:text-white transition cursor-pointer"
+                            title="Mundur 10 detik">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/>
+                        </svg>
+                    </button>
+                    <span x-text="fmtTime(currentTime)" class="w-9 text-white/80 text-center select-none"></span>
+                    <div class="flex-1 py-2 cursor-pointer relative group flex items-center"
                          @click="seek($event)">
-                        <div class="absolute inset-y-0 left-0 bg-red-600 rounded-full transition-[width] duration-100"
-                             :style="`width: ${progressPercent}%`"></div>
-                        <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-red-600 opacity-0 group-hover:opacity-100 transition"
-                             :style="`left: calc(${progressPercent}% - 6px)`"></div>
+                        <div class="w-full h-1.5 bg-white/20 rounded-full relative overflow-hidden">
+                            <div class="absolute inset-y-0 left-0 bg-red-600 rounded-full transition-[width] duration-100"
+                                 :style="`width: ${progressPercent}%`"></div>
+                        </div>
+                        <div class="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-red-600 shadow-md transition pointer-events-none"
+                             :style="`left: calc(${progressPercent}% - 7px)`"></div>
                     </div>
-                    <span x-text="fmtTime(duration)" class="w-9 text-white/80 text-right"></span>
+                    <span x-text="fmtTime(duration)" class="w-9 text-white/80 text-center select-none"></span>
+                    <button type="button" @click.stop="skip(10)"
+                            class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white/90 hover:text-white transition cursor-pointer"
+                            title="Maju 10 detik">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 005 8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.334-4z"/>
+                        </svg>
+                    </button>
                 </div>
 
                 {{-- Quality selector --}}
@@ -494,7 +510,7 @@
                 controlsVisible: true,
                 controlsTimer: null,
                 isManualHide: false,
-                useHlsJs: {{ $networkSlug === 'raptdrama' ? 'true' : 'false' }},
+                useHlsJs: {{ in_array($networkSlug, ['raptdrama', 'reelshort', 'freereels', 'flickreels', 'stardusttv', 'dotdrama', 'reelbuzz', 'shortswave', 'starshort'], true) ? 'true' : 'false' }},
 
                 // Gesture state
                 touchStartY: 0,
@@ -696,8 +712,12 @@
                     if (payload && payload[0]) payload = payload[0]; // fallback array style
                     if (!payload || !payload.videoUrl) return;
 
+                    this.setupSlots();
                     const slot = pool.slots[pool.active];
-                    if (!slot) return;
+                    if (!slot) {
+                        setTimeout(() => this.handleInitPlayer(e), 100);
+                        return;
+                    }
 
                     const ep = Number(payload.episode || this.currentEpisode || 1);
                     pool.payloads[ep] = { data: payload, at: Date.now() };
@@ -936,15 +956,18 @@
                     if (isActive()) this.isBuffering = true;
 
                     try {
-                        if (this.useHlsJs) {
-                            // Stream Raptdrama: audio AAC ber-MIME octet-stream ditolak Shaka/MSE (3015).
+                        const isHls = (url && (url.includes('.m3u8') || url.includes('proxy-hls'))) || (this.useHlsJs && !url.includes('.mp4') && !url.includes('proxy-stream'));
+                        if (isHls) {
                             await this.loadWithHlsJs(slot, url, isStale);
+                            if (isStale()) return;
+                            await this.loadSubtitleTracks(slot, payload.subtitles);
                         } else if (quality?.kid) {
                             await this.loadEncryptedMelolo(slot, url, quality, isStale);
-                        } else if (url.toLowerCase().includes('.mp4')) {
+                        } else if (url && (url.toLowerCase().includes('.mp4') || url.includes('proxy-stream'))) {
                             video.preload = 'auto';
                             video.src = url;
                             video.load();
+                            await this.loadSubtitleTracks(slot, payload.subtitles);
                         } else {
                             await this.loadWithShaka(slot, url, payload.subtitles, isStale);
                         }
@@ -1089,53 +1112,71 @@
                         video.addEventListener('error', onError, { once: true });
                     });
 
-                    const canUseSw = (meloloSwReady || !!navigator.serviceWorker?.controller);
-                    if (canUseSw) {
-                        video.src = '/sw-play?url=' + encodeURIComponent(url) + '&key=' + encodeURIComponent(keyHex);
-                        video.load();
-                        try {
-                            await waitCanPlay(15000);
-                            return;
-                        } catch (swError) {
-                            if (isStale()) return;
-                            console.warn('SW Melolo gagal, mencoba dekripsi in-memory...', swError);
-                        }
-                    }
-
+                    // 100% In-Memory Decryption: download file 10MB utuh dan dekripsi via WebCrypto menjadi Blob URL.
+                    // Ini menyelesaikan masalah video stuck/hang akibat Service Worker yang mati di background,
+                    // dan memungkinkan video Melolo dimaju-mundurkan (seek) secara instan tanpa re-buffering!
                     if (!(await useBlob())) return;
-                    await waitCanPlay(20000).catch(() => {
+                    await waitCanPlay(25000).catch(() => {
                         throw new Error('Video Melolo hasil dekripsi gagal diputar.');
                     });
                 },
 
                 async loadSubtitleTracks(slot, subtitles) {
                     const list = Array.isArray(subtitles) ? subtitles : [];
-                    if (!slot.player || slot.engine !== 'shaka' || list.length === 0) return;
+                    if (list.length === 0) return;
 
-                    for (const subtitle of list) {
-                        if (!subtitle?.url) continue;
+                    // Bersihkan track subtitle lama dari elemen video
+                    const oldTracks = slot.el.querySelectorAll('track');
+                    oldTracks.forEach(t => t.remove());
 
-                        try {
-                            const rawLanguage = String(subtitle.lang || 'id');
-                            const language = rawLanguage.split(/[-_]/)[0].toLowerCase();
+                    if (slot.engine === 'shaka' && slot.player) {
+                        for (const subtitle of list) {
+                            if (!subtitle?.url) continue;
 
-                            await slot.player.addTextTrackAsync(
-                                subtitle.url,
-                                language,
-                                'subtitles',
-                                'text/vtt',
-                                null,
-                                rawLanguage
-                            );
-                        } catch (error) {
-                            console.warn('Gagal menambahkan subtitle:', subtitle, error);
+                            try {
+                                const rawLanguage = String(subtitle.lang || 'id');
+                                const language = rawLanguage.split(/[-_]/)[0].toLowerCase();
+
+                                await slot.player.addTextTrackAsync(
+                                    subtitle.url,
+                                    language,
+                                    'subtitles',
+                                    'text/vtt',
+                                    null,
+                                    rawLanguage
+                                );
+                            } catch (error) {
+                                console.warn('Gagal menambahkan subtitle:', subtitle, error);
+                            }
                         }
-                    }
 
-                    const tracks = slot.player.getTextTracks();
-                    if (tracks.length > 0) {
-                        slot.player.selectTextTrack(tracks[0]);
-                        slot.player.setTextTrackVisibility(true);
+                        const tracks = slot.player.getTextTracks();
+                        if (tracks.length > 0) {
+                            slot.player.selectTextTrack(tracks[0]);
+                            slot.player.setTextTrackVisibility(true);
+                        }
+                    } else {
+                        // Native HTML5 track untuk MP4 dan HLS.js
+                        list.forEach((sub, idx) => {
+                            if (!sub?.url) return;
+                            const track = document.createElement('track');
+                            track.kind = 'subtitles';
+                            track.label = sub.label || sub.lang || (idx === 0 ? 'Indonesia' : 'Subtitle');
+                            track.srclang = sub.lang || 'id';
+                            track.src = sub.url;
+                            if (idx === 0) {
+                                track.default = true;
+                            }
+                            slot.el.appendChild(track);
+                        });
+
+                        setTimeout(() => {
+                            if (slot.el.textTracks && slot.el.textTracks.length > 0) {
+                                for (let i = 0; i < slot.el.textTracks.length; i++) {
+                                    slot.el.textTracks[i].mode = (i === 0) ? 'showing' : 'disabled';
+                                }
+                            }
+                        }, 200);
                     }
                 },
 
@@ -1257,6 +1298,18 @@
                     const v = this.activeVideo();
                     if (v && v.duration) {
                         v.currentTime = pct * v.duration;
+                        this.currentTime = v.currentTime;
+                        this.showControls();
+                    }
+                },
+
+                skip(delta) {
+                    const v = this.activeVideo();
+                    if (v && v.duration) {
+                        const target = Math.min(v.duration, Math.max(0, v.currentTime + delta));
+                        v.currentTime = target;
+                        this.currentTime = target;
+                        this.showControls();
                     }
                 },
 
@@ -1398,6 +1451,12 @@
                     } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
                         e.preventDefault();
                         this.playPrevEpisode();
+                    } else if (e.key === 'ArrowLeft' || e.key === 'j') {
+                        e.preventDefault();
+                        this.skip(-5);
+                    } else if (e.key === 'ArrowRight' || e.key === 'l') {
+                        e.preventDefault();
+                        this.skip(5);
                     } else if (e.key === ' ' || e.key === 'k') {
                         e.preventDefault();
                         this.togglePlayPause();
