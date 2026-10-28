@@ -175,108 +175,134 @@
         </div>
     </section>
 
-    <!-- Episode List Section -->
-    <main class="w-full max-w-[1800px] mx-auto px-6 pt-12 pb-6">
-        <div class="mb-6 border-b border-zinc-800 pb-4">
-            <h2 class="text-xl md:text-2xl font-black tracking-tight">Daftar Episode</h2>
-            <p class="text-xs text-zinc-400 mt-1">Pilih episode untuk langsung memutar</p>
+    <!-- Main Content Tabs: Daftar Episode | Anime Terkait -->
+    <main class="w-full max-w-[1800px] mx-auto px-6 pt-10 pb-6" x-data="{ activeTab: 'episodes' }">
+        {{-- Tabs Navigation Header --}}
+        <div class="mb-6 border-b border-zinc-800 pb-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <button type="button" @click="activeTab = 'episodes'"
+                        class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
+                        :class="activeTab === 'episodes' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-zinc-800'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+                    <span>Daftar Episode</span>
+                    @if(!empty($detail['episodes']))
+                        <span class="px-1.5 py-0.5 rounded-md text-[10px] font-black"
+                              :class="activeTab === 'episodes' ? 'bg-black/30 text-white' : 'bg-zinc-800 text-zinc-400'">
+                            {{ count($detail['episodes']) }}
+                        </span>
+                    @endif
+                </button>
+
+                @if(!empty($detail['relations']))
+                    <button type="button" @click="activeTab = 'relations'"
+                            class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
+                            :class="activeTab === 'relations' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-zinc-800'">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"/></svg>
+                        <span>Anime Terkait</span>
+                        <span class="px-1.5 py-0.5 rounded-md text-[10px] font-black"
+                              :class="activeTab === 'relations' ? 'bg-black/30 text-white' : 'bg-zinc-800 text-zinc-400'">
+                            {{ count($detail['relations']) }}
+                        </span>
+                    </button>
+                @endif
+            </div>
+
+            <p class="text-xs text-zinc-500 hidden sm:block" x-show="activeTab === 'episodes'">
+                Pilih episode untuk langsung memutar
+            </p>
+            <p class="text-xs text-zinc-500 hidden sm:block" x-show="activeTab === 'relations'" x-cloak>
+                Sequel, prequel, dan cerita terkait dalam franchise ini
+            </p>
         </div>
 
-        @if(!empty($detail['episodes']))
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                @foreach($detail['episodes'] as $ep)
-                    @php
-                        $epNum = $ep['episode'] ?? '1';
-                        $epWatchUrl = \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $epNum], panel: 'streaming');
-                    @endphp
-                    <a href="{{ $epWatchUrl }}"
-                       class="group flex flex-col p-3.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/90 border border-zinc-800 hover:border-red-500/40 transition active:scale-95 shadow-lg">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-[10px] font-black uppercase text-red-400 tracking-wider">
-                                EPS {{ $ep['episode'] }}
-                            </span>
-                            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:text-red-400 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </div>
-                        <p class="text-xs font-semibold text-zinc-300 group-hover:text-white line-clamp-2 leading-tight">
-                            {{ $ep['title'] }}
-                        </p>
-                    </a>
-                @endforeach
-            </div>
-        @else
-            <div class="py-12 text-center text-zinc-500 bg-zinc-900/40 rounded-xl border border-dashed border-zinc-800">
-                <p class="text-sm font-medium">Belum ada episode yang tersedia untuk anime ini.</p>
+        {{-- TAB 1: DAFTAR EPISODE --}}
+        <div x-show="activeTab === 'episodes'">
+            @if(!empty($detail['episodes']))
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                    @foreach($detail['episodes'] as $ep)
+                        @php
+                            $epNum = $ep['episode'] ?? '1';
+                            $epWatchUrl = \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $epNum], panel: 'streaming');
+                        @endphp
+                        <a href="{{ $epWatchUrl }}"
+                           class="group flex flex-col p-3.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/90 border border-zinc-800 hover:border-red-500/40 transition active:scale-95 shadow-lg">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-black uppercase text-red-400 tracking-wider">
+                                    EPS {{ $ep['episode'] }}
+                                </span>
+                                <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:text-red-400 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </div>
+                            <p class="text-xs font-semibold text-zinc-300 group-hover:text-white line-clamp-2 leading-tight">
+                                {{ $ep['title'] }}
+                            </p>
+                        </a>
+                    @endforeach
+                </div>
+            @else
+                <div class="py-12 text-center text-zinc-500 bg-zinc-900/40 rounded-xl border border-dashed border-zinc-800">
+                    <p class="text-sm font-medium">Belum ada episode yang tersedia untuk anime ini.</p>
+                </div>
+            @endif
+        </div>
+
+        {{-- TAB 2: ANIME TERKAIT (SEQUEL, PREQUEL) --}}
+        @if(!empty($detail['relations']))
+            <div x-show="activeTab === 'relations'" x-cloak>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+                    @foreach($detail['relations'] as $rel)
+                        @php
+                            $relUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $rel['slug']], panel: 'streaming');
+                            $relType = strtoupper($rel['relation'] ?? 'RELATED');
+                            $badgeColor = match($relType) {
+                                'SEQUEL' => 'bg-blue-600 text-white',
+                                'PREQUEL' => 'bg-purple-600 text-white',
+                                'SIDE STORY' => 'bg-emerald-600 text-white',
+                                'ALTERNATIVE' => 'bg-amber-600 text-white',
+                                'SPIN-OFF' => 'bg-rose-600 text-white',
+                                default => 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                            };
+                        @endphp
+                        <a href="{{ $relUrl }}"
+                           class="group flex flex-col min-w-0 transition active:scale-95">
+                            <div class="relative aspect-[3/4] sm:aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 ring-1 ring-white/10 group-hover:ring-red-500/50 transition duration-300 shadow-xl shadow-black/80">
+                                @if(!empty($rel['thumbnail']))
+                                    <img src="{{ $rel['thumbnail'] }}" alt="{{ $rel['title'] }}"
+                                         loading="lazy"
+                                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                @else
+                                    <div class="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-600">
+                                        <svg class="w-8 h-8 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+                                    </div>
+                                @endif
+
+                                {{-- Relation Badge (PREQUEL, SEQUEL, etc) --}}
+                                <div class="absolute top-2 left-2 flex items-center gap-1">
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider {{ $badgeColor }} shadow-md">
+                                        {{ $relType }}
+                                    </span>
+                                </div>
+
+                                {{-- Rating Badge --}}
+                                @if(!empty($rel['rating']))
+                                    <span class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-black/80 text-amber-400 border border-amber-500/20 backdrop-blur-sm flex items-center gap-0.5">
+                                        <span>★</span>
+                                        <span>{{ $rel['rating'] }}</span>
+                                    </span>
+                                @endif
+                            </div>
+
+                            <h3 class="mt-2 text-xs md:text-[13px] font-bold text-zinc-200 group-hover:text-red-400 line-clamp-2 leading-snug transition"
+                                title="{{ $rel['title'] }}">
+                                {{ $rel['title'] }}
+                            </h3>
+                        </a>
+                    @endforeach
+                </div>
             </div>
         @endif
     </main>
-
-    <!-- Anime Terkait (Sequel, Prequel, Franchise) -->
-    @if(!empty($detail['relations']))
-        <section id="anime-terkait" class="w-full max-w-[1800px] mx-auto px-6 pt-8 pb-8 scroll-mt-28">
-            <div class="mb-5 border-b border-zinc-800 pb-3 flex items-center justify-between">
-                <div>
-                    <h2 class="text-xl md:text-2xl font-black tracking-tight">Anime Terkait</h2>
-                    <p class="text-xs text-zinc-400 mt-0.5">Sequel, prequel, dan cerita terkait dalam franchise ini</p>
-                </div>
-                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
-                    {{ count($detail['relations']) }} Judul
-                </span>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-                @foreach($detail['relations'] as $rel)
-                    @php
-                        $relUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $rel['slug']], panel: 'streaming');
-                        $relType = strtoupper($rel['relation'] ?? 'RELATED');
-                        $badgeColor = match($relType) {
-                            'SEQUEL' => 'bg-blue-600 text-white',
-                            'PREQUEL' => 'bg-purple-600 text-white',
-                            'SIDE STORY' => 'bg-emerald-600 text-white',
-                            'ALTERNATIVE' => 'bg-amber-600 text-white',
-                            'SPIN-OFF' => 'bg-rose-600 text-white',
-                            default => 'bg-zinc-800 text-zinc-300 border border-zinc-700'
-                        };
-                    @endphp
-                    <a href="{{ $relUrl }}"
-                       class="group flex flex-col min-w-0 transition active:scale-95">
-                        <div class="relative aspect-[3/4] sm:aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 ring-1 ring-white/10 group-hover:ring-red-500/50 transition duration-300 shadow-xl shadow-black/80">
-                            @if(!empty($rel['thumbnail']))
-                                <img src="{{ $rel['thumbnail'] }}" alt="{{ $rel['title'] }}"
-                                     loading="lazy"
-                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                            @else
-                                <div class="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-600">
-                                    <svg class="w-8 h-8 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
-                                </div>
-                            @endif
-
-                            {{-- Relation Badge (PREQUEL, SEQUEL, etc) --}}
-                            <div class="absolute top-2 left-2 flex items-center gap-1">
-                                <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider {{ $badgeColor }} shadow-md">
-                                    {{ $relType }}
-                                </span>
-                            </div>
-
-                            {{-- Rating Badge --}}
-                            @if(!empty($rel['rating']))
-                                <span class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-black/80 text-amber-400 border border-amber-500/20 backdrop-blur-sm flex items-center gap-0.5">
-                                    <span>★</span>
-                                    <span>{{ $rel['rating'] }}</span>
-                                </span>
-                            @endif
-                        </div>
-
-                        <h3 class="mt-2 text-xs md:text-[13px] font-bold text-zinc-200 group-hover:text-red-400 line-clamp-2 leading-snug transition"
-                            title="{{ $rel['title'] }}">
-                            {{ $rel['title'] }}
-                        </h3>
-                    </a>
-                @endforeach
-            </div>
-        </section>
-    @endif
 
     <!-- Download Section -->
     <section id="download-section" class="w-full max-w-[1800px] mx-auto px-6 pt-6 pb-16">
