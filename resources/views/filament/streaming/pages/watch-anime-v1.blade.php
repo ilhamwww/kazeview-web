@@ -33,25 +33,46 @@
         .art-video-player .art-bottom {
             background: none !important;
             background-image: none !important;
-            transition: background-image 0.2s ease, opacity 0.2s ease !important;
+            transition: background-image 0.25s ease, opacity 0.25s ease !important;
+            pointer-events: none !important;
         }
 
         /* Anti-spoiler: Sembunyikan mini progress bar di bagian bawah saat kontrol idle/tersembunyi */
         .art-video-player .art-mini-progress-bar,
-        .art-video-player:not(.art-control-show):not(.art-hover) .art-bottom {
+        .art-video-player:not(.art-control-show) .art-bottom {
             opacity: 0 !important;
             pointer-events: none !important;
         }
 
-        /* 2. Saat kontrol aktif/hover, berikan gradien halus full-width di art-bottom (bukan di art-controls agar samping tidak terpotong) */
-        .art-video-player.art-control-show .art-bottom,
-        .art-video-player.art-hover .art-bottom {
+        /* 2. Saat kontrol aktif, berikan gradien halus full-width di art-bottom (bukan di art-controls agar samping tidak terpotong) */
+        .art-video-player.art-control-show .art-bottom {
             opacity: 1 !important;
-            pointer-events: auto !important;
+            pointer-events: none !important;
             background-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.45) 50px, transparent 85px) !important;
             background-size: 100% 85px !important;
             background-repeat: no-repeat !important;
             background-position: bottom !important;
+        }
+
+        /* Hanya elemen kontrol interaktif dan progress bar yang menangkap pointer events */
+        .art-video-player .art-bottom .art-controls,
+        .art-video-player .art-bottom .art-progress {
+            pointer-events: auto !important;
+        }
+
+        /* Sinkronisasi tombol Layar penuh (top-right overlay) dengan visibilitas kontrol */
+        .kz-fs-btn {
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        [data-kz-fs]:not(.kz-controls-visible) .kz-fs-btn {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateY(-8px) !important;
+        }
+        [data-kz-fs].kz-controls-visible .kz-fs-btn {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: translateY(0) !important;
         }
 
         .art-video-player .art-controls {
@@ -280,7 +301,7 @@
             {{-- ============ LEFT: PLAYER + SERVER + INFO + DOWNLOADS ============ --}}
             <div class="min-w-0">
                 {{-- Video Player Card Container with Artplayer --}}
-                <div data-kz-fs x-ref="playerShell" wire:ignore.self class="relative isolate z-10 w-full aspect-video bg-black lg:rounded-2xl overflow-hidden lg:ring-1 lg:ring-white/10 shadow-2xl border-y lg:border-0 border-zinc-800/80">
+                <div data-kz-fs x-ref="playerShell" wire:ignore.self class="kz-controls-visible relative isolate z-10 w-full aspect-video bg-black lg:rounded-2xl overflow-hidden lg:ring-1 lg:ring-white/10 shadow-2xl border-y lg:border-0 border-zinc-800/80">
                     <button type="button" data-kz-rotate aria-pressed="false" aria-label="Layar penuh landscape"
                             class="kz-fs-btn absolute top-2 right-2 z-[60] items-center gap-1.5 h-9 px-3 rounded-full bg-black/65 backdrop-blur text-white text-xs font-bold ring-1 ring-white/20 active:bg-black/80">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="10" rx="2"/><path d="M20 4v5h-5"/><path d="M20 9a8 8 0 0 0-8-6"/></svg>
@@ -903,6 +924,9 @@
                             window.kzServerLoader.applyToArtplayer(_art, 'Memilih server terbaik', 'Menyiapkan stream anime & buffer episode');
                         }
 
+                        // Hubungkan controller auto-hide dan tap manual hide/show
+                        self.setupControlsAutoHideAndTap(_art);
+
                         _art.on('play', () => {
                             if (self.useNativeFs() && window.KzFs && !KzFs.current()) {
                                 self.enterNativeFs();
@@ -914,6 +938,149 @@
                                 self.selectEpisode(self.nextEp);
                             }
                         });
+                    },
+
+                    setupControlsAutoHideAndTap(art) {
+                        const shellEl = this.$refs.playerShell;
+                        if (!art || !shellEl) return;
+
+                        if (shellEl._kzControlsCleanup) {
+                            try { shellEl._kzControlsCleanup(); } catch(e) {}
+                            shellEl._kzControlsCleanup = null;
+                        }
+
+                        let autoHideTimer = null;
+                        const AUTO_HIDE_DELAY = 3500;
+
+                        const syncShellState = (show) => {
+                            if (show) shellEl.classList.add('kz-controls-visible');
+                            else shellEl.classList.remove('kz-controls-visible');
+                        };
+
+                        const showControls = () => {
+                            if (!art.controls.show) art.controls.show = true;
+                            syncShellState(true);
+                            resetTimer();
+                        };
+
+                        const hideControls = () => {
+                            if (art.controls.show) art.controls.show = false;
+                            syncShellState(false);
+                            clearTimeout(autoHideTimer);
+                            autoHideTimer = null;
+                        };
+
+                        const resetTimer = () => {
+                            clearTimeout(autoHideTimer);
+                            autoHideTimer = null;
+                            if (art.playing && !art.setting?.show) {
+                                autoHideTimer = setTimeout(() => {
+                                    if (art.playing && !art.setting?.show) {
+                                        hideControls();
+                                    }
+                                }, AUTO_HIDE_DELAY);
+                            }
+                        };
+
+                        const onControl = (shown) => {
+                            syncShellState(shown);
+                            if (shown) resetTimer();
+                            else {
+                                clearTimeout(autoHideTimer);
+                                autoHideTimer = null;
+                            }
+                        };
+
+                        const onPlay = () => resetTimer();
+                        const onPause = () => {
+                            clearTimeout(autoHideTimer);
+                            showControls();
+                        };
+                        const onSeek = () => resetTimer();
+                        const onEnded = () => {
+                            clearTimeout(autoHideTimer);
+                            showControls();
+                        };
+
+                        art.on('control', onControl);
+                        art.on('play', onPlay);
+                        art.on('pause', onPause);
+                        art.on('seek', onSeek);
+                        art.on('video:ended', onEnded);
+
+                        // Deteksi sentuhan touch di HP untuk mencegah mousemove sintetis membatalkan tap toggle
+                        let lastTouchTime = 0;
+                        const onTouchStart = () => { lastTouchTime = Date.now(); };
+                        const onPointerDown = (e) => {
+                            if (e.pointerType === 'touch') lastTouchTime = Date.now();
+                        };
+
+                        // Tap / Click handling di capture phase untuk toggle manual kontrol saat tap di layar video
+                        const onShellClick = (e) => {
+                            const isInteractive = e.target.closest && e.target.closest(
+                                '.art-control, .art-controls, .art-progress, .art-setting, .art-contextmenu, [data-kz-rotate], .kz-fs-btn, button, a, input, select'
+                            );
+                            if (isInteractive) {
+                                resetTimer();
+                                return;
+                            }
+
+                            // Tap pada area layar video kosong -> toggle hide / show manual
+                            e.stopPropagation();
+                            e.preventDefault();
+
+                            if (art.controls.show) {
+                                hideControls();
+                            } else {
+                                showControls();
+                            }
+                        };
+
+                        // Desktop mousemove: tampilkan kontrol & perbarui timer auto-hide (diabaikan jika dipicu touch HP)
+                        const onShellMouseMove = () => {
+                            if (Date.now() - lastTouchTime < 1200) return;
+
+                            if (!art.controls.show) {
+                                showControls();
+                            } else {
+                                resetTimer();
+                            }
+                        };
+
+                        // Desktop mouseleave: jika sedang playing dan menu setting tidak buka, sembunyikan cepat
+                        const onShellMouseLeave = () => {
+                            if (art.playing && !art.setting?.show) {
+                                clearTimeout(autoHideTimer);
+                                autoHideTimer = setTimeout(() => {
+                                    if (art.playing && !art.setting?.show) hideControls();
+                                }, 1200);
+                            }
+                        };
+
+                        shellEl.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
+                        shellEl.addEventListener('pointerdown', onPointerDown, { passive: true, capture: true });
+                        shellEl.addEventListener('click', onShellClick, true);
+                        shellEl.addEventListener('mousemove', onShellMouseMove);
+                        shellEl.addEventListener('mouseleave', onShellMouseLeave);
+
+                        shellEl._kzControlsCleanup = () => {
+                            shellEl.removeEventListener('touchstart', onTouchStart, true);
+                            shellEl.removeEventListener('pointerdown', onPointerDown, true);
+                            shellEl.removeEventListener('click', onShellClick, true);
+                            shellEl.removeEventListener('mousemove', onShellMouseMove);
+                            shellEl.removeEventListener('mouseleave', onShellMouseLeave);
+                            clearTimeout(autoHideTimer);
+                            try {
+                                art.off('control', onControl);
+                                art.off('play', onPlay);
+                                art.off('pause', onPause);
+                                art.off('seek', onSeek);
+                                art.off('video:ended', onEnded);
+                            } catch(e) {}
+                        };
+
+                        syncShellState(art.controls.show);
+                        if (art.playing) resetTimer();
                     }
                 };
             };
