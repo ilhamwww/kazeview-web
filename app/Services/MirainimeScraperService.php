@@ -797,6 +797,61 @@ class MirainimeScraperService
                 return (int)$a['episode'] <=> (int)$b['episode'];
             });
 
+            // 11. Relations / Franchise (Sequel, Prequel, Side Story, etc.)
+            $relations = [];
+            $seenRel = [];
+            $crawler->filter('h2, h3, h4')->each(function (Crawler $h) use (&$relations, &$seenRel) {
+                if (stripos($h->text(), 'Anime Terkait') !== false || stripos($h->text(), 'Related Anime') !== false) {
+                    $parent = $h->closest('div, section');
+                    if (!$parent) return;
+
+                    $parent->filter('a[href*="/anime/"]')->each(function (Crawler $card) use (&$relations, &$seenRel) {
+                        $href = $card->attr('href') ?? '';
+                        $path = parse_url($href, PHP_URL_PATH);
+                        $relSlug = basename(trim($path, '/'));
+                        if (empty($relSlug) || isset($seenRel[$relSlug])) return;
+                        $seenRel[$relSlug] = true;
+
+                        $relTitle = '';
+                        $h3 = $card->filter('h3, h4, .font-medium, .text-sm');
+                        if ($h3->count() > 0) {
+                            $relTitle = trim($h3->last()->text());
+                        }
+                        $img = $card->filter('img');
+                        if (empty($relTitle) && $img->count() > 0) {
+                            $relTitle = trim($img->attr('alt') ?? '');
+                        }
+                        if (empty($relTitle)) {
+                            $relTitle = ucwords(str_replace(['-sub-indo', '-subtitle-indonesia', '-'], ['', '', ' '], $relSlug));
+                        }
+
+                        $relPoster = '';
+                        if ($img->count() > 0) {
+                            $relPoster = $img->attr('src') ?: ($img->attr('data-src') ?: '');
+                        }
+
+                        $relationType = 'RELATED';
+                        $relRating = '';
+                        $card->filter('.absolute span, span')->each(function (Crawler $sp) use (&$relationType, &$relRating) {
+                            $t = trim($sp->text());
+                            if (in_array(strtoupper($t), ['PREQUEL', 'SEQUEL', 'SIDE STORY', 'ALTERNATIVE', 'PARENT STORY', 'SUMMARY', 'SPIN-OFF', 'CHARACTER', 'OTHER'])) {
+                                $relationType = strtoupper($t);
+                            } elseif (preg_match('/[⭐★]\s*([\d\.]+)/u', $t, $m)) {
+                                $relRating = $m[1];
+                            }
+                        });
+
+                        $relations[] = [
+                            'relation' => $relationType,
+                            'title' => $relTitle,
+                            'slug' => $relSlug,
+                            'thumbnail' => $relPoster,
+                            'rating' => $relRating,
+                        ];
+                    });
+                }
+            });
+
             return [
                 'title' => $title,
                 'slug' => $slug,
@@ -814,6 +869,7 @@ class MirainimeScraperService
                 'banner' => $thumbnail,
                 'description' => $description,
                 'episodes' => $episodes,
+                'relations' => $relations,
                 'source_url' => rtrim($this->baseUrl, '/') . '/' . $url,
             ];
         } catch (\Exception $e) {

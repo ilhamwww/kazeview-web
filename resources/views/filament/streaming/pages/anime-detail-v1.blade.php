@@ -212,6 +212,72 @@
         @endif
     </main>
 
+    <!-- Anime Terkait (Sequel, Prequel, Franchise) -->
+    @if(!empty($detail['relations']))
+        <section id="anime-terkait" class="w-full max-w-[1800px] mx-auto px-6 pt-8 pb-8 scroll-mt-28">
+            <div class="mb-5 border-b border-zinc-800 pb-3 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl md:text-2xl font-black tracking-tight">Anime Terkait</h2>
+                    <p class="text-xs text-zinc-400 mt-0.5">Sequel, prequel, dan cerita terkait dalam franchise ini</p>
+                </div>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
+                    {{ count($detail['relations']) }} Judul
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+                @foreach($detail['relations'] as $rel)
+                    @php
+                        $relUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $rel['slug']], panel: 'streaming');
+                        $relType = strtoupper($rel['relation'] ?? 'RELATED');
+                        $badgeColor = match($relType) {
+                            'SEQUEL' => 'bg-blue-600 text-white',
+                            'PREQUEL' => 'bg-purple-600 text-white',
+                            'SIDE STORY' => 'bg-emerald-600 text-white',
+                            'ALTERNATIVE' => 'bg-amber-600 text-white',
+                            'SPIN-OFF' => 'bg-rose-600 text-white',
+                            default => 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                        };
+                    @endphp
+                    <a href="{{ $relUrl }}"
+                       class="group flex flex-col min-w-0 transition active:scale-95">
+                        <div class="relative aspect-[3/4] sm:aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 ring-1 ring-white/10 group-hover:ring-red-500/50 transition duration-300 shadow-xl shadow-black/80">
+                            @if(!empty($rel['thumbnail']))
+                                <img src="{{ $rel['thumbnail'] }}" alt="{{ $rel['title'] }}"
+                                     loading="lazy"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            @else
+                                <div class="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-600">
+                                    <svg class="w-8 h-8 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+                                </div>
+                            @endif
+
+                            {{-- Relation Badge (PREQUEL, SEQUEL, etc) --}}
+                            <div class="absolute top-2 left-2 flex items-center gap-1">
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider {{ $badgeColor }} shadow-md">
+                                    {{ $relType }}
+                                </span>
+                            </div>
+
+                            {{-- Rating Badge --}}
+                            @if(!empty($rel['rating']))
+                                <span class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-black/80 text-amber-400 border border-amber-500/20 backdrop-blur-sm flex items-center gap-0.5">
+                                    <span>★</span>
+                                    <span>{{ $rel['rating'] }}</span>
+                                </span>
+                            @endif
+                        </div>
+
+                        <h3 class="mt-2 text-xs md:text-[13px] font-bold text-zinc-200 group-hover:text-red-400 line-clamp-2 leading-snug transition"
+                            title="{{ $rel['title'] }}">
+                            {{ $rel['title'] }}
+                        </h3>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     <!-- Download Section -->
     <section id="download-section" class="w-full max-w-[1800px] mx-auto px-6 pt-6 pb-16">
         <div class="p-6 md:p-8 rounded-2xl bg-zinc-900/70 border border-zinc-800/80 shadow-2xl backdrop-blur">
