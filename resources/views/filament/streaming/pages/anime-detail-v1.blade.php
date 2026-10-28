@@ -140,11 +140,27 @@
                     <!-- Synopsis -->
                     @php
                         $synopsisText = !empty($metadata['synopsis']) ? $metadata['synopsis'] : ($detail['description'] ?? '');
+                        $isLongSynopsis = mb_strlen(strip_tags((string)$synopsisText)) > 160;
                     @endphp
                     @if(!empty($synopsisText))
-                    <p class="max-w-3xl mt-4 text-sm md:text-base text-zinc-300 leading-relaxed font-medium line-clamp-3">
-                        {{ $synopsisText }}
-                    </p>
+                    <div x-data="{ expanded: false }" class="max-w-3xl mt-4">
+                        <p class="text-sm md:text-base text-zinc-300 leading-relaxed font-medium transition-all duration-200"
+                           :class="expanded ? '' : 'line-clamp-3'">
+                            {{ $synopsisText }}
+                        </p>
+                        @if($isLongSynopsis)
+                        <button type="button"
+                                @click="expanded = !expanded"
+                                class="inline-flex items-center gap-1.5 mt-2 text-xs md:text-sm font-bold text-red-500 hover:text-red-400 transition cursor-pointer select-none">
+                            <span x-text="expanded ? 'Tampilkan lebih sedikit' : 'Lihat selengkapnya'">Lihat selengkapnya</span>
+                            <svg class="w-3.5 h-3.5 transition-transform duration-200"
+                                 :class="expanded ? 'rotate-180' : ''"
+                                 fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                        @endif
+                    </div>
                     @endif
 
                     <!-- CTA Actions (Tonton & Favorit) -->
