@@ -130,9 +130,8 @@
                         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-0.5">
                             @foreach($bw['categories'] as $cKey => $cVal)
                                 <div class="p-2.5 rounded-xl bg-zinc-800/40 border border-white/[0.04] flex flex-col justify-between">
-                                    <div class="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400">
-                                        <span>{{ $cVal['icon'] }}</span>
-                                        <span class="truncate">{{ $cVal['label'] }}</span>
+                                    <div class="text-[11px] font-medium text-zinc-400 truncate">
+                                        {{ $cVal['label'] }}
                                     </div>
                                     <div class="text-sm font-black text-white mt-1 tabular-nums">
                                         {{ $cVal['formatted'] }}
