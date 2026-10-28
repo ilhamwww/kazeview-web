@@ -449,198 +449,149 @@
                         @endif
                     </button>
 
-                    <!-- Dropdown Box (Styled to match screenshot) -->
+                    <!-- Dropdown Box (Redesigned: Sleek, Glassmorphic, Modern Minimal) -->
                     <div x-show="open" x-transition:enter="transition ease-out duration-150"
                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                         x-transition:leave="transition ease-in duration-100"
                         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                        class="absolute right-0 mt-3 w-80 bg-[#111111] border border-zinc-800 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.9)] z-50 space-y-4"
+                        class="absolute right-0 mt-3 w-72 bg-[#0d0d0f]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.85),0_0_1px_1px_rgba(255,255,255,0.05)] z-50 divide-y divide-white/[0.06]"
                         style="display: none;">
 
                         @auth
-                            <!-- Logged In User Info -->
-                            <a href="{{ \App\Filament\Streaming\Pages\Profile::getUrl(panel: 'streaming') }}">
-                                <div class="flex items-center gap-3 bg-[#18181b] p-3 rounded-xl border border-white/5">
-                                    <div
-                                        class="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-extrabold uppercase text-sm">
-                                        {{ substr(auth()->user()->name, 0, 2) }}
+                            <!-- 1. User Header: Clickable Profile Link -->
+                            <div class="pb-2">
+                                <a href="{{ \App\Filament\Streaming\Pages\Profile::getUrl(panel: 'streaming') }}"
+                                   class="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.06] transition duration-150">
+                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-600 to-red-800 border border-red-500/30 flex items-center justify-center text-white font-extrabold uppercase text-sm shadow-md shrink-0">
+                                        {{ mb_substr(auth()->user()->name, 0, 2) }}
                                     </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-white truncate">{{ auth()->user()->name }}</p>
-                                        <p class="text-xs text-gray-400 truncate">{{ auth()->user()->email }}</p>
+                                    <div class="flex-1 min-w-0 text-left">
+                                        <p class="text-sm font-bold text-white group-hover:text-red-400 transition truncate leading-tight">
+                                            {{ auth()->user()->name }}
+                                        </p>
+                                        <p class="text-xs text-zinc-400 truncate mt-0.5 leading-tight">
+                                            {{ auth()->user()->email }}
+                                        </p>
                                     </div>
-                                </div>
-                            </a>
+                                    <svg class="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                    </svg>
+                                </a>
+                            </div>
 
-                            <!-- Logged In Actions -->
-                            <div class="space-y-2">
+                            <!-- 2. Main Navigation Links -->
+                            <div class="py-1.5 space-y-0.5">
                                 <a href="/watchlist"
-                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-white rounded-xl transition duration-200">
-                                    <div
-                                        class="w-8 h-8 rounded-lg bg-red-950/80 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-4 h-4 text-red-500 fill-current" viewBox="0 0 24 24">
-                                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                                        </svg>
-                                    </div>
-                                    <span>Daftar Tontonan</span>
+                                   class="group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.06] transition duration-150">
+                                    <svg class="w-4 h-4 text-zinc-400 group-hover:text-red-400 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                                    </svg>
+                                    <span class="flex-1">Daftar Tontonan</span>
                                 </a>
 
                                 <a href="/traffic"
-                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-emerald-400 rounded-xl transition duration-200">
-                                    <div
-                                        class="w-8 h-8 rounded-lg bg-emerald-950/80 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                                        </svg>
-                                    </div>
-                                    <span>Traffic Stats</span>
+                                   class="group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.06] transition duration-150">
+                                    <svg class="w-4 h-4 text-zinc-400 group-hover:text-emerald-400 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                                    </svg>
+                                    <span class="flex-1">Traffic Stats</span>
                                 </a>
 
                                 <a href="/dmca"
-                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-zinc-300 rounded-xl transition duration-200">
-                                    <div
-                                        class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
-                                        </svg>
-                                    </div>
-                                    <span>DMCA & Disclaimer</span>
+                                   class="group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.06] transition duration-150">
+                                    <svg class="w-4 h-4 text-zinc-400 group-hover:text-zinc-200 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                                    </svg>
+                                    <span class="flex-1">DMCA & Disclaimer</span>
                                 </a>
 
-                                <!-- PWA Install Trigger -->
                                 <button type="button"
                                     @click="window.dispatchEvent(new CustomEvent('trigger-pwa-install'))"
-                                    class="w-full flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-red-500 rounded-xl transition duration-200 text-left">
-                                    <div class="w-8 h-8 rounded-lg bg-red-950/80 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-                                        </svg>
-                                    </div>
-                                    <span>Install App</span>
+                                    class="w-full group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.06] transition duration-150 text-left cursor-pointer">
+                                    <svg class="w-4 h-4 text-zinc-400 group-hover:text-blue-400 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                    </svg>
+                                    <span class="flex-1">Install Aplikasi</span>
+                                    <span class="text-[9px] font-bold uppercase tracking-wider text-zinc-400 bg-white/5 border border-white/5 px-1.5 py-0.5 rounded-md">PWA</span>
                                 </button>
+                            </div>
 
-                                <!-- button clear cache -->
+                            <!-- 3. Utility & Sign Out Actions -->
+                            <div class="pt-1.5 space-y-0.5">
                                 <form action="{{ route('clear.cache') }}" method="GET" class="block w-full">
                                     @csrf
                                     <button type="submit"
-                                        class="w-full flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-red-500 rounded-xl transition duration-200 text-left">
-                                        <div
-                                            class="w-8 h-8 rounded-lg bg-zinc-900/80 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-5 text-red-500 h-5 text-white flex-shrink-0" fill="none"
-                                                stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </div>
-                                        <span class="text-red-500">Clear Cache</span>
+                                        class="w-full group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 transition duration-150 text-left cursor-pointer">
+                                        <svg class="w-4 h-4 text-zinc-500 group-hover:text-amber-400 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                        </svg>
+                                        <span class="flex-1">Hapus Cache</span>
                                     </button>
                                 </form>
 
-
-                                <form action="{{ route('filament.streaming.auth.logout') }}" method="POST"
-                                    class="block w-full">
+                                <form action="{{ route('filament.streaming.auth.logout') }}" method="POST" class="block w-full">
                                     @csrf
                                     <button type="submit"
-                                        class="w-full flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-red-500 rounded-xl transition duration-200 text-left">
-                                        <div
-                                            class="w-8 h-8 rounded-lg bg-zinc-900/80 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none"
-                                                stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                            </svg>
-                                        </div>
-                                        <span class="text-red-500">Sign out</span>
+                                        class="w-full group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition duration-150 text-left cursor-pointer">
+                                        <svg class="w-4 h-4 text-zinc-500 group-hover:text-red-400 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                                        </svg>
+                                        <span class="flex-1">Keluar</span>
                                     </button>
                                 </form>
                             </div>
                         @else
                             <!-- Guest User Box -->
-                            <div class="flex items-center gap-3 bg-[#18181b] p-3 rounded-xl border border-white/5">
-                                <div
-                                    class="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-400">
-                                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                </div>
-                                <div class="flex-1 min-w-0 text-left">
-                                    <p class="text-sm font-bold text-white leading-tight">Account</p>
-                                    <p class="text-xs text-gray-400 mt-0.5 leading-tight">Sign in to save your list.</p>
+                            <div class="pb-2">
+                                <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.03]">
+                                    <div class="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-400 shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 min-w-0 text-left">
+                                        <p class="text-sm font-bold text-white leading-tight">Akun Tamu</p>
+                                        <p class="text-xs text-zinc-400 mt-0.5 leading-tight">Masuk untuk simpan riwayat.</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Guest Actions -->
-                            <div class="space-y-2">
+                            <!-- Guest Navigation Links -->
+                            <div class="py-1.5 space-y-0.5">
                                 <a href="/watchlist"
-                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-white rounded-xl transition duration-200">
-                                    <div
-                                        class="w-8 h-8 rounded-lg bg-red-950/80 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-4 h-4 text-red-500 fill-current" viewBox="0 0 24 24">
-                                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                                        </svg>
-                                    </div>
-                                    <span>Daftar Tontonan</span>
+                                   class="group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.06] transition duration-150">
+                                    <svg class="w-4 h-4 text-zinc-400 group-hover:text-red-400 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                                    </svg>
+                                    <span class="flex-1">Daftar Tontonan</span>
                                 </a>
 
                                 <a href="/traffic"
-                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-emerald-400 rounded-xl transition duration-200">
-                                    <div
-                                        class="w-8 h-8 rounded-lg bg-emerald-950/80 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                                        </svg>
-                                    </div>
-                                    <span>Traffic Stats</span>
+                                   class="group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.06] transition duration-150">
+                                    <svg class="w-4 h-4 text-zinc-400 group-hover:text-emerald-400 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                                    </svg>
+                                    <span class="flex-1">Traffic Stats</span>
                                 </a>
 
                                 <a href="/dmca"
-                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-zinc-300 rounded-xl transition duration-200">
-                                    <div
-                                        class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
-                                        </svg>
-                                    </div>
-                                    <span>DMCA & Disclaimer</span>
+                                   class="group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.06] transition duration-150">
+                                    <svg class="w-4 h-4 text-zinc-400 group-hover:text-zinc-200 transition shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                                    </svg>
+                                    <span class="flex-1">DMCA & Disclaimer</span>
                                 </a>
+                            </div>
 
-                                <!-- PWA Install Trigger -->
-                                <button type="button"
-                                    @click="window.dispatchEvent(new CustomEvent('trigger-pwa-install'))"
-                                    class="w-full flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-red-500 rounded-xl transition duration-200 text-left">
-                                    <div class="w-8 h-8 rounded-lg bg-red-950/80 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-                                        </svg>
-                                    </div>
-                                    <span>Install App</span>
-                                </button>
-
+                            <!-- Guest Auth Actions -->
+                            <div class="pt-2 grid grid-cols-2 gap-2">
                                 <a href="/login"
-                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-white rounded-xl transition duration-200">
-                                    <div
-                                        class="w-8 h-8 rounded-lg bg-zinc-900/80 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-5 h-5 text-white flex-shrink-0 rotate-180 opacity-80" fill="none"
-                                            stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                        </svg>
-                                    </div>
-                                    <span class="text-gray-200">Sign in</span>
+                                   class="py-2 px-3 rounded-xl bg-white text-black text-xs font-bold text-center hover:bg-zinc-200 active:scale-95 transition">
+                                    Masuk
                                 </a>
                                 <a href="/admin/register"
-                                    class="flex items-center gap-3 px-3.5 py-2.5 bg-[#18181b] border border-zinc-800 hover:bg-zinc-800 text-sm font-bold text-red-500 rounded-xl transition duration-200">
-                                    <div
-                                        class="w-8 h-8 rounded-lg bg-zinc-900/80 flex items-center justify-center flex-shrink-0">
-                                        <svg class="w-5 h-5 text-red-500 flex-shrink-0 opacity-85" fill="none"
-                                            stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
-                                    </div>
-                                    <span class="text-red-500">Sign up</span>
+                                   class="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold text-center border border-white/10 active:scale-95 transition">
+                                    Daftar
                                 </a>
                             </div>
                         @endauth
