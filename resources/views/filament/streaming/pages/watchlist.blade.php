@@ -130,11 +130,23 @@
                             $detailUrl = '#';
                             try {
                                 if ($fav->item_type === 'movie') {
-                                    $detailUrl = \App\Filament\Streaming\Pages\WatchMovie::getUrl(['slug' => $fav->item_id], panel: 'streaming');
+                                    if (str_starts_with($fav->item_id, 'lk:')) {
+                                        $detailUrl = \App\Filament\Streaming\Pages\WatchServerLk::getUrl(['slug' => substr($fav->item_id, 3)], panel: 'streaming');
+                                    } else {
+                                        $detailUrl = \App\Filament\Streaming\Pages\WatchMovie::getUrl(['slug' => $fav->item_id], panel: 'streaming');
+                                    }
                                 } elseif ($fav->item_type === 'tv_series') {
                                     $detailUrl = \App\Filament\Streaming\Pages\ShowSeries::getUrl(['slug' => $fav->item_id], panel: 'streaming');
                                 } elseif ($fav->item_type === 'anime') {
-                                    $detailUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $fav->item_id], panel: 'streaming');
+                                    if (str_starts_with($fav->item_id, 'v4:')) {
+                                        $detailUrl = \App\Filament\Streaming\Pages\AnimeDetailV4::getUrl(['slug' => substr($fav->item_id, 3)], panel: 'streaming');
+                                    } elseif (str_starts_with($fav->item_id, 'v3:')) {
+                                        $detailUrl = \App\Filament\Streaming\Pages\AnimeDetailV3::getUrl(['slug' => substr($fav->item_id, 3)], panel: 'streaming');
+                                    } elseif (str_starts_with($fav->item_id, 'v2:')) {
+                                        $detailUrl = \App\Filament\Streaming\Pages\AnimeDetailV2::getUrl(['slug' => substr($fav->item_id, 3)], panel: 'streaming');
+                                    } else {
+                                        $detailUrl = \App\Filament\Streaming\Pages\AnimeDetail::getUrl(['slug' => $fav->item_id], panel: 'streaming');
+                                    }
                                 } elseif ($fav->item_type === 'bstation') {
                                     $detailUrl = \App\Filament\Streaming\Pages\BstationDetail::getUrl(['id' => $fav->item_id], panel: 'streaming');
                                 } elseif ($fav->item_type === 'dracin') {
@@ -156,7 +168,8 @@
                             };
 
                             $thumbUrl = $fav->thumbnail;
-                            if ($thumbUrl && !str_starts_with($thumbUrl, '/') && !str_contains($thumbUrl, '127.0.0.1')) {
+                            // Hanya gunakan proxy jika diperlukan (dracin CDN), sedangkan TMDB / web direct tidak perlu proxy
+                            if ($thumbUrl && $fav->item_type === 'dracin') {
                                 $thumbUrl = url('/api/proxy-image?url=' . urlencode($thumbUrl));
                             }
                         @endphp
