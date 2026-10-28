@@ -278,14 +278,12 @@
                     </p>
                 @endif
 
-                {{-- Progress bar & Seeking Controls --}}
+                {{-- Progress bar & Seeking Controls (5s skip) --}}
                 <div class="flex items-center gap-2 text-[11px] font-mono">
-                    <button type="button" @click.stop="skip(-10)"
-                            class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white/90 hover:text-white transition cursor-pointer"
-                            title="Mundur 10 detik">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/>
-                        </svg>
+                    <button type="button" @click.stop="skip(-5)"
+                            class="px-2 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white/90 hover:text-white transition cursor-pointer text-[10px] font-bold tracking-tight"
+                            title="Mundur 5 detik">
+                        -5s
                     </button>
                     <span x-text="fmtTime(currentTime)" class="w-9 text-white/80 text-center select-none"></span>
                     <div class="flex-1 py-2 cursor-pointer relative group flex items-center"
@@ -298,12 +296,10 @@
                              :style="`left: calc(${progressPercent}% - 7px)`"></div>
                     </div>
                     <span x-text="fmtTime(duration)" class="w-9 text-white/80 text-center select-none"></span>
-                    <button type="button" @click.stop="skip(10)"
-                            class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white/90 hover:text-white transition cursor-pointer"
-                            title="Maju 10 detik">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 005 8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.334-4z"/>
-                        </svg>
+                    <button type="button" @click.stop="skip(5)"
+                            class="px-2 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white/90 hover:text-white transition cursor-pointer text-[10px] font-bold tracking-tight"
+                            title="Maju 5 detik">
+                        +5s
                     </button>
                 </div>
 
