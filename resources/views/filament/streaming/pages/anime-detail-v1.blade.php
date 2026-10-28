@@ -181,28 +181,16 @@
         <div class="mb-6 border-b border-zinc-800 pb-3 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-2">
                 <button type="button" @click="activeTab = 'episodes'"
-                        class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
+                        class="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer"
                         :class="activeTab === 'episodes' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-zinc-800'">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
-                    <span>Daftar Episode</span>
-                    @if(!empty($detail['episodes']))
-                        <span class="px-1.5 py-0.5 rounded-md text-[10px] font-black"
-                              :class="activeTab === 'episodes' ? 'bg-black/30 text-white' : 'bg-zinc-800 text-zinc-400'">
-                            {{ count($detail['episodes']) }}
-                        </span>
-                    @endif
+                    Daftar Episode
                 </button>
 
                 @if(!empty($detail['relations']))
                     <button type="button" @click="activeTab = 'relations'"
-                            class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
+                            class="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer"
                             :class="activeTab === 'relations' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-zinc-900/80 text-zinc-400 hover:text-white border border-zinc-800'">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"/></svg>
-                        <span>Anime Terkait</span>
-                        <span class="px-1.5 py-0.5 rounded-md text-[10px] font-black"
-                              :class="activeTab === 'relations' ? 'bg-black/30 text-white' : 'bg-zinc-800 text-zinc-400'">
-                            {{ count($detail['relations']) }}
-                        </span>
+                        Anime Terkait
                     </button>
                 @endif
             </div>
