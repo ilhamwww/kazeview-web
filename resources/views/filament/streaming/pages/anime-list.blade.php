@@ -263,7 +263,7 @@
                     @foreach($animes as $item)
                         <a href="{{ $detailUrl($item['slug'] ?? '') }}"
                            class="group flex flex-col min-w-0 transition active:scale-95">
-                            <div class="relative aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 ring-1 ring-white/10 group-hover:ring-red-500/50 transition duration-300 shadow-xl shadow-black/80">
+                            <div class="relative aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 ring-1 ring-white/10 group-hover:ring-red-500/50 transition duration-300">
                                 @if(!empty($item['thumbnail']))
                                     <img src="{{ $item['thumbnail'] }}" alt="{{ $item['title'] }}"
                                          loading="lazy"

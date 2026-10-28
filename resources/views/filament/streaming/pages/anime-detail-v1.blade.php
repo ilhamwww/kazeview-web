@@ -254,7 +254,7 @@
                         @endphp
                         <a href="{{ $relUrl }}"
                            class="group flex flex-col min-w-0 transition active:scale-95">
-                            <div class="relative aspect-[3/4] sm:aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 ring-1 ring-white/10 group-hover:ring-red-500/50 transition duration-300 shadow-xl shadow-black/80">
+                            <div class="relative aspect-[3/4] sm:aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 ring-1 ring-white/10 group-hover:ring-red-500/50 transition duration-300">
                                 @if(!empty($rel['thumbnail']))
                                     <img src="{{ $rel['thumbnail'] }}" alt="{{ $rel['title'] }}"
                                          loading="lazy"
