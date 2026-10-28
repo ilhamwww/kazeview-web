@@ -120,24 +120,40 @@ class StreamingService
         $results = [];
         try {
             $domain = ScraperSetting::getInstance()->idlix_domain;
-            $url = rtrim($domain, '/') . '/api/search?q=' . urlencode($query) . '&page=' . $page . '&limit=' . $limit;
+            $searchPath = '/api/search?q=' . urlencode($query) . '&page=' . $page . '&limit=' . $limit;
+            $url = rtrim($domain, '/') . $searchPath;
 
-            $client = new Client([
-                'timeout' => 30,
-                'headers' => [
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept' => 'application/json, text/plain, */*',
-                    'Referer' => $domain,
-                    'Origin' => rtrim($domain, '/'),
-                ],
-                'verify' => false,
-            ]);
+            // 1. Coba lewat NUC Relay terlebih dahulu (Bypass Cloudflare & Super Fast ~500ms)
+            $body = null;
+            try {
+                $nucRes = Http::withOptions([
+                    'proxy' => 'socks5h://127.0.0.1:1055',
+                    'timeout' => 4,
+                ])->get('http://100.110.54.105:8765/json?path=' . urlencode($searchPath));
+                if ($nucRes->successful() && !str_contains($nucRes->body(), 'Cloudflare') && !str_contains($nucRes->body(), 'Just a moment...')) {
+                    $body = $nucRes->body();
+                }
+            } catch (\Throwable $ne) {}
 
-            $response = $client->get($url);
-            $body = (string) $response->getBody();
+            // 2. Fallback ke Direct Guzzle dengan timeout singkat (3 detik)
+            if (!$body) {
+                $client = new Client([
+                    'timeout' => 3,
+                    'headers' => [
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept' => 'application/json, text/plain, */*',
+                        'Referer' => $domain,
+                        'Origin' => rtrim($domain, '/'),
+                    ],
+                    'verify' => false,
+                ]);
 
-            if (str_contains($body, 'Just a moment...') || str_contains($body, 'Cloudflare')) {
-                throw new \Exception("Cloudflare detected");
+                $response = $client->get($url);
+                $body = (string) $response->getBody();
+
+                if (str_contains($body, 'Just a moment...') || str_contains($body, 'Cloudflare')) {
+                    throw new \Exception("Cloudflare detected");
+                }
             }
 
             $data = json_decode($body, true);
@@ -1083,6 +1099,25 @@ class StreamingService
      */
     private static function fetchJsonWithPuppeteer(string $url): string
     {
+        // Try NUC Resolver first
+        try {
+            $parsed = parse_url($url);
+            $path = ($parsed['path'] ?? '') . (!empty($parsed['query']) ? '?' . $parsed['query'] : '');
+            if (!empty($path)) {
+                $nucUrl = 'http://100.110.54.105:8765/json?path=' . urlencode($path);
+                $res = Http::withOptions([
+                    'proxy' => 'socks5h://127.0.0.1:1055',
+                    'timeout' => 15,
+                ])->get($nucUrl);
+
+                if ($res->successful()) {
+                    return $res->body();
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('NUC JSON resolver failed: ' . $e->getMessage());
+        }
+
         $scriptPath = base_path('puppeteer_json_scraper.js');
         $executablePath = env('PUPPETEER_EXECUTABLE_PATH', file_exists('/opt/puppeteer-chrome/chrome') ? '/opt/puppeteer-chrome/chrome' : '/usr/bin/google-chrome');
         $cmd = 'node --dns-result-order=ipv4first ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($url) . ' ' . escapeshellarg($executablePath ?? '') . ' 2>&1';
@@ -1441,8 +1476,12 @@ class StreamingService
             $streamResult = null;
 
             if (!$response->successful() && ($response->status() === 503 || $response->status() === 403 || str_contains($response->body(), 'Cloudflare') || str_contains($response->body(), 'Just a moment'))) {
-                // Fallback to Puppeteer Stream Scraper
-                $streamResult = self::fetchStreamWithPuppeteer($domain, $playInfoPath);
+                // Try NUC Residential Resolver first
+                $streamResult = self::fetchStreamWithNucResolver('episode', $episodeId);
+                if (!$streamResult) {
+                    // Fallback to Puppeteer Stream Scraper
+                    $streamResult = self::fetchStreamWithPuppeteer($domain, $playInfoPath);
+                }
             } else {
                 $playInfo = $response->json();
                 $gateToken = $playInfo['gateToken'] ?? null;
@@ -1557,6 +1596,47 @@ class StreamingService
     /**
      * Run Puppeteer stream scraper script to fetch video URL and subtitles.
      */
+    public static function fetchStreamWithNucResolver(string $type, string $id): ?array
+    {
+        try {
+            $url = 'http://100.110.54.105:8765/stream?type=' . urlencode($type) . '&id=' . urlencode($id);
+            $response = Http::withOptions([
+                'proxy' => 'socks5h://127.0.0.1:1055',
+                'timeout' => 45,
+            ])->get($url);
+
+            if ($response->successful()) {
+                $json = $response->json();
+                if (!empty($json['success']) && !empty($json['raw_url'])) {
+                    $proxyHlsUrl = url('/api/proxy-hls?url=' . urlencode($json['raw_url']));
+                    $subs = [];
+                    foreach ($json['subtitles'] ?? [] as $s) {
+                        $subUrl = $s['url'] ?? ($s['path'] ?? '');
+                        if (!empty($subUrl)) {
+                            $subs[] = [
+                                'lang' => $s['lang'] ?? 'id',
+                                'label' => $s['name'] ?? ($s['label'] ?? 'Indonesian'),
+                                'url' => $subUrl,
+                                'path' => $subUrl,
+                                'default' => !empty($s['default']),
+                            ];
+                        }
+                    }
+                    return [
+                        'video_url' => $proxyHlsUrl,
+                        'type' => 'm3u8',
+                        'subtitles' => $subs,
+                        'source' => 'idlix_nuc_relay',
+                        'ttl' => $json['ttlSeconds'] ?? 21600,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('NUC Stream Resolver failed: ' . $e->getMessage());
+        }
+        return null;
+    }
+
     private static function fetchStreamWithPuppeteer(string $domain, string $playInfoPath): ?array
     {
         $scriptPath = base_path('puppeteer_stream_scraper.js');
@@ -1621,6 +1701,13 @@ class StreamingService
                 }
 
                 if ($formatted) {
+                    if (!empty($formatted['id'])) {
+                        Cache::put('movie_meta_by_id_' . $formatted['id'], [
+                            'title' => $formatted['title'] ?? '',
+                            'year' => $formatted['year'] ?? null,
+                            'tmdbId' => $formatted['tmdb_id'] ?? null,
+                        ], 86400);
+                    }
                     try {
                         $mirror = RebahinService::findMovieMirror($formatted['title'] ?? '', $formatted['year'] ?? null);
                         if ($mirror && !empty($mirror['servers'])) {
@@ -1685,6 +1772,9 @@ class StreamingService
             'description' => $data['overview'] ?? '',
             'video_url' => '', // Will be filled by getMovieStream
             'slug' => $data['slug'] ?? '',
+            'tmdb_id' => $data['tmdbId'] ?? null,
+            'imdb_id' => $data['imdbId'] ?? null,
+            'raw_detail' => $data,
         ];
     }
 
@@ -1925,8 +2015,12 @@ class StreamingService
             $streamResult = null;
 
             if (!$response->successful() && ($response->status() === 503 || $response->status() === 403 || str_contains($response->body(), 'Cloudflare') || str_contains($response->body(), 'Just a moment'))) {
-                // Fallback to Puppeteer Stream Scraper
-                $streamResult = self::fetchStreamWithPuppeteer($domain, $playInfoPath);
+                // Try NUC Residential Resolver first
+                $streamResult = self::fetchStreamWithNucResolver('movie', $movieId);
+                if (!$streamResult) {
+                    // Fallback to local Puppeteer Stream Scraper
+                    $streamResult = self::fetchStreamWithPuppeteer($domain, $playInfoPath);
+                }
             } else {
                 $playInfo = $response->json();
                 $gateToken = $playInfo['gateToken'] ?? null;
@@ -2025,6 +2119,29 @@ class StreamingService
                     }
                 }
                 Cache::put($cacheKey, $streamResult, $ttl);
+            }
+
+            // Fallback ke DirectStreamResolverService jika IDLIX gagal/down
+            if (!$streamResult || empty($streamResult['video_url'])) {
+                try {
+                    $meta = Cache::get('movie_meta_by_id_' . $movieId);
+                    $title = $meta['title'] ?? null;
+                    $year = $meta['year'] ?? null;
+                    if (!$title) {
+                        $movieDetail = Cache::get('idlix_movie_' . $movieId);
+                        $title = $movieDetail['title'] ?? null;
+                        $year = $movieDetail['year'] ?? null;
+                    }
+                    if ($title) {
+                        $resolved = DirectStreamResolverService::resolveMovieStream($title, $year);
+                        if ($resolved && !empty($resolved['video_url'])) {
+                            $streamResult = $resolved;
+                            Cache::put($cacheKey, $streamResult, 3600);
+                        }
+                    }
+                } catch (\Throwable $te) {
+                    Log::warning('DirectStreamResolver fallback failed: ' . $te->getMessage());
+                }
             }
 
             return $streamResult;

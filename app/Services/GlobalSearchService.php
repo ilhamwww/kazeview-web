@@ -10,10 +10,10 @@ use Illuminate\Support\Facades\Log;
 class GlobalSearchService
 {
     /**
-     * Unified Global Search across all KZSTRM sources:
-     * - Movies & TV Series (Server 1 / Server 2)
-     * - Anime (Anime V2 / Anime V3)
-     * - Dracin (Drama China Pendek)
+     * Ultra-Fast Unified Global Search across all KZSTRM sources:
+     * - Movies & TV Series (IDLIX via Fast NUC Relay & Rebahin)
+     * - Anime (Mirainime & Otakudesu - Parallel Async)
+     * - Dracin (Parallel Async Pool: DramaBox, ReelBuzz, Sereal+, FlexTV, ReelShort, DramaWave)
      *
      * @param string $query Keyword to search
      * @param string $category Filter: 'all', 'movie', 'series', 'anime', 'dracin'
@@ -32,15 +32,17 @@ class GlobalSearchService
             $category = 'all';
         }
 
-        $cacheKey = 'kz_global_search_' . md5(strtolower($q) . '_' . $category . '_' . $limit);
+        $cacheKey = 'kz_global_search_v4_' . md5(strtolower($q) . '_' . $category . '_' . $limit);
 
-        return Cache::remember($cacheKey, 1800, function () use ($q, $category, $limit) {
+        return Cache::remember($cacheKey, 3600, function () use ($q, $category, $limit) {
             $movies = [];
             $series = [];
             $animes = [];
             $dracins = [];
 
+            // =================================================================
             // 1. Fetch Movies & TV Series
+            // =================================================================
             if (in_array($category, ['all', 'movie', 'series'], true)) {
                 try {
                     $mediaResults = StreamingService::search($q);
@@ -84,205 +86,315 @@ class GlobalSearchService
                 }
             }
 
-            // 2. Fetch Anime (Anime V2 & Anime V3)
-            if (in_array($category, ['all', 'anime'], true)) {
-                // 2a. Otakudesu (Anime V2)
-                try {
-                    $otakuScraper = new OtakudesuScraperService();
-                    $otakuItems = $otakuScraper->searchAnime($q);
-                    foreach ($otakuItems as $otaku) {
-                        $rawUrl = $otaku['url'] ?? '';
-                        $parts = array_values(array_filter(explode('/', trim((string) parse_url($rawUrl, PHP_URL_PATH), '/'))));
-                        $slug = end($parts) ?: '';
-                        if (empty($slug)) continue;
+            // =================================================================
+            // 2. Fetch Anime & Dracin in a Single Mega-Pool for maximum concurrency
+            // =================================================================
+            $needAnime = in_array($category, ['all', 'anime'], true);
+            $needDracin = in_array($category, ['all', 'dracin'], true);
 
-                        $animes[] = [
-                            'id' => 'v2:' . $slug,
-                            'title' => (string) ($otaku['title'] ?? 'Anime'),
-                            'category' => 'anime',
-                            'type' => 'Anime',
-                            'badge' => 'Anime',
-                            'year' => (string) ($otaku['status'] ?? 'Anime'),
-                            'rating' => !empty($otaku['rating']) && (float)$otaku['rating'] > 0 ? number_format((float)$otaku['rating'], 1) : null,
-                            'thumbnail' => $otaku['thumbnail'] ?? null,
-                            'url' => url('/anime-v2/' . $slug),
-                            'slug' => $slug,
-                            'source_name' => 'Anime V2',
-                        ];
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('GlobalSearch: Otakudesu search failed: ' . $e->getMessage());
-                }
-
-                // 2b. Anoboy (Anime V3)
-                try {
-                    $anoboyScraper = new AnoboyScraperService();
-                    $anoboyItems = $anoboyScraper->searchAnime($q);
-                    foreach ($anoboyItems as $ano) {
-                        $slug = $ano['slug'] ?? '';
-                        if (empty($slug) && !empty($ano['url'])) {
-                            $parts = array_values(array_filter(explode('/', trim((string) parse_url($ano['url'], PHP_URL_PATH), '/'))));
-                            $slug = end($parts) ?: '';
-                        }
-                        if (empty($slug)) continue;
-
-                        $animes[] = [
-                            'id' => 'v3:' . $slug,
-                            'title' => (string) ($ano['title'] ?? 'Anime'),
-                            'category' => 'anime',
-                            'type' => 'Anime',
-                            'badge' => 'Anime',
-                            'year' => (string) ($ano['episode'] ?? $ano['status'] ?? 'Anime'),
-                            'rating' => null,
-                            'thumbnail' => $ano['thumbnail'] ?? null,
-                            'url' => url('/anime-v3/' . $slug),
-                            'slug' => $slug,
-                            'source_name' => 'Anime V3',
-                        ];
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('GlobalSearch: Anoboy search failed: ' . $e->getMessage());
-                }
-            }
-
-            // 3. Fetch Dracin (Drama China Pendek)
-            if (in_array($category, ['all', 'dracin'], true)) {
+            if ($needAnime || $needDracin) {
                 $setting = ScraperSetting::getInstance();
                 $apiKey = $setting->dramabuzz_api_key ?? '';
-                $dbDracins = [];
-                $rbDracins = [];
-                $spDracins = [];
 
-                // 3a. DramaBox Search
-                try {
-                    $dbUrl = "https://dramabox.goodbos.online/api/dramabox/search?query=" . urlencode($q) . "&lang=in";
-                    $dbRes = Http::withOptions([
-                        'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4],
-                        'timeout' => 5,
-                    ])->withHeaders([
+                $poolRequests = [];
+
+                if ($needAnime) {
+                    $poolRequests['mirainime'] = fn ($p) => $p->timeout(3.5)->withHeaders([
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    ])->get('https://mirainime.com/anime-list?q=' . urlencode($q));
+
+                    $poolRequests['otakudesu'] = fn ($p) => $p->timeout(3.5)->withHeaders([
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    ])->get('https://otakudesu.blog/?s=' . urlencode($q) . '&post_type=anime');
+                }
+
+                if ($needDracin) {
+                    $poolRequests['dramabox'] = fn ($p) => $p->timeout(3.5)->withHeaders([
                         'x-token' => $apiKey,
                         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    ])->get($dbUrl);
+                    ])->get('https://dramabox.goodbos.online/api/dramabox/search?query=' . urlencode($q) . '&lang=in');
 
-                    if ($dbRes->successful()) {
-                        $rawJson = $dbRes->json() ?: [];
-                        $items = $rawJson['data'] ?? $rawJson['items'] ?? $rawJson['results'] ?? [];
-                        if (is_array($items)) {
-                            foreach ($items as $it) {
-                                if (!is_array($it)) continue;
-                                $dramaId = (string) ($it['bookId'] ?? $it['id'] ?? '');
-                                $title = (string) ($it['bookName'] ?? $it['name'] ?? '');
-                                if (empty($dramaId) || empty($title)) continue;
-
-                                $episodes = isset($it['chapterCount']) ? (int) $it['chapterCount'] : null;
-
-                                $dbDracins[] = [
-                                    'id' => 'dracin:dramabox:' . $dramaId,
-                                    'title' => $title,
-                                    'category' => 'dracin',
-                                    'type' => 'Dracin',
-                                    'badge' => 'Dracin',
-                                    'year' => $episodes ? "{$episodes} Eps" : 'Dracin',
-                                    'rating' => null,
-                                    'thumbnail' => $it['coverWap'] ?? $it['cover'] ?? null,
-                                    'url' => url('/dracin/dramabox/drama/' . $dramaId),
-                                    'slug' => $dramaId,
-                                    'source_name' => 'DramaBox',
-                                ];
-                            }
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('GlobalSearch: DramaBox search failed: ' . $e->getMessage());
-                }
-
-                // 3b. ReelBuzz Search
-                try {
-                    $rbUrl = "https://reelbuzz.goodbos.online/api/search?q=" . urlencode($q) . "&code=" . $apiKey;
-                    $rbRes = Http::withOptions([
-                        'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4],
-                        'timeout' => 5,
-                    ])->withHeaders([
+                    $poolRequests['reelbuzz'] = fn ($p) => $p->timeout(3.5)->withHeaders([
                         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    ])->get($rbUrl);
+                    ])->get('https://reelbuzz.goodbos.online/api/search?q=' . urlencode($q) . '&code=' . $apiKey);
 
-                    if ($rbRes->successful()) {
-                        $rawJson = $rbRes->json() ?: [];
-                        $items = $rawJson['results'] ?? $rawJson['dramas'] ?? [];
-                        if (is_array($items)) {
-                            foreach ($items as $it) {
-                                if (!is_array($it)) continue;
-                                $dramaId = (string) ($it['drama_id'] ?? $it['id'] ?? '');
-                                $title = (string) ($it['title'] ?? $it['name'] ?? '');
-                                if (empty($dramaId) || empty($title)) continue;
-
-                                $rbDracins[] = [
-                                    'id' => 'dracin:reelbuzz:' . $dramaId,
-                                    'title' => $title,
-                                    'category' => 'dracin',
-                                    'type' => 'Dracin',
-                                    'badge' => 'Dracin',
-                                    'year' => 'Dracin',
-                                    'rating' => null,
-                                    'thumbnail' => $it['cover'] ?? $it['poster'] ?? null,
-                                    'url' => url('/dracin/reelbuzz/drama/' . $dramaId),
-                                    'slug' => $dramaId,
-                                    'source_name' => 'ReelBuzz',
-                                ];
-                            }
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('GlobalSearch: ReelBuzz search failed: ' . $e->getMessage());
-                }
-
-                // 3c. Sereal+ Search
-                try {
-                    $spUrl = "https://serealplus.goodbos.online/api/search?q=" . urlencode($q) . "&lang=id&page=1&code=" . $apiKey;
-                    $spRes = Http::withOptions([
-                        'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4],
-                        'timeout' => 5,
-                    ])->withHeaders([
+                    $poolRequests['serealplus'] = fn ($p) => $p->timeout(3.5)->withHeaders([
                         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    ])->get($spUrl);
+                    ])->get('https://serealplus.goodbos.online/api/search?q=' . urlencode($q) . '&lang=id&page=1&code=' . $apiKey);
 
-                    if ($spRes->successful()) {
-                        $rawJson = $spRes->json() ?: [];
-                        $items = $rawJson['data']['list'] ?? [];
-                        if (is_array($items)) {
-                            foreach ($items as $it) {
-                                if (!is_array($it)) continue;
-                                $dramaId = (string) ($it['contentId'] ?? $it['id'] ?? '');
-                                $title = (string) ($it['contentName'] ?? $it['name'] ?? '');
-                                if (empty($dramaId) || empty($title)) continue;
+                    $poolRequests['flextv'] = fn ($p) => $p->timeout(3.5)->get('https://flextv.goodbos.online/api/drama/search?keyword=' . urlencode($q) . '&page=1');
+                    $poolRequests['reelshort'] = fn ($p) => $p->timeout(3.5)->get('https://reelshort.goodbos.online/search?q=' . urlencode($q) . '&lang=in');
+                    $poolRequests['dramawave'] = fn ($p) => $p->timeout(3.5)->get('https://dramawave.goodbos.online/api/search?q=' . urlencode($q) . "&lang=in&code={$apiKey}&next=1");
+                }
 
-                                $episodes = isset($it['chapterNumber']) ? (int) $it['chapterNumber'] : (isset($it['chapterNum']) ? (int) $it['chapterNum'] : null);
+                try {
+                    $poolResponses = Http::pool(function ($pool) use ($poolRequests) {
+                        $built = [];
+                        foreach ($poolRequests as $key => $callback) {
+                            $built[$key] = $callback($pool->as($key));
+                        }
+                        return $built;
+                    });
 
-                                $spDracins[] = [
-                                    'id' => 'dracin:serealplus:' . $dramaId,
+                    // 2a. Parse Mirainime
+                    if (isset($poolResponses['mirainime']) && $poolResponses['mirainime']->successful()) {
+                        try {
+                            $crawler = new \Symfony\Component\DomCrawler\Crawler((string) $poolResponses['mirainime']->body());
+                            $crawler->filter('#search-grid a, .ctx-card')->each(function (\Symfony\Component\DomCrawler\Crawler $card) use (&$animes) {
+                                $href = $card->attr('href') ?? '';
+                                if (!str_contains($href, '/anime/')) return;
+                                $slug = basename(trim((string) parse_url($href, PHP_URL_PATH), '/'));
+                                if (empty($slug)) return;
+
+                                $title = '';
+                                $h = $card->filter('h3, h2, .font-medium');
+                                if ($h->count()) $title = trim($h->last()->text());
+                                $img = $card->filter('img');
+                                if (empty($title) && $img->count()) $title = trim($img->attr('alt') ?? '');
+                                if (empty($title)) $title = ucwords(str_replace(['-sub-indo', '-subtitle-indonesia', '-'], ['', '', ' '], $slug));
+
+                                $poster = '';
+                                if ($img->count()) $poster = $img->attr('src') ?: ($img->attr('data-src') ?: '');
+
+                                $rating = null;
+                                $card->filter('span')->each(function (\Symfony\Component\DomCrawler\Crawler $sp) use (&$rating) {
+                                    $t = trim($sp->text());
+                                    if (preg_match('/[⭐★]\s*([\d\.]+)/u', $t, $m)) {
+                                        $rating = $m[1];
+                                    }
+                                });
+
+                                $status = 'Anime';
+                                $card->filter('span')->each(function (\Symfony\Component\DomCrawler\Crawler $sp) use (&$status) {
+                                    $t = strtolower(trim($sp->text()));
+                                    if ($t === 'ongoing') $status = 'Ongoing';
+                                    elseif ($t === 'complete' || $t === 'completed' || $t === 'tamat') $status = 'Tamat';
+                                });
+
+                                $animes[] = [
+                                    'id' => 'v1:' . $slug,
                                     'title' => $title,
-                                    'category' => 'dracin',
-                                    'type' => 'Dracin',
-                                    'badge' => 'Dracin',
-                                    'year' => $episodes ? "{$episodes} Eps" : 'Dracin',
-                                    'rating' => null,
-                                    'thumbnail' => $it['contentCoverUrl'] ?? $it['cover'] ?? null,
-                                    'url' => url('/dracin/serealplus/drama/' . $dramaId),
-                                    'slug' => $dramaId,
-                                    'source_name' => 'Sereal+',
+                                    'category' => 'anime',
+                                    'type' => 'Anime',
+                                    'badge' => 'Anime',
+                                    'year' => $status,
+                                    'rating' => $rating,
+                                    'thumbnail' => $poster,
+                                    'url' => url('/anime/' . $slug),
+                                    'slug' => $slug,
+                                    'source_name' => 'Server 1',
                                 ];
+                            });
+                        } catch (\Throwable $e) {}
+                    }
+
+                    // 2b. Parse Otakudesu
+                    if (isset($poolResponses['otakudesu']) && $poolResponses['otakudesu']->successful()) {
+                        try {
+                            $crawler = new \Symfony\Component\DomCrawler\Crawler((string) $poolResponses['otakudesu']->body());
+                            $crawler->filter('ul.chivsrc li')->each(function (\Symfony\Component\DomCrawler\Crawler $li) use (&$animes) {
+                                $a = $li->filter('h2 a');
+                                if (!$a->count()) return;
+                                $title = trim($a->text());
+                                $href = $a->attr('href') ?? '';
+                                $slug = basename(trim((string) parse_url($href, PHP_URL_PATH), '/'));
+                                if (empty($slug)) return;
+
+                                $img = $li->filter('img');
+                                $poster = $img->count() ? $img->attr('src') : null;
+
+                                $status = 'Anime';
+                                $li->filter('.set')->each(function (\Symfony\Component\DomCrawler\Crawler $s) use (&$status) {
+                                    $t = trim($s->text());
+                                    if (stripos($t, 'Status') !== false) {
+                                        $status = trim(str_ireplace(['Status', ':'], '', $t));
+                                    }
+                                });
+
+                                $rating = null;
+                                $li->filter('.set')->each(function (\Symfony\Component\DomCrawler\Crawler $s) use (&$rating) {
+                                    $t = trim($s->text());
+                                    if (stripos($t, 'Rating') !== false && preg_match('/([\d\.]+)/', $t, $m)) {
+                                        $rating = $m[1];
+                                    }
+                                });
+
+                                $animes[] = [
+                                    'id' => 'otaku:' . $slug,
+                                    'title' => $title,
+                                    'category' => 'anime',
+                                    'type' => 'Anime',
+                                    'badge' => 'Anime',
+                                    'year' => $status,
+                                    'rating' => $rating,
+                                    'thumbnail' => $poster,
+                                    'url' => url('/anime/' . $slug),
+                                    'slug' => $slug,
+                                    'source_name' => 'Server 2',
+                                ];
+                            });
+                        } catch (\Throwable $e) {}
+                    }
+
+                    // 2c. Parse Dracin Responses
+                    if ($needDracin) {
+                        // DramaBox
+                        if (isset($poolResponses['dramabox']) && $poolResponses['dramabox']->successful()) {
+                            $items = $poolResponses['dramabox']->json('data') ?? $poolResponses['dramabox']->json('items') ?? [];
+                            if (is_array($items)) {
+                                foreach ($items as $it) {
+                                    $id = (string)($it['bookId'] ?? $it['id'] ?? '');
+                                    $title = (string)($it['bookName'] ?? $it['name'] ?? '');
+                                    if (!$id || !$title) continue;
+                                    $eps = isset($it['chapterCount']) ? (int)$it['chapterCount'] : null;
+                                    $dracins[] = [
+                                        'id' => 'dracin:dramabox:' . $id,
+                                        'title' => $title,
+                                        'category' => 'dracin',
+                                        'type' => 'Dracin',
+                                        'badge' => 'Dracin',
+                                        'year' => $eps ? "{$eps} Eps" : 'Dracin',
+                                        'rating' => null,
+                                        'thumbnail' => $it['coverWap'] ?? $it['cover'] ?? null,
+                                        'url' => url('/dracin/dramabox/drama/' . $id),
+                                        'slug' => $id,
+                                        'source_name' => 'DramaBox',
+                                    ];
+                                }
+                            }
+                        }
+
+                        // ReelBuzz
+                        if (isset($poolResponses['reelbuzz']) && $poolResponses['reelbuzz']->successful()) {
+                            $items = $poolResponses['reelbuzz']->json('results') ?? $poolResponses['reelbuzz']->json('dramas') ?? [];
+                            if (is_array($items)) {
+                                foreach ($items as $it) {
+                                    $id = (string)($it['drama_id'] ?? $it['id'] ?? '');
+                                    $title = (string)($it['title'] ?? $it['name'] ?? '');
+                                    if (!$id || !$title) continue;
+                                    $dracins[] = [
+                                        'id' => 'dracin:reelbuzz:' . $id,
+                                        'title' => $title,
+                                        'category' => 'dracin',
+                                        'type' => 'Dracin',
+                                        'badge' => 'Dracin',
+                                        'year' => 'Dracin',
+                                        'rating' => null,
+                                        'thumbnail' => $it['cover'] ?? $it['poster'] ?? null,
+                                        'url' => url('/dracin/reelbuzz/drama/' . $id),
+                                        'slug' => $id,
+                                        'source_name' => 'ReelBuzz',
+                                    ];
+                                }
+                            }
+                        }
+
+                        // SerealPlus
+                        if (isset($poolResponses['serealplus']) && $poolResponses['serealplus']->successful()) {
+                            $items = $poolResponses['serealplus']->json('data.list') ?? [];
+                            if (is_array($items)) {
+                                foreach ($items as $it) {
+                                    $id = (string)($it['contentId'] ?? $it['id'] ?? '');
+                                    $title = (string)($it['contentName'] ?? $it['name'] ?? '');
+                                    if (!$id || !$title) continue;
+                                    $eps = isset($it['chapterNumber']) ? (int)$it['chapterNumber'] : null;
+                                    $dracins[] = [
+                                        'id' => 'dracin:serealplus:' . $id,
+                                        'title' => $title,
+                                        'category' => 'dracin',
+                                        'type' => 'Dracin',
+                                        'badge' => 'Dracin',
+                                        'year' => $eps ? "{$eps} Eps" : 'Dracin',
+                                        'rating' => null,
+                                        'thumbnail' => $it['contentCoverUrl'] ?? $it['cover'] ?? null,
+                                        'url' => url('/dracin/serealplus/drama/' . $id),
+                                        'slug' => $id,
+                                        'source_name' => 'Sereal+',
+                                    ];
+                                }
+                            }
+                        }
+
+                        // FlexTV
+                        if (isset($poolResponses['flextv']) && $poolResponses['flextv']->successful()) {
+                            $items = $poolResponses['flextv']->json('data.dramas') ?? [];
+                            if (is_array($items)) {
+                                foreach ($items as $it) {
+                                    $id = (string)($it['series_id'] ?? '');
+                                    $title = (string)($it['name'] ?? '');
+                                    if (!$id || !$title) continue;
+                                    $eps = isset($it['sections']) ? (int)$it['sections'] : null;
+                                    $dracins[] = [
+                                        'id' => 'dracin:flextv:' . $id,
+                                        'title' => $title,
+                                        'category' => 'dracin',
+                                        'type' => 'Dracin',
+                                        'badge' => 'Dracin',
+                                        'year' => $eps ? "{$eps} Eps" : 'Dracin',
+                                        'rating' => null,
+                                        'thumbnail' => $it['cover'] ?? null,
+                                        'url' => url('/dracin/flextv/drama/' . $id),
+                                        'slug' => $id,
+                                        'source_name' => 'FlexTV',
+                                    ];
+                                }
+                            }
+                        }
+
+                        // ReelShort
+                        if (isset($poolResponses['reelshort']) && $poolResponses['reelshort']->successful()) {
+                            $items = $poolResponses['reelshort']->json('results') ?? [];
+                            if (is_array($items)) {
+                                foreach ($items as $it) {
+                                    $id = (string)($it['id'] ?? '');
+                                    $title = (string)($it['title'] ?? '');
+                                    if (!$id || !$title) continue;
+                                    $eps = isset($it['chapters']) ? (int)$it['chapters'] : null;
+                                    $dracins[] = [
+                                        'id' => 'dracin:reelshort:' . $id,
+                                        'title' => $title,
+                                        'category' => 'dracin',
+                                        'type' => 'Dracin',
+                                        'badge' => 'Dracin',
+                                        'year' => $eps ? "{$eps} Eps" : 'Dracin',
+                                        'rating' => null,
+                                        'thumbnail' => $it['pic'] ?? null,
+                                        'url' => url('/dracin/reelshort/drama/' . $id),
+                                        'slug' => $id,
+                                        'source_name' => 'ReelShort',
+                                    ];
+                                }
+                            }
+                        }
+
+                        // DramaWave
+                        if (isset($poolResponses['dramawave']) && $poolResponses['dramawave']->successful()) {
+                            $items = $poolResponses['dramawave']->json('list') ?? [];
+                            if (is_array($items)) {
+                                foreach ($items as $it) {
+                                    $id = (string)($it['playlet_id'] ?? $it['id'] ?? '');
+                                    $title = (string)($it['name'] ?? $it['title'] ?? '');
+                                    if (!$id || !$title) continue;
+                                    $eps = isset($it['episode_count']) ? (int)$it['episode_count'] : null;
+                                    $dracins[] = [
+                                        'id' => 'dracin:dramawave:' . $id,
+                                        'title' => $title,
+                                        'category' => 'dracin',
+                                        'type' => 'Dracin',
+                                        'badge' => 'Dracin',
+                                        'year' => $eps ? "{$eps} Eps" : 'Dracin',
+                                        'rating' => null,
+                                        'thumbnail' => $it['cover'] ?? null,
+                                        'url' => url('/dracin/dramawave/drama/' . $id),
+                                        'slug' => $id,
+                                        'source_name' => 'DramaWave',
+                                    ];
+                                }
                             }
                         }
                     }
                 } catch (\Throwable $e) {
-                    Log::warning('GlobalSearch: Sereal+ search failed: ' . $e->getMessage());
-                }
-
-                $maxDracin = max(count($dbDracins), count($rbDracins), count($spDracins));
-                for ($i = 0; $i < $maxDracin; $i++) {
-                    if (isset($dbDracins[$i])) $dracins[] = $dbDracins[$i];
-                    if (isset($rbDracins[$i])) $dracins[] = $rbDracins[$i];
-                    if (isset($spDracins[$i])) $dracins[] = $spDracins[$i];
+                    Log::warning('GlobalSearch: Async pool search failed: ' . $e->getMessage());
                 }
             }
 
@@ -322,7 +434,6 @@ class GlobalSearchService
                 return array_slice($combined, 0, $limit);
             }
 
-            // Otherwise return the filtered group
             $group = match ($category) {
                 'movie' => $movies,
                 'series' => $series,

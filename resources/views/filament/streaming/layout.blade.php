@@ -183,6 +183,8 @@
     searchCategory: 'all',
     searchLoading: false,
     searchDebounce: null,
+    searchAbort: null,
+    searchClientCache: {},
     setSearchCategory(cat) {
         this.searchCategory = cat;
         if (this.searchQuery.trim()) {
@@ -191,34 +193,73 @@
     },
     onSearchInput() {
         clearTimeout(this.searchDebounce);
-        if (!this.searchQuery.trim()) {
+        const q = this.searchQuery.trim();
+        if (!q) {
             this.searchResults = [];
+            this.searchLoading = false;
+            if (this.searchAbort) {
+                this.searchAbort.abort();
+                this.searchAbort = null;
+            }
+            return;
+        }
+
+        const cacheKey = q.toLowerCase() + '_' + this.searchCategory;
+        if (this.searchClientCache[cacheKey]) {
+            this.searchResults = this.searchClientCache[cacheKey];
             this.searchLoading = false;
             return;
         }
+
         this.searchLoading = true;
         this.searchDebounce = setTimeout(() => {
             this.executeSearch();
-        }, 400);
+        }, 280);
     },
     executeSearch() {
-        if (!this.searchQuery.trim()) {
+        const q = this.searchQuery.trim();
+        if (!q) {
             this.searchResults = [];
             this.searchLoading = false;
             return;
         }
+
+        const cacheKey = q.toLowerCase() + '_' + this.searchCategory;
+        if (this.searchClientCache[cacheKey]) {
+            this.searchResults = this.searchClientCache[cacheKey];
+            this.searchLoading = false;
+            return;
+        }
+
+        if (this.searchAbort) {
+            this.searchAbort.abort();
+        }
+        this.searchAbort = new AbortController();
+
         this.searchLoading = true;
-        fetch('/api/search?q=' + encodeURIComponent(this.searchQuery) + '&category=' + encodeURIComponent(this.searchCategory))
+        fetch('/api/search?q=' + encodeURIComponent(q) + '&category=' + encodeURIComponent(this.searchCategory), {
+            signal: this.searchAbort.signal
+        })
             .then(res => res.json())
             .then(data => {
-                this.searchResults = Array.isArray(data) ? data : [];
-                this.searchLoading = false;
+                const resArray = Array.isArray(data) ? data : [];
+                this.searchClientCache[cacheKey] = resArray;
+                if (this.searchQuery.trim() === q) {
+                    this.searchResults = resArray;
+                    this.searchLoading = false;
+                }
             })
-            .catch(() => {
-                this.searchLoading = false;
+            .catch(err => {
+                if (err.name !== 'AbortError') {
+                    this.searchLoading = false;
+                }
             });
     },
     clearSearch() {
+        if (this.searchAbort) {
+            this.searchAbort.abort();
+            this.searchAbort = null;
+        }
         this.searchQuery = '';
         this.searchResults = [];
         this.searchLoading = false;
