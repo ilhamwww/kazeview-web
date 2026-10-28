@@ -120,8 +120,31 @@
                     </div>
                 </div>
 
-                {{-- Baris 4: Chips Parameter Operasional --}}
-                <div class="pt-4 md:pt-5 border-t border-white/[0.06] flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
+                {{-- Baris 4: Rincian Bandwidth per Kategori Konten --}}
+                @if(!empty($bw['categories']))
+                    <div class="pt-4 border-t border-white/[0.06] space-y-2.5">
+                        <div class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center justify-between">
+                            <span>Rincian Bandwidth per Kategori</span>
+                            <span class="text-zinc-500 font-normal lowercase hidden sm:inline">total {{ number_format($bw['total_requests'] ?? 0, 0, ',', '.') }} request tercatat</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-0.5">
+                            @foreach($bw['categories'] as $cKey => $cVal)
+                                <div class="p-2.5 rounded-xl bg-zinc-800/40 border border-white/[0.04] flex flex-col justify-between">
+                                    <div class="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400">
+                                        <span>{{ $cVal['icon'] }}</span>
+                                        <span class="truncate">{{ $cVal['label'] }}</span>
+                                    </div>
+                                    <div class="text-sm font-black text-white mt-1 tabular-nums">
+                                        {{ $cVal['formatted'] }}
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Baris 5: Chips Parameter Operasional --}}
+                <div class="pt-3 border-t border-white/[0.06] flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
                     <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800/40 border border-white/[0.04] text-zinc-300">
                         <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
                         <span>Estimasi: <strong class="text-white">~{{ number_format($bw['movies_est'], 0, ',', '.') }} film</strong></span>

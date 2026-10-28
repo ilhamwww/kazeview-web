@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use App\Models\BandwidthDailyStat;
 
 /**
  * Statistik traffic publik KZSTRM.
@@ -19,9 +20,9 @@ use App\Models\User;
 class TrafficStatsService
 {
     protected const TZ = 'Asia/Jakarta';
-    protected const LOG_PATH = '/var/log/nginx/kaze_access.log';
+    protected const LOG_PATH = '/var/log/nginx/kazestream_access.log';
     protected const DAYS = 7;
-    public const STREAM_LOG_PATH = '/var/log/nginx/kaze_stream.log';
+    public const STREAM_LOG_PATH = '/var/log/nginx/kazestream_stream.log';
     public const MONTHLY_QUOTA_TB = 1.5;
     public const MONTHLY_QUOTA_GB = 1500.0;
 
@@ -256,35 +257,43 @@ class TrafficStatsService
     }
 
     /**
-     * Hitung pemakaian bandwidth khusus stream relay bulan ini.
+     * Hitung pemakaian bandwidth seluruh konten streaming bulan ini:
+     * - Movie & TV Series
+     * - Anime
+     * - Drama China (Dracin)
+     * - Manga & Manhwa (Komik)
+     * - Media Streaming Proxy & Assets
+     * 
+     * Terintegrasi ke database ledger `bandwidth_daily_stats` sehingga:
+     * 1. Kebal terhadap rotasi harian log Nginx (tidak akan pernah reset harian).
+     * 2. Otomatis reset bulanan setiap tanggal 1 jam 00:00 WIB.
      * Limit jatah bulanan: 1,5 TB (1.500 GB).
      */
     public static function computeBandwidthStats(): array
     {
         $now = Carbon::now(self::TZ);
-        $currentMonthYear = $now->format('M/Y'); // misal 'Oct/2026'
         $nextMonthDate = $now->copy()->addMonth()->startOfMonth()->locale('id')->translatedFormat('j F Y');
 
-        $usedBytes = 0;
-        if (file_exists(self::STREAM_LOG_PATH) && is_readable(self::STREAM_LOG_PATH)) {
-            $handle = @fopen(self::STREAM_LOG_PATH, 'r');
-            if ($handle) {
-                while (($line = fgets($handle, 4096)) !== false) {
-                    // Mendukung format standard combined: IP - - [13/Oct/2026:...] "GET ..." 206 BYTES ...
-                    // Atau format kustom: [2026-10-...] BYTES
-                    if (preg_match('/\[\d{2}\/([a-zA-Z]{3}\/\d{4}):[^\]]*\]\s+"[^"]*"\s+\d+\s+(\d+)/', $line, $m)) {
-                        if (strcasecmp($m[1], $currentMonthYear) === 0) {
-                            $usedBytes += (int) $m[2];
-                        }
-                    } elseif (preg_match('/\[(\d{4}-\d{2})[^\]]*\]\s+(\d+)/', $line, $m)) {
-                        if ($m[1] === $now->format('Y-m')) {
-                            $usedBytes += (int) $m[2];
-                        }
-                    }
-                }
-                fclose($handle);
-            }
-        }
+        // 1. Sync traffic hari ini dari log Nginx aktif ke database ledger
+        try {
+            self::syncActiveBandwidth();
+        } catch (\Throwable $e) {}
+
+        // 2. Query akumulasi seluruh hari di bulan berjalan
+        $startOfMonth = $now->copy()->startOfMonth()->format('Y-m-d');
+        $endOfMonth = $now->copy()->endOfMonth()->format('Y-m-d');
+
+        $stats = BandwidthDailyStat::whereBetween('date', [$startOfMonth, $endOfMonth])->get();
+
+        $usedBytes = (int) $stats->sum('total_bytes');
+        $movieBytes = (int) $stats->sum('movie_bytes');
+        $seriesBytes = (int) $stats->sum('series_bytes');
+        $animeBytes = (int) $stats->sum('anime_bytes');
+        $dracinBytes = (int) $stats->sum('dracin_bytes');
+        $mangaBytes = (int) $stats->sum('manga_bytes');
+        $proxyBytes = (int) $stats->sum('proxy_bytes');
+        $otherBytes = (int) $stats->sum('other_bytes');
+        $totalRequests = (int) $stats->sum('requests_count');
 
         $quotaBytes = (float) (self::MONTHLY_QUOTA_TB * 1024 * 1024 * 1024 * 1024);
         $usedGb = round($usedBytes / (1024 * 1024 * 1024), 2);
@@ -309,7 +318,125 @@ class TrafficStatsService
             'max_concurrent' => 15,
             'status' => $percentUsed >= 95 ? 'Kritis' : ($percentUsed >= 80 ? 'Waspada' : 'Normal & Aman'),
             'status_color' => $percentUsed >= 95 ? 'text-rose-400 bg-rose-500/10 border-rose-500/30' : ($percentUsed >= 80 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'),
+            'categories' => [
+                'movie_series' => [
+                    'label' => 'Film & Series',
+                    'bytes' => $movieBytes + $seriesBytes,
+                    'formatted' => self::formatBytes($movieBytes + $seriesBytes),
+                    'icon' => '🎬',
+                ],
+                'anime' => [
+                    'label' => 'Anime',
+                    'bytes' => $animeBytes,
+                    'formatted' => self::formatBytes($animeBytes),
+                    'icon' => '⛩️',
+                ],
+                'dracin' => [
+                    'label' => 'Drama China',
+                    'bytes' => $dracinBytes,
+                    'formatted' => self::formatBytes($dracinBytes),
+                    'icon' => '🎭',
+                ],
+                'manga' => [
+                    'label' => 'Manga / Manhwa',
+                    'bytes' => $mangaBytes,
+                    'formatted' => self::formatBytes($mangaBytes),
+                    'icon' => '📖',
+                ],
+                'proxy' => [
+                    'label' => 'Media Relay & Proxy',
+                    'bytes' => $proxyBytes,
+                    'formatted' => self::formatBytes($proxyBytes),
+                    'icon' => '⚡',
+                ],
+                'other' => [
+                    'label' => 'Aset & Halaman Web',
+                    'bytes' => $otherBytes,
+                    'formatted' => self::formatBytes($otherBytes),
+                    'icon' => '🌐',
+                ],
+            ],
+            'total_requests' => $totalRequests,
         ];
+    }
+
+    /**
+     * Format byte ke string satuan yang mudah dibaca (GB / MB / KB).
+     */
+    public static function formatBytes(int $bytes): string
+    {
+        if ($bytes >= 1024 * 1024 * 1024) {
+            return number_format($bytes / (1024 * 1024 * 1024), 2, ',', '.') . ' GB';
+        }
+        if ($bytes >= 1024 * 1024) {
+            return number_format($bytes / (1024 * 1024), 1, ',', '.') . ' MB';
+        }
+        if ($bytes >= 1024) {
+            return number_format($bytes / 1024, 0, ',', '.') . ' KB';
+        }
+        return $bytes . ' B';
+    }
+
+    /**
+     * Sinkronisasi data log Nginx aktif hari ini ke database ledger.
+     */
+    public static function syncActiveBandwidth(): void
+    {
+        $logPath = self::LOG_PATH;
+        if (!is_file($logPath) || !is_readable($logPath)) return;
+
+        $now = Carbon::now(self::TZ);
+        $todayStr = $now->format('Y-m-d');
+
+        $handle = @fopen($logPath, 'r');
+        if (!$handle) return;
+
+        $agg = [
+            'total_bytes' => 0,
+            'movie_bytes' => 0,
+            'series_bytes' => 0,
+            'anime_bytes' => 0,
+            'dracin_bytes' => 0,
+            'manga_bytes' => 0,
+            'proxy_bytes' => 0,
+            'other_bytes' => 0,
+            'requests_count' => 0,
+        ];
+
+        while (($line = fgets($handle, 4096)) !== false) {
+            if (preg_match('/\[(\d{2})\/([a-zA-Z]{3})\/(\d{4}):[^\]]*\]\s+"(\w+)\s+([^\s"]+)[^"]*"\s+(\d+)\s+(\d+)/', $line, $m)) {
+                $monNum = date('m', strtotime("1 {$m[2]} 2000"));
+                $lineDate = "{$m[3]}-{$monNum}-{$m[1]}";
+                if ($lineDate !== $todayStr) continue;
+
+                $path = $m[5];
+                $bytes = (int) $m[7];
+                $agg['total_bytes'] += $bytes;
+                $agg['requests_count']++;
+
+                $lower = strtolower($path);
+                $isAnime = str_contains($lower, 'anime') || str_contains($lower, 'suzune') || str_contains($lower, 'suguha') || str_contains($lower, 'mirainime') || str_contains($lower, 'otakudesu');
+                $isDracin = str_contains($lower, 'dracin') || str_contains($lower, 'dramabox') || str_contains($lower, 'melolo') || str_contains($lower, 'goodbos') || str_contains($lower, 'reelbuzz') || str_contains($lower, 'serealplus') || str_contains($lower, 'flextv') || str_contains($lower, 'reelshort') || str_contains($lower, 'dramawave');
+                $isSeries = str_contains($lower, '/series');
+                $isMovie = str_contains($lower, '/movie') || str_contains($lower, 'idlix') || str_contains($lower, 'rebahin') || str_contains($lower, 'stream-relay');
+                $isManga = str_contains($lower, 'manga') || str_contains($lower, 'manhwa') || str_contains($lower, 'comic') || str_contains($lower, 'doujin') || str_contains($lower, 'doujindesu');
+                $isProxy = str_contains($lower, 'proxy-') || str_contains($lower, 'stream');
+
+                if ($isAnime) $agg['anime_bytes'] += $bytes;
+                elseif ($isDracin) $agg['dracin_bytes'] += $bytes;
+                elseif ($isSeries) $agg['series_bytes'] += $bytes;
+                elseif ($isMovie) $agg['movie_bytes'] += $bytes;
+                elseif ($isManga) $agg['manga_bytes'] += $bytes;
+                elseif ($isProxy) $agg['proxy_bytes'] += $bytes;
+                else $agg['other_bytes'] += $bytes;
+            }
+        }
+        fclose($handle);
+
+        BandwidthDailyStat::updateOrCreate(
+            ['date' => $todayStr],
+            $agg
+        );
     }
 
     /** File log 7 hari terakhir: aktif, .1 (plain), .2.gz s/d .7.gz */
@@ -327,10 +454,7 @@ class TrafficStatsService
     protected static function isPageView(string $path): bool
     {
         $p = strtok($path, '?');
-        if (!str_starts_with($p, '/streaming')) {
-            return false;
-        }
-        if (str_contains($p, '/livewire') || str_contains($p, '/api/')) {
+        if (str_contains($p, '/livewire') || str_contains($p, '/api/') || str_contains($p, '/sw-play') || str_contains($p, '/offline.html')) {
             return false;
         }
 
@@ -344,6 +468,7 @@ class TrafficStatsService
         return match (true) {
             str_contains($p, 'dracin') || str_contains($p, 'bstation') => 'dracin',
             str_contains($p, 'anime') => 'anime',
+            str_contains($p, 'manga') || str_contains($p, 'manhwa') || str_contains($p, 'comic') || str_contains($p, 'doujin') => 'manga',
             str_contains($p, 'series') => 'series',
             str_contains($p, 'movie') => 'movie',
             str_contains($p, 'collection') => 'collection',
