@@ -339,7 +339,6 @@
                             {{ $episodeDetail['title'] ?? ($seriesDetail['title'] . ' Episode ' . $epNo) }}
                         </h1>
                         <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-                            <span class="px-2 py-0.5 rounded-md bg-red-600/20 text-red-400 font-bold border border-red-500/30" x-text="serversList.find(s => s.id === activeServer)?.name ? (activeServer === 'server1' ? 'SERVER 1 FHD' : 'SERVER 2 ALT') : 'SERVER 1 FHD'">SERVER 1 FHD</span>
                             @if(!empty($metadata['score']))
                                 <span class="inline-flex items-center gap-1 font-bold text-amber-300">
                                     <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
@@ -347,14 +346,16 @@
                                 </span>
                             @endif
                             @if(!empty($metadata['duration']))
-                                <span class="text-zinc-600">·</span>
+                                @if(!empty($metadata['score']))
+                                    <span class="text-zinc-600">·</span>
+                                @endif
                                 <span>{{ $metadata['duration'] }}</span>
                             @endif
-                            <span class="text-zinc-600">·</span>
-                            <span class="font-bold text-emerald-400">HD 720p</span>
                             @if(!empty($seriesDetail['genres']))
-                                @foreach(array_slice($seriesDetail['genres'], 0, 3) as $g)
-                                    <span class="text-zinc-600">·</span>
+                                @foreach(array_slice($seriesDetail['genres'], 0, 3) as $i => $g)
+                                    @if(!empty($metadata['score']) || !empty($metadata['duration']) || $i > 0)
+                                        <span class="text-zinc-600">·</span>
+                                    @endif
                                     <span>{{ $g }}</span>
                                 @endforeach
                             @endif
