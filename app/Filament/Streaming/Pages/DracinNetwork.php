@@ -69,7 +69,7 @@ class DracinNetwork extends Page
 
     public function setTab(string $tab): void
     {
-        $allowed = ['popular', 'new', 'hot', 'vip', 'trending', 'latest', 'foryou', 'dubbed'];
+        $allowed = ['popular', 'new', 'hot', 'vip', 'trending', 'latest', 'foryou', 'dubbed', 'home', 'newest', 'recommend', 'new_releases', 'featured', 'POPULER', 'TERBARU', 'ASIA', 'RANKING', 'KHUSUS PRIA', 'KHUSUS WANITA'];
         if (!in_array($tab, $allowed, true)) {
             return;
         }
@@ -131,13 +131,13 @@ class DracinNetwork extends Page
                 ];
             }
 
-            // Ensure RaptDrama is included
-            if (!collect($activePlatforms)->contains('id', 'raptdrama')) {
+            // Ensure Melolo is included
+            if (!collect($activePlatforms)->contains('id', 'melolo')) {
                 $activePlatforms[] = [
-                    'id' => 'raptdrama',
-                    'name' => 'RaptDrama',
-                    'logo' => null,
-                    'api' => 'https://raptdrama.goodbos.online',
+                    'id' => 'melolo',
+                    'name' => 'Melolo',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/melolo.svg',
+                    'api' => 'https://melolo.goodbos.online',
                     'status' => 'active',
                 ];
             }
@@ -149,6 +149,17 @@ class DracinNetwork extends Page
                     'name' => 'GoodShort',
                     'logo' => null,
                     'api' => 'https://goodshort.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure RaptDrama is included
+            if (!collect($activePlatforms)->contains('id', 'raptdrama')) {
+                $activePlatforms[] = [
+                    'id' => 'raptdrama',
+                    'name' => 'RaptDrama',
+                    'logo' => null,
+                    'api' => 'https://raptdrama.goodbos.online',
                     'status' => 'active',
                 ];
             }
@@ -252,17 +263,85 @@ class DracinNetwork extends Page
                 ];
             }
 
+            // Ensure FlexTV is included
+            if (!collect($activePlatforms)->contains('id', 'flextv')) {
+                $activePlatforms[] = [
+                    'id' => 'flextv',
+                    'name' => 'FlexTV',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/flextv.svg',
+                    'api' => 'https://flextv.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure ShortsWave is included
+            if (!collect($activePlatforms)->contains('id', 'shortswave')) {
+                $activePlatforms[] = [
+                    'id' => 'shortswave',
+                    'name' => 'ShortsWave',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/shortwave.png',
+                    'api' => 'https://shortwave.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure FreeReels is included
+            if (!collect($activePlatforms)->contains('id', 'freereels')) {
+                $activePlatforms[] = [
+                    'id' => 'freereels',
+                    'name' => 'FreeReels',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/freereels.svg',
+                    'api' => 'https://drakula.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure FlickReels is included
+            if (!collect($activePlatforms)->contains('id', 'flickreels')) {
+                $activePlatforms[] = [
+                    'id' => 'flickreels',
+                    'name' => 'FlickReels',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/flickreels.svg',
+                    'api' => 'https://flickreels.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure StarShort is included
+            if (!collect($activePlatforms)->contains('id', 'starshort')) {
+                $activePlatforms[] = [
+                    'id' => 'starshort',
+                    'name' => 'StarShort',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/starshort.png',
+                    'api' => 'https://drakula.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure DotDrama is included
+            if (!collect($activePlatforms)->contains('id', 'dotdrama')) {
+                $activePlatforms[] = [
+                    'id' => 'dotdrama',
+                    'name' => 'DotDrama',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/dotdrama.svg',
+                    'api' => 'https://dotdrama.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure DramaWave is included
+            if (!collect($activePlatforms)->contains('id', 'dramawave')) {
+                $activePlatforms[] = [
+                    'id' => 'dramawave',
+                    'name' => 'DramaWave',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/dramawave.svg',
+                    'api' => 'https://dramawave.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
             return $activePlatforms;
         });
-
-        // Find the network by slug
-        $this->network = collect($networks)->first(function ($net) use ($slug) {
-            return $net['id'] === $slug || ($slug === 'serealplus' && $net['id'] === 'serialplus') || ($slug === 'serialplus' && $net['id'] === 'serealplus');
-        });
-
-        if (!$this->network) {
-            abort(404, 'Network not found or inactive');
-        }
 
         $nameMap = [
             'serealplus' => 'Sereal+',
@@ -279,7 +358,34 @@ class DracinNetwork extends Page
             'raptdrama' => 'RaptDrama',
             'reelbuzz' => 'ReelBuzz',
             'melolo' => 'Melolo',
+            'flextv' => 'FlexTV',
+            'shortswave' => 'ShortsWave',
+            'freereels' => 'FreeReels',
+            'flickreels' => 'FlickReels',
+            'starshort' => 'StarShort',
+            'dotdrama' => 'DotDrama',
+            'dramawave' => 'DramaWave',
         ];
+
+        // Find the network by slug
+        $this->network = collect($networks)->first(function ($net) use ($slug) {
+            return $net['id'] === $slug || ($slug === 'serealplus' && $net['id'] === 'serialplus') || ($slug === 'serialplus' && $net['id'] === 'serealplus');
+        });
+
+        if (!$this->network && isset($nameMap[$slug])) {
+            $this->network = [
+                'id' => $slug,
+                'name' => $nameMap[$slug],
+                'logo' => "https://api.dramabuzz.sbs/logos/{$slug}.svg",
+                'api' => "https://{$slug}.goodbos.online",
+                'status' => 'active',
+            ];
+        }
+
+        if (!$this->network) {
+            abort(404, 'Network not found or inactive');
+        }
+
         if (isset($nameMap[$slug])) {
             $this->network['name'] = $nameMap[$slug];
         }
@@ -306,6 +412,7 @@ class DracinNetwork extends Page
         }
 
         if ($this->slugVal === 'reelshort') {
+            $this->lang = 'in';
             $this->tab = 'POPULER';
         }
         if ($this->slugVal === 'vibeshort') {
@@ -318,7 +425,8 @@ class DracinNetwork extends Page
             $this->lang = 'in';
         }
         if ($this->slugVal === 'raptdrama') {
-            $this->tab = 'trending';
+            $this->lang = 'id';
+            $this->tab = 'recommend';
         }
         if ($this->slugVal === 'stardusttv') {
             $this->lang = 'id';
@@ -326,6 +434,29 @@ class DracinNetwork extends Page
         if ($this->slugVal === 'serealplus' || $this->slugVal === 'serialplus') {
             $this->lang = 'id';
             $this->tab = 'popular';
+        }
+        if ($this->slugVal === 'flextv') {
+            $this->tab = 'popular';
+        }
+        if ($this->slugVal === 'shortswave') {
+            $this->lang = 'in';
+        }
+        if ($this->slugVal === 'freereels') {
+            $this->lang = 'in';
+            $this->tab = 'popular';
+        }
+        if ($this->slugVal === 'flickreels') {
+            $this->lang = 'in';
+        }
+        if ($this->slugVal === 'starshort') {
+            $this->tab = 'hot';
+        }
+        if ($this->slugVal === 'dotdrama') {
+            $this->lang = 'in';
+        }
+        if ($this->slugVal === 'dramawave') {
+            $this->lang = 'in';
+            $this->tab = 'recommend';
         }
 
         static::$title = 'Drama China - ' . $this->network['name'];
@@ -625,13 +756,27 @@ class DracinNetwork extends Page
         if ($this->slugVal === 'raptdrama') {
             $page = $this->offset + 1;
             if ($isSearch) {
-                $url = "https://raptdrama.goodbos.online/api/raptdrama/search?query=" . urlencode($this->search) . "&page={$page}";
+                $url = "https://raptdrama.goodbos.online/api/raptdrama/search?query=" . urlencode($this->search) . "&page={$page}&lang=" . urlencode($this->lang);
             } else {
-                $url = "https://raptdrama.goodbos.online/api/raptdrama/home";
+                $endpoint = match ($this->tab) {
+                    'trending' => 'trending',
+                    'new_releases', 'new' => 'new',
+                    'featured' => 'featured',
+                    default => "recommend?page={$page}",
+                };
+                $sep = str_contains($endpoint, '?') ? '&' : '?';
+                $url = "https://raptdrama.goodbos.online/api/raptdrama/{$endpoint}{$sep}lang=" . urlencode($this->lang);
             }
 
             try {
-                $response = Http::timeout(15)->withHeaders(['x-token' => $apiKey])->get($url);
+                $response = Http::timeout(15)
+                    ->withHeaders([
+                        'x-token' => $apiKey,
+                        'Accept-Language' => $this->lang,
+                        'x-language' => $this->lang,
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+                    ])
+                    ->get($url);
 
                 if (!$response->successful()) {
                     $this->hasMore = false;
@@ -640,10 +785,19 @@ class DracinNetwork extends Page
 
                 $raw = $response->json('data') ?? [];
                 if ($isSearch) {
-                    $items = $raw['items'] ?? (is_array($raw) ? $raw : []);
+                    $items = $raw['results'] ?? ($raw['items'] ?? (is_array($raw) ? $raw : []));
                 } else {
-                    $tabKey = in_array($this->tab, ['trending', 'new_releases', 'featured', 'recommend'], true) ? $this->tab : 'trending';
-                    $items = $raw[$tabKey] ?? ($raw['trending'] ?? []);
+                    if (is_array($raw) && isset($raw[0])) {
+                        $items = $raw;
+                    } elseif (isset($raw['items']) && is_array($raw['items'])) {
+                        $items = $raw['items'];
+                    } elseif (isset($raw['trending']) || isset($raw['recommend'])) {
+                        $tabKey = in_array($this->tab, ['trending', 'new_releases', 'featured', 'recommend'], true) ? $this->tab : 'recommend';
+                        $items = $raw[$tabKey] ?? ($raw['recommend'] ?? ($raw['trending'] ?? []));
+                    } else {
+                        $items = is_array($raw) ? $raw : [];
+                    }
+
                     if (!empty($items) && isset($items[0]['video'])) {
                         $items = array_map(fn($it) => $it['video'] ?? $it, $items);
                     }
@@ -664,9 +818,9 @@ class DracinNetwork extends Page
                         'id' => (string) ($item['id'] ?? ''),
                         'name' => (string) ($item['title'] ?? ''),
                         'cover' => $item['image'] ?? null,
-                        'episodes' => isset($item['tstype']) ? (int) $item['tstype'] : (isset($item['total_episodes']) ? (int) $item['total_episodes'] : null),
+                        'episodes' => isset($item['totalvideo']) ? (int) $item['totalvideo'] : (isset($item['tstype']) ? (int) $item['tstype'] : (isset($item['total_episodes']) ? (int) $item['total_episodes'] : 30)),
                         'intro' => $description !== '' ? $description : $classify,
-                        'is_hot' => ($item['score'] ?? '') >= 9.0,
+                        'is_hot' => (float) ($item['score'] ?? 0) >= 9.0,
                         'is_new' => false,
                     ];
 
@@ -684,7 +838,11 @@ class DracinNetwork extends Page
                 $valid = array_values(array_filter($mapped, fn($d) => !empty($d['id'])));
                 $this->dramas = array_merge($this->dramas, $valid);
                 $this->offset++;
-                $this->hasMore = false;
+                if (in_array($this->tab, ['trending', 'new_releases', 'featured'], true)) {
+                    $this->hasMore = false;
+                } else {
+                    $this->hasMore = count($valid) >= 10;
+                }
             } catch (\Throwable $exception) {
                 $this->hasMore = false;
             }
@@ -953,19 +1111,26 @@ class DracinNetwork extends Page
 
         if ($this->slugVal === 'reelshort') {
             $page = $this->offset + 1;
+            $lang = $this->lang ?: 'in';
+
             if ($isSearch) {
-                $url = "https://reelshort.goodbos.online/search?q=" . urlencode($this->search) . "&code={$apiKey}&lang=in";
+                $url = "https://reelshort.goodbos.online/search?q=" . urlencode($this->search) . "&lang=" . urlencode($lang);
             } elseif ($page > 1) {
-                $url = "https://reelshort.goodbos.online/shelf/2009269?page={$page}&limit=24&lang=in&code={$apiKey}";
+                $url = "https://reelshort.goodbos.online/shelf/2009269?page={$page}&limit=24&lang=" . urlencode($lang);
             } else {
-                $tabName = $this->tab ?: 'POPULER';
-                $url = "https://reelshort.goodbos.online/home?code={$apiKey}&lang=in&tab=" . urlencode($tabName);
+                $tabName = strtolower($this->tab ?: 'populer');
+                $url = "https://reelshort.goodbos.online/home?tab=" . urlencode($tabName) . "&lang=" . urlencode($lang);
             }
 
             try {
-                $response = Http::timeout(12)->get($url);
+                $response = Http::timeout(15)->get($url);
                 if ($response->successful()) {
-                    $books = $response->json('books') ?: $response->json('data') ?: [];
+                    if ($isSearch) {
+                        $books = $response->json('results') ?? [];
+                    } else {
+                        $books = $response->json('books') ?? ($response->json('data') ?? []);
+                    }
+
                     $mapped = array_map(function ($b) {
                         return [
                             'id' => (string) ($b['id'] ?? ''),
@@ -981,7 +1146,8 @@ class DracinNetwork extends Page
                     $valid = array_values(array_filter($mapped, fn($d) => !empty($d['id'])));
                     $this->dramas = array_merge($this->dramas, $valid);
                     $this->offset++;
-                    $this->hasMore = count($valid) >= 12;
+                    $isFinished = (bool) $response->json('is_finished');
+                    $this->hasMore = !$isFinished && count($valid) >= 12;
                 } else {
                     $this->hasMore = false;
                 }
@@ -1098,6 +1264,376 @@ class DracinNetwork extends Page
                     $this->dramas = array_merge($this->dramas, $valid);
                     $this->offset++;
                     $this->hasMore = count($valid) >= 20;
+                } else {
+                    $this->hasMore = false;
+                }
+            } catch (\Exception $e) {
+                $this->hasMore = false;
+            }
+            return;
+        }
+
+        // FlexTV
+        if ($this->slugVal === 'flextv') {
+            $page = $this->offset + 1;
+            if ($isSearch) {
+                $url = "https://flextv.goodbos.online/api/drama/search?keyword=" . urlencode($this->search) . "&page={$page}";
+            } else {
+                $endpoint = match ($this->tab) {
+                    'newest' => 'newest',
+                    'home' => 'home',
+                    default => 'popular',
+                };
+                $url = "https://flextv.goodbos.online/api/drama/{$endpoint}?code={$apiKey}&page={$page}";
+            }
+
+            try {
+                $response = Http::timeout(12)->get($url);
+                if ($response->successful()) {
+                    $dramas = $response->json('data.dramas') ?? [];
+                    if (is_array($dramas) && count($dramas) > 0) {
+                        $mapped = array_map(function ($it) {
+                            $d = [
+                                'id' => (string) ($it['series_id'] ?? ''),
+                                'name' => (string) ($it['name'] ?? ''),
+                                'cover' => $it['cover'] ?? null,
+                                'episodes' => (int) ($it['sections'] ?? 0),
+                                'intro' => $it['description'] ?? implode(', ', $it['tags'] ?? []),
+                                'is_hot' => ($it['video_type'] ?? 0) === 7,
+                                'is_new' => ($it['serial_status'] ?? 0) === 1,
+                            ];
+                            if (!empty($d['id'])) {
+                                Cache::put('flextv_drama_' . $d['id'], $d, now()->addHours(6));
+                            }
+                            return $d;
+                        }, $dramas);
+
+                        $valid = array_values(array_filter($mapped, fn($d) => !empty($d['id'])));
+                        $this->dramas = array_merge($this->dramas, $valid);
+                        $this->offset++;
+                        $this->hasMore = count($valid) >= 10;
+                    } else {
+                        $this->hasMore = false;
+                    }
+                } else {
+                    $this->hasMore = false;
+                }
+            } catch (\Exception $e) {
+                $this->hasMore = false;
+            }
+            return;
+        }
+
+        // ShortsWave
+        if ($this->slugVal === 'shortswave') {
+            $page = $this->offset + 1;
+            if ($isSearch) {
+                $url = "https://shortwave.goodbos.online/api/search?q=" . urlencode($this->search) . "&lang=in&code={$apiKey}";
+            } else {
+                $url = "https://shortwave.goodbos.online/api/home?lang=in&code={$apiKey}&page={$page}";
+            }
+
+            try {
+                $response = Http::timeout(12)->get($url);
+                if ($response->successful()) {
+                    $items = $response->json('data') ?? [];
+                    if (is_array($items) && count($items) > 0) {
+                        $mapped = array_map(function ($it) {
+                            $id = (string) ($it['drama_id'] ?? $it['drama_intid'] ?? '');
+                            $d = [
+                                'id' => $id,
+                                'name' => (string) ($it['drama_title'] ?? $it['title'] ?? ''),
+                                'cover' => $it['cover'] ?? null,
+                                'episodes' => (int) ($it['chapters'] ?? 0),
+                                'intro' => $it['drama_description'] ?? $it['description'] ?? '',
+                                'is_hot' => !empty($it['is_completed']),
+                                'is_new' => false,
+                            ];
+                            if (!empty($d['id'])) {
+                                Cache::put('shortswave_drama_' . $d['id'], $d, now()->addHours(6));
+                            }
+                            return $d;
+                        }, $items);
+
+                        $valid = array_values(array_filter($mapped, fn($d) => !empty($d['id'])));
+                        $this->dramas = array_merge($this->dramas, $valid);
+                        $this->offset++;
+                        $this->hasMore = count($valid) >= 10;
+                    } else {
+                        $this->hasMore = false;
+                    }
+                } else {
+                    $this->hasMore = false;
+                }
+            } catch (\Exception $e) {
+                $this->hasMore = false;
+            }
+            return;
+        }
+
+        // FreeReels
+        if ($this->slugVal === 'freereels') {
+            $page = $this->offset + 1;
+            if ($isSearch) {
+                $url = "https://drakula.goodbos.online/api/freereels/search?q=" . urlencode($this->search) . "&lang=in&code={$apiKey}";
+            } else {
+                $endpoint = match ($this->tab) {
+                    'popular' => 'popular',
+                    'new' => 'new',
+                    default => 'foryou',
+                };
+                $url = "https://drakula.goodbos.online/api/freereels/{$endpoint}?page={$page}&lang=in&code={$apiKey}";
+            }
+
+            try {
+                $response = Http::timeout(12)->get($url);
+                if ($response->successful()) {
+                    $items = $response->json('data.data.items') ?? ($response->json('data.items') ?? ($response->json('data.data') ?? ($response->json('data') ?? [])));
+                    if (is_array($items) && count($items) > 0) {
+                        $mapped = array_map(function ($it) {
+                            $series = $it['series'] ?? $it;
+                            $id = (string) ($series['key'] ?? $series['id'] ?? $series['series_id'] ?? '');
+                            $d = [
+                                'id' => $id,
+                                'name' => (string) ($series['title'] ?? $series['name'] ?? ''),
+                                'cover' => $series['cover'] ?? null,
+                                'episodes' => (int) ($series['episode_count'] ?? $series['total_episodes'] ?? 30),
+                                'intro' => $series['desc'] ?? $series['description'] ?? '',
+                                'is_hot' => true,
+                                'is_new' => false,
+                            ];
+                            if (!empty($d['id'])) {
+                                Cache::put('freereels_drama_' . $d['id'], $d, now()->addHours(6));
+                            }
+                            return $d;
+                        }, $items);
+
+                        $valid = array_values(array_filter($mapped, fn($d) => !empty($d['id'])));
+                        $this->dramas = array_merge($this->dramas, $valid);
+                        $this->offset++;
+                        $this->hasMore = count($valid) >= 10;
+                    } else {
+                        $this->hasMore = false;
+                    }
+                } else {
+                    $this->hasMore = false;
+                }
+            } catch (\Exception $e) {
+                $this->hasMore = false;
+            }
+            return;
+        }
+
+        // FlickReels
+        if ($this->slugVal === 'flickreels') {
+            $page = $this->offset + 1;
+            if ($isSearch) {
+                $url = "https://flickreels.goodbos.online/search?q=" . urlencode($this->search) . "&lang=in";
+            } else {
+                $url = "https://flickreels.goodbos.online/api/home?lang=in&page={$page}";
+            }
+
+            try {
+                $response = Http::timeout(12)->get($url);
+                if ($response->successful()) {
+                    $items = $isSearch ? ($response->json('data') ?? []) : ($response->json('data.data') ?? ($response->json('data') ?? []));
+                    if (is_array($items) && count($items) > 0) {
+                        $mapped = array_map(function ($it) {
+                            $id = (string) ($it['playlet_id'] ?? $it['id'] ?? '');
+                            $d = [
+                                'id' => $id,
+                                'name' => (string) ($it['title'] ?? $it['name'] ?? ''),
+                                'cover' => $it['cover'] ?? null,
+                                'episodes' => (int) ($it['total_chapter'] ?? $it['chapters'] ?? 30),
+                                'intro' => $it['introduce'] ?? $it['description'] ?? '',
+                                'is_hot' => !empty($it['hot_num']),
+                                'is_new' => false,
+                            ];
+                            if (!empty($d['id'])) {
+                                Cache::put('flickreels_drama_' . $d['id'], $d, now()->addHours(6));
+                            }
+                            return $d;
+                        }, $items);
+
+                        $valid = array_values(array_filter($mapped, fn($d) => !empty($d['id'])));
+                        $this->dramas = array_merge($this->dramas, $valid);
+                        $this->offset++;
+                        $this->hasMore = count($valid) >= 8;
+                    } else {
+                        $this->hasMore = false;
+                    }
+                } else {
+                    $this->hasMore = false;
+                }
+            } catch (\Exception $e) {
+                $this->hasMore = false;
+            }
+            return;
+        }
+
+        // StarShort
+        if ($this->slugVal === 'starshort') {
+            $page = $this->offset + 1;
+            if ($isSearch) {
+                $url = "https://drakula.goodbos.online/api/starshort/search?keyword=" . urlencode($this->search) . "&locale=id&code={$apiKey}";
+            } else {
+                $endpoint = ($this->tab === 'latest') ? "content/latest?locale=id&p={$page}&code={$apiKey}" : "content/recommended?locale=id&code={$apiKey}";
+                $url = "https://drakula.goodbos.online/api/starshort/{$endpoint}";
+            }
+
+            try {
+                $response = Http::timeout(12)->get($url);
+                if ($response->successful()) {
+                    $items = $response->json('data') ?? [];
+                    if (is_array($items) && count($items) > 0) {
+                        $mapped = array_map(function ($it) {
+                            $id = (string) ($it['show_id'] ?? $it['id'] ?? '');
+                            $d = [
+                                'id' => $id,
+                                'name' => (string) ($it['title'] ?? ''),
+                                'cover' => $it['cover'] ?? null,
+                                'episodes' => (int) ($it['episodes'] ?? $it['total_episodes'] ?? 40),
+                                'intro' => $it['description'] ?? implode(', ', $it['tags'] ?? []),
+                                'is_hot' => true,
+                                'is_new' => false,
+                            ];
+                            if (!empty($d['id'])) {
+                                Cache::put('starshort_drama_' . $d['id'], $d, now()->addHours(6));
+                            }
+                            return $d;
+                        }, $items);
+
+                        $valid = array_values(array_filter($mapped, fn($d) => !empty($d['id'])));
+                        $this->dramas = array_merge($this->dramas, $valid);
+                        $this->offset++;
+                        $this->hasMore = count($valid) >= 10;
+                    } else {
+                        $this->hasMore = false;
+                    }
+                } else {
+                    $this->hasMore = false;
+                }
+            } catch (\Exception $e) {
+                $this->hasMore = false;
+            }
+            return;
+        }
+
+        // DotDrama
+        if ($this->slugVal === 'dotdrama') {
+            $page = $this->offset + 1;
+            if ($isSearch) {
+                $url = "https://dotdrama.goodbos.online/api/search?q=" . urlencode($this->search) . "&lang=in";
+            } else {
+                $url = "https://dotdrama.goodbos.online/api/drama/list?lang=in&page={$page}&limit=20";
+            }
+
+            try {
+                $response = Http::timeout(12)->get($url);
+                if ($response->successful()) {
+                    $items = $response->json('dgiv.lint') ?? ($response->json('data') ?? []);
+                    if (is_array($items) && count($items) > 0) {
+                        $mapped = array_map(function ($it) {
+                            $id = (string) ($it['dcup'] ?? $it['id'] ?? '');
+                            $d = [
+                                'id' => $id,
+                                'name' => (string) ($it['nseri'] ?? $it['name'] ?? $it['title'] ?? ''),
+                                'cover' => $it['pday'] ?? $it['cover'] ?? null,
+                                'episodes' => (int) ($it['ewood'] ?? $it['episodes'] ?? 50),
+                                'intro' => $it['dwill'] ?? $it['intro'] ?? '',
+                                'is_hot' => true,
+                                'is_new' => false,
+                            ];
+                            if (!empty($d['id'])) {
+                                Cache::put('dotdrama_drama_' . $d['id'], $d, now()->addHours(6));
+                            }
+                            return $d;
+                        }, $items);
+
+                        $valid = array_values(array_filter($mapped, fn($d) => !empty($d['id'])));
+                        $this->dramas = array_merge($this->dramas, $valid);
+                        $this->offset++;
+                        $this->hasMore = count($valid) >= 10;
+                    } else {
+                        $this->hasMore = false;
+                    }
+                } else {
+                    $this->hasMore = false;
+                }
+            } catch (\Exception $e) {
+                $this->hasMore = false;
+            }
+            return;
+        }
+
+        // DramaWave
+        if ($this->slugVal === 'dramawave') {
+            $page = $this->offset + 1;
+            $lang = !empty($this->lang) ? $this->lang : 'in';
+
+            if ($isSearch) {
+                $url = "https://dramawave.goodbos.online/api/search?q=" . urlencode($this->search) . "&lang={$lang}&code={$apiKey}&next={$page}";
+            } else {
+                if ($this->tab === 'anime') {
+                    $url = "https://dramawave.goodbos.online/api/anime?lang={$lang}&next={$page}";
+                } elseif ($this->tab === 'home') {
+                    $url = "https://dramawave.goodbos.online/api/home?lang={$lang}";
+                } else {
+                    $url = "https://dramawave.goodbos.online/api/recommend?lang={$lang}&next={$page}";
+                }
+            }
+
+            try {
+                $response = Http::timeout(12)->get($url);
+                if ($response->successful()) {
+                    if ($isSearch) {
+                        $items = $response->json('list') ?? [];
+                    } elseif ($this->tab === 'home') {
+                        $sections = $response->json('data') ?? [];
+                        $items = [];
+                        foreach ($sections as $sec) {
+                            if (!empty($sec['items']) && is_array($sec['items'])) {
+                                $items = array_merge($items, $sec['items']);
+                            }
+                        }
+                    } else {
+                        $items = $response->json('items') ?? ($response->json('data') ?? []);
+                    }
+
+                    if (is_array($items) && count($items) > 0) {
+                        $mapped = array_map(function ($it) {
+                            $id = (string) ($it['playlet_id'] ?? $it['id'] ?? '');
+                            $d = [
+                                'id' => $id,
+                                'name' => (string) ($it['name'] ?? $it['title'] ?? ''),
+                                'cover' => $it['cover'] ?? null,
+                                'episodes' => (int) ($it['episode_count'] ?? 50),
+                                'intro' => $it['desc'] ?? '',
+                                'is_hot' => true,
+                                'is_new' => false,
+                            ];
+                            if (!empty($d['id'])) {
+                                Cache::put('dramawave_drama_' . $d['id'], $d, now()->addHours(6));
+                            }
+                            return $d;
+                        }, $items);
+
+                        $valid = array_values(array_filter($mapped, fn($d) => !empty($d['id'])));
+                        $this->dramas = array_merge($this->dramas, $valid);
+                        $this->offset++;
+                        if ($this->tab === 'home') {
+                            $this->hasMore = false;
+                        } else {
+                            $pageInfo = $response->json('page_info');
+                            if (is_array($pageInfo) && isset($pageInfo['has_more'])) {
+                                $this->hasMore = (bool) $pageInfo['has_more'];
+                            } else {
+                                $this->hasMore = count($valid) >= 10;
+                            }
+                        }
+                    } else {
+                        $this->hasMore = false;
+                    }
                 } else {
                     $this->hasMore = false;
                 }

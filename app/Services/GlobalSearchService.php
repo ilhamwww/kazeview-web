@@ -125,6 +125,11 @@ class GlobalSearchService
                     $poolRequests['flextv'] = fn ($p) => $p->timeout(3.5)->get('https://flextv.goodbos.online/api/drama/search?keyword=' . urlencode($q) . '&page=1');
                     $poolRequests['reelshort'] = fn ($p) => $p->timeout(3.5)->get('https://reelshort.goodbos.online/search?q=' . urlencode($q) . '&lang=in');
                     $poolRequests['dramawave'] = fn ($p) => $p->timeout(3.5)->get('https://dramawave.goodbos.online/api/search?q=' . urlencode($q) . "&lang=in&code={$apiKey}&next=1");
+
+                    $poolRequests['raptdrama'] = fn ($p) => $p->timeout(3.5)->withHeaders([
+                        'x-token' => $apiKey,
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    ])->get('https://raptdrama.goodbos.online/api/raptdrama/search?query=' . urlencode($q) . '&page=1&lang=id');
                 }
 
                 try {
@@ -388,6 +393,32 @@ class GlobalSearchService
                                         'url' => url('/dracin/dramawave/drama/' . $id),
                                         'slug' => $id,
                                         'source_name' => 'DramaWave',
+                                    ];
+                                }
+                            }
+                        }
+
+                        // RaptDrama
+                        if (isset($poolResponses['raptdrama']) && $poolResponses['raptdrama']->successful()) {
+                            $items = $poolResponses['raptdrama']->json('data.results') ?? ($poolResponses['raptdrama']->json('data.items') ?? ($poolResponses['raptdrama']->json('data') ?? []));
+                            if (is_array($items)) {
+                                foreach ($items as $it) {
+                                    $id = (string)($it['id'] ?? '');
+                                    $title = (string)($it['title'] ?? '');
+                                    if (!$id || !$title) continue;
+                                    $eps = isset($it['totalvideo']) ? (int)$it['totalvideo'] : (isset($it['tstype']) ? (int)$it['tstype'] : null);
+                                    $dracins[] = [
+                                        'id' => 'dracin:raptdrama:' . $id,
+                                        'title' => $title,
+                                        'category' => 'dracin',
+                                        'type' => 'Dracin',
+                                        'badge' => 'Dracin',
+                                        'year' => $eps ? "{$eps} Eps" : 'Dracin',
+                                        'rating' => null,
+                                        'thumbnail' => $it['image'] ?? null,
+                                        'url' => url('/dracin/raptdrama/drama/' . $id),
+                                        'slug' => $id,
+                                        'source_name' => 'RaptDrama',
                                     ];
                                 }
                             }

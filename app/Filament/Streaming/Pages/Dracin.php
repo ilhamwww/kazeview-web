@@ -57,6 +57,17 @@ class Dracin extends Page
                 ];
             }
 
+            // Ensure Melolo is included
+            if (!collect($activePlatforms)->contains('id', 'melolo')) {
+                $activePlatforms[] = [
+                    'id' => 'melolo',
+                    'name' => 'Melolo',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/melolo.svg',
+                    'api' => 'https://melolo.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
             // Ensure Shortmax is included
             if (!collect($activePlatforms)->contains('id', 'shortmax')) {
                 $activePlatforms[] = [
@@ -189,6 +200,83 @@ class Dracin extends Page
                 ];
             }
 
+            // Ensure FlexTV is included
+            if (!collect($activePlatforms)->contains('id', 'flextv')) {
+                $activePlatforms[] = [
+                    'id' => 'flextv',
+                    'name' => 'FlexTV',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/flextv.svg',
+                    'api' => 'https://flextv.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure ShortsWave is included
+            if (!collect($activePlatforms)->contains('id', 'shortswave')) {
+                $activePlatforms[] = [
+                    'id' => 'shortswave',
+                    'name' => 'ShortsWave',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/shortwave.png',
+                    'api' => 'https://shortwave.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure FreeReels is included
+            if (!collect($activePlatforms)->contains('id', 'freereels')) {
+                $activePlatforms[] = [
+                    'id' => 'freereels',
+                    'name' => 'FreeReels',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/freereels.svg',
+                    'api' => 'https://drakula.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure FlickReels is included
+            if (!collect($activePlatforms)->contains('id', 'flickreels')) {
+                $activePlatforms[] = [
+                    'id' => 'flickreels',
+                    'name' => 'FlickReels',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/flickreels.svg',
+                    'api' => 'https://flickreels.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure StarShort is included
+            if (!collect($activePlatforms)->contains('id', 'starshort')) {
+                $activePlatforms[] = [
+                    'id' => 'starshort',
+                    'name' => 'StarShort',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/starshort.png',
+                    'api' => 'https://drakula.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure DotDrama is included
+            if (!collect($activePlatforms)->contains('id', 'dotdrama')) {
+                $activePlatforms[] = [
+                    'id' => 'dotdrama',
+                    'name' => 'DotDrama',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/dotdrama.svg',
+                    'api' => 'https://dotdrama.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
+            // Ensure DramaWave is included
+            if (!collect($activePlatforms)->contains('id', 'dramawave')) {
+                $activePlatforms[] = [
+                    'id' => 'dramawave',
+                    'name' => 'DramaWave',
+                    'logo' => 'https://api.dramabuzz.sbs/logos/dramawave.svg',
+                    'api' => 'https://dramawave.goodbos.online',
+                    'status' => 'active',
+                ];
+            }
+
             return $activePlatforms;
         });
 
@@ -210,9 +298,17 @@ class Dracin extends Page
             'raptdrama' => 'RaptDrama',
             'reelbuzz' => 'ReelBuzz',
             'melolo' => 'Melolo',
+            'flextv' => 'FlexTV',
+            'shortswave' => 'ShortsWave',
+            'freereels' => 'FreeReels',
+            'flickreels' => 'FlickReels',
+            'starshort' => 'StarShort',
+            'dotdrama' => 'DotDrama',
+            'dramawave' => 'DramaWave',
         ];
 
-        $this->networks = collect($rawNetworks)->map(function ($platform) use ($onlineNetworks, $nameMap) {
+        $this->networks = collect($rawNetworks)
+            ->map(function ($platform) use ($onlineNetworks, $nameMap) {
             if (isset($nameMap[$platform['id']])) {
                 $platform['name'] = $nameMap[$platform['id']];
             }
