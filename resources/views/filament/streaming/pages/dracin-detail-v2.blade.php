@@ -166,25 +166,16 @@
                     </p>
                 </div>
 
-                <div class="pointer-events-auto flex flex-col items-end gap-1.5">
-                    <div class="flex items-center gap-2">
-                        <span class="text-[11px] md:text-xs font-semibold text-white/80 drop-shadow-md">
-                            Eps <span x-text="currentEpisode"></span>/<span x-text="drama.totalEpisodes"></span>
-                        </span>
-                        <button @click.stop="toggleManualHide()"
-                                class="w-7 h-7 rounded-full bg-black/40 backdrop-blur border border-white/20 hover:bg-black/60 flex items-center justify-center transition text-white/80 hover:text-white"
-                                title="Sembunyikan UI">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                            </svg>
-                        </button>
-                    </div>
-                    <button @click="showEpisodes = true"
-                            class="bg-black/40 backdrop-blur border border-white/20 hover:bg-black/60 rounded-full px-3 py-1 text-xs font-bold flex items-center gap-1.5 transition">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                <div class="pointer-events-auto flex items-center gap-2">
+                    <span class="text-[11px] md:text-xs font-semibold text-white/80 drop-shadow-md">
+                        Eps <span x-text="currentEpisode"></span>/<span x-text="drama.totalEpisodes"></span>
+                    </span>
+                    <button @click.stop="toggleManualHide()"
+                            class="w-7 h-7 rounded-full bg-black/40 backdrop-blur border border-white/20 hover:bg-black/60 flex items-center justify-center transition text-white/80 hover:text-white cursor-pointer"
+                            title="Sembunyikan UI">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                         </svg>
-                        <span><span x-text="currentEpisode"></span>/<span x-text="drama.totalEpisodes"></span></span>
                     </button>
                 </div>
             </div>
@@ -319,20 +310,6 @@
                         </button>
                     </template>
                 </div>
-
-                {{-- Episode card (shortcut to drawer) --}}
-                <button @click="showEpisodes = true"
-                        class="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg p-3 flex items-center justify-between text-left transition">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-white/60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                        <span class="text-xs font-semibold">Episode <span x-text="currentEpisode"></span></span>
-                    </div>
-                    <svg class="w-4 h-4 text-white/50" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                </button>
             </div>
         </div>
     </div>
