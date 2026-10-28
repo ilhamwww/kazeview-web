@@ -308,6 +308,32 @@
                         <span>Layar penuh</span>
                     </button>
 
+                    <!-- Double-Tap Quick Seek Indicator Left (-10s Netflix / YouTube style) -->
+                    <div class="kz-seek-overlay-left pointer-events-none absolute inset-y-0 left-0 w-[42%] flex flex-col items-center justify-center opacity-0 z-50 transition-opacity duration-200">
+                        <div class="kz-seek-bg absolute inset-0 bg-gradient-to-r from-white/25 via-white/10 to-transparent rounded-r-[100%] transition-transform duration-300 origin-left scale-x-0"></div>
+                        <div class="relative flex flex-col items-center gap-1 select-none text-white drop-shadow-md">
+                            <div class="flex items-center -space-x-1.5 text-white">
+                                <svg class="w-6 h-6 animate-pulse" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                                <svg class="w-6 h-6 animate-pulse [animation-delay:120ms]" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                                <svg class="w-6 h-6 animate-pulse [animation-delay:240ms]" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                            </div>
+                            <span class="kz-seek-text text-xs font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur ring-1 ring-white/20 shadow-lg">-10 detik</span>
+                        </div>
+                    </div>
+
+                    <!-- Double-Tap Quick Seek Indicator Right (+10s Netflix / YouTube style) -->
+                    <div class="kz-seek-overlay-right pointer-events-none absolute inset-y-0 right-0 w-[42%] flex flex-col items-center justify-center opacity-0 z-50 transition-opacity duration-200">
+                        <div class="kz-seek-bg absolute inset-0 bg-gradient-to-l from-white/25 via-white/10 to-transparent rounded-l-[100%] transition-transform duration-300 origin-right scale-x-0"></div>
+                        <div class="relative flex flex-col items-center gap-1 select-none text-white drop-shadow-md">
+                            <div class="flex items-center -space-x-1.5 text-white">
+                                <svg class="w-6 h-6 animate-pulse [animation-delay:240ms]" fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                                <svg class="w-6 h-6 animate-pulse [animation-delay:120ms]" fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                                <svg class="w-6 h-6 animate-pulse" fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                            </div>
+                            <span class="kz-seek-text text-xs font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur ring-1 ring-white/20 shadow-lg">+10 detik</span>
+                        </div>
+                    </div>
+
                     <!-- Embed Player -->
                     <template x-if="isEmbed && currentEmbedUrl">
                         <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>
@@ -1015,7 +1041,44 @@
                             if (e.pointerType === 'touch') lastTouchTime = Date.now();
                         };
 
-                        // Tap / Click handling di capture phase untuk toggle manual kontrol saat tap di layar video
+                        // Double-tap quick seek state (Netflix / YouTube style)
+                        const leftOverlay = shellEl.querySelector('.kz-seek-overlay-left');
+                        const rightOverlay = shellEl.querySelector('.kz-seek-overlay-right');
+
+                        let lastTapTime = 0;
+                        let lastTapSide = null;
+                        let accumulatedSeconds = 0;
+                        let singleTapTimeout = null;
+                        let rippleFadeTimeout = null;
+
+                        const triggerQuickSeekRipple = (side, seconds) => {
+                            clearTimeout(rippleFadeTimeout);
+                            const el = side === 'left' ? leftOverlay : rightOverlay;
+                            const otherEl = side === 'left' ? rightOverlay : leftOverlay;
+
+                            if (otherEl) {
+                                otherEl.style.opacity = '0';
+                                const otherBg = otherEl.querySelector('.kz-seek-bg');
+                                if (otherBg) otherBg.style.transform = 'scaleX(0)';
+                            }
+
+                            if (el) {
+                                const textEl = el.querySelector('.kz-seek-text');
+                                if (textEl) textEl.textContent = (side === 'left' ? '-' : '+') + seconds + ' detik';
+                                el.style.opacity = '1';
+                                const bg = el.querySelector('.kz-seek-bg');
+                                if (bg) bg.style.transform = 'scaleX(1)';
+
+                                rippleFadeTimeout = setTimeout(() => {
+                                    el.style.opacity = '0';
+                                    if (bg) bg.style.transform = 'scaleX(0)';
+                                    lastTapSide = null;
+                                    accumulatedSeconds = 0;
+                                }, 750);
+                            }
+                        };
+
+                        // Tap / Click handling di capture phase untuk membedakan single tap (show/hide) vs double tap seek (kiri -10s / kanan +10s)
                         const onShellClick = (e) => {
                             const isInteractive = e.target.closest && e.target.closest(
                                 '.art-control, .art-controls, .art-progress, .art-setting, .art-contextmenu, [data-kz-rotate], .kz-fs-btn, button, a, input, select'
@@ -1025,14 +1088,55 @@
                                 return;
                             }
 
-                            // Tap pada area layar video kosong -> toggle hide / show manual
                             e.stopPropagation();
                             e.preventDefault();
 
-                            if (art.controls.show) {
-                                hideControls();
+                            const rect = shellEl.getBoundingClientRect();
+                            const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : rect.left + rect.width / 2);
+                            const ratio = (clientX - rect.left) / rect.width;
+                            const now = Date.now();
+                            const timeDiff = now - lastTapTime;
+
+                            if (timeDiff < 320) {
+                                // DOUBLE / MULTI TAP: batalkan toggle single tap yang sedang menunggu
+                                clearTimeout(singleTapTimeout);
+                                singleTapTimeout = null;
+
+                                if (ratio < 0.45) {
+                                    // DOUBLE TAP SISI KIRI: Mundur 10 detik (akumulatif jika tap berulang)
+                                    accumulatedSeconds = (lastTapSide === 'left' && timeDiff < 650) ? (accumulatedSeconds + 10) : 10;
+                                    lastTapSide = 'left';
+
+                                    art.seek = Math.max(0, art.currentTime - 10);
+                                    triggerQuickSeekRipple('left', accumulatedSeconds);
+                                    resetTimer();
+                                } else if (ratio > 0.55) {
+                                    // DOUBLE TAP SISI KANAN: Maju 10 detik (akumulatif jika tap berulang)
+                                    accumulatedSeconds = (lastTapSide === 'right' && timeDiff < 650) ? (accumulatedSeconds + 10) : 10;
+                                    lastTapSide = 'right';
+
+                                    art.seek = Math.min(art.duration || 999999, art.currentTime + 10);
+                                    triggerQuickSeekRipple('right', accumulatedSeconds);
+                                    resetTimer();
+                                } else {
+                                    // DOUBLE TAP SISI TENGAH: Toggle Play / Pause
+                                    art.toggle();
+                                    resetTimer();
+                                }
+
+                                lastTapTime = now;
                             } else {
-                                showControls();
+                                // FIRST TAP: tunggu 260ms untuk memastikan ini single tap atau awal dari double tap
+                                lastTapTime = now;
+                                singleTapTimeout = setTimeout(() => {
+                                    singleTapTimeout = null;
+                                    // Single tap: toggle hide / show manual
+                                    if (art.controls.show) {
+                                        hideControls();
+                                    } else {
+                                        showControls();
+                                    }
+                                }, 260);
                             }
                         };
 
@@ -1070,6 +1174,8 @@
                             shellEl.removeEventListener('mousemove', onShellMouseMove);
                             shellEl.removeEventListener('mouseleave', onShellMouseLeave);
                             clearTimeout(autoHideTimer);
+                            clearTimeout(singleTapTimeout);
+                            clearTimeout(rippleFadeTimeout);
                             try {
                                 art.off('control', onControl);
                                 art.off('play', onPlay);
