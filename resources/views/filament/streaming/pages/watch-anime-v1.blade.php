@@ -34,27 +34,27 @@
             background: none !important;
             background-image: none !important;
             transition: background-image 0.25s ease, opacity 0.25s ease !important;
-            pointer-events: none !important;
         }
 
         /* Anti-spoiler: Sembunyikan mini progress bar di bagian bawah saat kontrol idle/tersembunyi */
         .art-video-player .art-mini-progress-bar,
-        .art-video-player:not(.art-control-show) .art-bottom {
+        .art-video-player:not(.art-control-show):not(.art-hover) .art-bottom {
             opacity: 0 !important;
             pointer-events: none !important;
         }
 
-        /* 2. Saat kontrol aktif, berikan gradien halus full-width di art-bottom (bukan di art-controls agar samping tidak terpotong) */
-        .art-video-player.art-control-show .art-bottom {
+        /* 2. Saat kontrol aktif/hover, berikan gradien halus full-width di art-bottom dan aktifkan interaksi (seeking, scrubbing) */
+        .art-video-player.art-control-show .art-bottom,
+        .art-video-player.art-hover .art-bottom {
             opacity: 1 !important;
-            pointer-events: none !important;
+            pointer-events: auto !important;
             background-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.45) 50px, transparent 85px) !important;
             background-size: 100% 85px !important;
             background-repeat: no-repeat !important;
             background-position: bottom !important;
         }
 
-        /* Hanya elemen kontrol interaktif dan progress bar yang menangkap pointer events */
+        /* Elemen kontrol interaktif dan progress bar menangkap pointer events */
         .art-video-player .art-bottom .art-controls,
         .art-video-player .art-bottom .art-progress {
             pointer-events: auto !important;
@@ -1047,6 +1047,8 @@
 
                         let lastTapTime = 0;
                         let lastTapSide = null;
+                        let lastTapX = 0;
+                        let lastTapY = 0;
                         let accumulatedSeconds = 0;
                         let singleTapTimeout = null;
                         let rippleFadeTimeout = null;
@@ -1080,8 +1082,9 @@
 
                         // Tap / Click handling di capture phase untuk membedakan single tap (show/hide) vs double tap seek (kiri -10s / kanan +10s)
                         const onShellClick = (e) => {
+                            // Abaikan jika interaksi pada panel kontrol bawah / progress bar / button / menu
                             const isInteractive = e.target.closest && e.target.closest(
-                                '.art-control, .art-controls, .art-progress, .art-setting, .art-contextmenu, [data-kz-rotate], .kz-fs-btn, button, a, input, select'
+                                '.art-bottom, .art-controls, .art-control, .art-progress, .art-setting, .art-contextmenu, [data-kz-rotate], .kz-fs-btn, button, a, input, select'
                             );
                             if (isInteractive) {
                                 resetTimer();
@@ -1093,51 +1096,74 @@
 
                             const rect = shellEl.getBoundingClientRect();
                             const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : rect.left + rect.width / 2);
+                            const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : rect.top + rect.height / 2);
                             const ratio = (clientX - rect.left) / rect.width;
                             const now = Date.now();
                             const timeDiff = now - lastTapTime;
+                            const dist = Math.hypot(clientX - lastTapX, clientY - lastTapY);
 
-                            if (timeDiff < 320) {
-                                // DOUBLE / MULTI TAP: batalkan toggle single tap yang sedang menunggu
+                            lastTapX = clientX;
+                            lastTapY = clientY;
+
+                            // Deteksi Double-Tap pada sisi kiri (<38%) atau sisi kanan (>62%)
+                            const isDoubleTapSeek = timeDiff < 320 && dist < 120 && (ratio < 0.38 || ratio > 0.62);
+
+                            if (isDoubleTapSeek) {
+                                // DOUBLE / MULTI TAP SEEK: Batalkan single tap
                                 clearTimeout(singleTapTimeout);
                                 singleTapTimeout = null;
 
-                                if (ratio < 0.45) {
-                                    // DOUBLE TAP SISI KIRI: Mundur 10 detik (akumulatif jika tap berulang)
+                                if (ratio < 0.38) {
+                                    // SISI KIRI: Mundur 10 detik
                                     accumulatedSeconds = (lastTapSide === 'left' && timeDiff < 650) ? (accumulatedSeconds + 10) : 10;
                                     lastTapSide = 'left';
 
-                                    art.seek = Math.max(0, art.currentTime - 10);
+                                    const targetTime = Math.max(0, (art.currentTime || 0) - 10);
+                                    art.currentTime = targetTime;
+                                    art.seek = targetTime;
                                     triggerQuickSeekRipple('left', accumulatedSeconds);
-                                    resetTimer();
-                                } else if (ratio > 0.55) {
-                                    // DOUBLE TAP SISI KANAN: Maju 10 detik (akumulatif jika tap berulang)
+                                } else {
+                                    // SISI KANAN: Maju 10 detik
                                     accumulatedSeconds = (lastTapSide === 'right' && timeDiff < 650) ? (accumulatedSeconds + 10) : 10;
                                     lastTapSide = 'right';
 
-                                    art.seek = Math.min(art.duration || 999999, art.currentTime + 10);
+                                    const targetTime = Math.min(art.duration || 999999, (art.currentTime || 0) + 10);
+                                    art.currentTime = targetTime;
+                                    art.seek = targetTime;
                                     triggerQuickSeekRipple('right', accumulatedSeconds);
-                                    resetTimer();
-                                } else {
-                                    // DOUBLE TAP SISI TENGAH: Toggle Play / Pause
-                                    art.toggle();
-                                    resetTimer();
                                 }
 
                                 lastTapTime = now;
-                            } else {
-                                // FIRST TAP: tunggu 260ms untuk memastikan ini single tap atau awal dari double tap
-                                lastTapTime = now;
-                                singleTapTimeout = setTimeout(() => {
-                                    singleTapTimeout = null;
-                                    // Single tap: toggle hide / show manual
-                                    if (art.controls.show) {
-                                        hideControls();
-                                    } else {
-                                        showControls();
-                                    }
-                                }, 260);
+                                resetTimer();
+                                return;
                             }
+
+                            // Catat waktu tap dan status tujuan di saat tap terjadi
+                            lastTapTime = now;
+                            const shouldShow = !art.controls.show;
+
+                            // Jika tap di area tengah (antara 38% dan 62%), langsung toggle tanpa jeda
+                            if (ratio >= 0.38 && ratio <= 0.62) {
+                                clearTimeout(singleTapTimeout);
+                                singleTapTimeout = null;
+                                if (shouldShow) {
+                                    showControls();
+                                } else {
+                                    hideControls();
+                                }
+                                return;
+                            }
+
+                            // Jika tap di area samping kiri/kanan, beri waktu singkat (220ms) untuk mendeteksi double tap
+                            clearTimeout(singleTapTimeout);
+                            singleTapTimeout = setTimeout(() => {
+                                singleTapTimeout = null;
+                                if (shouldShow) {
+                                    showControls();
+                                } else {
+                                    hideControls();
+                                }
+                            }, 220);
                         };
 
                         // Desktop mousemove: tampilkan kontrol & perbarui timer auto-hide (diabaikan jika dipicu touch HP)
