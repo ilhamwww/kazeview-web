@@ -222,8 +222,138 @@
         </section>
     @endif
 
+    {{-- ================= SECTIONS ALA HOME (KHUSUS INDONESIA KETIKA SEMUA & TANPA PENCARIAN) ================= --}}
+    @if($kind === 'indonesia' && empty($search) && ($category ?? 'all') === 'all')
+        <div class="relative z-10 space-y-10 md:space-y-12 pt-8">
+
+            {{-- 1. Film Bioskop Indonesia Terbaru --}}
+            @if(!empty($latestMovies))
+                <section class="w-full max-w-[1800px] mx-auto px-6 md:px-12">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <h2 class="text-xl md:text-2xl font-black tracking-tight">Film Bioskop Indonesia</h2>
+                            <span class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-red-600/10 text-red-500 border border-red-600/20">Layar Lebar</span>
+                        </div>
+                        <button type="button" wire:click="setCategory('movie')" class="inline-flex shrink-0 items-center gap-1 text-xs md:text-sm font-semibold text-zinc-400 transition hover:text-white">
+                            Lihat Semua
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                    <div class="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-6 px-6 md:-mx-12 md:px-12 scroll-px-6 md:scroll-px-12 snap-x kz-noscroll">
+                        @foreach($latestMovies as $movie)
+                            <a href="{{ $urlFor($movie) }}" class="group w-[130px] sm:w-[155px] md:w-[175px] shrink-0 snap-start">
+                                <div class="relative aspect-[2/3] overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/5 shadow-lg group-hover:ring-red-600/60 transition duration-300">
+                                    @if(!empty($movie['thumbnail']))
+                                        <img src="{{ $cleanImg($movie['thumbnail']) }}" alt="{{ $movie['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" referrerpolicy="no-referrer">
+                                    @endif
+                                    <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/60 to-transparent"></div>
+                                    <div class="absolute inset-x-0 top-0 flex justify-between p-2">
+                                        <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">Film</span>
+                                        @if(!empty($movie['quality']))
+                                            <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $movie['quality'] }}</span>
+                                        @endif
+                                    </div>
+                                    @if($hasRating($movie['rating'] ?? null))
+                                        <span class="absolute bottom-2 left-2 flex items-center gap-0.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-black text-yellow-400">
+                                            ★ {{ number_format((float) $movie['rating'], 1) }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <h3 class="mt-2 truncate text-xs md:text-[13px] font-semibold text-zinc-200 group-hover:text-red-500 transition" title="{{ $movie['title'] ?? '' }}">{{ $movie['title'] ?? '' }}</h3>
+                                <p class="text-[11px] text-zinc-500">{{ $movie['year'] ?? '' }}@if(!empty($movie['duration'])) · {{ $movie['duration'] }}m @endif</p>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            {{-- 2. Serial & Web Series Indonesia --}}
+            @if(!empty($latestSeries))
+                <section class="w-full max-w-[1800px] mx-auto px-6 md:px-12">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <h2 class="text-xl md:text-2xl font-black tracking-tight">Serial & Web Series Indonesia</h2>
+                            <span class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Web Series</span>
+                        </div>
+                        <button type="button" wire:click="setCategory('series')" class="inline-flex shrink-0 items-center gap-1 text-xs md:text-sm font-semibold text-zinc-400 transition hover:text-white">
+                            Lihat Semua
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                    <div class="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-6 px-6 md:-mx-12 md:px-12 scroll-px-6 md:scroll-px-12 snap-x kz-noscroll">
+                        @foreach($latestSeries as $sItem)
+                            <a href="{{ $urlFor($sItem) }}" class="group w-[130px] sm:w-[155px] md:w-[175px] shrink-0 snap-start">
+                                <div class="relative aspect-[2/3] overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/5 shadow-lg group-hover:ring-red-600/60 transition duration-300">
+                                    @if(!empty($sItem['thumbnail']))
+                                        <img src="{{ $cleanImg($sItem['thumbnail']) }}" alt="{{ $sItem['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" referrerpolicy="no-referrer">
+                                    @endif
+                                    <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/60 to-transparent"></div>
+                                    <div class="absolute inset-x-0 top-0 flex justify-between p-2">
+                                        <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">Series</span>
+                                        @if(!empty($sItem['quality']))
+                                            <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $sItem['quality'] }}</span>
+                                        @endif
+                                    </div>
+                                    @if($hasRating($sItem['rating'] ?? null))
+                                        <span class="absolute bottom-2 left-2 flex items-center gap-0.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-black text-yellow-400">
+                                            ★ {{ number_format((float) $sItem['rating'], 1) }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <h3 class="mt-2 truncate text-xs md:text-[13px] font-semibold text-zinc-200 group-hover:text-red-500 transition" title="{{ $sItem['title'] ?? '' }}">{{ $sItem['title'] ?? '' }}</h3>
+                                <p class="text-[11px] text-zinc-500">{{ $sItem['year'] ?? '' }} · Series Lokal</p>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            {{-- 3. Sorotan Pilihan Indonesia (Spotlight Wide Card ala Home) --}}
+            @if(!empty($spotlightItems))
+                <section class="w-full max-w-[1800px] mx-auto px-6 md:px-12">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <h2 class="text-xl md:text-2xl font-black tracking-tight">Sorotan Pilihan Indonesia</h2>
+                            <span class="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Spesial</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 md:-mx-12 md:px-12 scroll-px-6 md:scroll-px-12 snap-x snap-mandatory kz-noscroll">
+                        @foreach($spotlightItems as $sp)
+                            <a href="{{ $urlFor($sp) }}" class="group relative flex w-[85vw] sm:w-[420px] lg:w-[480px] shrink-0 snap-start gap-4 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 p-4 shadow-xl transition-all duration-300 hover:border-red-600/50">
+                                <img src="{{ $cleanImg($sp['banner'] ?: $sp['thumbnail']) }}" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-35 transition duration-500 group-hover:scale-105" referrerpolicy="no-referrer">
+                                <div class="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/90 to-[#050505]/40"></div>
+                                <div class="relative w-24 sm:w-28 aspect-[2/3] shrink-0 overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/10 shadow-lg">
+                                    @if(!empty($sp['thumbnail']))
+                                        <img src="{{ $cleanImg($sp['thumbnail']) }}" alt="{{ $sp['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover" referrerpolicy="no-referrer">
+                                    @endif
+                                </div>
+                                <div class="relative flex min-w-0 flex-1 flex-col justify-between py-0.5">
+                                    <div>
+                                        <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+                                            <span class="rounded bg-yellow-500/15 px-1.5 py-0.5 text-yellow-400">Pilihan</span>
+                                            <span class="rounded bg-white/10 px-1.5 py-0.5 text-zinc-200">{{ ($sp['type'] ?? '') === 'series' ? 'Series' : 'Film' }}</span>
+                                            @if($hasRating($sp['rating'] ?? null))
+                                                <span class="flex items-center gap-0.5 text-yellow-400">★ {{ number_format((float) $sp['rating'], 1) }}</span>
+                                            @endif
+                                        </div>
+                                        <h3 class="mt-2 text-base sm:text-lg font-black leading-tight line-clamp-2 group-hover:text-red-500 transition">{{ $sp['title'] ?? '' }}</h3>
+                                        <p class="mt-1 text-xs text-zinc-400 line-clamp-2">{{ $sp['year'] ?? '' }} · Rekomendasi film & serial Indonesia</p>
+                                    </div>
+                                    <span class="mt-3 inline-flex w-max items-center gap-1.5 rounded-lg bg-[#E50914] px-3.5 py-1.5 text-xs font-bold text-white shadow-md shadow-red-900/30">
+                                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Tonton Sekarang
+                                    </span>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+        </div>
+    @endif
+
     {{-- ================= GRID ================= --}}
-    <main class="w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ !empty($categories) ? 'pt-6' : 'pt-10' }}">
+    <main class="w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ (!empty($categories) && ($category ?? 'all') === 'all' && empty($search)) ? 'pt-12' : (!empty($categories) ? 'pt-6' : 'pt-10') }}">
         <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
                 <div class="flex items-center gap-2.5">
@@ -232,6 +362,8 @@
                             Hasil Pencarian: "{{ $search }}"
                         @elseif(($category ?? 'all') !== 'all')
                             Kategori: {{ $activeCategoryLabel ?? ucfirst($category) }}
+                        @elseif($kind === 'indonesia')
+                            Semua Koleksi Indonesia
                         @else
                             Baru Ditambahkan
                         @endif
@@ -244,7 +376,9 @@
                         </button>
                     @endif
                 </div>
-                <p class="text-xs md:text-sm text-zinc-500 mt-1">{{ $kind === 'indonesia' ? 'Koleksi film & serial Indonesia terlengkap' : ($isSeries ? 'Serial terbaru yang masuk ke katalog' : 'Film terbaru yang masuk ke katalog') }}</p>
+                <p class="text-xs md:text-sm text-zinc-500 mt-1">
+                    {{ $kind === 'indonesia' ? (($category ?? 'all') === 'all' && empty($search) ? 'Jelajahi seluruh film dan serial Indonesia terlengkap' : 'Koleksi film & serial Indonesia') : ($isSeries ? 'Serial terbaru yang masuk ke katalog' : 'Film terbaru yang masuk ke katalog') }}
+                </p>
             </div>
             <span class="text-xs font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full shrink-0 self-start sm:self-auto">{{ count($items) }} judul</span>
         </div>

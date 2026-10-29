@@ -8,4 +8,7 @@
     'category' => $category,
     'search' => $search,
     'activeCategoryLabel' => collect($categories)->firstWhere('id', $category)['label'] ?? ucfirst($category),
+    'latestMovies' => $latestMovies,
+    'latestSeries' => $latestSeries,
+    'spotlightItems' => $spotlightItems,
 ])

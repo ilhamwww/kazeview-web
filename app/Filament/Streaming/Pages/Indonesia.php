@@ -21,6 +21,9 @@ class Indonesia extends Page
 
     public array $trending = [];
     public array $items = [];
+    public array $latestMovies = [];
+    public array $latestSeries = [];
+    public array $spotlightItems = [];
     public int $totalPages = 100;
     public bool $hasMorePages = true;
 
@@ -98,6 +101,19 @@ class Indonesia extends Page
         $this->items = $response['data'] ?? [];
         if ($this->category === 'all' && empty($this->search)) {
             $this->trending = array_slice($this->items, 0, 10);
+            
+            // Siapkan sections berjejer ala Home (Movies, Series, dan Spotlight)
+            if (empty($this->latestMovies)) {
+                $moviesRes = RebahinService::getIndonesiaCatalog('movie', 1);
+                $this->latestMovies = array_slice($moviesRes['data'] ?? [], 0, 15);
+            }
+            if (empty($this->latestSeries)) {
+                $seriesRes = RebahinService::getIndonesiaCatalog('series', 1);
+                $this->latestSeries = array_slice($seriesRes['data'] ?? [], 0, 15);
+            }
+            if (empty($this->spotlightItems)) {
+                $this->spotlightItems = array_slice($this->items, 2, 6);
+            }
         } else {
             $this->trending = [];
         }
