@@ -138,6 +138,37 @@ class RebahinService
     }
 
     /**
+     * Cek apakah judul film / serial benar-benar berasal dari Indonesia (Country: Indonesia)
+     */
+    public static function isIndonesianMovie(string $rawSlug, string $url = ''): bool
+    {
+        $cacheKey = "rb_is_indo_" . md5($rawSlug);
+        return Cache::remember($cacheKey, 86400 * 30, function () use ($rawSlug, $url) {
+            try {
+                $client = self::getClient();
+                $targetUrl = !empty($url) ? $url : (self::$baseUrl . "/{$rawSlug}/");
+                $res = $client->get($targetUrl, ['timeout' => 4]);
+                $body = (string) $res->getBody();
+                if (preg_match("/class=[\x27\x22]mvici-right[\x27\x22].*?<\/div>/s", $body, $mr)) {
+                    return (bool) preg_match('#/country/(?:indonesia|id)/#i', $mr[0]);
+                }
+                return false;
+            } catch (\Throwable $e) {
+                // Coba format /series/{slug}/ jika format film 404
+                try {
+                    $seriesUrl = self::$baseUrl . "/series/{$rawSlug}/";
+                    $res2 = $client->get($seriesUrl, ['timeout' => 4]);
+                    $body2 = (string) $res2->getBody();
+                    if (preg_match("/class=[\x27\x22]mvici-right[\x27\x22].*?<\/div>/s", $body2, $mr)) {
+                        return (bool) preg_match('#/country/(?:indonesia|id)/#i', $mr[0]);
+                    }
+                } catch (\Throwable $e2) {}
+                return false;
+            }
+        });
+    }
+
+    /**
      * Ambil katalog Indonesia berdasarkan kategori (Semua, Film, Series, atau Genre) & kata kunci pencarian
      */
     public static function getIndonesiaCatalog(string $category = 'all', int $page = 1, string $search = ''): array
@@ -244,7 +275,64 @@ class RebahinService
             });
         }
 
-        // Kategori Genre (horor, komedi, romantis, drama, aksi, thriller)
+        // Kategori Tahun Rilis (2026, 2025, 2024, classic)
+        if (in_array($category, ['2026', '2025', '2024', 'classic'], true)) {
+            $cacheKey = "rb_indo_year_{$category}_p{$page}";
+            return Cache::remember($cacheKey, 1800, function () use ($category, $page) {
+                try {
+                    $client = self::getClient();
+
+                    // Tentukan halaman sumber di country/indonesia berdasarkan tahun
+                    $startPage = match ($category) {
+                        '2026' => $page,
+                        '2025' => 4 + ($page - 1) * 2,
+                        '2024' => 15 + ($page - 1) * 2,
+                        'classic' => 25 + ($page - 1) * 2,
+                        default => $page,
+                    };
+
+                    $pagesToFetch = ($category === '2026') ? [$startPage] : [$startPage, $startPage + 1];
+                    $allItems = [];
+
+                    foreach ($pagesToFetch as $pNum) {
+                        $url = $pNum > 1
+                            ? self::$baseUrl . "/country/indonesia/page/{$pNum}/"
+                            : self::$baseUrl . "/country/indonesia/";
+
+                        $res = $client->get($url);
+                        if ($res->getStatusCode() === 200) {
+                            $cards = self::parseCards((string) $res->getBody());
+                            $allItems = array_merge($allItems, $cards);
+                        }
+                    }
+
+                    $filtered = array_values(array_filter($allItems, function ($item) use ($category) {
+                        $y = (int) ($item['year'] ?? 0);
+                        return match ($category) {
+                            '2026' => $y === 2026,
+                            '2025' => $y === 2025,
+                            '2024' => $y === 2024,
+                            'classic' => $y > 1970 && $y <= 2023,
+                            default => true,
+                        };
+                    }));
+
+                    return [
+                        'data' => $filtered,
+                        'pagination' => [
+                            'currentPage' => $page,
+                            'totalPages' => 100,
+                            'hasMore' => count($filtered) > 0,
+                        ],
+                    ];
+                } catch (\Exception $e) {
+                    Log::warning("RebahinService year {$category} error: " . $e->getMessage());
+                    return ['data' => [], 'pagination' => ['currentPage' => $page, 'totalPages' => 1, 'hasMore' => false]];
+                }
+            });
+        }
+
+        // Kategori Genre (horor, komedi, romantis, drama, aksi, thriller) - dengan filter ketat negara Indonesia
         $validGenres = ['horor', 'komedi', 'romantis', 'drama', 'aksi', 'thriller'];
         if (in_array(strtolower($category), $validGenres, true)) {
             $cat = strtolower($category);
@@ -265,12 +353,23 @@ class RebahinService
                     $html = (string) $res->getBody();
                     $items = self::parseCards($html);
 
+                    // Filter ketat: Pastikan hanya judul produksi Indonesia yang diloloskan
+                    $filtered = [];
+                    foreach ($items as $item) {
+                        $rawSlug = $item['raw_slug'] ?? '';
+                        if (empty($rawSlug)) continue;
+                        $itemUrl = $item['href'] ?? (self::$baseUrl . "/{$rawSlug}/");
+                        if (self::isIndonesianMovie($rawSlug, $itemUrl)) {
+                            $filtered[] = $item;
+                        }
+                    }
+
                     return [
-                        'data' => $items,
+                        'data' => $filtered,
                         'pagination' => [
                             'currentPage' => $page,
                             'totalPages' => 100,
-                            'hasMore' => count($items) > 0,
+                            'hasMore' => count($filtered) > 0,
                         ],
                     ];
                 } catch (\Exception $e) {

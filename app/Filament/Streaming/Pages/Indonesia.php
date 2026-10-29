@@ -33,12 +33,10 @@ class Indonesia extends Page
         ['id' => 'all', 'label' => 'Semua', 'emoji' => '🌐'],
         ['id' => 'movie', 'label' => 'Film', 'emoji' => '🎬'],
         ['id' => 'series', 'label' => 'Series', 'emoji' => '📺'],
-        ['id' => 'horor', 'label' => 'Horor', 'emoji' => '👻'],
-        ['id' => 'komedi', 'label' => 'Komedi', 'emoji' => '😂'],
-        ['id' => 'romantis', 'label' => 'Romantis', 'emoji' => '💖'],
-        ['id' => 'drama', 'label' => 'Drama', 'emoji' => '🎭'],
-        ['id' => 'aksi', 'label' => 'Aksi', 'emoji' => '💥'],
-        ['id' => 'thriller', 'label' => 'Thriller', 'emoji' => '🔪'],
+        ['id' => '2026', 'label' => '2026', 'emoji' => '🔥'],
+        ['id' => '2025', 'label' => '2025', 'emoji' => '📅'],
+        ['id' => '2024', 'label' => '2024', 'emoji' => '📅'],
+        ['id' => 'classic', 'label' => '2023 & Sebelumnya', 'emoji' => '⏳'],
     ];
 
     public function mount(): void
