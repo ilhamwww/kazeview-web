@@ -147,9 +147,54 @@
         </section>
     @endif
 
+    {{-- ================= KATEGORI & PENCARIAN (JIKA ADA $categories) ================= --}}
+    @if(!empty($categories))
+        <section class="relative z-20 w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ (count($hero) && empty($search) && ($category ?? 'all') === 'all') ? '-mt-6 md:-mt-8' : 'pt-24 md:pt-28' }}">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 py-3 border-b border-zinc-800/80">
+                {{-- Search Bar (KZSTRM Signature Dark Redesign) --}}
+                <div class="relative w-full md:w-80 lg:w-96 group">
+                    <div class="flex items-center gap-3 w-full px-4 py-2.5 bg-zinc-900/90 border border-zinc-800 rounded-xl focus-within:border-red-600 focus-within:ring-1 focus-within:ring-red-600/40 transition-all duration-200">
+                        <svg class="w-4 h-4 text-zinc-500 group-focus-within:text-red-500 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                        </svg>
+                        <input type="text"
+                               wire:model.live.debounce.400ms="search"
+                               placeholder="Cari film atau serial Indonesia..."
+                               class="flex-1 bg-transparent text-xs sm:text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none">
+                        @if(!empty($search))
+                            <button type="button" wire:click="clearSearch" aria-label="Hapus pencarian"
+                                    class="p-1 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition flex-shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Category Filter Pills (Clean Text Only) --}}
+                <div class="flex items-center gap-2 overflow-x-auto kz-noscroll -mx-6 px-6 md:mx-0 md:px-0">
+                    @foreach($categories as $cat)
+                        @php
+                            $isActive = ($category ?? 'all') === $cat['id'];
+                        @endphp
+                        <button type="button"
+                                wire:click="setCategory('{{ $cat['id'] }}')"
+                                class="px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 shrink-0 border
+                                {{ $isActive
+                                    ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-600/30'
+                                    : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white border-zinc-800/80 hover:border-zinc-700' }}">
+                            {{ $cat['label'] }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
     {{-- ================= TOP 10 ================= --}}
     @if(count($trending) >= 5 && empty($search) && ($category ?? 'all') === 'all')
-        <section class="relative z-10 w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ count($hero) ? '-mt-4' : 'pt-28' }}">
+        <section class="relative z-10 w-full max-w-[1800px] mx-auto px-6 md:px-12 pt-8">
             <div class="flex items-center gap-3 mb-5">
                 <h2 class="text-xl md:text-2xl font-black tracking-tight">Top 10 {{ $label }} Minggu Ini</h2>
             </div>
@@ -172,51 +217,6 @@
                         </div>
                     </a>
                 @endforeach
-            </div>
-        </section>
-    @endif
-
-    {{-- ================= KATEGORI & PENCARIAN (JIKA ADA $categories) ================= --}}
-    @if(!empty($categories))
-        <section class="relative z-10 w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ (count($hero) && empty($search) && ($category ?? 'all') === 'all') ? 'pt-8' : 'pt-24 md:pt-28' }}">
-            <div class="bg-gradient-to-b from-zinc-900/60 to-zinc-900/30 border border-zinc-800/90 rounded-2xl p-4 md:p-5 backdrop-blur-xl shadow-2xl space-y-4">
-                {{-- Search Bar (KZSTRM Signature Dark Redesign) --}}
-                <div class="relative w-full group">
-                    <div class="flex items-center gap-3 w-full px-4 py-3 bg-[#080808]/90 border border-zinc-800/90 rounded-xl focus-within:border-red-600 focus-within:ring-1 focus-within:ring-red-600/40 transition-all duration-200 shadow-inner">
-                        <svg class="w-4 h-4 text-zinc-500 group-focus-within:text-red-500 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                        </svg>
-                        <input type="text"
-                               wire:model.live.debounce.400ms="search"
-                               placeholder="Cari film atau serial Indonesia (misal: Siksa Kubur, Dilan, Agak Laen)..."
-                               class="flex-1 bg-transparent text-xs sm:text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none">
-                        @if(!empty($search))
-                            <button type="button" wire:click="clearSearch" aria-label="Hapus pencarian"
-                                    class="p-1 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition flex-shrink-0">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Category Filter Pills (Clean Text Only) --}}
-                <div class="flex items-center gap-2 overflow-x-auto kz-noscroll pt-0.5 -mx-1 px-1">
-                    @foreach($categories as $cat)
-                        @php
-                            $isActive = ($category ?? 'all') === $cat['id'];
-                        @endphp
-                        <button type="button"
-                                wire:click="setCategory('{{ $cat['id'] }}')"
-                                class="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 shrink-0 border
-                                {{ $isActive
-                                    ? 'bg-red-600 text-white border-red-600 shadow-lg shadow-red-600/30 scale-[1.02]'
-                                    : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white border-zinc-800/80 hover:border-zinc-700' }}">
-                            {{ $cat['label'] }}
-                        </button>
-                    @endforeach
-                </div>
             </div>
         </section>
     @endif
