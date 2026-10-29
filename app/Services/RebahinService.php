@@ -138,6 +138,153 @@ class RebahinService
     }
 
     /**
+     * Ambil katalog Indonesia berdasarkan kategori (Semua, Film, Series, atau Genre) & kata kunci pencarian
+     */
+    public static function getIndonesiaCatalog(string $category = 'all', int $page = 1, string $search = ''): array
+    {
+        $search = trim($search);
+
+        // Jika ada pencarian judul langsung
+        if (!empty($search)) {
+            $cacheKey = "rb_indo_s_" . md5(strtolower($search)) . "_p{$page}";
+            return Cache::remember($cacheKey, 1800, function () use ($search, $page) {
+                try {
+                    $client = self::getClient();
+                    $url = $page > 1
+                        ? self::$baseUrl . "/page/{$page}/?s=" . urlencode($search)
+                        : self::$baseUrl . "/?s=" . urlencode($search);
+
+                    $res = $client->get($url);
+                    if ($res->getStatusCode() !== 200) {
+                        return ['data' => [], 'pagination' => ['currentPage' => $page, 'totalPages' => 1, 'hasMore' => false]];
+                    }
+
+                    $html = (string) $res->getBody();
+                    $items = self::parseCards($html);
+
+                    return [
+                        'data' => $items,
+                        'pagination' => [
+                            'currentPage' => $page,
+                            'totalPages' => 100,
+                            'hasMore' => count($items) > 0,
+                        ],
+                    ];
+                } catch (\Exception $e) {
+                    Log::warning("RebahinService search '{$search}' error: " . $e->getMessage());
+                    return ['data' => [], 'pagination' => ['currentPage' => $page, 'totalPages' => 1, 'hasMore' => false]];
+                }
+            });
+        }
+
+        // Kategori: Series Indonesia
+        if ($category === 'series') {
+            $cacheKey = "rb_indo_series_p{$page}";
+            return Cache::remember($cacheKey, 1800, function () use ($page) {
+                try {
+                    $client = self::getClient();
+                    $url = $page > 1
+                        ? self::$baseUrl . "/genre/series-indonesia/page/{$page}/"
+                        : self::$baseUrl . "/genre/series-indonesia/";
+
+                    $res = $client->get($url);
+                    if ($res->getStatusCode() !== 200) {
+                        return ['data' => [], 'pagination' => ['currentPage' => $page, 'totalPages' => 1, 'hasMore' => false]];
+                    }
+
+                    $html = (string) $res->getBody();
+                    $items = self::parseCards($html, 'series');
+
+                    return [
+                        'data' => $items,
+                        'pagination' => [
+                            'currentPage' => $page,
+                            'totalPages' => 100,
+                            'hasMore' => count($items) > 0,
+                        ],
+                    ];
+                } catch (\Exception $e) {
+                    Log::warning("RebahinService series error: " . $e->getMessage());
+                    return ['data' => [], 'pagination' => ['currentPage' => $page, 'totalPages' => 1, 'hasMore' => false]];
+                }
+            });
+        }
+
+        // Kategori: Film Indonesia (Movie)
+        if ($category === 'movie') {
+            $cacheKey = "rb_indo_movies_p{$page}";
+            return Cache::remember($cacheKey, 1800, function () use ($page) {
+                try {
+                    $client = self::getClient();
+                    $url = $page > 1
+                        ? self::$baseUrl . "/country/indonesia/page/{$page}/"
+                        : self::$baseUrl . "/country/indonesia/";
+
+                    $res = $client->get($url);
+                    if ($res->getStatusCode() !== 200) {
+                        return ['data' => [], 'pagination' => ['currentPage' => $page, 'totalPages' => 1, 'hasMore' => false]];
+                    }
+
+                    $html = (string) $res->getBody();
+                    $items = self::parseCards($html, 'movie');
+                    $filtered = array_values(array_filter($items, fn($it) => ($it['type'] ?? '') === 'movie'));
+
+                    return [
+                        'data' => $filtered,
+                        'pagination' => [
+                            'currentPage' => $page,
+                            'totalPages' => 100,
+                            'hasMore' => count($filtered) > 0,
+                        ],
+                    ];
+                } catch (\Exception $e) {
+                    Log::warning("RebahinService movie error: " . $e->getMessage());
+                    return ['data' => [], 'pagination' => ['currentPage' => $page, 'totalPages' => 1, 'hasMore' => false]];
+                }
+            });
+        }
+
+        // Kategori Genre (horor, komedi, romantis, drama, aksi, thriller)
+        $validGenres = ['horor', 'komedi', 'romantis', 'drama', 'aksi', 'thriller'];
+        if (in_array(strtolower($category), $validGenres, true)) {
+            $cat = strtolower($category);
+            $queryKw = "{$cat} indonesia";
+            $cacheKey = "rb_indo_cat_{$cat}_p{$page}";
+            return Cache::remember($cacheKey, 1800, function () use ($queryKw, $page, $cat) {
+                try {
+                    $client = self::getClient();
+                    $url = $page > 1
+                        ? self::$baseUrl . "/page/{$page}/?s=" . urlencode($queryKw)
+                        : self::$baseUrl . "/?s=" . urlencode($queryKw);
+
+                    $res = $client->get($url);
+                    if ($res->getStatusCode() !== 200) {
+                        return ['data' => [], 'pagination' => ['currentPage' => $page, 'totalPages' => 1, 'hasMore' => false]];
+                    }
+
+                    $html = (string) $res->getBody();
+                    $items = self::parseCards($html);
+
+                    return [
+                        'data' => $items,
+                        'pagination' => [
+                            'currentPage' => $page,
+                            'totalPages' => 100,
+                            'hasMore' => count($items) > 0,
+                        ],
+                    ];
+                } catch (\Exception $e) {
+                    Log::warning("RebahinService genre {$cat} error: " . $e->getMessage());
+                    return ['data' => [], 'pagination' => ['currentPage' => $page, 'totalPages' => 1, 'hasMore' => false]];
+                }
+            });
+        }
+
+        // Default 'all'
+        return self::getIndonesia($page);
+    }
+
+    /**
      * Pencarian film & series
      */
     public static function search(string $query): array
@@ -401,6 +548,9 @@ class RebahinService
                     }
 
                     if ($embedUrl && str_starts_with($embedUrl, 'http')) {
+                        if (!isset($episodes[$epNum]['id'])) {
+                            $episodes[$epNum]['id'] = 'rb-' . $embedUrl;
+                        }
                         $sNum = count($episodes[$epNum]['servers']) + 1;
                         $label = $sNum === 1 ? 'Server 1 (HD)' : ($sNum === 2 ? 'Server 2 (Mirror)' : "Server {$sNum}");
                         $wrappedUrl = url('/api/streaming/embed?url=' . urlencode($embedUrl));

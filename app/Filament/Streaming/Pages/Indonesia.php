@@ -16,14 +16,64 @@ class Indonesia extends Page
     protected static bool $shouldRegisterNavigation = false;
 
     public int $page = 1;
+    public string $category = 'all';
+    public string $search = '';
 
     public array $trending = [];
     public array $items = [];
     public int $totalPages = 100;
     public bool $hasMorePages = true;
 
+    protected $queryString = [
+        'category' => ['except' => 'all'],
+        'search' => ['except' => '', 'as' => 'q'],
+    ];
+
+    public array $categories = [
+        ['id' => 'all', 'label' => 'Semua', 'emoji' => '🌐'],
+        ['id' => 'movie', 'label' => 'Film', 'emoji' => '🎬'],
+        ['id' => 'series', 'label' => 'Series', 'emoji' => '📺'],
+        ['id' => 'horor', 'label' => 'Horor', 'emoji' => '👻'],
+        ['id' => 'komedi', 'label' => 'Komedi', 'emoji' => '😂'],
+        ['id' => 'romantis', 'label' => 'Romantis', 'emoji' => '💖'],
+        ['id' => 'drama', 'label' => 'Drama', 'emoji' => '🎭'],
+        ['id' => 'aksi', 'label' => 'Aksi', 'emoji' => '💥'],
+        ['id' => 'thriller', 'label' => 'Thriller', 'emoji' => '🔪'],
+    ];
+
     public function mount(): void
     {
+        $this->page = 1;
+        $this->category = request()->query('category', 'all');
+        $this->search = request()->query('q', '');
+        $this->loadItems();
+    }
+
+    public function setCategory(string $cat): void
+    {
+        $this->category = $cat;
+        $this->search = '';
+        $this->page = 1;
+        $this->loadItems();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->page = 1;
+        $this->loadItems();
+    }
+
+    public function clearSearch(): void
+    {
+        $this->search = '';
+        $this->page = 1;
+        $this->loadItems();
+    }
+
+    public function resetFilter(): void
+    {
+        $this->category = 'all';
+        $this->search = '';
         $this->page = 1;
         $this->loadItems();
     }
@@ -33,7 +83,7 @@ class Indonesia extends Page
         if (!$this->hasMorePages) return;
 
         $this->page++;
-        $response = RebahinService::getIndonesia($this->page);
+        $response = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
         
         $newItems = $response['data'] ?? [];
         $this->items = array_merge($this->items, $newItems);
@@ -45,10 +95,14 @@ class Indonesia extends Page
 
     public function loadItems(): void
     {
-        $response = RebahinService::getIndonesia($this->page);
+        $response = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
         
         $this->items = $response['data'] ?? [];
-        $this->trending = array_slice($this->items, 0, 10);
+        if ($this->category === 'all' && empty($this->search)) {
+            $this->trending = array_slice($this->items, 0, 10);
+        } else {
+            $this->trending = [];
+        }
         $this->hasMorePages = count($this->items) > 0;
     }
 }

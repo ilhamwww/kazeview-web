@@ -4,4 +4,8 @@
     'trending' => $trending,
     'items' => $items,
     'hasMorePages' => $hasMorePages,
+    'categories' => $categories,
+    'category' => $category,
+    'search' => $search,
+    'activeCategoryLabel' => collect($categories)->firstWhere('id', $category)['label'] ?? ucfirst($category),
 ])

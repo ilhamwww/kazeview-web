@@ -33,7 +33,7 @@
 <div class="min-h-screen bg-[#050505] text-white pb-28 md:pb-16">
 
     {{-- ================= HERO ================= --}}
-    @if(count($hero))
+    @if(count($hero) && empty($search) && ($category ?? 'all') === 'all')
         <section wire:ignore
                  x-data="{ active: 0, total: {{ count($hero) }}, t: null, sx: 0,
                      start() { this.stop(); this.t = setInterval(() => this.next(), 7000) },
@@ -144,7 +144,7 @@
     @endif
 
     {{-- ================= TOP 10 ================= --}}
-    @if(count($trending) >= 5)
+    @if(count($trending) >= 5 && empty($search) && ($category ?? 'all') === 'all')
         <section class="relative z-10 w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ count($hero) ? '-mt-4' : 'pt-28' }}">
             <div class="flex items-center gap-3 mb-5">
                 <h2 class="text-xl md:text-2xl font-black tracking-tight">Top 10 {{ $label }} Minggu Ini</h2>
@@ -173,19 +173,93 @@
         </section>
     @endif
 
+    {{-- ================= KATEGORI & PENCARIAN (JIKA ADA $categories) ================= --}}
+    @if(!empty($categories))
+        <section class="relative z-10 w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ (count($hero) && empty($search) && ($category ?? 'all') === 'all') ? 'pt-8' : 'pt-24 md:pt-28' }}">
+            <div class="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 md:p-5 backdrop-blur-md space-y-3.5 shadow-2xl">
+                {{-- Search Bar --}}
+                <div class="relative w-full">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                        </svg>
+                    </span>
+                    <input type="text"
+                           wire:model.live.debounce.400ms="search"
+                           placeholder="Cari film atau serial Indonesia (misal: Siksa Kubur, Dilan, Agak Laen, Layangan Putus)..."
+                           class="w-full pl-10 pr-10 py-2.5 bg-black/70 text-white text-xs sm:text-sm rounded-xl border border-zinc-700/70 focus:border-red-500 focus:ring-1 focus:ring-red-500 transition placeholder:text-zinc-500">
+                    @if(!empty($search))
+                        <button type="button" wire:click="clearSearch" aria-label="Hapus pencarian"
+                                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-white transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    @endif
+                </div>
+
+                {{-- Category Filter Pills --}}
+                <div class="flex items-center gap-2 overflow-x-auto kz-noscroll pt-1 -mx-1 px-1">
+                    @foreach($categories as $cat)
+                        @php
+                            $isActive = ($category ?? 'all') === $cat['id'];
+                        @endphp
+                        <button type="button"
+                                wire:click="setCategory('{{ $cat['id'] }}')"
+                                class="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 shrink-0 flex items-center gap-1.5 border
+                                {{ $isActive
+                                    ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-600/30 scale-[1.02]'
+                                    : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 border-zinc-800/80 hover:border-zinc-700 hover:text-white' }}">
+                            @if(!empty($cat['emoji']))
+                                <span class="text-xs">{{ $cat['emoji'] }}</span>
+                            @endif
+                            <span>{{ $cat['label'] }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
     {{-- ================= GRID ================= --}}
-    <main class="w-full max-w-[1800px] mx-auto px-6 md:px-12 pt-10">
-        <div class="flex items-end justify-between mb-6">
+    <main class="w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ !empty($categories) ? 'pt-6' : 'pt-10' }}">
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
-                <h2 class="text-xl md:text-2xl font-black tracking-tight">Baru Ditambahkan</h2>
+                <div class="flex items-center gap-2.5">
+                    <h2 class="text-xl md:text-2xl font-black tracking-tight">
+                        @if(!empty($search))
+                            Hasil Pencarian: "{{ $search }}"
+                        @elseif(($category ?? 'all') !== 'all')
+                            Kategori: {{ $activeCategoryLabel ?? ucfirst($category) }}
+                        @else
+                            Baru Ditambahkan
+                        @endif
+                    </h2>
+                    @if(!empty($search) || ($category ?? 'all') !== 'all')
+                        <button type="button" wire:click="resetFilter"
+                                class="text-xs font-bold text-red-500 hover:text-red-400 bg-red-600/10 border border-red-600/20 px-2.5 py-0.5 rounded-md transition flex items-center gap-1">
+                            <span>Reset</span>
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    @endif
+                </div>
                 <p class="text-xs md:text-sm text-zinc-500 mt-1">{{ $kind === 'indonesia' ? 'Koleksi film & serial Indonesia terlengkap' : ($isSeries ? 'Serial terbaru yang masuk ke katalog' : 'Film terbaru yang masuk ke katalog') }}</p>
             </div>
-            <span class="text-xs font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full">{{ count($items) }} judul</span>
+            <span class="text-xs font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full shrink-0 self-start sm:self-auto">{{ count($items) }} judul</span>
         </div>
 
         @if(empty($items))
-            <div class="py-20 text-center text-zinc-500 bg-zinc-900/40 rounded-2xl border border-dashed border-zinc-800">
-                Belum ada {{ strtolower($label) }} yang tersedia.
+            <div class="py-20 text-center text-zinc-500 bg-zinc-900/40 rounded-2xl border border-dashed border-zinc-800 p-6">
+                @if(!empty($search))
+                    <p class="text-sm">Tidak ditemukan judul Indonesia dengan kata kunci "<span class="text-zinc-300 font-semibold">{{ $search }}</span>".</p>
+                    <div class="mt-4">
+                        <button type="button" wire:click="resetFilter" class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-red-600/20">
+                            Lihat Semua Koleksi Indonesia
+                        </button>
+                    </div>
+                @else
+                    <p class="text-sm">Belum ada {{ strtolower($label) }} yang tersedia untuk kategori ini.</p>
+                @endif
             </div>
         @else
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-x-4 gap-y-7">
