@@ -30,13 +30,13 @@ class Indonesia extends Page
     ];
 
     public array $categories = [
-        ['id' => 'all', 'label' => 'Semua', 'emoji' => '🌐'],
-        ['id' => 'movie', 'label' => 'Film', 'emoji' => '🎬'],
-        ['id' => 'series', 'label' => 'Series', 'emoji' => '📺'],
-        ['id' => '2026', 'label' => '2026', 'emoji' => '🔥'],
-        ['id' => '2025', 'label' => '2025', 'emoji' => '📅'],
-        ['id' => '2024', 'label' => '2024', 'emoji' => '📅'],
-        ['id' => 'classic', 'label' => '2023 & Sebelumnya', 'emoji' => '⏳'],
+        ['id' => 'all', 'label' => 'Semua'],
+        ['id' => 'movie', 'label' => 'Film'],
+        ['id' => 'series', 'label' => 'Series'],
+        ['id' => '2026', 'label' => '2026'],
+        ['id' => '2025', 'label' => '2025'],
+        ['id' => '2024', 'label' => '2024'],
+        ['id' => 'classic', 'label' => '2023 & Sebelumnya'],
     ];
 
     public function mount(): void
