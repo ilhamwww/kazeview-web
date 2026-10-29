@@ -339,11 +339,47 @@
                 </section>
             @endif
 
+            {{-- 4. Semua Koleksi Indonesia (Horizontal Rail ala Home) --}}
+            @if(!empty($items))
+                <section class="w-full max-w-[1800px] mx-auto px-6 md:px-12">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <h2 class="text-xl md:text-2xl font-black tracking-tight">Semua Koleksi Indonesia</h2>
+                        <span class="text-xs font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full">{{ count($items) }} judul</span>
+                    </div>
+                    <div class="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-6 px-6 md:-mx-12 md:px-12 scroll-px-6 md:scroll-px-12 snap-x kz-noscroll">
+                        @foreach($items as $item)
+                            <a href="{{ $urlFor($item) }}" class="group w-[130px] sm:w-[155px] md:w-[175px] shrink-0 snap-start">
+                                <div class="relative aspect-[2/3] overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/5 shadow-lg group-hover:ring-red-600/60 transition duration-300">
+                                    @if(!empty($item['thumbnail']))
+                                        <img src="{{ $cleanImg($item['thumbnail']) }}" alt="{{ $item['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" referrerpolicy="no-referrer">
+                                    @endif
+                                    <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/60 to-transparent"></div>
+                                    <div class="absolute inset-x-0 top-0 flex justify-between p-2">
+                                        <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">{{ ($item['type'] ?? '') === 'series' ? 'Series' : 'Film' }}</span>
+                                        @if(!empty($item['quality']))
+                                            <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $item['quality'] }}</span>
+                                        @endif
+                                    </div>
+                                    @if($hasRating($item['rating'] ?? null))
+                                        <span class="absolute bottom-2 left-2 flex items-center gap-0.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-black text-yellow-400">
+                                            ★ {{ number_format((float) $item['rating'], 1) }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <h3 class="mt-2 truncate text-xs md:text-[13px] font-semibold text-zinc-200 group-hover:text-red-500 transition" title="{{ $item['title'] ?? '' }}">{{ $item['title'] ?? '' }}</h3>
+                                <p class="text-[11px] text-zinc-500">{{ $item['year'] ?? '' }}@if(!empty($item['duration'])) · {{ $item['duration'] }}m @endif</p>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
         </div>
     @endif
 
-    {{-- ================= GRID ================= --}}
-    <main class="w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ (!empty($categories) && ($category ?? 'all') === 'all' && empty($search)) ? 'pt-12' : (!empty($categories) ? 'pt-6' : 'pt-10') }}">
+    {{-- ================= GRID (UNTUK FILTER / PENCARIAN / KATALOG UMUM) ================= --}}
+    @if($kind !== 'indonesia' || !empty($search) || ($category ?? 'all') !== 'all')
+    <main class="w-full max-w-[1800px] mx-auto px-6 md:px-12 pt-6">
         <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
                 <div class="flex items-center gap-2.5">
@@ -389,7 +425,7 @@
                 @endif
             </div>
         @else
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-x-4 gap-y-7">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-x-4 gap-y-7 w-full">
                 @foreach($items as $item)
                     @php $g = array_slice($genres($item['genre'] ?? ''), 0, 2); @endphp
                     <a href="{{ $urlFor($item) }}" wire:key="it-{{ $item['id'] ?? $loop->index }}" class="group block">
@@ -441,6 +477,7 @@
             @endif
         @endif
     </main>
+    @endif
 </div>
 
 @once
