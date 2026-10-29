@@ -697,7 +697,7 @@ class RebahinService
             if ($imgSrc && !str_starts_with($imgSrc, 'http')) {
                 $imgSrc = self::$baseUrl . '/' . ltrim($imgSrc, '/');
             }
-            $posterProxy = $imgSrc ? url('/api/proxy-image?url=' . urlencode($imgSrc)) : null;
+            $posterProxy = $imgSrc ? '/api/proxy-image?url=' . urlencode($imgSrc) : null;
 
             $ratingVal = !empty($rt[1]) ? (float)$rt[1] : null;
             if ($ratingVal && $ratingVal > 10) {

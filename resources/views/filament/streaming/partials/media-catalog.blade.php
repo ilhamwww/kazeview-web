@@ -17,7 +17,11 @@
             ? ShowSeries::getUrl(['slug' => $it['slug']], panel: 'streaming')
             : WatchMovie::getUrl(['slug' => $it['slug']], panel: 'streaming');
     };
-    $banner = fn (array $it) => str_replace('/t/p/original/', '/t/p/w1280/', $it['banner'] ?? '') ?: ($it['thumbnail'] ?? '');
+    $cleanImg = function ($u) {
+        if (empty($u)) return '';
+        return preg_replace('#^https?://[^/]+(?=/api/proxy-image)#', '', (string) $u);
+    };
+    $banner = fn (array $it) => $cleanImg(str_replace('/t/p/original/', '/t/p/w1280/', $it['banner'] ?? '') ?: ($it['thumbnail'] ?? ''));
     $runtime = function ($d) {
         if (!preg_match('/^(\d+)m$/', (string) $d, $m)) {
             return $d ?: null;
@@ -159,7 +163,7 @@
                                   style="-webkit-text-stroke: 3px rgba(255,255,255,0.55);" aria-hidden="true">{{ $i + 1 }}</span>
                             <div class="relative z-10 ml-auto w-[96px] md:w-[136px] aspect-[2/3] overflow-hidden rounded-lg bg-zinc-900 ring-1 ring-white/10 shadow-xl shadow-black/70">
                                 @if(!empty($t['thumbnail']))
-                                    <img src="{{ $t['thumbnail'] }}" alt="{{ $t['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                                    <img src="{{ $cleanImg($t['thumbnail']) }}" alt="{{ $t['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" referrerpolicy="no-referrer">
                                 @endif
                             </div>
                         </div>
@@ -268,7 +272,7 @@
                     <a href="{{ $urlFor($item) }}" wire:key="it-{{ $item['id'] ?? $loop->index }}" class="group block">
                         <div class="relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-white/5 group-hover:ring-red-600/60 shadow-lg shadow-black/40 transition">
                             @if(!empty($item['thumbnail']))
-                                <img src="{{ $item['thumbnail'] }}" alt="{{ $item['title'] ?? '' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                <img src="{{ $cleanImg($item['thumbnail']) }}" alt="{{ $item['title'] ?? '' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" referrerpolicy="no-referrer">
                             @else
                                 <div class="w-full h-full flex items-center justify-center text-xs text-zinc-600">No Image</div>
                             @endif
