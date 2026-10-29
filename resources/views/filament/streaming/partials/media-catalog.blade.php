@@ -152,7 +152,6 @@
         <section class="relative z-10 w-full max-w-[1800px] mx-auto px-6 md:px-12 {{ count($hero) ? '-mt-4' : 'pt-28' }}">
             <div class="flex items-center gap-3 mb-5">
                 <h2 class="text-xl md:text-2xl font-black tracking-tight">Top 10 {{ $label }} Minggu Ini</h2>
-                <span class="hidden sm:inline text-[10px] font-black uppercase tracking-[0.2em] text-red-500 border border-red-600/40 bg-red-600/10 px-2 py-1 rounded">Trending</span>
             </div>
             {{-- Disamakan dengan Top 10 di Beranda: angka absolute di dalam kartu, scroll horizontal saja --}}
             <div class="flex gap-2 md:gap-3 overflow-x-auto overflow-y-hidden pb-2 -mx-6 px-6 md:-mx-12 md:px-12 scroll-px-6 md:scroll-px-12 snap-x kz-noscroll">
@@ -230,10 +229,7 @@
             @if(!empty($latestMovies))
                 <section class="w-full max-w-[1800px] mx-auto px-6 md:px-12">
                     <div class="mb-4 flex items-center justify-between gap-3">
-                        <div class="flex items-center gap-2.5">
-                            <h2 class="text-xl md:text-2xl font-black tracking-tight">Film Bioskop Indonesia</h2>
-                            <span class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-red-600/10 text-red-500 border border-red-600/20">Layar Lebar</span>
-                        </div>
+                        <h2 class="text-xl md:text-2xl font-black tracking-tight">Film Bioskop Indonesia</h2>
                         <button type="button" wire:click="setCategory('movie')" class="inline-flex shrink-0 items-center gap-1 text-xs md:text-sm font-semibold text-zinc-400 transition hover:text-white">
                             Lihat Semua
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
@@ -271,10 +267,7 @@
             @if(!empty($latestSeries))
                 <section class="w-full max-w-[1800px] mx-auto px-6 md:px-12">
                     <div class="mb-4 flex items-center justify-between gap-3">
-                        <div class="flex items-center gap-2.5">
-                            <h2 class="text-xl md:text-2xl font-black tracking-tight">Serial & Web Series Indonesia</h2>
-                            <span class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Web Series</span>
-                        </div>
+                        <h2 class="text-xl md:text-2xl font-black tracking-tight">Serial & Web Series Indonesia</h2>
                         <button type="button" wire:click="setCategory('series')" class="inline-flex shrink-0 items-center gap-1 text-xs md:text-sm font-semibold text-zinc-400 transition hover:text-white">
                             Lihat Semua
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
@@ -312,10 +305,7 @@
             @if(!empty($spotlightItems))
                 <section class="w-full max-w-[1800px] mx-auto px-6 md:px-12">
                     <div class="mb-4 flex items-center justify-between gap-3">
-                        <div class="flex items-center gap-2.5">
-                            <h2 class="text-xl md:text-2xl font-black tracking-tight">Sorotan Pilihan Indonesia</h2>
-                            <span class="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Spesial</span>
-                        </div>
+                        <h2 class="text-xl md:text-2xl font-black tracking-tight">Sorotan Pilihan Indonesia</h2>
                     </div>
                     <div class="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 md:-mx-12 md:px-12 scroll-px-6 md:scroll-px-12 snap-x snap-mandatory kz-noscroll">
                         @foreach($spotlightItems as $sp)
@@ -339,8 +329,8 @@
                                         <h3 class="mt-2 text-base sm:text-lg font-black leading-tight line-clamp-2 group-hover:text-red-500 transition">{{ $sp['title'] ?? '' }}</h3>
                                         <p class="mt-1 text-xs text-zinc-400 line-clamp-2">{{ $sp['year'] ?? '' }} · Rekomendasi film & serial Indonesia</p>
                                     </div>
-                                    <span class="mt-3 inline-flex w-max items-center gap-1.5 rounded-lg bg-[#E50914] px-3.5 py-1.5 text-xs font-bold text-white shadow-md shadow-red-900/30">
-                                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Tonton Sekarang
+                                    <span class="mt-3 inline-flex w-max items-center gap-1.5 rounded-lg bg-[#E50914] px-3 py-1.5 text-[11px] font-bold text-white shadow-md shadow-red-900/30">
+                                        <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Tonton
                                     </span>
                                 </div>
                             </a>
@@ -376,9 +366,11 @@
                         </button>
                     @endif
                 </div>
-                <p class="text-xs md:text-sm text-zinc-500 mt-1">
-                    {{ $kind === 'indonesia' ? (($category ?? 'all') === 'all' && empty($search) ? 'Jelajahi seluruh film dan serial Indonesia terlengkap' : 'Koleksi film & serial Indonesia') : ($isSeries ? 'Serial terbaru yang masuk ke katalog' : 'Film terbaru yang masuk ke katalog') }}
-                </p>
+                @if($kind !== 'indonesia' || !empty($search) || ($category ?? 'all') !== 'all')
+                    <p class="text-xs md:text-sm text-zinc-500 mt-1">
+                        {{ $kind === 'indonesia' ? 'Koleksi film & serial Indonesia' : ($isSeries ? 'Serial terbaru yang masuk ke katalog' : 'Film terbaru yang masuk ke katalog') }}
+                    </p>
+                @endif
             </div>
             <span class="text-xs font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full shrink-0 self-start sm:self-auto">{{ count($items) }} judul</span>
         </div>
