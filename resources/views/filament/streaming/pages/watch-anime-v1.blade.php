@@ -552,7 +552,7 @@
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
-    <script src="/js/kz-fullscreen.js?v=2"></script>
+    <script src="/js/kz-fullscreen.js?v=3"></script>
     <script>
         (function() {
             let _isAuthorizedNav = false;
@@ -603,11 +603,6 @@
                             servers: this.serversList,
                             downloads: this.downloads
                         };
-
-                        // HP diputar balik ke potret saat fullscreen → keluar (gaya YouTube)
-                        window.addEventListener('kz-fs-portrait', () => {
-                            if (_art && _art.fullscreenWeb) _art.fullscreenWeb = false;
-                        });
 
                         // Browser back / forward button navigation
                         window.addEventListener('popstate', (e) => {

@@ -78,53 +78,15 @@
         });
     }
 
-    /* ===== Keluar otomatis saat HP diputar kembali ke potret (gaya YouTube) =====
-     * Saat fullscreen, layar dikunci landscape sehingga event orientasi layar tidak
-     * berubah walau HP diputar. Karena itu posisi fisik HP dibaca dari sensor gravitasi
-     * (devicemotion). Fallback: perubahan screen.orientation ke portrait (jika lock gagal).
-     * Halaman menerima event window 'kz-fs-portrait' untuk mematikan web-fullscreen Artplayer.
+    /* ===== Fullscreen Horizontal Terkunci Penuh =====
+     * Saat masuk fullscreen, layar dikunci ke landscape (horizontal).
+     * Sesuai preferensi pengguna, mode fullscreen TIDAK BOLEH keluar otomatis saat HP
+     * diputar/miring ke vertikal. Mode horizontal wajib terus aktif sampai pengguna
+     * secara manual mengetuk tombol keluar dari fullscreen.
      */
     const isPortraitScreen = () => (window.matchMedia && matchMedia('(orientation: portrait)').matches);
-    let seenLandscape = false, portraitSince = 0, armedAt = 0;
-
-    function exitToPortrait() {
-        seenLandscape = false; portraitSince = 0;
-        exit();
-        window.dispatchEvent(new CustomEvent('kz-fs-portrait'));
-    }
-
-    function webFsActive() { return !!document.querySelector('.art-video-player.art-fullscreen-web'); }
-    function anyFsActive() { return !!current() || webFsActive(); }
-
-    function onMotion(e) {
-        if (!isTouch() || !anyFsActive() || Date.now() < armedAt) return;
-        const g = e.accelerationIncludingGravity;
-        if (!g || g.x == null || g.y == null) return;
-        const ax = Math.abs(g.x), ay = Math.abs(g.y);
-        if (ax > 6.5 && ax > ay) { seenLandscape = true; portraitSince = 0; return; }
-        if (seenLandscape && ay > 7 && ax < 4) {
-            if (!portraitSince) portraitSince = Date.now();
-            else if (Date.now() - portraitSince > 500) exitToPortrait();
-        } else {
-            portraitSince = 0;
-        }
-    }
-    window.addEventListener('devicemotion', onMotion, { passive: true });
-
-    let wasLandscape = !isPortraitScreen();
-    function onScreenOrientation() {
-        const portrait = isPortraitScreen();
-        if (portrait && wasLandscape && isTouch() && anyFsActive()) exitToPortrait();
-        wasLandscape = !portrait;
-    }
-    if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', onScreenOrientation);
-    window.addEventListener('orientationchange', () => setTimeout(onScreenOrientation, 150));
 
     function onChange() {
-        if (current()) {
-            // Beri jeda sebelum sensor aktif, supaya rotasi awal ke landscape tidak dianggap rotasi balik
-            seenLandscape = false; portraitSince = 0; armedAt = Date.now() + 1200;
-        }
         if (!current() && locked) {
             try { screen.orientation.unlock(); } catch (e) {}
             locked = false;
@@ -144,9 +106,8 @@
         if (current() === target) exit(); else enter(target);
     });
 
-    // Web fullscreen (in-page) hanya masuk akal di HP saat landscape; di potret malah jadi video kecil di tengah layar hitam
     const allowWebFs = () => !isTouch() || !isPortraitScreen();
-    const armSensor = () => { seenLandscape = false; portraitSince = 0; armedAt = Date.now() + 1200; };
+    const armSensor = () => {};
 
     window.KzFs = { enter, exit, isTouch, current, supportsElement, allowWebFs, armSensor, isPortrait: isPortraitScreen, isActive: (el) => !!el && current() === el };
 })();

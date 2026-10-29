@@ -522,7 +522,7 @@
 
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
-    <script src="/js/kz-fullscreen.js?v=2"></script>
+    <script src="/js/kz-fullscreen.js?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
         (function() {
@@ -568,10 +568,6 @@
                     _loadingTimer: null,
 
                     init() {
-                        // HP diputar balik ke potret saat fullscreen → keluar (gaya YouTube)
-                        window.addEventListener('kz-fs-portrait', () => {
-                            if (this.art && this.art.fullscreenWeb) this.art.fullscreenWeb = false;
-                        });
                         // Ambil stream sejak halaman dibuka supaya saat tombol play ditekan video langsung jalan (khusus HLS)
                         if (!this.isEmbed && !this.videoSrc && this.episodeId) this._prefetch = this.fetchStreamAsync(false);
                     },
