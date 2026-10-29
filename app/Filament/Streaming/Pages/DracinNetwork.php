@@ -89,13 +89,14 @@ class DracinNetwork extends Page
             try {
                 $setting = ScraperSetting::getInstance();
                 $apiUrl = $setting->dramabuzz_api_url;
-                $apiKey = $setting->dramabuzz_api_key;
 
                 if (!$apiUrl) return [];
 
-                $response = Http::get($apiUrl, [
-                    'key' => $apiKey
-                ]);
+                $response = \App\Services\DramabuzzService::executeWithFailover(function ($key) use ($apiUrl) {
+                    return Http::get($apiUrl, [
+                        'key' => $key
+                    ]);
+                });
 
                 if ($response->successful() && $response->json('success')) {
                     $platforms = $response->json('platforms') ?? [];
@@ -851,7 +852,7 @@ class DracinNetwork extends Page
         }
         
         if ($this->slugVal === 'pinedrama') {
-            $code = "5193CD21848193E43FC399BA4D73BB13";
+            $code = $apiKey;
             $page = $this->offset + 1;
             
             if ($isSearch) {
