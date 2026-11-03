@@ -1,4 +1,5 @@
 <div class="min-h-screen bg-[#050505] text-zinc-100 pb-24 selection:bg-red-600 selection:text-white"
+     @scroll-to-catalog.window="document.getElementById('katalog-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
      x-data="{
         recentReads: [],
         init() {
@@ -233,16 +234,21 @@
         @endif
 
         {{-- ================= SECTION: MAIN GRID ================= --}}
-        <div class="mt-4">
+        <div class="mt-4 scroll-mt-28" id="katalog-grid">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg md:text-xl font-black text-white tracking-tight">
-                    @if(!empty($search))
-                        Hasil Pencarian: "<span class="text-red-500">{{ $search }}</span>"
-                    @elseif($tab === 'latest')
-                        Semua Rilis Terbaru
-                    @else
-                        Koleksi {{ $format !== 'all' ? ucfirst($format) : 'Komik' }} Terpopuler
-                    @endif
+                <h2 class="text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
+                    <span>
+                        @if(!empty($search))
+                            Hasil Pencarian: "<span class="text-red-500">{{ $search }}</span>"
+                        @elseif($tab === 'latest')
+                            Semua Rilis Terbaru
+                        @else
+                            Koleksi {{ $format !== 'all' ? ucfirst($format) : 'Komik' }} Terpopuler
+                        @endif
+                    </span>
+                    <span wire:loading wire:target="nextPage, prevPage, setFormat, setTab, search" class="inline-flex items-center">
+                        <svg class="w-4 h-4 text-red-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </span>
                 </h2>
                 <span class="text-xs font-semibold text-zinc-500">Halaman {{ $page }}</span>
             </div>
@@ -256,14 +262,27 @@
                     </button>
                 </div>
             @else
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4 md:gap-5">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4 md:gap-5 transition-opacity duration-200"
+                     wire:loading.class="opacity-50 pointer-events-none"
+                     wire:target="nextPage, prevPage, setFormat, setTab, search">
                     @foreach($items as $comic)
-                        <div class="group flex flex-col">
+                        <div wire:key="comic-card-p{{ $page }}-{{ $comic['id'] }}" class="group flex flex-col">
                             <a href="/komik/{{ $comic['id'] }}" class="relative aspect-[2/3] w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-zinc-900 shadow-xl group-hover:ring-red-500/50 transition duration-300">
-                                <img src="{{ $comic['cover'] }}"
-                                     alt="{{ $comic['title'] }}"
-                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                                     loading="lazy" />
+                                {{-- Image Container with Alpine Loaded State and Skeleton Shimmer --}}
+                                <div x-data="{ loaded: false }" class="w-full h-full relative bg-zinc-900">
+                                    {{-- Dark Skeleton Placeholder while loading --}}
+                                    <div x-show="!loaded"
+                                         class="absolute inset-0 bg-zinc-800/80 animate-pulse flex items-center justify-center pointer-events-none">
+                                        <svg class="w-6 h-6 text-zinc-700/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+                                    </div>
+
+                                    <img src="{{ $comic['cover'] }}"
+                                         alt="{{ $comic['title'] }}"
+                                         @load="loaded = true"
+                                         class="w-full h-full object-cover group-hover:scale-105 transition-opacity duration-300"
+                                         :class="loaded ? 'opacity-100' : 'opacity-0'"
+                                         loading="lazy" />
+                                </div>
 
                                 {{-- Badges Overlay --}}
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
@@ -308,6 +327,7 @@
                 {{-- ================= PAGINATION ================= --}}
                 <div class="mt-10 flex items-center justify-center gap-3">
                     <button type="button" wire:click="prevPage" @if($page <= 1) disabled @endif
+                            wire:loading.attr="disabled"
                             class="px-5 py-2.5 rounded-xl text-xs font-bold transition border {{ $page > 1 ? 'bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800' : 'bg-zinc-950 border-zinc-900 text-zinc-600 cursor-not-allowed' }}">
                         ← Halaman Sebelumnya
                     </button>
@@ -315,6 +335,7 @@
                         {{ $page }} / {{ $totalPage }}
                     </span>
                     <button type="button" wire:click="nextPage" @if(!$hasMore) disabled @endif
+                            wire:loading.attr="disabled"
                             class="px-5 py-2.5 rounded-xl text-xs font-bold transition border {{ $hasMore ? 'bg-red-600 border-red-500 text-white hover:bg-red-500 shadow-lg shadow-red-900/40' : 'bg-zinc-950 border-zinc-900 text-zinc-600 cursor-not-allowed' }}">
                         Halaman Selanjutnya →
                     </button>

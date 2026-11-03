@@ -83,6 +83,7 @@ class Komik extends Page
         if ($this->hasMore) {
             $this->page++;
             $this->loadData();
+            $this->dispatch('scroll-to-catalog');
         }
     }
 
@@ -91,6 +92,7 @@ class Komik extends Page
         if ($this->page > 1) {
             $this->page--;
             $this->loadData();
+            $this->dispatch('scroll-to-catalog');
         }
     }
 
