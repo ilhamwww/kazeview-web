@@ -25,7 +25,7 @@
             } catch(e) {}
         },
         clearRecentReads() {
-            if (confirm('Hapus seluruh riwayat komik yang terakhir dibaca?')) {
+            if (confirm('Hapus seluruh riwayat webtoon yang terakhir dibaca?')) {
                 localStorage.removeItem('kz_comic_recent_reads');
                 this.recentReads = [];
             }
@@ -173,8 +173,8 @@
                     <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
                     <input type="text"
                            wire:model.live.debounce.400ms="search"
-                           aria-label="Cari komik"
-                           placeholder="Cari judul komik..."
+                           aria-label="Cari webtoon"
+                           placeholder="Cari judul webtoon..."
                            class="w-full pl-10 pr-10 py-3 rounded-xl bg-black/60 border border-white/5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition" />
                     @if(!empty($search))
                         <button type="button" wire:click="clearSearch" aria-label="Hapus pencarian"
@@ -324,7 +324,7 @@
                         @elseif($tab === 'latest')
                             Rilis Terbaru
                         @else
-                            Jelajahi {{ $format !== 'all' ? ucfirst($format) : 'Semua Komik' }}
+                            Jelajahi {{ $format !== 'all' ? ucfirst($format) : 'Semua Webtoon' }}
                         @endif
                         <svg wire:loading wire:target="nextPage, prevPage, setFormat, setTab, search, clearSearch" class="w-4 h-4 text-red-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                     </h2>
@@ -334,7 +334,7 @@
 
             @if(empty($items))
                 <div class="py-20 text-center rounded-2xl bg-zinc-900/40 ring-1 ring-white/5">
-                    <p class="text-sm font-bold text-zinc-300">Komik tidak ditemukan</p>
+                    <p class="text-sm font-bold text-zinc-300">Webtoon tidak ditemukan</p>
                     <p class="mt-1 text-xs text-zinc-500">Coba kata kunci lain atau ganti filter tipe.</p>
                     <button type="button" wire:click="clearSearch" class="mt-4 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-semibold text-white transition">
                         Reset Pencarian

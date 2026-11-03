@@ -8,8 +8,8 @@ use App\Services\ShinigamiService;
 class KomikReader extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
-    protected static ?string $navigationLabel = 'Baca Komik';
-    protected static ?string $title = 'Baca Komik - KZSTRM';
+    protected static ?string $navigationLabel = 'Baca Webtoon';
+    protected static ?string $title = 'Baca Webtoon - KZSTRM';
     protected static ?string $slug = 'komik/{id}/read/{chapter_id}';
     protected static string $view = 'filament.streaming.pages.komik-reader';
     protected static string $layout = 'filament.streaming.layout';
@@ -33,7 +33,7 @@ class KomikReader extends Page
 
         $this->comic = $service->getDetail($id);
         if (!$this->comic) {
-            abort(404, 'Komik tidak ditemukan');
+            abort(404, 'Webtoon tidak ditemukan');
         }
 
         $allCh = $service->getChapters($id);
@@ -62,7 +62,7 @@ class KomikReader extends Page
             $this->nextChapter = $this->allChapters[$currentIndex + 1];
         }
 
-        static::$title = ($this->comic['title'] ?? 'Komik') . ' - ' . $this->currentChapter['label'] . ' - KZSTRM';
+        static::$title = ($this->comic['title'] ?? 'Webtoon') . ' - ' . $this->currentChapter['label'] . ' - KZSTRM';
 
         $pagesData = $service->getChapterPages($chapter_id);
         $this->pages = $pagesData['pages'] ?? [];

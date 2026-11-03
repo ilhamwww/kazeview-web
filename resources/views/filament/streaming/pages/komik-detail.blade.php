@@ -127,7 +127,7 @@
             </h2>
             <div class="text-sm md:text-base text-zinc-300 leading-relaxed font-normal"
                  :class="expanded ? '' : 'line-clamp-3'">
-                {{ $comic['description'] ?: 'Belum ada sinopsis untuk komik ini.' }}
+                {{ $comic['description'] ?: 'Belum ada sinopsis untuk webtoon ini.' }}
             </div>
             @if(strlen($comic['description']) > 180)
                 <button type="button" @click="expanded = !expanded"

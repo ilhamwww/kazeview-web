@@ -181,7 +181,7 @@
             <div class="py-32 text-center text-zinc-500">
                 <p class="text-sm font-bold">Halaman chapter sedang dimuat atau tidak tersedia.</p>
                 <a href="/komik/{{ $comic['id'] }}" class="mt-4 inline-block px-5 py-2 rounded-xl bg-red-600 text-white text-xs font-bold">
-                    Kembali ke Detail Komik
+                    Kembali ke Detail Webtoon
                 </a>
             </div>
         @else
