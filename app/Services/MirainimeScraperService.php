@@ -32,8 +32,27 @@ class MirainimeScraperService
 
     protected function fetchHtml(string $url): string
     {
-        $res = $this->client->get($url);
-        return (string) $res->getBody();
+        $fullUrl = str_starts_with($url, 'http') ? $url : rtrim($this->baseUrl, '/') . '/' . ltrim($url, '/');
+
+        // 1. Coba lewat NUC Relay terlebih dahulu (Bypass Cloudflare WAF Mirainime)
+        try {
+            $nucRes = \Illuminate\Support\Facades\Http::withOptions([
+                'proxy' => 'socks5h://127.0.0.1:1055',
+                'timeout' => 8,
+            ])->get('http://100.110.54.105:8765/proxy/html?url=' . urlencode($fullUrl));
+
+            if ($nucRes->successful() && !str_contains($nucRes->body(), 'Just a moment...') && !str_contains($nucRes->body(), 'Attention Required!')) {
+                return (string) $nucRes->body();
+            }
+        } catch (\Throwable $e) {}
+
+        // 2. Fallback direct Guzzle
+        try {
+            $res = $this->client->get($url);
+            return (string) $res->getBody();
+        } catch (\Throwable $e) {
+            return '';
+        }
     }
 
     /**
@@ -60,35 +79,19 @@ class MirainimeScraperService
             return $out;
         }
 
-        $requests = function () use ($todo) {
-            foreach ($todo as $slug) {
-                yield $slug => new \GuzzleHttp\Psr7\Request('GET', 'anime/' . rawurlencode($slug));
-            }
-        };
-
-        $pool = new \GuzzleHttp\Pool($this->client, $requests(), [
-            'concurrency' => 6,
-            'options' => ['timeout' => 8],
-            'fulfilled' => function ($response, $slug) use (&$out) {
-                if ($response->getStatusCode() !== 200) {
-                    return;
-                }
-                try {
-                    $node = (new Crawler((string) $response->getBody()))->filter('meta[property="og:image"]');
+        foreach (array_slice($todo, 0, 15) as $slug) {
+            try {
+                $html = $this->fetchHtml('anime/' . rawurlencode($slug));
+                if ($html !== '') {
+                    $node = (new Crawler($html))->filter('meta[property="og:image"]');
                     $poster = $node->count() ? trim($node->first()->attr('content') ?? '') : '';
-                } catch (\Throwable $e) {
-                    $poster = '';
+                    if ($poster !== '') {
+                        $out[$slug] = $poster;
+                        \Illuminate\Support\Facades\Cache::put('v1_poster_' . $slug, $poster, 604800);
+                    }
                 }
-                if ($poster !== '') {
-                    $out[$slug] = $poster;
-                    \Illuminate\Support\Facades\Cache::put('v1_poster_' . $slug, $poster, 604800);
-                }
-            },
-            'rejected' => function ($reason, $slug) {
-                \Log::warning("V1 poster fetch gagal ({$slug}): " . (is_object($reason) && method_exists($reason, 'getMessage') ? $reason->getMessage() : 'unknown'));
-            },
-        ]);
-        $pool->promise()->wait();
+            } catch (\Throwable $e) {}
+        }
 
         return $out;
     }
