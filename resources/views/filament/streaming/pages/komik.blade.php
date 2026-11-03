@@ -267,28 +267,17 @@
                      wire:target="nextPage, prevPage, setFormat, setTab, search">
                     @foreach($items as $comic)
                         <div wire:key="comic-card-p{{ $page }}-{{ $comic['id'] }}" class="group flex flex-col">
-                            <a href="/komik/{{ $comic['id'] }}" class="relative aspect-[2/3] w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-zinc-900 shadow-xl group-hover:ring-red-500/50 transition duration-300">
-                                {{-- Image Container with Alpine Loaded State and Skeleton Shimmer --}}
-                                <div x-data="{ loaded: false }" class="w-full h-full relative bg-zinc-900">
-                                    {{-- Dark Skeleton Placeholder while loading --}}
-                                    <div x-show="!loaded"
-                                         class="absolute inset-0 bg-zinc-800/80 animate-pulse flex items-center justify-center pointer-events-none">
-                                        <svg class="w-6 h-6 text-zinc-700/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
-                                    </div>
-
-                                    <img src="{{ $comic['cover'] }}"
-                                         alt="{{ $comic['title'] }}"
-                                         @load="loaded = true"
-                                         class="w-full h-full object-cover group-hover:scale-105 transition-opacity duration-300"
-                                         :class="loaded ? 'opacity-100' : 'opacity-0'"
-                                         loading="lazy" />
-                                </div>
+                            <a href="/komik/{{ $comic['id'] }}" class="relative aspect-[2/3] w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-zinc-800/90 shadow-xl group-hover:ring-red-500/50 transition duration-300">
+                                <img src="{{ $comic['cover'] }}"
+                                     alt="{{ $comic['title'] }}"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-500 relative z-10"
+                                     loading="lazy" />
 
                                 {{-- Badges Overlay --}}
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10"></div>
 
                                 {{-- Top Badges --}}
-                                <div class="absolute top-2 inset-x-2 flex items-center justify-between gap-1 pointer-events-none">
+                                <div class="absolute top-2 inset-x-2 flex items-center justify-between gap-1 pointer-events-none z-20">
                                     <span class="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-black/75 backdrop-blur-md text-white ring-1 ring-white/10">
                                         {{ $comic['format'] }}
                                     </span>
@@ -300,7 +289,7 @@
                                 </div>
 
                                 {{-- Bottom Badges --}}
-                                <div class="absolute bottom-2.5 inset-x-2.5">
+                                <div class="absolute bottom-2.5 inset-x-2.5 z-20">
                                     <span class="inline-block px-2 py-1 rounded-lg bg-red-600/90 backdrop-blur-sm text-[11px] font-black text-white shadow-md">
                                         {{ !empty($comic['latest_chapter']) ? 'Ch. ' . $comic['latest_chapter'] : 'Ongoing' }}
                                     </span>
