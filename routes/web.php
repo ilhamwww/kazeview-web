@@ -978,7 +978,7 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
 
     $parsedUrl = parse_url($url);
     $host = $parsedUrl['host'] ?? '';
-    $allowedDomains = ['flextv.cc', 'shortswave.com', 'mydramawave.com', 'farsunpteltd.com', 'farsunpteltd.net', 'wolftv.online', 'cubetv.cc', 'vividshort.com', '198.252.99.106', 'dramabuzz.sbs', 'goodbos.online', 'dramabos.fun', 'wsrv.nl', 'lh3.googleusercontent.com', 'tiktokcdn.com', 'ibyteimg.com', 'netshort.com', 'shorttv.live', 'raptdrama.com', 'goodreels.com', 'goodshort.com', 'dramaboxdb.com', 'dramabox.com', 'shortolol.com', 'kintoto.xyz', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'assets.stardusttv.cc', 'stardusttv.cc', 'stardust-tv.com', 'vibeshort.live', 'rebahinxxi3.mom', 'rebahinxxi.mom', 'rebahinxxi3.pics', 'rebahinxxi3.casa', 'serealshort.com', 'serealplus.com', 'nontonanimeid.my.id', 'nontonanimeid.boats', 'wp.com', 'rumble.cloud', 'kotakanimeid.link', 'tmdb.org', 'themoviedb.org'];
+    $allowedDomains = ['flextv.cc', 'shortswave.com', 'mydramawave.com', 'farsunpteltd.com', 'farsunpteltd.net', 'wolftv.online', 'cubetv.cc', 'vividshort.com', '198.252.99.106', 'dramabuzz.sbs', 'goodbos.online', 'dramabos.fun', 'wsrv.nl', 'lh3.googleusercontent.com', 'tiktokcdn.com', 'ibyteimg.com', 'netshort.com', 'shorttv.live', 'raptdrama.com', 'goodreels.com', 'goodshort.com', 'dramaboxdb.com', 'dramabox.com', 'shortolol.com', 'kintoto.xyz', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'assets.stardusttv.cc', 'stardusttv.cc', 'stardust-tv.com', 'vibeshort.live', 'rebahinxxi3.mom', 'rebahinxxi.mom', 'rebahinxxi3.pics', 'rebahinxxi3.casa', 'serealshort.com', 'serealplus.com', 'nontonanimeid.my.id', 'nontonanimeid.boats', 'wp.com', 'rumble.cloud', 'kotakanimeid.link', 'tmdb.org', 'themoviedb.org', 'shngm.id', 'shngm.io', 'assets.shngm.id', 'mangadex.org', 'mangadex.network'];
     $allowed = false;
     foreach ($allowedDomains as $domain) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {
@@ -993,12 +993,30 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
     $cacheKey = 'img_proxy_' . md5($url);
     $cacheDuration = 86400 * 7; // Cache for 7 days
 
-    $imageData = \Illuminate\Support\Facades\Cache::remember($cacheKey, $cacheDuration, function () use ($url) {
+    $imageData = \Illuminate\Support\Facades\Cache::remember($cacheKey, $cacheDuration, function () use ($url, $host) {
         try {
+            // Khusus aset Shinigami, lewati jembatan NUC residensial Indonesia agar 100% bebas blokir Cloudflare
+            if (str_contains($host, 'shngm.id') || str_contains($host, 'shngm.io')) {
+                try {
+                    $nucImgRes = \Illuminate\Support\Facades\Http::withOptions([
+                        'proxy' => 'socks5h://127.0.0.1:1055',
+                        'timeout' => 12,
+                    ])->get('http://100.110.54.105:8765/shinigami/image?url=' . urlencode($url));
+                    $nucCt = $nucImgRes->header('Content-Type') ?: '';
+                    if ($nucImgRes->successful() && str_starts_with($nucCt, 'image/')) {
+                        return [
+                            'content' => base64_encode($nucImgRes->body()),
+                            'content_type' => $nucCt
+                        ];
+                    }
+                } catch (\Throwable $ne) {}
+            }
+
             $response = \Illuminate\Support\Facades\Http::withoutVerifying()
                 ->withHeaders([
                     'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Accept' => 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+                    'Referer' => 'https://11.shinigami.asia/',
                 ])
                 ->get($url);
             $ct = $response->header('Content-Type') ?: '';

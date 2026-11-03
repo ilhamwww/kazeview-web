@@ -270,6 +270,7 @@
         $isBstation = str_contains($currentUrl, '/bstation');
         $isDracin = str_contains($currentUrl, '/dracin') || $isBstation;
         $isAnime = str_contains($currentUrl, '/anime');
+        $isKomik = str_contains($currentUrl, '/komik');
         $isCollection = str_contains($currentUrl, '/collection');
         $isNetwork = str_contains($currentUrl, '/network');
         $isIndonesia = str_contains($currentUrl, '/indonesia');
@@ -278,7 +279,7 @@
         $isSeries = (str_contains($currentUrl, '/series') || str_contains($currentUrl, '/tv-series')) && !$isDracin && !$isDrakor;
         $isMovie = (str_contains($currentUrl, '/movies') || str_contains($currentUrl, '/movie/')) && !$isDracin && !$isCollection && !$isServerLk;
         $isTv = (request()->is('tv') || request()->is('tv/*') || request()->is('live-tv*')) && !str_contains($currentUrl, '/tv-series');
-        $isHome = !$isSeries && !$isMovie && !$isDracin && !$isAnime && !$isCollection && !$isNetwork && !$isIndonesia && !$isDrakor && !$isTv && !$isServerLk && !str_contains($currentUrl, '/dmca') && !str_contains($currentUrl, '/traffic');
+        $isHome = !$isSeries && !$isMovie && !$isDracin && !$isAnime && !$isKomik && !$isCollection && !$isNetwork && !$isIndonesia && !$isDrakor && !$isTv && !$isServerLk && !str_contains($currentUrl, '/dmca') && !str_contains($currentUrl, '/traffic');
 
         $activeClass = "flex items-center gap-1.5 text-white bg-red-600/80 border border-red-500/25 px-3 py-1 rounded-full text-xs font-bold tracking-wide transition";
         $inactiveClass = "flex items-center gap-1.5 text-gray-300 hover:text-white text-xs font-semibold tracking-wide transition";
@@ -295,6 +296,7 @@
         $hideMobileTop = str_contains($currentUrl, '/movie/')
             || str_contains($currentUrl, '/season/')
             || (str_contains($currentUrl, '/anime/') && str_contains($currentUrl, '/episode/'))
+            || (str_contains($currentUrl, '/komik/') && str_contains($currentUrl, '/read/'))
             || str_contains($currentUrl, '/drama/')
             || str_contains($currentUrl, '/bstation/');
     @endphp
@@ -366,6 +368,7 @@
                     ['Indonesia', \App\Filament\Streaming\Pages\Indonesia::getUrl(panel: 'streaming'), $isIndonesia, 'M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3'],
                     ['Anime', \App\Filament\Streaming\Pages\ExploreAnime::getUrl(panel: 'streaming'), $isAnime, 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z'],
                     ['Dracin', \App\Filament\Streaming\Pages\Dracin::getUrl(panel: 'streaming'), $isDracin, 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3'],
+                    ['Komik', \App\Filament\Streaming\Pages\Komik::getUrl(panel: 'streaming'), $isKomik, 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25'],
                 ];
                 $exploreNav = [
                     ['Live TV', 'Siaran TV nasional', '/tv', $isTv, 'M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z'],
@@ -674,6 +677,7 @@
                         ['Live TV', '/tv', $isTv, 'M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z'],
                         ['Dracin', \App\Filament\Streaming\Pages\Dracin::getUrl(panel: 'streaming'), $isDracin, 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3'],
                         ['Anime', \App\Filament\Streaming\Pages\ExploreAnime::getUrl(panel: 'streaming'), $isAnime, 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z'],
+                        ['Komik', \App\Filament\Streaming\Pages\Komik::getUrl(panel: 'streaming'), $isKomik, 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25'],
                         ['Collections', \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming'), $isCollection, 'M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m0 0a2.246 2.246 0 00-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0121 12v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6c0-.98.626-1.813 1.5-2.122'],
                         ['Network', \App\Filament\Streaming\Pages\Network::getUrl(panel: 'streaming'), $isNetwork, 'M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418'],
                         ['Watchlist', '/watchlist', str_contains($currentUrl, '/watchlist'), 'M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z'],
@@ -980,6 +984,7 @@
     {{-- ================= MOBILE BOTTOM NAV (< lg) =================
          Dock mengambang: ikon jelas, label pendek, indikator aktif berbentuk pill. --}}
     @php
+        $isComicReader = str_contains($currentUrl, '/komik/') && str_contains($currentUrl, '/read/');
         $dockLinks = [
             ['Home', \App\Filament\Streaming\Pages\StreamingHome::getUrl(panel: 'streaming'), $isHome, 'M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25'],
             ['Movies', \App\Filament\Streaming\Pages\Movies::getUrl(panel: 'streaming'), $isMovie, 'M3.75 4.5h16.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H3.75a.75.75 0 01-.75-.75V5.25a.75.75 0 01.75-.75zM7.5 4.5v15m9-15v15M3 9h4.5M3 15h4.5m9-6H21m-4.5 6H21'],
@@ -988,6 +993,7 @@
             ['Anime', \App\Filament\Streaming\Pages\ExploreAnime::getUrl(panel: 'streaming'), $isAnime, 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z'],
         ];
     @endphp
+    @if(!$isComicReader)
     <nav aria-label="Navigasi utama"
          class="lg:hidden fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] pointer-events-none">
         <div class="pointer-events-auto mx-auto max-w-md grid grid-cols-6 gap-1 p-1.5 rounded-[22px] bg-[#111113]/95 backdrop-blur-2xl ring-1 ring-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.75)]">
@@ -1019,10 +1025,15 @@
             </button>
         </div>
     </nav>
+    @endif
 
     <!-- PWA Install Prompt Banner & iOS Guide (Alpine.js) -->
     @php
-        $isWatchPageUrl = str_contains(request()->url(), '/movie/') || str_contains(request()->url(), '/series/') || (str_contains(request()->url(), '/anime/') && str_contains(request()->url(), '/episode/')) || str_contains(request()->url(), '/drama/');
+        $isWatchPageUrl = str_contains(request()->url(), '/movie/')
+            || str_contains(request()->url(), '/series/')
+            || (str_contains(request()->url(), '/anime/') && str_contains(request()->url(), '/episode/'))
+            || (str_contains(request()->url(), '/komik/') && str_contains(request()->url(), '/read/'))
+            || str_contains(request()->url(), '/drama/');
     @endphp
     <div x-data="pwaInstaller()"
          x-init="init()"
