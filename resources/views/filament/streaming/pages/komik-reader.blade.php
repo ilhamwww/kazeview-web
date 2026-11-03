@@ -143,8 +143,8 @@
         </div>
     </div>
 
-    {{-- ================= TOP HEADER (MINIMALIST) ================= --}}
-    <header class="fixed top-0 inset-x-0 z-40 h-14 bg-black/85 backdrop-blur-xl border-b border-white/10 px-4 flex items-center justify-between transition-transform duration-300"
+    {{-- ================= TOP HEADER (MINIMALIST - MOBILE ONLY) ================= --}}
+    <header class="lg:hidden fixed top-0 inset-x-0 z-40 h-14 bg-black/85 backdrop-blur-xl border-b border-white/10 px-4 flex items-center justify-between transition-transform duration-300"
             :class="navVisible ? 'translate-y-0' : '-translate-y-full'">
         <div class="flex items-center gap-3 min-w-0">
             <a href="/komik/{{ $comic['id'] }}" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-300 hover:text-white transition">
@@ -175,8 +175,23 @@
     </header>
 
     {{-- ================= WEBCOMIC LONG-STRIP IMAGES ================= --}}
-    <main class="w-full max-w-3xl mx-auto pt-16 pb-32 flex flex-col items-center bg-black min-h-screen"
+    <main class="w-full max-w-3xl mx-auto pt-16 md:pt-24 lg:pt-32 xl:pt-36 pb-32 flex flex-col items-center bg-black min-h-screen"
           @click="toggleNav">
+        {{-- Desktop Top Bar Sub-Header --}}
+        <div class="hidden lg:flex w-full items-center justify-between mb-6 px-2">
+            <a href="/komik/{{ $comic['id'] }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+                <span>Kembali ke Detail Webtoon</span>
+            </a>
+            <div class="text-right">
+                <h1 class="text-sm font-bold text-white truncate max-w-md">
+                    {{ $comic['title'] }}
+                </h1>
+                <p class="text-xs font-bold text-red-500">
+                    {{ $currentChapter['label'] }} · Progres: <span x-text="currentProgress + '%'"></span>
+                </p>
+            </div>
+        </div>
         @if(empty($pages))
             <div class="py-32 text-center text-zinc-500">
                 <p class="text-sm font-bold">Halaman chapter sedang dimuat atau tidak tersedia.</p>
