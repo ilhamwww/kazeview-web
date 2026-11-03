@@ -72,6 +72,25 @@
                         updatedAt: Date.now()
                     };
                     localStorage.setItem('kz_comic_{{ $mangaId }}', JSON.stringify(historyData));
+
+                    // Simpan ke daftar riwayat baca global untuk katalog /komik
+                    let list = [];
+                    const rawList = localStorage.getItem('kz_comic_recent_reads');
+                    if (rawList) list = JSON.parse(rawList);
+                    list = list.filter(item => item.comicId !== '{{ $mangaId }}');
+                    list.unshift({
+                        comicId: '{{ $mangaId }}',
+                        comicTitle: '{{ addslashes($comic['title'] ?? '') }}',
+                        comicCover: '{{ $comic['cover'] ?? '' }}',
+                        comicFormat: '{{ $comic['format'] ?? 'Manhwa' }}',
+                        chapterId: '{{ $chapterId }}',
+                        chapterLabel: '{{ addslashes($currentChapter['label']) }}',
+                        chapterNumber: {{ (float) ($currentChapter['number'] ?? 0) }},
+                        progress: this.currentProgress,
+                        panelIndex: this.currentPanel,
+                        updatedAt: Date.now()
+                    });
+                    localStorage.setItem('kz_comic_recent_reads', JSON.stringify(list.slice(0, 10)));
                 } catch(e) {}
             }, 200);
 

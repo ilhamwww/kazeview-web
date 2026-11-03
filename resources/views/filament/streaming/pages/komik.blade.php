@@ -1,4 +1,19 @@
-<div class="min-h-screen bg-[#050505] text-zinc-100 pb-24 selection:bg-red-600 selection:text-white">
+<div class="min-h-screen bg-[#050505] text-zinc-100 pb-24 selection:bg-red-600 selection:text-white"
+     x-data="{
+        recentReads: [],
+        init() {
+            try {
+                const raw = localStorage.getItem('kz_comic_recent_reads');
+                if (raw) this.recentReads = JSON.parse(raw);
+            } catch(e) {}
+        },
+        clearRecentReads() {
+            if (confirm('Hapus seluruh riwayat komik yang terakhir dibaca?')) {
+                localStorage.removeItem('kz_comic_recent_reads');
+                this.recentReads = [];
+            }
+        }
+     }">
     {{-- ================= HERO SPOTLIGHT BANNER ================= --}}
     @if(empty($search) && !empty($heroItems))
         @php
@@ -112,6 +127,73 @@
                     {{ $fmt['label'] }}
                 </button>
             @endforeach
+        </div>
+
+        {{-- ================= SECTION: TERAKHIR KALI DIBACA (RECENT READS) ================= --}}
+        <div x-show="recentReads.length > 0 && @js(empty($search)) && @js($page === 1)"
+             class="mt-3 mb-8"
+             style="display: none;">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                    <h2 class="text-lg md:text-xl font-black text-white tracking-tight">Terakhir Kali Dibaca</h2>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-zinc-300" x-text="recentReads.length"></span>
+                </div>
+                <button type="button" @click="clearRecentReads()"
+                        class="text-xs font-semibold text-zinc-500 hover:text-red-400 transition cursor-pointer">
+                    Hapus Riwayat
+                </button>
+            </div>
+
+            {{-- Horizontal Cards --}}
+            <div class="flex gap-3.5 md:gap-4 overflow-x-auto pb-4 scrollbar-none scroll-smooth">
+                <template x-for="item in recentReads" :key="item.comicId">
+                    <div class="shrink-0 w-36 sm:w-44 md:w-48 group flex flex-col">
+                        <a :href="'/komik/' + item.comicId + '/read/' + item.chapterId"
+                           class="block relative aspect-[2/3] w-full rounded-2xl overflow-hidden ring-1 ring-red-500/30 shadow-xl bg-zinc-900 group-hover:ring-red-500 transition duration-300">
+                            <img :src="item.comicCover" :alt="item.comicTitle"
+                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                                 loading="lazy" />
+
+                            {{-- Badges Top --}}
+                            <div class="absolute top-2 inset-x-2 flex items-center justify-between pointer-events-none">
+                                <span class="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-black/80 backdrop-blur-md text-white ring-1 ring-white/10"
+                                      x-text="item.comicFormat || 'Manhwa'"></span>
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-red-600 text-white shadow-md"
+                                      x-text="(item.progress || 0) + '%'"></span>
+                            </div>
+
+                            {{-- Gradient Bottom --}}
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent"></div>
+
+                            {{-- Progress Bar at bottom of poster --}}
+                            <div class="absolute bottom-0 inset-x-0 h-1.5 bg-zinc-800">
+                                <div class="h-full bg-red-600 transition-all duration-300 shadow-[0_0_8px_rgba(229,9,20,0.8)]"
+                                     :style="'width: ' + (item.progress || 0) + '%'"></div>
+                            </div>
+
+                            {{-- Chapter Info & Play Hover overlay --}}
+                            <div class="absolute bottom-3 inset-x-2.5 flex items-center justify-between">
+                                <span class="text-xs font-black text-white drop-shadow truncate"
+                                      x-text="item.chapterLabel"></span>
+                                <span class="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition">
+                                    <svg class="w-3 h-3 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </span>
+                            </div>
+                        </a>
+
+                        {{-- Comic Title & Details --}}
+                        <div class="mt-2.5">
+                            <a :href="'/komik/' + item.comicId"
+                               class="font-bold text-xs sm:text-sm text-zinc-100 group-hover:text-red-400 transition line-clamp-1"
+                               x-text="item.comicTitle"></a>
+                            <p class="text-[11px] text-zinc-500 font-medium truncate mt-0.5">
+                                Lanjut: panel <span class="text-zinc-300 font-bold" x-text="item.panelIndex || 1"></span> (<span class="text-red-400 font-bold" x-text="(item.progress || 0) + '%'"></span>)
+                            </p>
+                        </div>
+                    </div>
+                </template>
+            </div>
         </div>
 
         {{-- ================= SECTION: HORIZONTAL LATEST UPDATES (Jika bukan search) ================= --}}
