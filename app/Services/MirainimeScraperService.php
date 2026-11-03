@@ -38,7 +38,7 @@ class MirainimeScraperService
         try {
             $nucRes = \Illuminate\Support\Facades\Http::withOptions([
                 'proxy' => 'socks5h://127.0.0.1:1055',
-                'timeout' => 8,
+                'timeout' => 4,
             ])->get('http://100.110.54.105:8765/proxy/html?url=' . urlencode($fullUrl));
 
             if ($nucRes->successful() && !str_contains($nucRes->body(), 'Just a moment...') && !str_contains($nucRes->body(), 'Attention Required!')) {
@@ -46,7 +46,19 @@ class MirainimeScraperService
             }
         } catch (\Throwable $e) {}
 
-        // 2. Fallback direct Guzzle
+        // 2. Fallback TLS Impersonate curl_cffi (bypass Cloudflare langsung di VPS tanpa dependensi NUC)
+        try {
+            $helperPath = app_path('Services/fetch_cf.py');
+            if (file_exists($helperPath)) {
+                $cmd = escapeshellcmd($helperPath) . ' ' . escapeshellarg($fullUrl);
+                $pyRes = shell_exec($cmd);
+                if (!empty($pyRes) && !str_contains($pyRes, 'Just a moment...') && !str_contains($pyRes, 'Attention Required!')) {
+                    return (string) $pyRes;
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        // 3. Fallback direct Guzzle
         try {
             $res = $this->client->get($url);
             return (string) $res->getBody();
@@ -889,31 +901,80 @@ class MirainimeScraperService
         $url = "anime/{$animeSlug}/episode/{$episodeNum}";
 
         try {
-            $html = $this->fetchHtml($url);
-            $crawler = new Crawler($html);
-
-            // Title
             $title = '';
-            $ogTitle = $crawler->filter('meta[property="og:title"]');
-            if ($ogTitle->count() > 0) {
-                $title = trim($ogTitle->first()->attr('content') ?? '');
-            } else {
-                $titleNode = $crawler->filter('h1, title');
-                if ($titleNode->count() > 0) {
-                    $title = trim($titleNode->first()->text());
+            $videoUrl = '';
+            $hlsUrl = '';
+            $streamUrls = [];
+            $gdriveSources = [];
+            $embedUrl = '';
+
+            // 1. Coba ambil data episode dari endpoint JSON resmi Mirainime
+            try {
+                $jsonUrl = "anime/{$animeSlug}/episode/{$episodeNum}/json";
+                $jsonText = $this->fetchHtml($jsonUrl);
+                $jsonData = json_decode($jsonText, true);
+
+                if ($jsonData && is_array($jsonData)) {
+                    $animeTitle = $jsonData['anime_title'] ?? '';
+                    if (!empty($animeTitle)) {
+                        $title = "Nonton {$animeTitle} Episode {$episodeNum} Sub Indo";
+                    }
+
+                    $hlsUrl = $jsonData['hls_url'] ?? '';
+                    $streamUrls = $jsonData['stream_urls'] ?? [];
+                    $gdriveSources = $jsonData['gdrive_sources'] ?? [];
+
+                    if (!empty($hlsUrl)) {
+                        $videoUrl = $hlsUrl;
+                    } elseif (!empty($streamUrls[0]['url'])) {
+                        $videoUrl = $streamUrls[0]['url'];
+                    } elseif (!empty($gdriveSources[0]['url'])) {
+                        $videoUrl = $gdriveSources[0]['url'];
+                    }
+                }
+            } catch (\Throwable $je) {
+                \Log::warning("Mirainime JSON ep fetch failed: " . $je->getMessage());
+            }
+
+            // 2. Fallback atau pelengkap via HTML scraping
+            if (empty($videoUrl) || empty($title)) {
+                $html = $this->fetchHtml($url);
+                $crawler = new Crawler($html);
+
+                // Title
+                if (empty($title)) {
+                    $ogTitle = $crawler->filter('meta[property="og:title"]');
+                    if ($ogTitle->count() > 0) {
+                        $title = trim($ogTitle->first()->attr('content') ?? '');
+                    } else {
+                        $titleNode = $crawler->filter('h1, title');
+                        if ($titleNode->count() > 0) {
+                            $title = trim($titleNode->first()->text());
+                        }
+                    }
+                    $title = preg_replace('/\s*[-–|]?\s*Mirainime.*$/i', '', $title);
+                    $title = trim($title);
+                }
+
+                // Extract direct video MP4 URL from og:video
+                $ogVideo = $crawler->filter('meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"]');
+                if ($ogVideo->count() > 0) {
+                    $cand = trim($ogVideo->first()->attr('content') ?? '');
+                    $cand = htmlspecialchars_decode($cand);
+                    if (str_contains($cand, '/embed/')) {
+                        $embedUrl = $cand;
+                        if (empty($videoUrl)) {
+                            // Jika belum ada direct/HLS, simpan embedUrl
+                            $videoUrl = $cand;
+                        }
+                    } elseif (empty($videoUrl)) {
+                        $videoUrl = $cand;
+                    }
                 }
             }
 
-            // Clean title
-            $title = preg_replace('/\s*[-–|]?\s*Mirainime.*$/i', '', $title);
-            $title = trim($title);
-
-            // Extract direct video MP4 URL from og:video
-            $videoUrl = '';
-            $ogVideo = $crawler->filter('meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"]');
-            if ($ogVideo->count() > 0) {
-                $videoUrl = trim($ogVideo->first()->attr('content') ?? '');
-                $videoUrl = htmlspecialchars_decode($videoUrl);
+            if (empty($embedUrl)) {
+                $embedUrl = "https://mirainime.com/embed/{$animeSlug}/{$episodeNum}";
             }
 
             if (empty($title)) {
@@ -924,6 +985,10 @@ class MirainimeScraperService
                 'title' => $title,
                 'episode_number' => $episodeNum,
                 'video_url' => $videoUrl,
+                'hls_url' => $hlsUrl,
+                'stream_urls' => $streamUrls,
+                'gdrive_sources' => $gdriveSources,
+                'embed_url' => $embedUrl,
                 'anime_slug' => $animeSlug,
                 'source_url' => rtrim($this->baseUrl, '/') . '/' . $url,
             ];

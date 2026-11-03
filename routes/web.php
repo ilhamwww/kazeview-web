@@ -809,7 +809,15 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
     $scheme = $parsedUrl['scheme'] ?? 'https';
 
     // Domain HLS yang diperbolehkan.
-    $allowedDomains = ['flextv.cc', 'shortswave.com', 'mydramawave.com', 'majorplay.net', 'farsunpteltd.net', 'wolftv.online', 'shorttv.live', 'goodbos.online', 'dramabos.fun', 'netshort.com', 'b-cdn.net', 'ibyteimg.com', 'tiktokcdn.com', 'goodshort.com', 'goodreels.com', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'stardust-tv.com', 'stardusttv.cc', 'vibeshort.live'];
+    $allowedDomains = [
+        'flextv.cc', 'shortswave.com', 'mydramawave.com', 'majorplay.net', 'farsunpteltd.net',
+        'wolftv.online', 'shorttv.live', 'goodbos.online', 'dramabos.fun', 'netshort.com',
+        'b-cdn.net', 'ibyteimg.com', 'tiktokcdn.com', 'goodshort.com', 'goodreels.com',
+        'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co',
+        'stardust-tv.com', 'stardusttv.cc', 'vibeshort.live',
+        'suzune.my.id', 'suzune.web.id', 'suguha.my.id', 'suguha.web.id', 'erisboreas.my.id',
+        'arianeglenys.my.id', 'mirainime.com'
+    ];
     $allowed = false;
     foreach ($allowedDomains as $domain) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {
@@ -821,16 +829,37 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
         abort(403, 'Unauthorized domain');
     }
 
+    $referer = "{$scheme}://{$host}/";
+    $origin = "{$scheme}://{$host}";
+    if (str_contains($host, 'suzune.') || str_contains($host, 'suguha.') || str_contains($host, 'erisboreas.') || str_contains($host, 'mirainime.') || str_contains($host, 'arianeglenys.')) {
+        $referer = 'https://mirainime.com/';
+        $origin = 'https://mirainime.com';
+    }
+
     try {
         $response = \Illuminate\Support\Facades\Http::withoutVerifying()
             ->timeout(20)
             ->withHeaders([
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept' => 'application/vnd.apple.mpegurl,application/x-mpegURL,*/*',
-                'Referer' => "{$scheme}://{$host}/",
-                'Origin' => "{$scheme}://{$host}",
+                'Referer' => $referer,
+                'Origin' => $origin,
             ])
             ->get($url);
+
+        // Fallback via SOCKS5 proxy jika direct VPS kena blokir Cloudflare
+        if (!$response->successful() && ($response->status() === 403 || $response->status() === 401)) {
+            $response = \Illuminate\Support\Facades\Http::withoutVerifying()
+                ->timeout(20)
+                ->withOptions(['proxy' => 'socks5h://127.0.0.1:1055'])
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept' => 'application/vnd.apple.mpegurl,application/x-mpegURL,*/*',
+                    'Referer' => $referer,
+                    'Origin' => $origin,
+                ])
+                ->get($url);
+        }
     } catch (\Exception $e) {
         return response('Upstream fetch failed: ' . $e->getMessage(), 502);
     }

@@ -192,34 +192,39 @@ class WatchAnime extends Page
             $downloads = AnimeDownloadResolverService::getDownloads($animeTitle, $epSlug);
 
             $rawStream = $epDetail['video_url'] ?? '';
-            $currentStreamUrl = '';
-            $isDirect = false;
-            if (!empty($rawStream)) {
-                if (str_starts_with($rawStream, 'http')) {
-                    $isDirect = true;
-                    if (str_contains($rawStream, '/api/proxy-stream')) {
-                        $currentStreamUrl = $rawStream;
-                    } else {
-                        $currentStreamUrl = '/api/proxy-stream?url=' . urlencode($rawStream) . '&referer=' . urlencode('https://mirainime.com/');
-                    }
-                } else {
-                    $currentStreamUrl = $rawStream;
-                }
-            }
+            $hlsUrl = $epDetail['hls_url'] ?? (str_contains($rawStream, '.m3u8') ? $rawStream : '');
+            $embedUrl = $epDetail['embed_url'] ?? (str_contains($rawStream, '/embed/') ? $rawStream : '');
 
-            // Servers List setup (Server 1 Direct FHD as default)
+            $currentStreamUrl = '';
             $servers = [];
-            if (!empty($currentStreamUrl) && $isDirect) {
+
+            // 1. Prioritaskan Fast HLS dari Mirainime / Suzune
+            if (!empty($hlsUrl)) {
+                $currentStreamUrl = '/api/proxy-hls?url=' . urlencode($hlsUrl);
                 $servers[] = [
                     'id' => 'server1',
-                    'name' => 'Server 1 (Direct FHD - Slow)',
+                    'name' => 'Server 1 (Fast HLS)',
+                    'type' => 'm3u8',
+                    'stream_url' => $currentStreamUrl,
+                    'embed_url' => '',
+                ];
+            } elseif (!empty($rawStream) && !str_contains($rawStream, '/embed/')) {
+                // Direct MP4
+                if (str_contains($rawStream, '/api/proxy-stream')) {
+                    $currentStreamUrl = $rawStream;
+                } else {
+                    $currentStreamUrl = '/api/proxy-stream?url=' . urlencode($rawStream) . '&referer=' . urlencode('https://mirainime.com/');
+                }
+                $servers[] = [
+                    'id' => 'server1',
+                    'name' => 'Server 1 (Direct FHD)',
                     'type' => 'mp4',
                     'stream_url' => $currentStreamUrl,
                     'embed_url' => '',
                 ];
             }
 
-            // Server Otakudesu (Alt HD - Fast / DesuStream / Embed)
+            // 2. Server Otakudesu (Alt HD - Fast / DesuStream / Embed)
             $otakuStream = $downloads['stream_url'] ?? ($epDetail['direct_mp4'] ?? null);
             $otakuIframe = $downloads['iframe_url'] ?? ($epDetail['iframe_url'] ?? null);
 
@@ -238,6 +243,17 @@ class WatchAnime extends Page
                     'type' => 'embed',
                     'stream_url' => '',
                     'embed_url' => $otakuIframe,
+                ];
+            }
+
+            // 3. Fallback Mirainime Embed Player jika diperlukan
+            if (!empty($embedUrl)) {
+                $servers[] = [
+                    'id' => 'server_mirai_embed',
+                    'name' => 'Server ' . (count($servers) + 1) . ' (Mirainime Player)',
+                    'type' => 'embed',
+                    'stream_url' => '',
+                    'embed_url' => $embedUrl,
                 ];
             }
 
