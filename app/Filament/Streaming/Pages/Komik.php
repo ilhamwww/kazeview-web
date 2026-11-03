@@ -102,16 +102,20 @@ class Komik extends Page
 
         // Jika user sedang tidak mencari kata kunci, siapkan hero banner dan seksi rilisan terbaru
         if (empty($this->search)) {
-            // Hero items (ambil dari 5 manhwa/komik terpopuler)
+            // Hero items (ambil dari 5 manhwa/komik terpopuler) di-cache 6 jam
             if (empty($this->heroItems)) {
-                $popular = $service->getPopular(1, 6, 'manhwa');
-                $this->heroItems = $popular['data'] ?? [];
+                $this->heroItems = \Illuminate\Support\Facades\Cache::remember('kz_komik_hero_items', 21600, function () use ($service) {
+                    $popular = $service->getPopular(1, 6, 'manhwa');
+                    return $popular['data'] ?? [];
+                });
             }
 
-            // Latest updates rail
+            // Latest updates rail di-cache 30 menit
             if (empty($this->latestHorizontal)) {
-                $latest = $service->getLatest(1, 12);
-                $this->latestHorizontal = $latest['data'] ?? [];
+                $this->latestHorizontal = \Illuminate\Support\Facades\Cache::remember('kz_komik_latest_rail', 1800, function () use ($service) {
+                    $latest = $service->getLatest(1, 12);
+                    return $latest['data'] ?? [];
+                });
             }
         }
 

@@ -991,7 +991,7 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
     }
 
     $cacheKey = 'img_proxy_' . md5($url);
-    $cacheDuration = 86400 * 7; // Cache for 7 days
+    $cacheDuration = 86400 * 30; // Cache 30 hari di database agar super ringan & hemat resource
 
     $imageData = \Illuminate\Support\Facades\Cache::remember($cacheKey, $cacheDuration, function () use ($url, $host) {
         try {
@@ -1049,7 +1049,7 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
 
     return response(base64_decode($imageData['content']))
         ->header('Content-Type', $imageData['content_type'])
-        ->header('Cache-Control', 'public, max-age=604800');
+        ->header('Cache-Control', 'public, max-age=2592000, immutable');
 })->name('api.proxy-image');
 
 Route::get('/api/proxy-subtitle', function (\Illuminate\Http\Request $request) {

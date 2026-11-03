@@ -59,7 +59,7 @@ class ShinigamiService
             $params['format'] = strtolower($format);
         }
 
-        $res = $this->requestApi('/manga/list', $params, 900);
+        $res = $this->requestApi('/manga/list', $params, 21600); // Cache 6 jam agar katalog super enteng & cepat
         return $this->formatComicListResponse($res, $page);
     }
 
@@ -79,7 +79,7 @@ class ShinigamiService
             $params['format'] = strtolower($format);
         }
 
-        $res = $this->requestApi('/manga/list', $params, 600);
+        $res = $this->requestApi('/manga/list', $params, 1800); // Cache 30 menit
         return $this->formatComicListResponse($res, $page);
     }
 
@@ -94,7 +94,7 @@ class ShinigamiService
             'q' => $query,
         ];
 
-        $res = $this->requestApi('/manga/list', $params, 300);
+        $res = $this->requestApi('/manga/list', $params, 7200); // Cache pencarian 2 jam
         return $this->formatComicListResponse($res, $page);
     }
 
@@ -103,7 +103,7 @@ class ShinigamiService
      */
     public function getDetail(string $mangaId): ?array
     {
-        $res = $this->requestApi("/manga/detail/{$mangaId}", [], 3600);
+        $res = $this->requestApi("/manga/detail/{$mangaId}", [], 604800); // Cache detail 7 hari
         if (!$res || empty($res['data'])) {
             return null;
         }
@@ -147,7 +147,7 @@ class ShinigamiService
      */
     public function getChapters(string $mangaId): array
     {
-        $res = $this->requestApi("/chapter/{$mangaId}/list", ['page_size' => 1000], 1800);
+        $res = $this->requestApi("/chapter/{$mangaId}/list", ['page_size' => 1000], 7200); // Cache daftar chapter 2 jam
         if (!$res || empty($res['data'])) {
             return [];
         }
@@ -183,7 +183,7 @@ class ShinigamiService
      */
     public function getChapterPages(string $chapterId): ?array
     {
-        $res = $this->requestApi("/chapter/detail/{$chapterId}", [], 86400);
+        $res = $this->requestApi("/chapter/detail/{$chapterId}", [], 2592000); // Gambar chapter permanen, cache 30 hari
         if (!$res || empty($res['data'])) {
             return null;
         }
