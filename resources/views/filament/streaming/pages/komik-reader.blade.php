@@ -4,29 +4,85 @@
         lastScrollY: 0,
         modalOpen: false,
         fullscreen: false,
+        currentProgress: 0,
+        currentPanel: 1,
+        showToast: false,
+        toastMsg: '',
+        saveTimer: null,
         init() {
-            // Simpan riwayat baca ke localStorage
+            // Cek apakah ada riwayat tersimpan untuk chapter ini
             try {
-                const historyData = {
-                    chapterId: '{{ $chapterId }}',
-                    label: '{{ addslashes($currentChapter['label']) }}',
-                    number: {{ (float) ($currentChapter['number'] ?? 0) }},
-                    updatedAt: Date.now()
-                };
-                localStorage.setItem('kz_comic_{{ $mangaId }}', JSON.stringify(historyData));
+                const raw = localStorage.getItem('kz_comic_{{ $mangaId }}');
+                if (raw) {
+                    const h = JSON.parse(raw);
+                    if (h.chapterId === '{{ $chapterId }}' && (h.panelIndex > 1 || h.progress > 5)) {
+                        this.currentProgress = h.progress || 0;
+                        this.currentPanel = h.panelIndex || 1;
+                        this.toastMsg = 'Melanjutkan dari panel ' + this.currentPanel + ' (' + this.currentProgress + '%)';
+                        this.showToast = true;
+                        setTimeout(() => { this.showToast = false; }, 3500);
+
+                        // Pulihkan posisi scroll secara bertahap saat gambar dimuat
+                        const restoreScroll = (retry = 0) => {
+                            const el = document.getElementById('panel-' + h.panelIndex);
+                            if (el) {
+                                el.scrollIntoView({ behavior: 'auto', block: 'start' });
+                            } else if (h.scrollY > 0) {
+                                window.scrollTo({ top: h.scrollY, behavior: 'auto' });
+                            }
+                            if (retry < 5) {
+                                setTimeout(() => restoreScroll(retry + 1), 300);
+                            }
+                        };
+                        this.$nextTick(() => {
+                            setTimeout(() => restoreScroll(0), 100);
+                        });
+                    }
+                }
             } catch(e) {}
         },
         onScroll() {
             const y = window.scrollY;
+            const total = document.documentElement.scrollHeight - window.innerHeight;
+            if (total > 0) {
+                this.currentProgress = Math.min(100, Math.max(0, Math.round((y / total) * 100)));
+            }
+
+            // Deteksi panel/halaman mana yang sedang aktif di viewport
+            const panels = document.querySelectorAll('[data-panel-index]');
+            for (let i = 0; i < panels.length; i++) {
+                const r = panels[i].getBoundingClientRect();
+                if (r.bottom > 150) {
+                    this.currentPanel = parseInt(panels[i].getAttribute('data-panel-index')) || 1;
+                    break;
+                }
+            }
+
+            // Simpan posisi terakhir ke localStorage (debounced 200ms)
+            clearTimeout(this.saveTimer);
+            this.saveTimer = setTimeout(() => {
+                try {
+                    const historyData = {
+                        chapterId: '{{ $chapterId }}',
+                        label: '{{ addslashes($currentChapter['label']) }}',
+                        number: {{ (float) ($currentChapter['number'] ?? 0) }},
+                        progress: this.currentProgress,
+                        panelIndex: this.currentPanel,
+                        scrollY: y,
+                        updatedAt: Date.now()
+                    };
+                    localStorage.setItem('kz_comic_{{ $mangaId }}', JSON.stringify(historyData));
+                } catch(e) {}
+            }, 200);
+
+            // Nav visibility logic
             if (this.modalOpen) {
                 this.navVisible = true;
                 return;
             }
-            if (y > 150 && y > this.lastScrollY + 10) {
-                // Scroll ke bawah: sembunyikan bar navigasi agar baca immersive
+            if (y > 150 && y > this.lastScrollY + 12) {
                 this.navVisible = false;
-            } else if (y < this.lastScrollY - 10 || y < 150) {
-                // Scroll ke atas: tampilkan bar navigasi
+            } else if (y < this.lastScrollY - 12 || y < 150) {
                 this.navVisible = true;
             }
             this.lastScrollY = y;
@@ -44,7 +100,29 @@
             }
         }
      }"
-     @scroll.window.throttle.80ms="onScroll()">
+     @scroll.window.throttle.60ms="onScroll()">
+
+    {{-- ================= THIN READING PROGRESS BAR (TOP) ================= --}}
+    <div class="fixed top-0 inset-x-0 z-50 h-1 bg-zinc-900 pointer-events-none">
+        <div class="h-full bg-red-600 transition-all duration-150 shadow-[0_0_8px_rgba(229,9,20,0.8)]"
+             :style="'width: ' + currentProgress + '%'"></div>
+    </div>
+
+    {{-- ================= RESUME TOAST NOTIFICATION (BOTTOM FLOATING GLASS) ================= --}}
+    <div x-show="showToast"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+         x-transition:leave-end="opacity-0 translate-y-4 scale-95"
+         class="fixed bottom-20 inset-x-0 z-50 flex justify-center px-4 pointer-events-none"
+         style="display: none;">
+        <div class="px-4 py-2 rounded-full bg-zinc-900/90 backdrop-blur-xl text-zinc-100 text-xs font-bold shadow-[0_12px_36px_rgba(0,0,0,0.85)] flex items-center gap-2 border border-white/10 pointer-events-auto">
+            <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+            <span x-text="toastMsg"></span>
+        </div>
+    </div>
 
     {{-- ================= TOP HEADER (MINIMALIST) ================= --}}
     <header class="fixed top-0 inset-x-0 z-40 h-14 bg-black/85 backdrop-blur-xl border-b border-white/10 px-4 flex items-center justify-between transition-transform duration-300"
@@ -54,11 +132,11 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
             </a>
             <div class="min-w-0">
-                <h1 class="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md">
+                <h1 class="text-xs sm:text-sm font-bold text-white truncate max-w-[180px] sm:max-w-md">
                     {{ $comic['title'] }}
                 </h1>
                 <p class="text-[11px] font-semibold text-red-500 truncate">
-                    {{ $currentChapter['label'] }}
+                    {{ $currentChapter['label'] }} · <span x-text="currentProgress + '%'"></span>
                 </p>
             </div>
         </div>
@@ -89,7 +167,9 @@
             </div>
         @else
             @foreach($pages as $p)
-                <div class="w-full relative flex items-center justify-center bg-black overflow-hidden"
+                <div id="panel-{{ $p['index'] }}"
+                     data-panel-index="{{ $p['index'] }}"
+                     class="w-full relative flex items-center justify-center bg-black overflow-hidden"
                      style="margin: 0; padding: 0; line-height: 0;">
                     <img src="{{ $p['url'] }}"
                          alt="Halaman {{ $p['index'] }}"
@@ -149,11 +229,11 @@
                 </button>
             @endif
 
-            {{-- Chapter Modal Trigger --}}
+            {{-- Chapter Modal Trigger with Realtime Progress --}}
             <button type="button" @click="modalOpen = true"
                     class="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-bold text-zinc-200 flex items-center gap-1.5 transition">
                 <span>Ch. {{ $currentChapter['number'] }}</span>
-                <span class="text-zinc-500">/ {{ count($allChapters) }}</span>
+                <span class="text-red-500 font-extrabold" x-text="'· ' + currentProgress + '%'"></span>
                 <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
             </button>
 
@@ -204,7 +284,7 @@
                        class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition {{ $c['id'] === $chapterId ? 'bg-red-600 text-white' : 'bg-white/[0.03] hover:bg-white/[0.08] text-zinc-300' }}">
                         <span>{{ $c['label'] }}</span>
                         @if($c['id'] === $chapterId)
-                            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-black/30 text-white">Sedang Dibaca</span>
+                            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-black/30 text-white" x-text="currentProgress + '%'"></span>
                         @endif
                     </a>
                 @endforeach

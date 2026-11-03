@@ -90,7 +90,7 @@
                         <a :href="'/komik/{{ $comic['id'] }}/read/' + history.chapterId"
                            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-sm tracking-wide shadow-xl shadow-red-900/40 transition active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
-                            <span>Lanjutkan: <span x-text="history.label || 'Chapter Terakhir'"></span></span>
+                            <span>Lanjutkan: <span x-text="history.label || 'Chapter Terakhir'"></span> <span class="text-white/80 font-bold" x-text="history.progress ? '(' + history.progress + '%)' : ''"></span></span>
                         </a>
                     </template>
 
@@ -185,11 +185,17 @@
                             <p class="font-bold text-sm text-zinc-200 group-hover:text-red-400 transition truncate">
                                 {{ $ch['label'] }}
                             </p>
-                            @if(!empty($ch['release_date']))
-                                <span class="text-[11px] text-zinc-500 font-medium">
-                                    {{ date('d M Y', strtotime($ch['release_date'])) }}
-                                </span>
-                            @endif
+                            <div class="flex items-center gap-2 mt-0.5">
+                                @if(!empty($ch['release_date']))
+                                    <span class="text-[11px] text-zinc-500 font-medium">
+                                        {{ date('d M Y', strtotime($ch['release_date'])) }}
+                                    </span>
+                                @endif
+                                <template x-if="history && history.chapterId === '{{ $ch['id'] }}' && history.progress">
+                                    <span class="text-[10px] font-extrabold text-red-400 bg-red-950/60 px-2 py-0.5 rounded-full ring-1 ring-red-500/40"
+                                          x-text="'Terakhir: ' + history.progress + '%'"></span>
+                                </template>
+                            </div>
                         </div>
 
                         <span class="shrink-0 w-7 h-7 rounded-lg bg-white/5 group-hover:bg-red-600 group-hover:text-white flex items-center justify-center text-zinc-400 transition">

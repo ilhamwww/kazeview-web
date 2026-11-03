@@ -786,8 +786,8 @@
 
     {{ $slot }}
 
-    {{-- Global Site Footer (Hidden on watch video player to keep full immersion) --}}
-    @if(!str_contains(request()->url(), '/movie/') && !str_contains(request()->url(), '/episode/') && !str_contains(request()->url(), '/drama/'))
+    {{-- Global Site Footer (Hidden on watch video player and comic reader to keep full immersion) --}}
+    @if(!str_contains(request()->url(), '/movie/') && !str_contains(request()->url(), '/episode/') && !str_contains(request()->url(), '/drama/') && !$isComicReader)
         <footer class="w-full border-t border-white/5 bg-black/40 text-center py-8 px-4 text-xs text-zinc-500 space-y-2 mt-auto">
             <div class="flex items-center justify-center gap-3 sm:gap-4 flex-wrap text-zinc-400 font-medium">
                 <a href="/" class="hover:text-white transition">Home</a>
