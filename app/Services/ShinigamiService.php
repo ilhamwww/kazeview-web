@@ -18,7 +18,13 @@ class ShinigamiService
     {
         $cacheKey = 'shinigami_' . md5($endpoint . '_' . serialize($params));
 
-        return Cache::remember($cacheKey, $cacheSeconds, function () use ($endpoint, $params) {
+        // Hanya respons sukses yang di-cache; kegagalan relay tidak boleh tersimpan.
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $fresh = (function () use ($endpoint, $params) {
             try {
                 $queryParams = array_merge(['endpoint' => $endpoint], $params);
 
@@ -40,7 +46,13 @@ class ShinigamiService
             }
 
             return null;
-        });
+        })();
+
+        if (is_array($fresh)) {
+            Cache::put($cacheKey, $fresh, $cacheSeconds);
+        }
+
+        return $fresh;
     }
 
     /**
@@ -245,7 +257,12 @@ class ShinigamiService
                 'rating' => isset($d['user_rate']) ? number_format((float) $d['user_rate'], 1) : null,
                 'latest_chapter' => $d['latest_chapter_number'] ?? null,
                 'latest_chapter_id' => $d['latest_chapter_id'] ?? null,
+                'latest_chapter_time' => $d['latest_chapter_time'] ?? null,
                 'status' => ($d['status'] ?? 1) === 1 ? 'Ongoing' : 'Completed',
+                'description' => \Illuminate\Support\Str::limit(trim(preg_replace('/\s+/', ' ', $d['description'] ?? '')), 260),
+                'views' => (int) ($d['view_count'] ?? 0),
+                'bookmarks' => (int) ($d['bookmark_count'] ?? 0),
+                'year' => $d['release_year'] ?? null,
             ];
         }
 

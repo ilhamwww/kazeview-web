@@ -22,6 +22,7 @@ class Komik extends Page
 
     public array $heroItems = [];
     public array $latestHorizontal = [];
+    public array $topRanked = [];
     public array $items = [];
     public int $totalPage = 1;
     public bool $hasMore = false;
@@ -96,25 +97,49 @@ class Komik extends Page
         }
     }
 
+    /**
+     * Cache hasil hanya jika tidak kosong, supaya gangguan relay NUC
+     * tidak membuat seksi kosong tersimpan berjam-jam.
+     */
+    protected function rememberNonEmpty(string $key, int $ttl, \Closure $callback): array
+    {
+        $cached = \Illuminate\Support\Facades\Cache::get($key);
+        if (!empty($cached)) {
+            return $cached;
+        }
+
+        $value = $callback();
+        if (!empty($value)) {
+            \Illuminate\Support\Facades\Cache::put($key, $value, $ttl);
+        }
+
+        return $value ?: [];
+    }
+
     public function loadData(): void
     {
         $service = app(ShinigamiService::class);
 
         // Jika user sedang tidak mencari kata kunci, siapkan hero banner dan seksi rilisan terbaru
         if (empty($this->search)) {
-            // Hero items (ambil dari 5 manhwa/komik terpopuler) di-cache 6 jam
+            // Hero carousel: 5 komik terpopuler, cache 6 jam. Data kosong tidak di-cache.
             if (empty($this->heroItems)) {
-                $this->heroItems = \Illuminate\Support\Facades\Cache::remember('kz_komik_hero_items', 21600, function () use ($service) {
-                    $popular = $service->getPopular(1, 6, 'manhwa');
-                    return $popular['data'] ?? [];
+                $this->heroItems = $this->rememberNonEmpty('kz_komik_hero_v2', 21600, function () use ($service) {
+                    return array_slice($service->getPopular(1, 6)['data'] ?? [], 0, 5);
                 });
             }
 
-            // Latest updates rail di-cache 30 menit
+            // Top 10 peringkat (semua tipe), cache 6 jam
+            if (empty($this->topRanked)) {
+                $this->topRanked = $this->rememberNonEmpty('kz_komik_top10_v2', 21600, function () use ($service) {
+                    return array_slice($service->getPopular(1, 24)['data'] ?? [], 0, 10);
+                });
+            }
+
+            // Rail update terbaru, cache 30 menit
             if (empty($this->latestHorizontal)) {
-                $this->latestHorizontal = \Illuminate\Support\Facades\Cache::remember('kz_komik_latest_rail', 1800, function () use ($service) {
-                    $latest = $service->getLatest(1, 12);
-                    return $latest['data'] ?? [];
+                $this->latestHorizontal = $this->rememberNonEmpty('kz_komik_latest_v2', 1800, function () use ($service) {
+                    return $service->getLatest(1, 16)['data'] ?? [];
                 });
             }
         }
