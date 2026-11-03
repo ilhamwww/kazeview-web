@@ -199,7 +199,7 @@
                 <h2 class="text-xl md:text-2xl font-black tracking-tight">Top 10 {{ $label }} Minggu Ini</h2>
             </div>
             {{-- Disamakan dengan Top 10 di Beranda: angka absolute di dalam kartu, scroll horizontal saja --}}
-            <div class="flex gap-2 md:gap-3 overflow-x-auto overflow-y-hidden pb-2 -mx-6 px-6 md:-mx-12 md:px-12 scroll-px-6 md:scroll-px-12 snap-x kz-noscroll">
+            <div class="flex gap-2 md:gap-3 overflow-x-auto overflow-y-hidden pt-3 pb-2 -mx-6 px-6 md:-mx-12 md:px-12 scroll-px-6 md:scroll-px-12 snap-x kz-noscroll">
                 @foreach(array_slice($trending, 0, 10) as $i => $t)
                     <a href="{{ $urlFor($t) }}" class="group relative block w-[150px] md:w-[214px] shrink-0 snap-start">
                         <div class="relative flex items-end">

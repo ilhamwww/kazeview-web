@@ -254,9 +254,9 @@
                     </div>
                 </div>
 
-                <div id="rail-top10" class="flex items-end gap-5 md:gap-7 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none snap-x scroll-smooth">
+                <div id="rail-top10" class="flex items-end gap-5 md:gap-7 pt-3 pb-3 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none snap-x scroll-smooth">
                     @foreach($topRanked as $rank => $item)
-                        <a href="/komik/{{ $item['id'] }}" class="snap-start shrink-0 flex items-end overflow-hidden group">
+                        <a href="/komik/{{ $item['id'] }}" class="snap-start shrink-0 flex items-end overflow-hidden py-1 group">
                             <span class="text-[84px] md:text-[112px] font-black leading-[0.78] tracking-tighter text-[#050505] select-none -mr-1 md:-mr-2 z-0"
                                   style="-webkit-text-stroke: 3px rgba(255,255,255,0.55);" aria-hidden="true">{{ $rank + 1 }}</span>
                             <div class="relative z-10 w-28 md:w-36 aspect-[2/3] rounded-xl overflow-hidden ring-1 ring-white/10 bg-zinc-800 shadow-xl group-hover:ring-red-600/60 transition">
