@@ -30,7 +30,7 @@ class ShinigamiService
 
                 $response = Http::withOptions([
                     'proxy' => $this->socksProxy,
-                    'timeout' => 10,
+                    'timeout' => 3, // Timeout singkat 3s agar tidak menghambat page saat NUC offline
                 ])->get($this->nucRelayUrl, $queryParams);
 
                 if ($response->successful()) {

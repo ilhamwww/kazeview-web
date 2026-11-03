@@ -12,8 +12,8 @@
     {{-- ================= BACKDROP BLUR HEADER ================= --}}
     <div class="relative w-full min-h-[360px] md:min-h-[420px] overflow-hidden border-b border-white/5 bg-zinc-950">
         {{-- Background Image with Blur --}}
-        <img src="{{ $comic['banner'] ?: $comic['cover'] }}"
-             alt="{{ $comic['title'] }}"
+        <img src="{{ ($comic['banner'] ?? null) ?: ($comic['cover'] ?? '') }}"
+             alt="{{ $comic['title'] ?? '' }}"
              class="absolute inset-0 w-full h-full object-cover object-top opacity-30 filter blur-xl scale-110" />
 
         <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/75 to-transparent"></div>
@@ -58,7 +58,7 @@
 
                 {{-- Authors & Genres --}}
                 <div class="mt-4 flex flex-wrap items-center gap-2">
-                    @foreach($comic['genres'] as $g)
+                    @foreach($comic['genres'] ?? [] as $g)
                         <span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/5 text-zinc-300">
                             {{ $g }}
                         </span>

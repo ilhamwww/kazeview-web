@@ -4,6 +4,8 @@ namespace App\Filament\Streaming\Pages;
 
 use Filament\Pages\Page;
 use App\Services\ShinigamiService;
+use App\Services\KiryuuScraperService;
+use App\Services\IzanamiScansService;
 
 class KomikReader extends Page
 {
@@ -29,7 +31,13 @@ class KomikReader extends Page
         $this->mangaId = $id;
         $this->chapterId = $chapter_id;
 
-        $service = app(ShinigamiService::class);
+        if (str_starts_with($id, 'kiryuu__')) {
+            $service = app(KiryuuScraperService::class);
+        } elseif (str_starts_with($id, 'izanami__')) {
+            $service = app(IzanamiScansService::class);
+        } else {
+            $service = app(ShinigamiService::class);
+        }
 
         $this->comic = $service->getDetail($id);
         if (!$this->comic) {
@@ -64,7 +72,11 @@ class KomikReader extends Page
 
         static::$title = ($this->comic['title'] ?? 'Webtoon') . ' - ' . $this->currentChapter['label'] . ' - KZSTRM';
 
-        $pagesData = $service->getChapterPages($chapter_id);
+        if ($service instanceof KiryuuScraperService) {
+            $pagesData = $service->getChapterPages($chapter_id, $id);
+        } else {
+            $pagesData = $service->getChapterPages($chapter_id);
+        }
         $this->pages = $pagesData['pages'] ?? [];
     }
 }

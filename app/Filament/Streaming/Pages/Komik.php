@@ -4,6 +4,8 @@ namespace App\Filament\Streaming\Pages;
 
 use Filament\Pages\Page;
 use App\Services\ShinigamiService;
+use App\Services\KiryuuScraperService;
+use App\Services\IzanamiScansService;
 
 class Komik extends Page
 {
@@ -15,6 +17,7 @@ class Komik extends Page
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
+    public string $provider = 'kiryuu'; // kiryuu, izanami, shinigami
     public int $page = 1;
     public string $format = 'all'; // all, manhwa, manga, manhua
     public string $tab = 'popular'; // popular, latest
@@ -28,10 +31,35 @@ class Komik extends Page
     public bool $hasMore = false;
 
     protected $queryString = [
+        'provider' => ['except' => 'kiryuu'],
         'format' => ['except' => 'all'],
         'tab' => ['except' => 'popular'],
         'search' => ['except' => '', 'as' => 'q'],
         'page' => ['except' => 1],
+    ];
+
+    public array $providers = [
+        [
+            'id' => 'kiryuu',
+            'name' => 'Kiryuu ID',
+            'tag' => 'Utama / Direct',
+            'desc' => 'Ribuan Manga & Manhwa lengkap (HD WebP)',
+            'is_nuc' => false,
+        ],
+        [
+            'id' => 'izanami',
+            'name' => 'Izanami Scans',
+            'tag' => 'Google CDN',
+            'desc' => 'Manhua & Manhwa update cepat bebas blokir',
+            'is_nuc' => false,
+        ],
+        [
+            'id' => 'shinigami',
+            'name' => 'Shinigami ID',
+            'tag' => 'NUC Bridge',
+            'desc' => 'Agregator komik populer via NUC relay',
+            'is_nuc' => true,
+        ],
     ];
 
     public array $formats = [
@@ -43,12 +71,30 @@ class Komik extends Page
 
     public function mount(): void
     {
+        $this->provider = request()->query('provider', 'kiryuu');
+        if (!in_array($this->provider, ['kiryuu', 'izanami', 'shinigami'])) {
+            $this->provider = 'kiryuu';
+        }
+
         $this->format = request()->query('format', 'all');
         $this->tab = request()->query('tab', 'popular');
         $this->search = request()->query('q', '');
         $this->page = max(1, (int) request()->query('page', 1));
 
         $this->loadData();
+    }
+
+    public function setProvider(string $p): void
+    {
+        if (in_array($p, ['kiryuu', 'izanami', 'shinigami'])) {
+            $this->provider = $p;
+            $this->page = 1;
+            $this->search = '';
+            $this->heroItems = [];
+            $this->latestHorizontal = [];
+            $this->topRanked = [];
+            $this->loadData();
+        }
     }
 
     public function setFormat(string $fmt): void
@@ -98,7 +144,7 @@ class Komik extends Page
     }
 
     /**
-     * Cache hasil hanya jika tidak kosong, supaya gangguan relay NUC
+     * Cache hasil hanya jika tidak kosong, supaya relay mati
      * tidak membuat seksi kosong tersimpan berjam-jam.
      */
     protected function rememberNonEmpty(string $key, int $ttl, \Closure $callback): array
@@ -118,28 +164,32 @@ class Komik extends Page
 
     public function loadData(): void
     {
-        $service = app(ShinigamiService::class);
+        $service = match ($this->provider) {
+            'izanami' => app(IzanamiScansService::class),
+            'shinigami' => app(ShinigamiService::class),
+            default => app(KiryuuScraperService::class),
+        };
 
-        // Jika user sedang tidak mencari kata kunci, siapkan hero banner dan seksi rilisan terbaru
+        // Jika user sedang tidak mencari kata kunci, siapkan hero banner, top 10, dan rilisan terbaru
         if (empty($this->search)) {
-            // Hero carousel: 5 komik terpopuler, cache 6 jam. Data kosong tidak di-cache.
+            // Hero carousel: 5 komik terpopuler, cache 6 jam
             if (empty($this->heroItems)) {
-                $this->heroItems = $this->rememberNonEmpty('kz_komik_hero_v2', 21600, function () use ($service) {
+                $this->heroItems = $this->rememberNonEmpty("kz_webtoon_hero_{$this->provider}_v3", 21600, function () use ($service) {
                     return array_slice($service->getPopular(1, 6)['data'] ?? [], 0, 5);
                 });
             }
 
             // Top 10 peringkat (semua tipe), cache 6 jam
             if (empty($this->topRanked)) {
-                $this->topRanked = $this->rememberNonEmpty('kz_komik_top10_v2', 21600, function () use ($service) {
+                $this->topRanked = $this->rememberNonEmpty("kz_webtoon_top10_{$this->provider}_v3", 21600, function () use ($service) {
                     return array_slice($service->getPopular(1, 24)['data'] ?? [], 0, 10);
                 });
             }
 
             // Rail update terbaru, cache 30 menit
             if (empty($this->latestHorizontal)) {
-                $this->latestHorizontal = $this->rememberNonEmpty('kz_komik_latest_v2', 1800, function () use ($service) {
-                    return $service->getLatest(1, 16)['data'] ?? [];
+                $this->latestHorizontal = $this->rememberNonEmpty("kz_webtoon_latest_{$this->provider}_v3", 1800, function () use ($service) {
+                    return array_slice($service->getLatest(1, 16)['data'] ?? [], 0, 16);
                 });
             }
         }

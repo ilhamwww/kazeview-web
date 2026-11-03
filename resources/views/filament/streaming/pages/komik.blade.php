@@ -168,6 +168,25 @@
 
         {{-- ================= STICKY TOOLBAR: SEARCH + TAB + FORMAT ================= --}}
         <div class="rounded-2xl bg-zinc-900/60 ring-1 ring-white/5 p-3 md:p-4 space-y-3">
+            {{-- Provider Switcher ala Dracin --}}
+            <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/5 overflow-x-auto overflow-y-hidden scrollbar-none -mx-1 px-1">
+                <div class="flex items-center gap-2 shrink-0">
+                    <span class="text-xs font-black uppercase tracking-wider text-zinc-500 mr-1 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        Server:
+                    </span>
+                    @foreach($providers as $p)
+                        <button type="button" wire:click="setProvider('{{ $p['id'] }}')"
+                                class="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition border {{ $provider === $p['id'] ? 'bg-red-600/90 border-red-500 text-white shadow-md shadow-red-900/30' : 'bg-black/40 border-white/5 text-zinc-400 hover:text-white hover:bg-white/5' }}">
+                            <span>{{ $p['name'] }}</span>
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider {{ $provider === $p['id'] ? 'bg-black/30 text-white' : 'bg-white/10 text-zinc-400' }}">
+                                {{ $p['tag'] }}
+                            </span>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+
             <div class="flex flex-col md:flex-row md:items-center gap-3">
                 <div class="relative flex-1">
                     <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
@@ -322,23 +341,39 @@
                         @if(!empty($search))
                             Hasil untuk "<span class="text-red-500">{{ $search }}</span>"
                         @elseif($tab === 'latest')
-                            Rilis Terbaru
+                            Rilis Terbaru · <span class="text-red-500">{{ collect($providers)->firstWhere('id', $provider)['name'] ?? 'Webtoon' }}</span>
                         @else
-                            Jelajahi {{ $format !== 'all' ? ucfirst($format) : 'Semua Webtoon' }}
+                            Jelajahi {{ $format !== 'all' ? ucfirst($format) : 'Semua Webtoon' }} (<span class="text-red-500">{{ collect($providers)->firstWhere('id', $provider)['name'] ?? 'Webtoon' }}</span>)
                         @endif
-                        <svg wire:loading wire:target="nextPage, prevPage, setFormat, setTab, search, clearSearch" class="w-4 h-4 text-red-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                        <svg wire:loading wire:target="nextPage, prevPage, setProvider, setFormat, setTab, search, clearSearch" class="w-4 h-4 text-red-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                     </h2>
                     <p class="mt-1 text-xs text-zinc-500">Halaman {{ $page }} dari {{ $totalPage }}</p>
                 </div>
             </div>
 
             @if(empty($items))
-                <div class="py-20 text-center rounded-2xl bg-zinc-900/40 ring-1 ring-white/5">
-                    <p class="text-sm font-bold text-zinc-300">Webtoon tidak ditemukan</p>
-                    <p class="mt-1 text-xs text-zinc-500">Coba kata kunci lain atau ganti filter tipe.</p>
-                    <button type="button" wire:click="clearSearch" class="mt-4 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-semibold text-white transition">
-                        Reset Pencarian
-                    </button>
+                <div class="py-20 text-center rounded-2xl bg-zinc-900/40 ring-1 ring-white/5 p-6">
+                    @if($provider === 'shinigami')
+                        <div class="w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mx-auto flex items-center justify-center mb-3">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
+                        <p class="text-base font-bold text-white">Server Shinigami (NUC Relay) Sedang Offline</p>
+                        <p class="mt-1 text-xs text-zinc-400 max-w-md mx-auto">PC NUC saat ini sedang offline. Kamu tetap bisa membaca ribuan komik lengkap lewat server <strong class="text-red-400">Kiryuu ID</strong> atau <strong class="text-red-400">Izanami Scans</strong>!</p>
+                        <div class="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                            <button type="button" wire:click="setProvider('kiryuu')" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white transition shadow-lg shadow-red-900/40">
+                                Beralih ke Kiryuu ID
+                            </button>
+                            <button type="button" wire:click="setProvider('izanami')" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white transition">
+                                Beralih ke Izanami Scans
+                            </button>
+                        </div>
+                    @else
+                        <p class="text-sm font-bold text-zinc-300">Webtoon tidak ditemukan</p>
+                        <p class="mt-1 text-xs text-zinc-500">Coba kata kunci lain atau ganti filter tipe.</p>
+                        <button type="button" wire:click="clearSearch" class="mt-4 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-semibold text-white transition">
+                            Reset Pencarian
+                        </button>
+                    @endif
                 </div>
             @else
                 <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 2xl:grid-cols-8 gap-x-3 gap-y-6 md:gap-x-4 transition-opacity duration-200"
