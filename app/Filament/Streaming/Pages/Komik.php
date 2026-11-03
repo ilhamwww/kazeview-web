@@ -36,9 +36,9 @@ class Komik extends Page
 
     public array $formats = [
         ['id' => 'all', 'label' => 'Semua Tipe', 'icon' => 'globe'],
-        ['id' => 'manhwa', 'label' => 'Manhwa (Korea) 🇰🇷', 'icon' => 'sparkles'],
-        ['id' => 'manga', 'label' => 'Manga (Jepang) 🇯🇵', 'icon' => 'fire'],
-        ['id' => 'manhua', 'label' => 'Manhua (China) 🇨🇳', 'icon' => 'bolt'],
+        ['id' => 'manhwa', 'label' => 'Manhwa (Korea)', 'icon' => 'sparkles'],
+        ['id' => 'manga', 'label' => 'Manga (Jepang)', 'icon' => 'fire'],
+        ['id' => 'manhua', 'label' => 'Manhua (China)', 'icon' => 'bolt'],
     ];
 
     public function mount(): void

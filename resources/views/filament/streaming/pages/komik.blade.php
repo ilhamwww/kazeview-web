@@ -35,6 +35,10 @@
             if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: 'smooth' });
         }
      }">
+    <style>
+        .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+        .scrollbar-none::-webkit-scrollbar { display: none; width: 0; height: 0; }
+    </style>
 
     {{-- ================= HERO CAROUSEL ================= --}}
     @if($isLanding && !empty($heroItems))
@@ -51,7 +55,16 @@
                     go(i) { this.active = i; this.start(); }
                  }"
                  x-init="start()">
-            <div class="relative h-[460px] sm:h-[500px] md:h-[560px]">
+            {{-- Swipe horizontal di HP; geser vertikal tetap scroll halaman --}}
+            <div class="relative h-[460px] sm:h-[500px] md:h-[560px] touch-pan-y select-none"
+                 x-data="{ sx: 0, sy: 0 }"
+                 @touchstart.passive="sx = $event.touches[0].clientX; sy = $event.touches[0].clientY; stop()"
+                 @touchend="
+                    const dx = $event.changedTouches[0].clientX - sx;
+                    const dy = $event.changedTouches[0].clientY - sy;
+                    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? next() : prev(); }
+                    start();
+                 ">
                 @foreach($heroItems as $i => $hero)
                     {{-- Inline opacity awal mencegah slide bertumpuk sebelum Alpine siap; :style yang mengambil alih setelahnya --}}
                     <div class="absolute inset-0 transition-opacity duration-700"
@@ -134,7 +147,7 @@
                                             :class="active === {{ $i }} ? 'w-8 bg-red-600' : 'w-3 bg-white/30'"></button>
                                 @endforeach
                             </div>
-                            <div class="ml-auto flex items-center gap-2">
+                            <div class="ml-auto hidden sm:flex items-center gap-2">
                                 <button type="button" @click="prev(); start()" aria-label="Sebelumnya"
                                         class="w-9 h-9 rounded-full bg-black/50 ring-1 ring-white/15 text-white flex items-center justify-center active:scale-90 transition">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
@@ -183,7 +196,7 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 overflow-x-auto scrollbar-none -mx-3 px-3 md:-mx-4 md:px-4">
+            <div class="flex items-center gap-2 overflow-x-auto overflow-y-hidden scrollbar-none -mx-3 px-3 md:-mx-4 md:px-4">
                 @foreach($formats as $fmt)
                     <button type="button" wire:click="setFormat('{{ $fmt['id'] }}')"
                             class="shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition {{ $format === $fmt['id'] ? 'bg-white text-black' : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10' }}">
@@ -202,7 +215,7 @@
                 </button>
             </div>
 
-            <div class="flex gap-3 md:gap-4 overflow-x-auto pb-2 scrollbar-none snap-x">
+            <div class="flex gap-3 md:gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none snap-x">
                 <template x-for="item in recentReads" :key="item.comicId">
                     <a :href="'/komik/' + item.comicId + '/read/' + item.chapterId"
                        class="snap-start shrink-0 w-[260px] sm:w-[300px] flex gap-3 p-2.5 rounded-2xl bg-zinc-900/70 ring-1 ring-white/5 hover:ring-red-600/50 transition group">
@@ -241,9 +254,9 @@
                     </div>
                 </div>
 
-                <div id="rail-top10" class="flex gap-5 md:gap-7 overflow-x-auto pb-2 scrollbar-none snap-x scroll-smooth">
+                <div id="rail-top10" class="flex items-end gap-5 md:gap-7 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none snap-x scroll-smooth">
                     @foreach($topRanked as $rank => $item)
-                        <a href="/komik/{{ $item['id'] }}" class="snap-start shrink-0 flex items-end group">
+                        <a href="/komik/{{ $item['id'] }}" class="snap-start shrink-0 flex items-end overflow-hidden group">
                             <span class="text-[84px] md:text-[112px] font-black leading-[0.78] tracking-tighter text-[#050505] select-none -mr-1 md:-mr-2 z-0"
                                   style="-webkit-text-stroke: 3px rgba(255,255,255,0.55);" aria-hidden="true">{{ $rank + 1 }}</span>
                             <div class="relative z-10 w-28 md:w-36 aspect-[2/3] rounded-xl overflow-hidden ring-1 ring-white/10 bg-zinc-800 shadow-xl group-hover:ring-red-600/60 transition">
