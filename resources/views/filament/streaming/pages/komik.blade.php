@@ -172,13 +172,10 @@
                                      :style="'width: ' + (item.progress || 0) + '%'"></div>
                             </div>
 
-                            {{-- Chapter Info & Play Hover overlay --}}
-                            <div class="absolute bottom-3 inset-x-2.5 flex items-center justify-between">
-                                <span class="text-xs font-black text-white drop-shadow truncate"
+                            {{-- Chapter Info --}}
+                            <div class="absolute bottom-3 inset-x-2.5">
+                                <span class="text-xs font-black text-white drop-shadow truncate block"
                                       x-text="item.chapterLabel"></span>
-                                <span class="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition">
-                                    <svg class="w-3 h-3 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                </span>
                             </div>
                         </a>
 
