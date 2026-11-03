@@ -271,6 +271,7 @@
         $isDracin = str_contains($currentUrl, '/dracin') || $isBstation;
         $isAnime = str_contains($currentUrl, '/anime');
         $isKomik = str_contains($currentUrl, '/komik');
+        $isComicReader = $isKomik && str_contains($currentUrl, '/read/');
         $isCollection = str_contains($currentUrl, '/collection');
         $isNetwork = str_contains($currentUrl, '/network');
         $isIndonesia = str_contains($currentUrl, '/indonesia');
@@ -984,7 +985,6 @@
     {{-- ================= MOBILE BOTTOM NAV (< lg) =================
          Dock mengambang: ikon jelas, label pendek, indikator aktif berbentuk pill. --}}
     @php
-        $isComicReader = str_contains($currentUrl, '/komik/') && str_contains($currentUrl, '/read/');
         $dockLinks = [
             ['Home', \App\Filament\Streaming\Pages\StreamingHome::getUrl(panel: 'streaming'), $isHome, 'M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25'],
             ['Movies', \App\Filament\Streaming\Pages\Movies::getUrl(panel: 'streaming'), $isMovie, 'M3.75 4.5h16.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H3.75a.75.75 0 01-.75-.75V5.25a.75.75 0 01.75-.75zM7.5 4.5v15m9-15v15M3 9h4.5M3 15h4.5m9-6H21m-4.5 6H21'],
