@@ -148,6 +148,30 @@ class NativeComicService
             })
             ->first();
 
-        return $chapter && is_array($chapter->pages) ? $chapter->pages : [];
+        if (!$chapter) {
+            return [];
+        }
+
+        // 1. Jika lembaran gambar sudah tersimpan di database lokal
+        if (!empty($chapter->pages) && is_array($chapter->pages)) {
+            return $chapter->pages;
+        }
+
+        // 2. Jika lembaran gambar belum terisi, fetch on-demand lewat ShinigamiService (via NUC relay) lalu simpan ke DB!
+        if ($chapter->upstream_chapter_id) {
+            try {
+                $shinigami = app(ShinigamiService::class);
+                $data = $shinigami->getChapterPages($chapter->upstream_chapter_id);
+                if (!empty($data['pages']) && is_array($data['pages'])) {
+                    // Update cache database agar request berikutnya instan!
+                    $chapter->update(['pages' => $data['pages']]);
+                    return $data['pages'];
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Native on-demand fetch pages error: " . $e->getMessage());
+            }
+        }
+
+        return [];
     }
 }

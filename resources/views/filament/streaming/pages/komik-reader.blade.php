@@ -147,7 +147,7 @@
     <header class="lg:hidden fixed top-0 inset-x-0 z-40 h-14 bg-black/85 backdrop-blur-xl border-b border-white/10 px-4 flex items-center justify-between transition-transform duration-300"
             :class="navVisible ? 'translate-y-0' : '-translate-y-full'">
         <div class="flex items-center gap-3 min-w-0">
-            <a href="/komik/{{ $comic['id'] }}" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-300 hover:text-white transition">
+            <a href="/komik/detail/{{ $comic['id'] }}" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-300 hover:text-white transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
             </a>
             <div class="min-w-0">
@@ -179,7 +179,7 @@
           @click="toggleNav">
         {{-- Desktop Top Bar Sub-Header --}}
         <div class="hidden lg:flex w-full items-center justify-between mb-6 px-2">
-            <a href="/komik/{{ $comic['id'] }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition">
+            <a href="/komik/detail/{{ $comic['id'] }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
                 <span>Kembali ke Detail Webtoon</span>
             </a>
@@ -195,7 +195,7 @@
         @if(empty($pages))
             <div class="py-32 text-center text-zinc-500">
                 <p class="text-sm font-bold">Halaman chapter sedang dimuat atau tidak tersedia.</p>
-                <a href="/komik/{{ $comic['id'] }}" class="mt-4 inline-block px-5 py-2 rounded-xl bg-red-600 text-white text-xs font-bold">
+                <a href="/komik/detail/{{ $comic['id'] }}" class="mt-4 inline-block px-5 py-2 rounded-xl bg-red-600 text-white text-xs font-bold">
                     Kembali ke Detail Webtoon
                 </a>
             </div>
@@ -205,10 +205,13 @@
                      data-panel-index="{{ $p['index'] }}"
                      class="w-full relative flex items-center justify-center bg-black overflow-hidden"
                      style="margin: 0; padding: 0; line-height: 0;">
-                    <img src="{{ $p['url'] }}"
+                    <img src="{{ !empty($p['raw_url']) ? $p['raw_url'] : $p['url'] }}"
+                         data-fallback-proxy="{{ $p['url'] }}"
                          alt="Halaman {{ $p['index'] }}"
                          loading="{{ $p['index'] <= 4 ? 'eager' : 'lazy' }}"
                          decoding="async"
+                         referrerpolicy="no-referrer"
+                         x-on:error="if ($el.getAttribute('data-fallback-proxy') && $el.src !== $el.getAttribute('data-fallback-proxy')) { $el.src = $el.getAttribute('data-fallback-proxy'); }"
                          class="w-full h-auto block select-none pointer-events-none"
                          style="display: block; margin: 0; padding: 0; border: 0;" />
                 </div>

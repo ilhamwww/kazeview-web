@@ -35,6 +35,7 @@ return new class extends Migration
         Schema::create('native_comic_chapters', function (Blueprint $table) {
             $table->id();
             $table->foreignId('comic_id')->constrained('native_comics')->cascadeOnDelete();
+            $table->string('upstream_chapter_id')->nullable(); // UUID Shinigami untuk fetch on-demand
             $table->string('chapter_slug'); // misal 'chapter-1' atau '920'
             $table->float('chapter_number');
             $table->string('chapter_title')->nullable();

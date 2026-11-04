@@ -71,6 +71,7 @@ Route::post('/api/sync-native-comic', function (\Illuminate\Http\Request $reques
                         'chapter_number' => (float) $ch['chapter_number']
                     ],
                     [
+                        'upstream_chapter_id' => $ch['upstream_chapter_id'] ?? null,
                         'chapter_slug' => (string) ($ch['chapter_slug'] ?? $ch['chapter_number']),
                         'chapter_title' => $ch['chapter_title'] ?? ('Chapter ' . $ch['chapter_number']),
                         'pages' => $ch['pages'] ?? [],
