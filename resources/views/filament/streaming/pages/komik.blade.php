@@ -202,25 +202,6 @@
 
         {{-- ================= STICKY TOOLBAR: SEARCH + TAB + FORMAT ================= --}}
         <div class="rounded-2xl bg-zinc-900/60 ring-1 ring-white/5 p-3 md:p-4 space-y-3">
-            {{-- Provider Switcher ala Dracin --}}
-            <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/5 overflow-x-auto overflow-y-hidden scrollbar-none -mx-1 px-1">
-                <div class="flex items-center gap-2 shrink-0">
-                    <span class="text-xs font-black uppercase tracking-wider text-zinc-500 mr-1 flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                        Server:
-                    </span>
-                    @foreach($providers as $p)
-                        <button type="button" wire:click="setProvider('{{ $p['id'] }}')"
-                                class="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition border {{ $provider === $p['id'] ? 'bg-red-600/90 border-red-500 text-white shadow-md shadow-red-900/30' : 'bg-black/40 border-white/5 text-zinc-400 hover:text-white hover:bg-white/5' }}">
-                            <span>{{ $p['name'] }}</span>
-                            <span class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider {{ $provider === $p['id'] ? 'bg-black/30 text-white' : 'bg-white/10 text-zinc-400' }}">
-                                {{ $p['tag'] }}
-                            </span>
-                        </button>
-                    @endforeach
-                </div>
-            </div>
-
             <div class="flex flex-col md:flex-row md:items-center gap-3">
                 <div class="relative flex-1">
                     <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
