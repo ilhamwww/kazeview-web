@@ -65,7 +65,36 @@
     }
 </style>
 
-<div class="md-stone min-h-screen text-amber-50 selection:bg-amber-700 selection:text-white pb-28 md:pb-20">
+@php
+    // Data modal: hanya user yang diranking (Royal sengaja tidak, EXP mereka disembunyikan)
+    $statsData = collect($ranked)->mapWithKeys(fn ($u) => [$u['user_id'] => [
+        'name' => $u['name'], 'rank' => $u['rank'], 'badge' => $u['badge'], 'level' => $u['level'], 'title' => $u['title'],
+        'exp' => $u['exp'], 'progress' => $u['progress'], 'to_next' => $u['to_next'], 'is_max' => $u['is_max'],
+        'sources' => $u['sources'], 'today' => $u['today'], 'joined' => $u['joined'], 'last_active' => $u['last_active'],
+        'is_me' => $meId === $u['user_id'],
+    ]])->all();
+@endphp
+<div class="md-stone min-h-screen text-amber-50 selection:bg-amber-700 selection:text-white pb-28 md:pb-20"
+     x-data="{
+        stats: @js($statsData),
+        current: null,
+        lastFocus: null,
+        openStats(id) {
+            if (!this.stats[id]) return;
+            this.lastFocus = document.activeElement;
+            this.current = this.stats[id];
+            document.documentElement.style.overflow = 'hidden';
+            this.$nextTick(() => this.$refs.closeBtn?.focus());
+        },
+        closeStats() {
+            this.current = null;
+            document.documentElement.style.overflow = '';
+            this.lastFocus?.focus();
+        },
+        fmt(n) { return Number(n || 0).toLocaleString('id-ID'); },
+        pct(n) { return this.current && this.current.exp ? Math.round(n / this.current.exp * 1000) / 10 : 0; }
+     }"
+     @keydown.escape.window="current && closeStats()">
 
     {{-- ================= HERO ================= --}}
     <section class="relative overflow-hidden border-b border-amber-900/40">
@@ -160,7 +189,8 @@
                     <div class="grid grid-cols-3 gap-2 md:gap-5 items-end max-w-3xl mx-auto">
                         @foreach($order as $idx => $p)
                             @php $s = $style[$idx]; $isMe = $meId === $p['user_id']; @endphp
-                            <div class="flex flex-col items-center min-w-0 {{ $s['lift'] }}">
+                            <button type="button" @click="openStats({{ $p['user_id'] }})" aria-haspopup="dialog" aria-label="Lihat statistik EXP {{ $p['name'] }}"
+                                    class="group flex flex-col items-center min-w-0 rounded-xl cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 {{ $s['lift'] }}">
                                 @php $tone = ['gold','silver','bronze'][$idx]; @endphp
                                 <div class="fx-badge fx-{{ $tone }} {{ $s['img'] }}" style="--b:url('{{ $p['badge'] }}')">@if($idx === 0)<span class="fx-rays" aria-hidden="true"></span>@endif<span class="fx-halo" aria-hidden="true"></span><div class="fx-core"><img src="{{ $p['badge'] }}" alt="Badge level {{ $p['level'] }}" class="fx-img" loading="lazy"><span class="fx-shine" aria-hidden="true"></span></div><span class="fx-spark s1" aria-hidden="true"></span><span class="fx-spark s2" aria-hidden="true"></span><span class="fx-spark s3" aria-hidden="true"></span><span class="fx-spark s4" aria-hidden="true"></span></div>
                                 <p class="md-serif mt-2 text-xs md:text-base font-black {{ $s['name'] }} text-center truncate max-w-full px-1">{{ $p['name'] }}</p>
@@ -172,7 +202,7 @@
                                 <div class="md-frame w-full {{ $s['h'] }} rounded-t-xl mt-3 flex items-start justify-center pt-3 md:pt-4 border-t-2 {{ $s['ring'] }}">
                                     <span class="md-serif text-2xl md:text-4xl font-black tracking-widest {{ $s['num'] }}">{{ ['I', 'II', 'III'][$idx] }}</span>
                                 </div>
-                            </div>
+                            </button>
                         @endforeach
                     </div>
                 </section>
@@ -188,7 +218,9 @@
                     <ol class="space-y-2">
                         @foreach($rest as $u)
                             @php $isMe = $meId === $u['user_id']; @endphp
-                            <li class="flex items-center gap-3 md:gap-4 rounded-xl p-2.5 md:p-3 {{ $isMe ? 'bg-red-900/25 ring-1 ring-red-600/60' : 'bg-black/30 ring-1 ring-amber-900/30' }}">
+                            <li>
+                            <button type="button" @click="openStats({{ $u['user_id'] }})" aria-haspopup="dialog" aria-label="Lihat statistik EXP {{ $u['name'] }}"
+                                    class="w-full text-left cursor-pointer flex items-center gap-3 md:gap-4 rounded-xl p-2.5 md:p-3 transition hover:bg-amber-500/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 {{ $isMe ? 'bg-red-900/25 ring-1 ring-red-600/60' : 'bg-black/30 ring-1 ring-amber-900/30' }}">
                                 <span class="w-8 shrink-0 text-center text-sm md:text-base font-black text-amber-100/70 tabular-nums">{{ $u['rank'] }}</span>
                                 <img src="{{ $u['badge'] }}" alt="Badge level {{ $u['level'] }}" class="md-badge w-11 h-11 md:w-12 md:h-12 shrink-0" loading="lazy">
                                 <div class="min-w-0 flex-1">
@@ -204,6 +236,7 @@
                                     <p class="md-serif text-sm md:text-lg font-black text-amber-300 tabular-nums">{{ $fmt($u['exp']) }}</p>
                                     <p class="text-[10px] text-amber-100/60">EXP</p>
                                 </div>
+                            </button>
                             </li>
                         @endforeach
                     </ol>
@@ -253,4 +286,89 @@
             </section>
         @endif
     </main>
+    {{-- ================= MODAL STATISTIK EXP PER USER ================= --}}
+    <template x-teleport="body">
+        <div x-show="current" x-cloak style="display:none"
+             class="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
+             role="dialog" aria-modal="true" aria-labelledby="exp-modal-title">
+            <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeStats()"
+                 x-show="current" x-transition.opacity></div>
+
+            <div class="md-frame relative w-full sm:max-w-md max-h-[90dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl p-5 md:p-6 text-amber-50 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
+                 x-show="current"
+                 x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-6 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0 translate-y-6 sm:translate-y-0 sm:scale-95">
+                <template x-if="current">
+                    <div>
+                        <button type="button" x-ref="closeBtn" @click="closeStats()" aria-label="Tutup"
+                                class="absolute top-3 right-3 w-9 h-9 inline-flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-amber-100/80 hover:text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+
+                        {{-- Header --}}
+                        <div class="flex items-center gap-4 pr-10">
+                            <img :src="current.badge" :alt="'Badge level ' + current.level" class="md-badge w-20 h-20 shrink-0">
+                            <div class="min-w-0">
+                                <p class="md-serif text-[11px] font-bold uppercase tracking-[0.25em] text-amber-500">Peringkat #<span x-text="current.rank"></span></p>
+                                <h2 id="exp-modal-title" class="md-serif text-xl font-black truncate" x-text="current.name"></h2>
+                                <p class="text-sm text-amber-100/70">Lv <span x-text="current.level"></span> · <span x-text="current.title"></span></p>
+                                <span x-show="current.is_me" class="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-700 text-white">Kamu</span>
+                            </div>
+                        </div>
+
+                        {{-- Total & progress --}}
+                        <div class="mt-5 rounded-xl bg-black/30 ring-1 ring-amber-900/40 p-3.5">
+                            <div class="flex items-end justify-between gap-3">
+                                <div>
+                                    <p class="text-[10px] uppercase tracking-wider text-amber-100/60">Total EXP</p>
+                                    <p class="md-serif text-2xl font-black text-amber-300 tabular-nums" x-text="fmt(current.exp)"></p>
+                                </div>
+                                <p class="text-[11px] text-amber-100/70 text-right"
+                                   x-text="current.is_max ? 'Level maksimal' : fmt(current.to_next) + ' EXP lagi ke Lv ' + (current.level + 1)"></p>
+                            </div>
+                            <div class="mt-2 h-2 rounded-full bg-black/50 overflow-hidden" role="progressbar" :aria-valuenow="current.progress" aria-valuemin="0" aria-valuemax="100" aria-label="Progres ke level berikutnya">
+                                <div class="h-full md-bar" :style="'width:' + current.progress + '%'"></div>
+                            </div>
+                        </div>
+
+                        {{-- Sumber EXP --}}
+                        <h3 class="md-serif mt-5 mb-2.5 text-sm font-black text-amber-200">Sumber EXP</h3>
+                        <ul class="space-y-2.5">
+                            <template x-for="src in current.sources" :key="src.key">
+                                <li :class="src.exp === 0 && src.count === 0 ? 'opacity-45' : ''">
+                                    <div class="flex items-baseline justify-between gap-3 text-sm">
+                                        <span class="text-amber-50 font-semibold" x-text="src.label"></span>
+                                        <span class="tabular-nums">
+                                            <span class="font-black text-amber-300" x-text="fmt(src.exp)"></span>
+                                            <span class="text-[11px] text-amber-100/60" x-text="' EXP · ' + pct(src.exp).toLocaleString('id-ID') + '%'"></span>
+                                        </span>
+                                    </div>
+                                    <div class="mt-1 h-1.5 rounded-full bg-black/50 overflow-hidden">
+                                        <div class="h-full md-bar" :style="'width:' + (src.exp > 0 ? Math.max(2, pct(src.exp)) : 0) + '%'"></div>
+                                    </div>
+                                    <p class="mt-0.5 text-[11px] text-amber-100/60" x-text="fmt(src.count) + ' ' + src.unit"></p>
+                                </li>
+                            </template>
+                        </ul>
+
+                        {{-- Info tambahan --}}
+                        <dl class="mt-5 grid grid-cols-3 gap-2 text-center">
+                            <div class="rounded-lg bg-black/30 p-2">
+                                <dt class="text-[9px] uppercase tracking-wider text-amber-100/60">Hari ini</dt>
+                                <dd class="text-xs font-black text-amber-200 tabular-nums mt-0.5"><span x-text="fmt(current.today)"></span> / {{ $dailyCap }}</dd>
+                            </div>
+                            <div class="rounded-lg bg-black/30 p-2">
+                                <dt class="text-[9px] uppercase tracking-wider text-amber-100/60">Bergabung</dt>
+                                <dd class="text-xs font-black text-amber-200 mt-0.5" x-text="current.joined"></dd>
+                            </div>
+                            <div class="rounded-lg bg-black/30 p-2">
+                                <dt class="text-[9px] uppercase tracking-wider text-amber-100/60">Terakhir aktif</dt>
+                                <dd class="text-xs font-black text-amber-200 mt-0.5" x-text="current.last_active"></dd>
+                            </div>
+                        </dl>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
 </div>

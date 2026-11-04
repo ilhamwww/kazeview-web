@@ -48,7 +48,7 @@ class ExpService
         10 => 150000,
     ];
 
-    public const LEADERBOARD_CACHE = 'kz_exp_leaderboard_v1';
+    public const LEADERBOARD_CACHE = 'kz_exp_leaderboard_v2';
 
     /** Cache ringkasan EXP per user untuk topbar/navbar (dipanggil di setiap halaman). */
     public static function navSummary(User $user): array
@@ -253,6 +253,12 @@ class ExpService
                 ->selectRaw("SUM(CASE WHEN source_type IN ('anime','bstation') THEN exp ELSE 0 END) as exp_anime")
                 ->selectRaw("SUM(CASE WHEN source_type = 'dracin' THEN exp ELSE 0 END) as exp_dracin")
                 ->selectRaw("SUM(CASE WHEN source_type = 'komik' THEN exp ELSE 0 END) as exp_komik")
+                ->selectRaw("COUNT(CASE WHEN source_type = 'movie' THEN 1 END) as n_movie")
+                ->selectRaw("COUNT(CASE WHEN source_type = 'series' THEN 1 END) as n_series")
+                ->selectRaw("COUNT(CASE WHEN source_type IN ('anime','bstation') THEN 1 END) as n_anime")
+                ->selectRaw("COUNT(CASE WHEN source_type = 'dracin' THEN 1 END) as n_dracin")
+                ->selectRaw("COUNT(CASE WHEN source_type = 'komik' THEN 1 END) as n_komik")
+                ->selectRaw('SUM(CASE WHEN user_exp_events.is_backfill = false AND user_exp_events.earned_on = ? THEN user_exp_events.exp ELSE 0 END) as exp_today', [Carbon::now(self::TZ)->toDateString()])
                 ->selectRaw('MAX(user_exp_events.updated_at) as last_at')
                 ->get()
                 ->map(function ($r) {
@@ -327,6 +333,17 @@ class ExpService
             'breakdown' => $breakdown,          // hanya EXP konten; loyalitas dipisah agar "Paling banyak" tetap bermakna
             'loyalty' => (int) ($r->exp_loyal ?? 0),
             'top_source' => array_key_first($breakdown) ?? 'Loyalitas',
+            // Rincian untuk modal statistik per user (hanya agregat, tanpa judul yang ditonton)
+            'sources' => [
+                ['key' => 'movie', 'label' => 'Movie', 'exp' => (int) $r->exp_movie, 'count' => (int) ($r->n_movie ?? 0), 'unit' => 'film'],
+                ['key' => 'series', 'label' => 'TV Series / Indonesia', 'exp' => (int) $r->exp_series, 'count' => (int) ($r->n_series ?? 0), 'unit' => 'episode'],
+                ['key' => 'anime', 'label' => 'Anime', 'exp' => (int) $r->exp_anime, 'count' => (int) ($r->n_anime ?? 0), 'unit' => 'episode'],
+                ['key' => 'dracin', 'label' => 'Dracin', 'exp' => (int) $r->exp_dracin, 'count' => (int) ($r->n_dracin ?? 0), 'unit' => 'episode'],
+                ['key' => 'komik', 'label' => 'Komik', 'exp' => (int) $r->exp_komik, 'count' => (int) ($r->n_komik ?? 0), 'unit' => 'chapter'],
+                ['key' => 'loyal', 'label' => 'Loyalitas', 'exp' => (int) ($r->exp_loyal ?? 0), 'count' => (int) ($r->exp_loyal ?? 0), 'unit' => 'hari'],
+            ],
+            'today' => (int) ($r->exp_today ?? 0),
+            'joined' => $r->created_at ? Carbon::parse($r->created_at)->setTimezone(self::TZ)->locale('id')->translatedFormat('d F Y') : '-',
             'last_active' => $r->last_at ? Carbon::parse($r->last_at)->locale('id')->diffForHumans() : '-',
         ];
     }
