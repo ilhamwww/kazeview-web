@@ -50,6 +50,7 @@
             </div>
         </section>
         <section id="provider-picker" class="max-w-7xl mx-auto px-5 md:px-10 pb-12">
+            @include('filament.streaming.partials.comic-history')
             <h2 class="text-lg md:text-xl font-black mb-4">Pilih Provider</h2>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 @foreach(['shinigami', 'kiryuu', 'izanami'] as $providerId)
