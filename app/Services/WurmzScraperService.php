@@ -347,11 +347,42 @@ class WurmzScraperService
             if (!empty($imgMatches[1])) {
                 $idx = 1;
                 foreach ($imgMatches[1] as $img) {
-                    if (str_contains($img, 'cdn.natsu.id') || str_contains($img, '/img/')) {
+                    // Filter gambar panel yang valid (bukan logo, icon, avatar, dsb)
+                    if (
+                        str_contains($img, 'cdn.natsu.id') ||
+                        str_contains($img, 'imgsvr.my.id') ||
+                        str_contains($img, '/file/comic/') ||
+                        str_contains($img, '/img/') ||
+                        preg_match('/\/(?:chapter|ch|comic|images)\//i', $img)
+                    ) {
                         $pages[] = [
                             'index' => $idx++,
                             'url' => $img,
                         ];
+                    }
+                }
+            }
+
+            // Fallback: Jika tidak ketemu dari tag <img>, ekstrak dari script Next.js
+            if (empty($pages)) {
+                preg_match_all('/https?:\/\/[^\s"\'\\\\]+\.(?:jpg|jpeg|png|webp|avif)/i', $html, $scriptImgs);
+                if (!empty($scriptImgs[0])) {
+                    $idx = 1;
+                    $seen = [];
+                    foreach ($scriptImgs[0] as $img) {
+                        if (
+                            !isset($seen[$img]) &&
+                            !str_contains($img, '/covers/') &&
+                            !str_contains($img, 'logo') &&
+                            !str_contains($img, 'icon') &&
+                            (str_contains($img, 'imgsvr') || str_contains($img, 'natsu') || str_contains($img, '/chapter') || str_contains($img, '/comic/'))
+                        ) {
+                            $seen[$img] = true;
+                            $pages[] = [
+                                'index' => $idx++,
+                                'url' => $img,
+                            ];
+                        }
                     }
                 }
             }
