@@ -23,6 +23,46 @@
     .md-divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(226, 176, 74, .7), transparent); }
     .md-bar { background: linear-gradient(90deg, #7a4f12, #e2b04a, #fde9a8); }
     .md-badge { filter: drop-shadow(0 6px 14px rgba(0,0,0,.6)); }
+
+    /* ===== Efek badge spesial (Royal + Top 3): kilau sapuan, glow berdenyut, melayang, sinar, sparkle ===== */
+    .fx-badge { position: relative; display: block; isolation: isolate; }
+    .fx-core { position: relative; z-index: 1; width: 100%; height: 100%; animation: fx-float 4.5s ease-in-out infinite; }
+    .fx-img { width: 100%; height: 100%; object-fit: contain; animation: fx-glow 3s ease-in-out infinite; }
+    .fx-shine { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
+        -webkit-mask: var(--b) center / contain no-repeat; mask: var(--b) center / contain no-repeat;
+        background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.15) 44%, rgba(255,255,255,.9) 50%, rgba(255,255,255,.15) 56%, transparent 62%);
+        background-size: 300% 100%; background-position: 160% 0; animation: fx-sweep 3.6s ease-in-out infinite; }
+    .fx-rays { position: absolute; inset: -28%; z-index: 0; pointer-events: none; opacity: .55;
+        background: repeating-conic-gradient(from 0deg, var(--ray) 0deg 5deg, transparent 5deg 24deg);
+        -webkit-mask: radial-gradient(circle, #000 18%, transparent 66%); mask: radial-gradient(circle, #000 18%, transparent 66%);
+        animation: fx-spin 22s linear infinite; }
+    .fx-halo { position: absolute; inset: 8%; z-index: 0; border-radius: 9999px; pointer-events: none;
+        background: radial-gradient(circle, var(--glow) 0%, transparent 68%); filter: blur(10px); animation: fx-pulse 3s ease-in-out infinite; }
+    .fx-spark { position: absolute; z-index: 3; width: 12%; aspect-ratio: 1; pointer-events: none; background: #fff;
+        clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+        filter: drop-shadow(0 0 4px var(--glow)); opacity: 0; animation: fx-twinkle 2.8s ease-in-out infinite; }
+    .fx-spark.s1 { top: 6%; left: 12%; animation-delay: .2s; }
+    .fx-spark.s2 { top: 18%; right: 4%; width: 9%; animation-delay: 1.1s; }
+    .fx-spark.s3 { bottom: 14%; left: 2%; width: 8%; animation-delay: 1.9s; }
+    .fx-spark.s4 { bottom: 4%; right: 16%; width: 10%; animation-delay: .7s; }
+
+    .fx-king, .fx-gold { --glow: rgba(255, 196, 64, .85); --ray: rgba(255, 214, 120, .45); }
+    .fx-queen { --glow: rgba(240, 120, 235, .95); --ray: rgba(250, 180, 250, .6); }
+    .fx-silver { --glow: rgba(205, 222, 255, .7); --ray: rgba(220, 230, 255, .3); }
+    .fx-bronze { --glow: rgba(235, 140, 70, .7); --ray: rgba(240, 160, 100, .3); }
+
+    @keyframes fx-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6%); } }
+    @keyframes fx-glow { 0%, 100% { filter: drop-shadow(0 0 4px var(--glow)) drop-shadow(0 8px 14px rgba(0,0,0,.6)); }
+                         50% { filter: drop-shadow(0 0 16px var(--glow)) drop-shadow(0 8px 14px rgba(0,0,0,.6)); } }
+    @keyframes fx-sweep { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
+    @keyframes fx-spin { to { transform: rotate(360deg); } }
+    @keyframes fx-pulse { 0%, 100% { opacity: .35; transform: scale(.92); } 50% { opacity: .75; transform: scale(1.05); } }
+    @keyframes fx-twinkle { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); } 45% { opacity: 1; transform: scale(1) rotate(45deg); } 70% { opacity: 0; transform: scale(.4) rotate(90deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+        .fx-core, .fx-img, .fx-shine, .fx-rays, .fx-halo, .fx-spark { animation: none !important; }
+        .fx-spark { opacity: .8; }
+    }
 </style>
 
 <div class="md-stone min-h-screen text-amber-50 selection:bg-amber-700 selection:text-white pb-28 md:pb-20">
@@ -67,7 +107,7 @@
                             <article class="md-frame rounded-2xl p-3 sm:p-5 md:p-6 text-center overflow-hidden min-w-0 {{ $isKing ? 'ring-1 ring-amber-500/30' : 'ring-1 ring-fuchsia-400/25' }}">
                                 <div class="absolute inset-0 pointer-events-none {{ $isKing ? 'bg-[radial-gradient(circle_at_50%_25%,rgba(245,180,60,.22),transparent_60%)]' : 'bg-[radial-gradient(circle_at_50%_25%,rgba(217,120,220,.2),transparent_60%)]' }}" aria-hidden="true"></div>
                                 <div class="relative">
-                                    <img src="{{ $r['badge'] }}" alt="Badge {{ $r['title'] }}" class="md-badge w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 mx-auto" loading="lazy">
+                                    <div class="fx-badge fx-{{ $isKing ? 'king' : 'queen' }} w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 mx-auto" style="--b:url('{{ $r['badge'] }}')"><span class="fx-rays" aria-hidden="true"></span><span class="fx-halo" aria-hidden="true"></span><div class="fx-core"><img src="{{ $r['badge'] }}" alt="Badge {{ $r['title'] }}" class="fx-img" loading="lazy"><span class="fx-shine" aria-hidden="true"></span></div><span class="fx-spark s1" aria-hidden="true"></span><span class="fx-spark s2" aria-hidden="true"></span><span class="fx-spark s3" aria-hidden="true"></span><span class="fx-spark s4" aria-hidden="true"></span></div>
                                     <p class="md-serif mt-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.25em] sm:tracking-[0.3em] {{ $isKing ? 'text-amber-400' : 'text-fuchsia-300' }}">{{ $r['title'] }}</p>
                                     <h3 class="md-serif mt-1 text-base sm:text-xl md:text-2xl font-black text-amber-50 truncate">{{ $r['name'] }}</h3>
                                 </div>
@@ -103,7 +143,7 @@
             {{-- ================= PODIUM ================= --}}
             @if(count($top3))
                 <section aria-labelledby="podium-title">
-                    <div class="text-center mb-6">
+                    <div class="text-center mb-10 md:mb-12">
                         <h2 id="podium-title" class="md-title md-gold text-2xl md:text-3xl font-black">Champions</h2>
                         <div class="md-divider max-w-[180px] mx-auto mt-3"></div>
                     </div>
@@ -121,7 +161,8 @@
                         @foreach($order as $idx => $p)
                             @php $s = $style[$idx]; $isMe = $meId === $p['user_id']; @endphp
                             <div class="flex flex-col items-center min-w-0 {{ $s['lift'] }}">
-                                <img src="{{ $p['badge'] }}" alt="Badge level {{ $p['level'] }}" class="md-badge {{ $s['img'] }}" loading="lazy">
+                                @php $tone = ['gold','silver','bronze'][$idx]; @endphp
+                                <div class="fx-badge fx-{{ $tone }} {{ $s['img'] }}" style="--b:url('{{ $p['badge'] }}')">@if($idx === 0)<span class="fx-rays" aria-hidden="true"></span>@endif<span class="fx-halo" aria-hidden="true"></span><div class="fx-core"><img src="{{ $p['badge'] }}" alt="Badge level {{ $p['level'] }}" class="fx-img" loading="lazy"><span class="fx-shine" aria-hidden="true"></span></div><span class="fx-spark s1" aria-hidden="true"></span><span class="fx-spark s2" aria-hidden="true"></span><span class="fx-spark s3" aria-hidden="true"></span><span class="fx-spark s4" aria-hidden="true"></span></div>
                                 <p class="md-serif mt-2 text-xs md:text-base font-black {{ $s['name'] }} text-center truncate max-w-full px-1">{{ $p['name'] }}</p>
                                 @if($isMe)
                                     <span class="mt-0.5 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-700 text-white">Kamu</span>
