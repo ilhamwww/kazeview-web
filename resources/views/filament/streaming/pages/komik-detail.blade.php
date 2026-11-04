@@ -19,7 +19,34 @@
         <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/75 to-transparent"></div>
         <div class="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-[#050505]"></div>
 
-        <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 md:pt-28 lg:pt-32 pb-8 flex flex-col md:flex-row gap-6 md:gap-10 items-start">
+        <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 md:pt-28 lg:pt-32 pb-8">
+            {{-- Tombol Kembali ke Katalog / Provider Terkait --}}
+            @php
+                $backUrl = '/komik';
+                $backLabel = 'Katalog Webtoon';
+                if (str_starts_with($comic['id'] ?? '', 'native__')) {
+                    $backUrl = '/komik/native';
+                    $backLabel = 'Katalog Native KZSTRM';
+                } elseif (str_starts_with($comic['id'] ?? '', 'wurmz__')) {
+                    $backUrl = '/komik/wurmz';
+                    $backLabel = 'Katalog Wurmz Scans';
+                } elseif (str_starts_with($comic['id'] ?? '', 'izanami__')) {
+                    $backUrl = '/komik/izanami';
+                    $backLabel = 'Katalog Izanami Scans';
+                } elseif (!empty($comic['id'])) {
+                    $backUrl = '/komik/shinigami';
+                    $backLabel = 'Katalog Shinigami ID';
+                }
+            @endphp
+            <div class="mb-5">
+                <a href="{{ $backUrl }}"
+                   class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition shadow-sm active:scale-95">
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+                    <span>Kembali ke {{ $backLabel }}</span>
+                </a>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-start">
             {{-- Poster Card --}}
             <div class="shrink-0 w-36 sm:w-44 md:w-56 aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/15 shadow-2xl shadow-black/90 bg-zinc-900 mx-auto md:mx-0">
                 <img src="{{ $comic['cover'] }}" alt="{{ $comic['title'] }}" class="w-full h-full object-cover" />
@@ -128,6 +155,7 @@
                         </a>
                     @endif
                 </div>
+            </div>
             </div>
         </div>
     </div>
