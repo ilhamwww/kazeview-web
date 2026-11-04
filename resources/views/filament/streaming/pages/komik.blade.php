@@ -40,6 +40,40 @@
         .scrollbar-none::-webkit-scrollbar { display: none; width: 0; height: 0; }
     </style>
 
+    @if($provider === '')
+        <section class="relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-red-900/20 via-transparent to-violet-900/10" aria-hidden="true"></div>
+            <div class="relative max-w-7xl mx-auto px-5 md:px-10 pt-24 md:pt-28 lg:pt-32 pb-8 md:pb-12">
+                <span class="inline-flex px-3 py-1 rounded-full bg-red-600/10 border border-red-600/30 text-red-400 text-[10px] font-black uppercase tracking-widest">Webtoon · Manga · Manhwa</span>
+                <h1 class="mt-4 text-4xl md:text-6xl font-black tracking-tight">Webtoon</h1>
+                <p class="mt-3 max-w-xl text-sm md:text-base text-zinc-400 leading-relaxed">Pilih provider dulu, lalu jelajahi koleksi dan lanjutkan membaca komik favoritmu.</p>
+            </div>
+        </section>
+        <section id="provider-picker" class="max-w-7xl mx-auto px-5 md:px-10 pb-12">
+            <h2 class="text-lg md:text-xl font-black mb-4">Pilih Provider</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                @foreach(['shinigami', 'kiryuu', 'izanami'] as $providerId)
+                    @php($source = collect($providers)->firstWhere('id', $providerId))
+                    <a href="/komik?provider={{ $source['id'] }}" data-provider="{{ $source['id'] }}"
+                       class="relative overflow-hidden rounded-2xl bg-zinc-900/70 border border-white/10 hover:border-red-500/60 active:scale-[0.98] transition p-5 flex flex-col gap-5 min-h-[210px]">
+                        <div class="flex items-start justify-between gap-3">
+                            <span class="w-14 h-14 rounded-2xl bg-red-600/15 border border-red-600/20 flex items-center justify-center text-2xl font-black text-red-400">{{ mb_substr($source['name'], 0, 1) }}</span>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-white/5 text-zinc-400">{{ $source['is_nuc'] ? 'Via NUC' : 'Direct VPS' }}</span>
+                        </div>
+                        <div class="mt-auto">
+                            <h3 class="text-xl font-black">{{ $source['name'] }}</h3>
+                            <p class="mt-2 text-xs leading-relaxed text-zinc-400">{{ $source['is_nuc'] ? 'Memerlukan koneksi NUC. Jika tidak tersedia, pilih provider lain.' : ($source['id'] === 'kiryuu' ? 'Jelajahi manga, manhwa, dan manhua dari Kiryuu.' : 'Baca koleksi manhua dan manhwa dari Izanami Scans.') }}</p>
+                        </div>
+                        <span class="text-xs font-bold text-red-400">Jelajahi koleksi →</span>
+                    </a>
+                @endforeach
+            </div>
+            <p class="mt-5 text-xs text-zinc-500">Ketersediaan judul dan chapter mengikuti masing-masing provider.</p>
+        </section>
+    @else
+        <div class="max-w-7xl mx-auto px-5 md:px-10 pt-24 lg:pt-28">
+            <a href="/komik" class="inline-flex items-center gap-2 text-sm font-bold text-zinc-400 hover:text-white">← Pilih Provider Lain</a>
+        </div>
     {{-- ================= HERO CAROUSEL ================= --}}
     @if($isLanding && !empty($heroItems))
         <section class="relative w-full overflow-hidden bg-[#050505]"
@@ -431,4 +465,5 @@
             @endif
         </section>
     </div>
+    @endif
 </div>

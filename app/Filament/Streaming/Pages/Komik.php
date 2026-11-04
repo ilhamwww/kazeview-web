@@ -17,7 +17,7 @@ class Komik extends Page
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
-    public string $provider = 'kiryuu'; // kiryuu, izanami, shinigami
+    public string $provider = ''; // Empty means provider-selection landing.
     public int $page = 1;
     public string $format = 'all'; // all, manhwa, manga, manhua
     public string $tab = 'popular'; // popular, latest
@@ -31,7 +31,7 @@ class Komik extends Page
     public bool $hasMore = false;
 
     protected $queryString = [
-        'provider' => ['except' => 'kiryuu'],
+        'provider' => ['except' => ''],
         'format' => ['except' => 'all'],
         'tab' => ['except' => 'popular'],
         'search' => ['except' => '', 'as' => 'q'],
@@ -71,10 +71,9 @@ class Komik extends Page
 
     public function mount(): void
     {
-        $this->provider = request()->query('provider', 'kiryuu');
-        if (!in_array($this->provider, ['kiryuu', 'izanami', 'shinigami'])) {
-            $this->provider = 'kiryuu';
-        }
+        $requestedProvider = request()->query('provider', '');
+        $this->provider = is_string($requestedProvider) && in_array($requestedProvider, ['kiryuu', 'izanami', 'shinigami'], true)
+            ? $requestedProvider : '';
 
         $this->format = request()->query('format', 'all');
         $this->tab = request()->query('tab', 'popular');
@@ -164,6 +163,13 @@ class Komik extends Page
 
     public function loadData(): void
     {
+        if (!in_array($this->provider, ['kiryuu', 'izanami', 'shinigami'], true)) {
+            $this->heroItems = $this->latestHorizontal = $this->topRanked = $this->items = [];
+            $this->hasMore = false;
+            $this->totalPage = 1;
+            return;
+        }
+
         $service = match ($this->provider) {
             'izanami' => app(IzanamiScansService::class),
             'shinigami' => app(ShinigamiService::class),
