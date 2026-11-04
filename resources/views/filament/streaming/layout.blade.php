@@ -1374,6 +1374,22 @@
     <script src="/js/kz-drag-scroll.js?v=2"></script>
     <script src="/js/kz-server-loader.js?v=4"></script>
     @stack('scripts')
+    {{-- Global One-time Comic History Cleaner --}}
+    <script>
+        (function() {
+            try {
+                if (localStorage.getItem('kz_comic_v2_reset') !== '1') {
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const key = localStorage.key(i);
+                        if (key && (key.startsWith('kz_comic_') || key === 'kz_comic_recent_reads')) {
+                            localStorage.removeItem(key);
+                        }
+                    }
+                    localStorage.setItem('kz_comic_v2_reset', '1');
+                }
+            } catch(e) {}
+        })();
+    </script>
 </body>
 
 </html>

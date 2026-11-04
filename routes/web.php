@@ -22,7 +22,7 @@ Route::get('/streaming/{any}', function ($any) {
 
 // Redirect legacy komik detail /komik/{id} to /komik/detail/{id} jika ada ID komik lama
 Route::get('/komik/{id}', function (string $id) {
-    if (!in_array(strtolower($id), ['shinigami', 'wurmz', 'izanami'])) {
+    if (!in_array(strtolower($id), ['native', 'shinigami', 'wurmz', 'izanami', 'picker'])) {
         return redirect('/komik/detail/' . $id);
     }
     return app()->call('App\Filament\Streaming\Pages\Komik@render');

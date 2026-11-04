@@ -17,7 +17,7 @@ class Komik extends Page
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
-    public string $provider = ''; // Empty means provider-selection landing.
+    public string $provider = 'native'; // Default langsung buka katalog Native KZSTRM
     public int $page = 1;
     public string $format = 'all'; // all, manhwa, manga, manhua
     public string $tab = 'popular'; // popular, latest
@@ -77,9 +77,9 @@ class Komik extends Page
 
     public function mount(?string $provider = null): void
     {
-        $requestedProvider = $provider ?: request()->query('provider', '');
-        $this->provider = is_string($requestedProvider) && in_array(strtolower($requestedProvider), ['native', 'wurmz', 'izanami', 'shinigami'], true)
-            ? strtolower($requestedProvider) : '';
+        $requestedProvider = $provider ?: request()->query('provider', 'native');
+        $this->provider = is_string($requestedProvider) && in_array(strtolower($requestedProvider), ['native', 'wurmz', 'izanami', 'shinigami', 'picker'], true)
+            ? strtolower($requestedProvider) : 'native';
 
         $this->format = request()->query('format', 'all');
         $this->tab = request()->query('tab', 'popular');

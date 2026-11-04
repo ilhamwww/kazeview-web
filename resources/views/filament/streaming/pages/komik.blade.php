@@ -40,7 +40,7 @@
         .scrollbar-none::-webkit-scrollbar { display: none; width: 0; height: 0; }
     </style>
 
-    @if($provider === '')
+    @if($provider === 'picker')
         <section class="relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-br from-red-900/20 via-transparent to-violet-900/10" aria-hidden="true"></div>
             <div class="relative max-w-7xl mx-auto px-5 md:px-10 pt-24 md:pt-28 lg:pt-32 pb-8 md:pb-12">
@@ -82,8 +82,14 @@
             <p class="mt-5 text-xs text-zinc-500">Ketersediaan judul dan chapter mengikuti masing-masing provider.</p>
         </section>
     @else
-        <div class="max-w-7xl mx-auto px-5 md:px-10 pt-24 lg:pt-28">
-            <a href="/komik" class="inline-flex items-center gap-2 text-sm font-bold text-zinc-400 hover:text-white">← Pilih Provider Lain</a>
+        <div class="max-w-7xl mx-auto px-5 md:px-10 pt-24 lg:pt-28 flex items-center justify-between">
+            <a href="/komik/picker" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-zinc-900 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15m0 0l6.75 6.75M4.5 12l6.75-6.75"/></svg>
+                <span>Pilih Server / Provider Lain</span>
+            </a>
+            <span class="text-xs font-bold text-zinc-500">
+                Server: <strong class="text-red-500 uppercase">{{ $provider }}</strong>
+            </span>
         </div>
     {{-- ================= HERO CAROUSEL ================= --}}
     @if($isLanding && !empty($heroItems))
