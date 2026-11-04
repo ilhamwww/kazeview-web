@@ -82,15 +82,6 @@
             <p class="mt-5 text-xs text-zinc-500">Ketersediaan judul dan chapter mengikuti masing-masing provider.</p>
         </section>
     @else
-        <div class="max-w-7xl mx-auto px-5 md:px-10 pt-24 lg:pt-28 flex items-center justify-between">
-            <a href="/komik/picker" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-zinc-900 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition">
-                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15m0 0l6.75 6.75M4.5 12l6.75-6.75"/></svg>
-                <span>Pilih Server / Provider Lain</span>
-            </a>
-            <span class="text-xs font-bold text-zinc-500">
-                Server: <strong class="text-red-500 uppercase">{{ $provider }}</strong>
-            </span>
-        </div>
     {{-- ================= HERO CAROUSEL ================= --}}
     @if($isLanding && !empty($heroItems))
         <section class="relative w-full overflow-hidden bg-[#050505]"
