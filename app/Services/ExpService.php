@@ -48,7 +48,7 @@ class ExpService
         10 => 150000,
     ];
 
-    public const LEADERBOARD_CACHE = 'kz_exp_leaderboard_v2';
+    public const LEADERBOARD_CACHE = 'kz_exp_leaderboard_v3';
 
     /** Cache ringkasan EXP per user untuk topbar/navbar (dipanggil di setiap halaman). */
     public static function navSummary(User $user): array
@@ -162,7 +162,7 @@ class ExpService
      */
     public static function backfill(): array
     {
-        $now = Carbon::now(self::TZ);
+        $now = Carbon::now(); // timestamp DB dalam timezone app (UTC); earned_on tetap tanggal WIB
         $inserted = 0;
         $rows = [];
 
@@ -242,6 +242,16 @@ class ExpService
     public static function leaderboard(int $limit = 20): array
     {
         return Cache::remember(self::LEADERBOARD_CACHE, 300, function () use ($limit) {
+            $lastSeen = DB::table('watch_histories')->groupBy('user_id')->selectRaw('user_id, MAX(updated_at) as t')->pluck('t', 'user_id')->all();
+            try {
+                foreach (DB::table('comic_read_histories')->groupBy('user_id')->selectRaw('user_id, MAX(updated_at) as t')->pluck('t', 'user_id') as $uid => $t) {
+                    if (!isset($lastSeen[$uid]) || $t > $lastSeen[$uid]) {
+                        $lastSeen[$uid] = $t;
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+
             // Mulai dari users (left join) supaya user tanpa riwayat tetap dapat EXP loyalitas
             $totals = DB::table('users')
                 ->leftJoin('user_exp_events', 'users.id', '=', 'user_exp_events.user_id')
@@ -261,7 +271,9 @@ class ExpService
                 ->selectRaw('SUM(CASE WHEN user_exp_events.is_backfill = false AND user_exp_events.earned_on = ? THEN user_exp_events.exp ELSE 0 END) as exp_today', [Carbon::now(self::TZ)->toDateString()])
                 ->selectRaw('MAX(user_exp_events.updated_at) as last_at')
                 ->get()
-                ->map(function ($r) {
+                ->map(function ($r) use ($lastSeen) {
+                    // Terakhir aktif = aktivitas nonton/baca asli, bukan waktu ledger (backfill)
+                    $r->last_at = $lastSeen[$r->id] ?? null;
                     $r->exp_loyal = self::loyaltyExp($r->created_at);
                     $r->total_exp = (int) $r->total_exp + $r->exp_loyal;
                     return $r;
@@ -344,7 +356,7 @@ class ExpService
             ],
             'today' => (int) ($r->exp_today ?? 0),
             'joined' => $r->created_at ? Carbon::parse($r->created_at)->setTimezone(self::TZ)->locale('id')->translatedFormat('d F Y') : '-',
-            'last_active' => $r->last_at ? Carbon::parse($r->last_at)->locale('id')->diffForHumans() : '-',
+            'last_active' => $r->last_at ? Carbon::parse($r->last_at, 'UTC')->locale('id')->diffForHumans() : '-',
         ];
     }
 }
