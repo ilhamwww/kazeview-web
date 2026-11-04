@@ -180,8 +180,8 @@
         {{-- Desktop Top Bar Sub-Header --}}
         <div class="hidden lg:flex w-full items-center justify-between mb-6 px-2">
             <a href="/komik/detail/{{ $comic['id'] }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
-                <span>Kembali ke Detail Webtoon</span>
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+                <span>Kembali</span>
             </a>
             <div class="text-right">
                 <h1 class="text-sm font-bold text-white truncate max-w-md">
@@ -196,7 +196,7 @@
             <div class="py-32 text-center text-zinc-500">
                 <p class="text-sm font-bold">Halaman chapter sedang dimuat atau tidak tersedia.</p>
                 <a href="/komik/detail/{{ $comic['id'] }}" class="mt-4 inline-block px-5 py-2 rounded-xl bg-red-600 text-white text-xs font-bold">
-                    Kembali ke Detail Webtoon
+                    Kembali
                 </a>
             </div>
         @else

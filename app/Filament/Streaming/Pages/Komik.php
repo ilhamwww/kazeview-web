@@ -10,8 +10,8 @@ use App\Services\WurmzScraperService;
 class Komik extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
-    protected static ?string $navigationLabel = 'Webtoon';
-    protected static ?string $title = 'Baca Webtoon & Manhwa Sub Indo - KZSTRM';
+    protected static ?string $navigationLabel = 'Komik';
+    protected static ?string $title = 'Baca Komik & Manhwa Sub Indo - KZSTRM';
     protected static ?string $slug = 'komik/{provider?}';
     protected static string $view = 'filament.streaming.pages.komik';
     protected static string $layout = 'filament.streaming.layout';
