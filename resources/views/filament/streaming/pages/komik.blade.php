@@ -52,8 +52,8 @@
         <section id="provider-picker" class="max-w-7xl mx-auto px-5 md:px-10 pb-12">
             @include('filament.streaming.partials.comic-history')
             <h2 class="text-lg md:text-xl font-black mb-4">Pilih Provider</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                @foreach(['shinigami', 'izanami'] as $providerId)
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                @foreach(['shinigami', 'wurmz', 'izanami'] as $providerId)
                     @php($source = collect($providers)->firstWhere('id', $providerId))
                     <a href="/komik?provider={{ $source['id'] }}" data-provider="{{ $source['id'] }}"
                        class="relative overflow-hidden rounded-2xl bg-zinc-900/70 border border-white/10 hover:border-red-500/60 active:scale-[0.98] transition p-5 flex flex-col gap-5 min-h-[210px]">
@@ -63,7 +63,7 @@
                         </div>
                         <div class="mt-auto">
                             <h3 class="text-xl font-black">{{ $source['name'] }}</h3>
-                            <p class="mt-2 text-xs leading-relaxed text-zinc-400">{{ $source['is_nuc'] ? 'Memerlukan koneksi NUC. Jika tidak tersedia, pilih provider lain.' : 'Baca koleksi manhua dan manhwa dari Izanami Scans.' }}</p>
+                            <p class="mt-2 text-xs leading-relaxed text-zinc-400">{{ $source['is_nuc'] ? 'Memerlukan koneksi NUC. Jika tidak tersedia, pilih provider lain.' : ($source['id'] === 'wurmz' ? 'Ribuan Manga & Manhwa lengkap langsung dari Wurmz (HD Natsu CDN).' : 'Baca koleksi manhua dan manhwa dari Izanami Scans.') }}</p>
                         </div>
                         <span class="text-xs font-bold text-red-400">Jelajahi koleksi →</span>
                     </a>

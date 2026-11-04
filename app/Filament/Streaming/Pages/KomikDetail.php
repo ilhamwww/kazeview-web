@@ -6,6 +6,7 @@ use Filament\Pages\Page;
 use App\Services\ShinigamiService;
 use App\Services\KiryuuScraperService;
 use App\Services\IzanamiScansService;
+use App\Services\WurmzScraperService;
 
 class KomikDetail extends Page
 {
@@ -31,6 +32,8 @@ class KomikDetail extends Page
             $service = app(KiryuuScraperService::class);
         } elseif (str_starts_with($id, 'izanami__')) {
             $service = app(IzanamiScansService::class);
+        } elseif (str_starts_with($id, 'wurmz__')) {
+            $service = app(WurmzScraperService::class);
         } else {
             $service = app(ShinigamiService::class);
         }

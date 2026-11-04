@@ -5,6 +5,7 @@ namespace App\Filament\Streaming\Pages;
 use Filament\Pages\Page;
 use App\Services\ShinigamiService;
 use App\Services\IzanamiScansService;
+use App\Services\WurmzScraperService;
 
 class Komik extends Page
 {
@@ -39,6 +40,13 @@ class Komik extends Page
 
     public array $providers = [
         [
+            'id' => 'wurmz',
+            'name' => 'Wurmz Scans',
+            'tag' => 'Direct VPS',
+            'desc' => 'Ribuan Manga & Manhwa lengkap (HD Natsu CDN)',
+            'is_nuc' => false,
+        ],
+        [
             'id' => 'izanami',
             'name' => 'Izanami Scans',
             'tag' => 'Google CDN',
@@ -64,7 +72,7 @@ class Komik extends Page
     public function mount(): void
     {
         $requestedProvider = request()->query('provider', '');
-        $this->provider = is_string($requestedProvider) && in_array($requestedProvider, ['izanami', 'shinigami'], true)
+        $this->provider = is_string($requestedProvider) && in_array($requestedProvider, ['wurmz', 'izanami', 'shinigami'], true)
             ? $requestedProvider : '';
 
         $this->format = request()->query('format', 'all');
@@ -77,7 +85,7 @@ class Komik extends Page
 
     public function setProvider(string $p): void
     {
-        if (in_array($p, ['izanami', 'shinigami'])) {
+        if (in_array($p, ['wurmz', 'izanami', 'shinigami'])) {
             $this->provider = $p;
             $this->page = 1;
             $this->search = '';
@@ -155,7 +163,7 @@ class Komik extends Page
 
     public function loadData(): void
     {
-        if (!in_array($this->provider, ['izanami', 'shinigami'], true)) {
+        if (!in_array($this->provider, ['wurmz', 'izanami', 'shinigami'], true)) {
             $this->heroItems = $this->latestHorizontal = $this->topRanked = $this->items = [];
             $this->hasMore = false;
             $this->totalPage = 1;
@@ -163,6 +171,7 @@ class Komik extends Page
         }
 
         $service = match ($this->provider) {
+            'wurmz' => app(WurmzScraperService::class),
             'izanami' => app(IzanamiScansService::class),
             'shinigami' => app(ShinigamiService::class),
             default => app(ShinigamiService::class),
