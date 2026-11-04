@@ -60,19 +60,16 @@
                         <h2 id="royal-title" class="md-title md-gold text-2xl md:text-3xl font-black">The Royal Court</h2>
                         <p class="text-xs text-amber-100/70 mt-1">Penguasa kerajaan KZSTRM · tidak ikut peringkat</p>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 max-w-3xl mx-auto">
+                    {{-- Selalu 2 kolom (HP juga): King kiri, Queen kanan. EXP & level sengaja tidak ditampilkan. --}}
+                    <div class="grid grid-cols-2 gap-3 md:gap-6 max-w-3xl mx-auto">
                         @foreach($royals as $r)
                             @php $isKing = $r['special'] === 'king'; @endphp
-                            <article class="md-frame rounded-2xl p-5 md:p-6 text-center overflow-hidden {{ $isKing ? 'ring-1 ring-amber-500/30' : 'ring-1 ring-fuchsia-400/25' }}">
+                            <article class="md-frame rounded-2xl p-3 sm:p-5 md:p-6 text-center overflow-hidden min-w-0 {{ $isKing ? 'ring-1 ring-amber-500/30' : 'ring-1 ring-fuchsia-400/25' }}">
                                 <div class="absolute inset-0 pointer-events-none {{ $isKing ? 'bg-[radial-gradient(circle_at_50%_25%,rgba(245,180,60,.22),transparent_60%)]' : 'bg-[radial-gradient(circle_at_50%_25%,rgba(217,120,220,.2),transparent_60%)]' }}" aria-hidden="true"></div>
                                 <div class="relative">
-                                    <img src="{{ $r['badge'] }}" alt="Badge {{ $r['title'] }}" class="md-badge w-32 h-32 md:w-40 md:h-40 mx-auto" loading="lazy">
-                                    <p class="md-serif mt-2 text-[11px] font-bold uppercase tracking-[0.3em] {{ $isKing ? 'text-amber-400' : 'text-fuchsia-300' }}">{{ $r['title'] }}</p>
-                                    <h3 class="md-serif mt-1 text-xl md:text-2xl font-black text-amber-50 truncate">{{ $r['name'] }}</h3>
-                                    <p class="mt-1 text-sm text-amber-100/70">Lv {{ $r['level'] }} · {{ $titles[$r['level']] ?? '' }} · <span class="font-bold text-amber-300">{{ $fmt($r['exp']) }} EXP</span></p>
-                                    <div class="mt-3 h-1.5 rounded-full bg-black/50 overflow-hidden" role="progressbar" aria-valuenow="{{ $r['progress'] }}" aria-valuemin="0" aria-valuemax="100" aria-label="Progres ke level berikutnya">
-                                        <div class="h-full md-bar" style="width: {{ $r['progress'] }}%"></div>
-                                    </div>
+                                    <img src="{{ $r['badge'] }}" alt="Badge {{ $r['title'] }}" class="md-badge w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 mx-auto" loading="lazy">
+                                    <p class="md-serif mt-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.25em] sm:tracking-[0.3em] {{ $isKing ? 'text-amber-400' : 'text-fuchsia-300' }}">{{ $r['title'] }}</p>
+                                    <h3 class="md-serif mt-1 text-base sm:text-xl md:text-2xl font-black text-amber-50 truncate">{{ $r['name'] }}</h3>
                                 </div>
                             </article>
                         @endforeach
