@@ -323,6 +323,87 @@
             </section>
         @endif
 
+        {{-- ================= RIWAYAT BACA KOMIK ================= --}}
+        @php
+            $cs = $stats['comic_summary'] ?? ['readers' => 0, 'titles' => 0, 'chapters' => 0];
+            // Cover native disimpan lokal (/storage/...), provider lain lewat proxy gambar
+            $cover = fn ($u) => !$u ? null : (str_starts_with($u, '/') ? $u : $img($u));
+        @endphp
+        <section class="rounded-3xl bg-zinc-900/50 ring-1 ring-white/[0.06] p-5 md:p-6" aria-labelledby="comic-history-title">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                <div>
+                    <h2 id="comic-history-title" class="text-base md:text-lg font-black tracking-tight">Riwayat Baca Komik</h2>
+                    <p class="text-[11px] text-zinc-500 mt-0.5">Tanpa identitas pembaca</p>
+                </div>
+                <div class="flex gap-2">
+                    @foreach([['Pembaca', $cs['readers']], ['Judul', $cs['titles']], ['Chapter', $cs['chapters']]] as [$l, $v])
+                        <div class="px-3 py-1.5 rounded-xl bg-zinc-950/60 ring-1 ring-white/[0.05] text-center">
+                            <div class="text-sm font-black tabular-nums">{{ $fmt($v) }}</div>
+                            <div class="text-[9px] text-zinc-400 uppercase tracking-wider">{{ $l }}</div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            @if(count($stats['comic_recent'] ?? []))
+                <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    @if(count($stats['comic_top'] ?? []))
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Paling banyak dibaca</p>
+                            <ol class="space-y-2">
+                                @foreach($stats['comic_top'] as $i => $c)
+                                    <li>
+                                        <a href="{{ $c['url'] }}" class="flex items-center gap-3 rounded-2xl bg-zinc-950/50 ring-1 ring-white/[0.04] hover:ring-white/10 p-2.5 transition">
+                                            <span class="w-6 text-center text-lg font-black tabular-nums {{ $i === 0 ? 'text-amber-400' : 'text-zinc-600' }}">{{ $i + 1 }}</span>
+                                            <div class="w-11 aspect-[3/4] shrink-0 rounded-lg overflow-hidden bg-zinc-800">
+                                                @if($cover($c['cover']))<img src="{{ $cover($c['cover']) }}" alt="" class="w-full h-full object-cover" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">@endif
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-bold leading-snug line-clamp-2">{{ $c['title'] }}</p>
+                                                <div class="mt-1 flex items-center gap-2">
+                                                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border text-emerald-300 bg-emerald-500/10 border-emerald-500/30">{{ $c['format'] ? ucfirst(strtolower($c['format'])) : 'Komik' }}</span>
+                                                    <span class="text-[11px] text-zinc-500 tabular-nums">{{ $fmt($c['chapters']) }} chapter</span>
+                                                </div>
+                                            </div>
+                                            <div class="text-right shrink-0">
+                                                <div class="text-base font-black tabular-nums">{{ $fmt($c['readers']) }}</div>
+                                                <div class="text-[9px] text-zinc-400">pembaca</div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ol>
+                        </div>
+                    @endif
+
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Baru saja dibaca</p>
+                        <ul class="space-y-2">
+                            @foreach($stats['comic_recent'] as $e)
+                                <li>
+                                    <a href="{{ $e['url'] }}" class="flex items-center gap-3 rounded-2xl bg-zinc-950/50 ring-1 ring-white/[0.04] hover:ring-white/10 p-2.5 transition">
+                                        <div class="w-9 aspect-[3/4] shrink-0 rounded-md overflow-hidden bg-zinc-800">
+                                            @if($cover($e['cover']))<img src="{{ $cover($e['cover']) }}" alt="" class="w-full h-full object-cover" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">@endif
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-semibold leading-snug line-clamp-2 break-words">{{ $e['title'] }}</p>
+                                            <p class="mt-0.5 text-[11px] text-zinc-500">
+                                                <span class="text-emerald-300">{{ $e['format'] }}</span>
+                                                @if(filled($e['chapter'])) · {{ $e['chapter'] }} @endif
+                                            </p>
+                                        </div>
+                                        <span class="text-[10px] text-zinc-500 shrink-0 text-right">{{ $e['time'] }}</span>
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            @else
+                <p class="mt-4 text-sm text-zinc-500">Belum ada riwayat baca komik yang tercatat. Data mulai terkumpul setiap kali pengguna membuka chapter.</p>
+            @endif
+        </section>
+
         {{-- ================= PERANGKAT + BROWSER ================= --}}
         @if(count($stats['devices'] ?? []) || count($stats['browsers'] ?? []))
             <section class="grid grid-cols-1 md:grid-cols-2 gap-4">

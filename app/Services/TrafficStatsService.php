@@ -31,7 +31,7 @@ class TrafficStatsService
 
     public static function getPublicStats(): array
     {
-        return Cache::remember('kaze_public_traffic_stats_v2', 300, fn () => self::computeStats());
+        return Cache::remember('kaze_public_traffic_stats_v3', 300, fn () => self::computeStats());
     }
 
     public static function isBot(?string $ua): bool
@@ -181,6 +181,45 @@ class TrafficStatsService
         } catch (\Throwable $e) {
         }
 
+        // ---------- Riwayat baca komik (tanpa identitas pembaca) ----------
+        $comicTop = [];
+        $comicRecent = [];
+        $comicSummary = ['readers' => 0, 'titles' => 0, 'chapters' => 0];
+        try {
+            $crows = DB::table('comic_read_histories')
+                ->select('user_id', 'comic_id', 'title', 'cover', 'format', 'last_chapter_label', 'read_chapters', 'updated_at')
+                ->get();
+
+            $byComic = [];
+            foreach ($crows as $r) {
+                $chs = json_decode((string) $r->read_chapters, true);
+                $chCount = is_array($chs) && count($chs) ? count($chs) : 1;
+                $comicSummary['chapters'] += $chCount;
+                $k = $r->comic_id;
+                $byComic[$k] ??= ['title' => $r->title, 'cover' => $r->cover, 'format' => $r->format, 'readers' => 0, 'chapters' => 0, 'url' => '/komik/detail/' . $r->comic_id];
+                $byComic[$k]['readers']++;
+                $byComic[$k]['chapters'] += $chCount;
+            }
+            $comicSummary['readers'] = $crows->pluck('user_id')->unique()->count();
+            $comicSummary['titles'] = count($byComic);
+
+            $comicTop = collect($byComic)->filter(fn ($c) => filled($c['title']))
+                ->sortBy([['readers', 'desc'], ['chapters', 'desc']])
+                ->take(6)->values()->all();
+
+            $comicRecent = $crows->filter(fn ($r) => filled($r->title))
+                ->sortByDesc('updated_at')->take(8)
+                ->map(fn ($r) => [
+                    'title' => $r->title,
+                    'cover' => $r->cover,
+                    'format' => $r->format ? ucfirst(strtolower($r->format)) : 'Komik',
+                    'chapter' => $r->last_chapter_label,
+                    'url' => '/komik/detail/' . $r->comic_id,
+                    'time' => Carbon::parse($r->updated_at, 'UTC')->locale('id')->diffForHumans(),
+                ])->values()->all();
+        } catch (\Throwable $e) {
+        }
+
         // ---------- Persentase ----------
         $catMeta = [
             'dracin' => ['Dracin', '#EC4899'],
@@ -251,6 +290,9 @@ class TrafficStatsService
             'browsers' => $browserList,
             'top_content' => $topContent,
             'recent_events' => $recent,
+            'comic_top' => $comicTop,
+            'comic_recent' => $comicRecent,
+            'comic_summary' => $comicSummary,
             'bandwidth' => self::computeBandwidthStats(),
             'log_available' => $logAvailable,
             'last_updated' => $now->locale('id')->translatedFormat('d F Y, H:i') . ' WIB',

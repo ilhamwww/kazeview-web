@@ -77,6 +77,15 @@ class KomikReader extends Page
 
         static::$title = ($this->comic['title'] ?? 'Webtoon') . ' - ' . $this->currentChapter['label'] . ' - KZSTRM';
 
+        // Riwayat baca di server (untuk statistik /traffic). Gagal simpan tidak boleh mengganggu reader.
+        if (auth()->check()) {
+            try {
+                \App\Models\ComicReadHistory::record(auth()->id(), $id, $this->comic, $this->currentChapter);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Comic history skipped', ['error' => $e->getMessage()]);
+            }
+        }
+
         if ($service instanceof KiryuuScraperService) {
             $pagesData = $service->getChapterPages($chapter_id, $id);
         } elseif ($service instanceof WurmzScraperService || $service instanceof \App\Services\NativeComicService) {
