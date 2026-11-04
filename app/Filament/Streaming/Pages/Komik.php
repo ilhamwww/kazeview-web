@@ -39,6 +39,13 @@ class Komik extends Page
 
     public array $providers = [
         [
+            'id' => 'native',
+            'name' => 'Native KZSTRM',
+            'tag' => 'Fast / Local',
+            'desc' => 'Database mandiri & poster lokal super cepat',
+            'is_nuc' => false,
+        ],
+        [
             'id' => 'wurmz',
             'name' => 'Wurmz Scans',
             'tag' => 'Direct VPS',
@@ -71,7 +78,7 @@ class Komik extends Page
     public function mount(?string $provider = null): void
     {
         $requestedProvider = $provider ?: request()->query('provider', '');
-        $this->provider = is_string($requestedProvider) && in_array(strtolower($requestedProvider), ['wurmz', 'izanami', 'shinigami'], true)
+        $this->provider = is_string($requestedProvider) && in_array(strtolower($requestedProvider), ['native', 'wurmz', 'izanami', 'shinigami'], true)
             ? strtolower($requestedProvider) : '';
 
         $this->format = request()->query('format', 'all');
@@ -84,7 +91,7 @@ class Komik extends Page
 
     public function setProvider(string $p): void
     {
-        if (in_array($p, ['wurmz', 'izanami', 'shinigami'])) {
+        if (in_array($p, ['native', 'wurmz', 'izanami', 'shinigami'])) {
             $this->provider = $p;
             $this->page = 1;
             $this->search = '';
@@ -162,7 +169,7 @@ class Komik extends Page
 
     public function loadData(): void
     {
-        if (!in_array($this->provider, ['wurmz', 'izanami', 'shinigami'], true)) {
+        if (!in_array($this->provider, ['native', 'wurmz', 'izanami', 'shinigami'], true)) {
             $this->heroItems = $this->latestHorizontal = $this->topRanked = $this->items = [];
             $this->hasMore = false;
             $this->totalPage = 1;
@@ -170,6 +177,7 @@ class Komik extends Page
         }
 
         $service = match ($this->provider) {
+            'native' => app(\App\Services\NativeComicService::class),
             'wurmz' => app(WurmzScraperService::class),
             'izanami' => app(IzanamiScansService::class),
             'shinigami' => app(ShinigamiService::class),

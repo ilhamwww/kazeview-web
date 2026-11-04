@@ -28,6 +28,87 @@ Route::get('/komik/{id}', function (string $id) {
     return app()->call('App\Filament\Streaming\Pages\Komik@render');
 })->where('id', '.*__.*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
 
+// API Sync Native Comics dari NUC Crawler Bot
+Route::post('/api/sync-native-comic', function (\Illuminate\Http\Request $request) {
+    $secret = $request->header('X-Sync-Secret');
+    if ($secret !== 'kz_native_sync_secret_2026_x7') {
+        abort(403, 'Unauthorized');
+    }
+
+    $comicData = $request->input('comic');
+    if (empty($comicData) || empty($comicData['slug']) || empty($comicData['title'])) {
+        return response()->json(['success' => false, 'error' => 'Invalid comic payload'], 400);
+    }
+
+    $comic = \App\Models\NativeComic::updateOrCreate(
+        ['slug' => $comicData['slug']],
+        [
+            'upstream_id' => $comicData['upstream_id'] ?? null,
+            'title' => $comicData['title'],
+            'alt_title' => $comicData['alt_title'] ?? null,
+            'cover_path' => $comicData['cover_path'] ?? null,
+            'original_cover_url' => $comicData['original_cover_url'] ?? null,
+            'description' => $comicData['description'] ?? null,
+            'type' => $comicData['type'] ?? 'manhwa',
+            'status' => $comicData['status'] ?? 'Ongoing',
+            'rating' => $comicData['rating'] ?? 9.0,
+            'genres' => $comicData['genres'] ?? [],
+            'author' => $comicData['author'] ?? '',
+            'latest_chapter' => $comicData['latest_chapter'] ?? '',
+            'latest_chapter_at' => now(),
+        ]
+    );
+
+    // Jika membawa chapter
+    if (!empty($comicData['chapters']) && is_array($comicData['chapters'])) {
+        foreach ($comicData['chapters'] as $ch) {
+            if (isset($ch['chapter_number'])) {
+                \App\Models\NativeComicChapter::updateOrCreate(
+                    [
+                        'comic_id' => $comic->id,
+                        'chapter_number' => (float) $ch['chapter_number']
+                    ],
+                    [
+                        'chapter_slug' => (string) ($ch['chapter_slug'] ?? $ch['chapter_number']),
+                        'chapter_title' => $ch['chapter_title'] ?? ('Chapter ' . $ch['chapter_number']),
+                        'pages' => $ch['pages'] ?? [],
+                        'released_at' => now(),
+                    ]
+                );
+            }
+        }
+    }
+
+    return response()->json(['success' => true, 'id' => $comic->id, 'slug' => $comic->slug]);
+});
+
+// API Upload Poster Cover WebP ke VPS
+Route::post('/api/upload-native-cover', function (\Illuminate\Http\Request $request) {
+    $secret = $request->header('X-Sync-Secret');
+    if ($secret !== 'kz_native_sync_secret_2026_x7') {
+        abort(403, 'Unauthorized');
+    }
+
+    $slug = $request->input('slug');
+    $file = $request->file('cover');
+    if (!$slug || !$file) {
+        return response()->json(['success' => false, 'error' => 'Missing slug or cover file'], 400);
+    }
+
+    $destDir = public_path('storage/comic-covers');
+    if (!is_dir($destDir)) {
+        mkdir($destDir, 0775, true);
+    }
+
+    $filename = "{$slug}.webp";
+    $file->move($destDir, $filename);
+
+    $path = "/storage/comic-covers/{$filename}";
+    \App\Models\NativeComic::where('slug', $slug)->update(['cover_path' => $path]);
+
+    return response()->json(['success' => true, 'path' => $path]);
+});
+
 Route::prefix('api/v1/public')
     ->middleware('throttle:120,1')
     ->name('api.public.')

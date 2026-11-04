@@ -32,7 +32,9 @@ class KomikReader extends Page
         $this->mangaId = $id;
         $this->chapterId = $chapter_id;
 
-        if (str_starts_with($id, 'kiryuu__')) {
+        if (str_starts_with($id, 'native__')) {
+            $service = app(\App\Services\NativeComicService::class);
+        } elseif (str_starts_with($id, 'kiryuu__')) {
             $service = app(KiryuuScraperService::class);
         } elseif (str_starts_with($id, 'izanami__')) {
             $service = app(IzanamiScansService::class);
@@ -77,7 +79,7 @@ class KomikReader extends Page
 
         if ($service instanceof KiryuuScraperService) {
             $pagesData = $service->getChapterPages($chapter_id, $id);
-        } elseif ($service instanceof WurmzScraperService) {
+        } elseif ($service instanceof WurmzScraperService || $service instanceof \App\Services\NativeComicService) {
             $this->pages = $service->getChapterPages($id, $chapter_id);
             return;
         } else {

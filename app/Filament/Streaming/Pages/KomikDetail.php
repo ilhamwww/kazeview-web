@@ -29,7 +29,9 @@ protected static ?string $slug = 'komik/detail/{id}';
     {
         $this->mangaId = $id;
 
-        if (str_starts_with($id, 'kiryuu__')) {
+        if (str_starts_with($id, 'native__')) {
+            $service = app(\App\Services\NativeComicService::class);
+        } elseif (str_starts_with($id, 'kiryuu__')) {
             $service = app(KiryuuScraperService::class);
         } elseif (str_starts_with($id, 'izanami__')) {
             $service = app(IzanamiScansService::class);

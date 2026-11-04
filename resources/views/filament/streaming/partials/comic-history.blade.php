@@ -11,7 +11,7 @@
                     <template x-if="item.comicCover"><img :src="item.comicCover" alt="" class="relative w-full h-full object-cover" loading="lazy" x-on:error="$el.style.display='none'"></template>
                 </div>
                 <div class="min-w-0 flex-1 flex flex-col justify-center">
-                    <p class="text-[10px] font-bold text-red-400" x-text="item.comicId.startsWith('wurmz__') ? 'Wurmz Scans' : (item.comicId.startsWith('izanami__') ? 'Izanami Scans' : (item.comicId.startsWith('kiryuu__') ? 'Kiryuu ID' : 'Shinigami ID'))"></p>
+                    <p class="text-[10px] font-bold text-red-400" x-text="item.comicId.startsWith('native__') ? 'Native KZSTRM' : (item.comicId.startsWith('wurmz__') ? 'Wurmz Scans' : (item.comicId.startsWith('izanami__') ? 'Izanami Scans' : (item.comicId.startsWith('kiryuu__') ? 'Kiryuu ID' : 'Shinigami ID')))"></p>
                     <p class="mt-1 text-sm font-bold text-white truncate" x-text="item.comicTitle"></p>
                     <p class="mt-1 text-xs text-zinc-400 truncate" x-text="item.chapterLabel"></p>
                     <div class="mt-2 flex items-center gap-2">

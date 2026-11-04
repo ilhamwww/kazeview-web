@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/v1/public/preview/*/ai-photo-search',
             'api/streaming/embed-proxy',
             'api/watch-progress',
+            'api/sync-native-comic',
+            'api/upload-native-cover',
         ]);
 
         $middleware->alias([
