@@ -57,7 +57,7 @@ class TrafficStatsService
         }
         $oldestKey = array_key_first($daily);
 
-        $cat = ['movie' => 0, 'series' => 0, 'dracin' => 0, 'anime' => 0, 'collection' => 0, 'network' => 0, 'other' => 0];
+        $cat = ['movie' => 0, 'series' => 0, 'dracin' => 0, 'anime' => 0, 'manga' => 0, 'collection' => 0, 'network' => 0, 'other' => 0];
         $devices = ['mobile' => 0, 'desktop' => 0, 'tablet' => 0];
         $browsers = [];
         $todayHourly = array_fill(0, 24, 0);
@@ -187,6 +187,7 @@ class TrafficStatsService
             'movie' => ['Movies', '#E50914'],
             'series' => ['TV Series', '#3B82F6'],
             'anime' => ['Anime', '#8B5CF6'],
+            'manga' => ['Webtoon', '#10B981'],
             'collection' => ['Collections', '#F59E0B'],
             'network' => ['Network', '#14B8A6'],
             'other' => ['Beranda & lainnya', '#71717A'],
@@ -468,7 +469,7 @@ class TrafficStatsService
         return match (true) {
             str_contains($p, 'dracin') || str_contains($p, 'bstation') => 'dracin',
             str_contains($p, 'anime') => 'anime',
-            str_contains($p, 'manga') || str_contains($p, 'manhwa') || str_contains($p, 'comic') || str_contains($p, 'doujin') => 'manga',
+            str_contains($p, 'komik') || str_contains($p, 'manga') || str_contains($p, 'manhwa') || str_contains($p, 'comic') || str_contains($p, 'doujin') => 'manga',
             str_contains($p, 'series') => 'series',
             str_contains($p, 'movie') => 'movie',
             str_contains($p, 'collection') => 'collection',
