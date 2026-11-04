@@ -100,6 +100,14 @@
                         {{ $this->counts['anime'] }}
                     </span>
                 </button>
+
+                <button wire:click="setFilter('komik')"
+                        class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 flex-shrink-0 {{ $this->activeFilter === 'komik' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800' }}">
+                    <span>Komik</span>
+                    <span class="px-1.5 py-0.5 rounded-md text-[10px] {{ $this->activeFilter === 'komik' ? 'bg-red-700 text-white' : 'bg-zinc-800 text-zinc-400' }}">
+                        {{ $this->counts['komik'] }}
+                    </span>
+                </button>
             </div>
 
             <!-- Content Grid / Empty State -->

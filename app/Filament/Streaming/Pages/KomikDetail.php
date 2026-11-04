@@ -24,6 +24,7 @@ protected static ?string $slug = 'komik/detail/{id}';
     public array $chapters = [];
     public string $searchChapter = '';
     public string $sortOrder = 'desc'; // desc = terbaru, asc = awal
+    public bool $isFavorited = false;
 
     public function mount(string $id): void
     {
@@ -48,6 +49,52 @@ protected static ?string $slug = 'komik/detail/{id}';
 
         static::$title = ($this->comic['title'] ?? 'Detail Webtoon') . ' - KZSTRM';
         $this->chapters = $service->getChapters($id);
+
+        if (auth()->check()) {
+            $this->isFavorited = auth()->user()->favorites()
+                ->where('item_id', 'comic:' . $this->mangaId)
+                ->where('item_type', 'komik')
+                ->exists();
+        }
+    }
+
+    public function toggleFavorite(): void
+    {
+        if (!auth()->check()) {
+            \Filament\Notifications\Notification::make()
+                ->title('Silakan login terlebih dahulu untuk menyimpan ke Favorit')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $user = auth()->user();
+        $fav = $user->favorites()
+            ->where('item_id', 'comic:' . $this->mangaId)
+            ->where('item_type', 'komik')
+            ->first();
+
+        if ($fav) {
+            $fav->delete();
+            $this->isFavorited = false;
+            \Filament\Notifications\Notification::make()
+                ->title('Dihapus dari Daftar Favorit')
+                ->success()
+                ->send();
+        } else {
+            $user->favorites()->create([
+                'item_id' => 'comic:' . $this->mangaId,
+                'item_type' => 'komik',
+                'title' => $this->comic['title'] ?? 'Komik',
+                'thumbnail' => $this->comic['cover'] ?? null,
+                'url' => '/komik/detail/' . $this->mangaId,
+            ]);
+            $this->isFavorited = true;
+            \Filament\Notifications\Notification::make()
+                ->title('Ditambahkan ke Daftar Favorit')
+                ->success()
+                ->send();
+        }
     }
 
     public function toggleSort(): void
