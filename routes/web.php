@@ -553,6 +553,18 @@ Route::get('/traffic', function () {
     ])->render());
 })->name('streaming.traffic.public');
 
+// Halaman Tersendiri: Leaderboard Penonton Komunitas KZSTRM
+Route::get('/leaderboard', function () {
+    $leaderboard = auth()->check() ? \App\Services\TrafficStatsService::getLeaderboard() : null;
+    return response(view('filament.streaming.layout', [
+        'title' => 'Leaderboard Penonton Paling Aktif - KZSTRM',
+        'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.leaderboard', [
+            'leaderboard' => $leaderboard,
+            'meId' => auth()->id(),
+        ])->render())
+    ])->render());
+})->name('streaming.leaderboard');
+
 // Public DMCA Takedown & Copyright Policy (100% PUBLIC)
 Route::get('/dmca', function () {
     return response(view('filament.streaming.layout', [

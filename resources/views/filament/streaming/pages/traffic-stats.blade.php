@@ -357,9 +357,15 @@
 
         {{-- ================= LEADERBOARD (login only) ================= --}}
         <section class="rounded-3xl bg-gradient-to-b from-amber-500/[0.06] to-zinc-900/50 ring-1 ring-amber-500/20 p-5 md:p-6">
-            <div class="flex items-baseline justify-between gap-2">
-                <h2 class="text-base md:text-lg font-black tracking-tight">Penonton paling aktif</h2>
-                <span class="text-[11px] text-zinc-500">Khusus member</span>
+            <div class="flex items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-base md:text-lg font-black tracking-tight">Penonton paling aktif</h2>
+                    <p class="text-xs text-zinc-400 mt-0.5">Peringkat komunitas penonton KZSTRM</p>
+                </div>
+                <a href="/leaderboard" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-bold transition">
+                    <span>Lihat Halaman Penuh</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                </a>
             </div>
 
             @if(is_null($leaderboard ?? null))
@@ -371,7 +377,7 @@
                 <p class="mt-4 text-sm text-zinc-500">Belum ada riwayat tontonan.</p>
             @else
                 <ol class="mt-4 space-y-2">
-                    @foreach($leaderboard as $u)
+                    @foreach(array_slice($leaderboard, 0, 5) as $u)
                         @php $me = ($meId ?? null) === $u['user_id']; @endphp
                         <li class="flex items-center gap-3 rounded-2xl p-2.5 {{ $me ? 'bg-red-600/10 ring-1 ring-red-500/40' : 'bg-zinc-950/50 ring-1 ring-white/[0.04]' }}">
                             <span class="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center text-xs font-black tabular-nums
@@ -389,6 +395,11 @@
                         </li>
                     @endforeach
                 </ol>
+                <div class="mt-3 text-center">
+                    <a href="/leaderboard" class="text-xs font-bold text-amber-400 hover:text-amber-300 transition">
+                        Buka Leaderboard Penuh (Top 20 & Podium) →
+                    </a>
+                </div>
             @endif
         </section>
 
