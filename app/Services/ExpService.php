@@ -50,6 +50,12 @@ class ExpService
 
     public const LEADERBOARD_CACHE = 'kz_exp_leaderboard_v1';
 
+    /** Cache ringkasan EXP per user untuk topbar/navbar (dipanggil di setiap halaman). */
+    public static function navSummary(User $user): array
+    {
+        return Cache::remember('kz_exp_nav_' . $user->id, 60, fn () => self::forUser($user));
+    }
+
     /** EXP loyalitas: +1 per hari sejak tanggal daftar (termasuk hari daftar), di luar batas harian. */
     public const LOYALTY_PER_DAY = 1;
 
@@ -106,6 +112,7 @@ class ExpService
                 ]);
 
                 Cache::forget(self::LEADERBOARD_CACHE);
+                Cache::forget('kz_exp_nav_' . $userId);
                 return $grant;
             });
         } catch (QueryException $e) {

@@ -294,6 +294,15 @@
          Full-width, transparan di atas hero lalu solid saat discroll.
          Sembunyi saat scroll ke bawah, muncul lagi saat scroll ke atas. --}}
     @php
+        // Ringkasan EXP untuk progress bar di topbar & navbar (cache 60 detik per user)
+        $kzExp = null;
+        if (auth()->check()) {
+            try {
+                $kzExp = \App\Services\ExpService::navSummary(auth()->user());
+            } catch (\Throwable $e) {
+                $kzExp = null;
+            }
+        }
         $hideMobileTop = str_contains($currentUrl, '/movie/')
             || str_contains($currentUrl, '/season/')
             || (str_contains($currentUrl, '/anime/') && str_contains($currentUrl, '/episode/'))
@@ -337,6 +346,10 @@
                     class="w-10 h-10 inline-flex items-center justify-center rounded-full text-zinc-200 active:bg-white/10 transition">
                 <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.2-5.2m2.2-5.3a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"/></svg>
             </button>
+
+            @if ($kzExp)
+                @include('filament.streaming.partials.exp-progress', ['variant' => 'compact'])
+            @endif
 
             <button type="button" aria-label="Buka menu" :aria-expanded="mobileMenuOpen.toString()"
                     @click="mobileMenuOpen = true"
@@ -437,6 +450,9 @@
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </button>
+                @if ($kzExp)
+                    @include('filament.streaming.partials.exp-progress', ['variant' => 'pill'])
+                @endif
                 <div class="relative hidden lg:block" x-data="{ open: false }" @click.away="open = false">
                     <!-- Trigger Button -->
                     <button @click="open = !open"
@@ -481,6 +497,11 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                     </svg>
                                 </a>
+                                @if ($kzExp)
+                                    <div class="px-1 pt-1">
+                                        @include('filament.streaming.partials.exp-progress', ['variant' => 'card'])
+                                    </div>
+                                @endif
                             </div>
 
                             <!-- 2. Main Navigation Links -->
@@ -674,6 +695,9 @@
                     </span>
                     <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                 </a>
+                @if ($kzExp)
+                    @include('filament.streaming.partials.exp-progress', ['variant' => 'card'])
+                @endif
             @else
                 <div class="grid grid-cols-2 gap-2">
                     <a href="/login" class="py-3 rounded-xl bg-white text-black text-sm font-bold text-center active:scale-[0.98] transition">Masuk</a>
