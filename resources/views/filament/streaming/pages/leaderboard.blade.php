@@ -238,6 +238,7 @@
                             ['Episode Anime', $values['anime']],
                             ['Episode Dracin', $values['dracin']],
                             ['Chapter Komik (dibaca ≥ 90%)', $values['komik']],
+                            ['Loyalitas (tiap hari sejak daftar)', \App\Services\ExpService::LOYALTY_PER_DAY],
                         ] as [$label, $val])
                             <li class="flex items-center justify-between gap-3 rounded-lg px-3 py-2 bg-black/30">
                                 <span class="text-amber-100/70">{{ $label }}</span>
@@ -246,7 +247,7 @@
                         @endforeach
                     </ul>
                     <p class="mt-4 text-[11px] text-amber-100/60 leading-relaxed">
-                        Maksimal {{ $dailyCap }} EXP per hari (WIB). Episode atau chapter yang sama hanya dihitung sekali.
+                        Maksimal {{ $dailyCap }} EXP per hari (WIB) dari menonton & membaca. Episode atau chapter yang sama hanya dihitung sekali. EXP loyalitas bertambah otomatis dan tidak memotong batas harian.
                     </p>
                 </div>
             </section>

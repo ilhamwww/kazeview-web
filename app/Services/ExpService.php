@@ -50,6 +50,22 @@ class ExpService
 
     public const LEADERBOARD_CACHE = 'kz_exp_leaderboard_v1';
 
+    /** EXP loyalitas: +1 per hari sejak tanggal daftar (termasuk hari daftar), di luar batas harian. */
+    public const LOYALTY_PER_DAY = 1;
+
+    public static function loyaltyExp($createdAt): int
+    {
+        if (!$createdAt) {
+            return 0;
+        }
+        $join = Carbon::parse($createdAt)->setTimezone(self::TZ)->startOfDay();
+        $today = Carbon::now(self::TZ)->startOfDay();
+        if ($join->gt($today)) {
+            return 0;
+        }
+        return ((int) $join->diffInDays($today) + 1) * self::LOYALTY_PER_DAY;
+    }
+
     /**
      * Beri EXP untuk satu unit. Return EXP yang benar-benar diberikan (0 jika duplikat / cap habis).
      */
@@ -219,19 +235,26 @@ class ExpService
     public static function leaderboard(int $limit = 20): array
     {
         return Cache::remember(self::LEADERBOARD_CACHE, 300, function () use ($limit) {
-            $totals = DB::table('user_exp_events')
-                ->join('users', 'users.id', '=', 'user_exp_events.user_id')
-                ->groupBy('users.id', 'users.name', 'users.special_rank')
-                ->select('users.id', 'users.name', 'users.special_rank')
-                ->selectRaw('SUM(user_exp_events.exp) as total_exp')
+            // Mulai dari users (left join) supaya user tanpa riwayat tetap dapat EXP loyalitas
+            $totals = DB::table('users')
+                ->leftJoin('user_exp_events', 'users.id', '=', 'user_exp_events.user_id')
+                ->groupBy('users.id', 'users.name', 'users.special_rank', 'users.created_at')
+                ->select('users.id', 'users.name', 'users.special_rank', 'users.created_at')
+                ->selectRaw('COALESCE(SUM(user_exp_events.exp), 0) as total_exp')
                 ->selectRaw("SUM(CASE WHEN source_type = 'movie' THEN exp ELSE 0 END) as exp_movie")
                 ->selectRaw("SUM(CASE WHEN source_type = 'series' THEN exp ELSE 0 END) as exp_series")
                 ->selectRaw("SUM(CASE WHEN source_type IN ('anime','bstation') THEN exp ELSE 0 END) as exp_anime")
                 ->selectRaw("SUM(CASE WHEN source_type = 'dracin' THEN exp ELSE 0 END) as exp_dracin")
                 ->selectRaw("SUM(CASE WHEN source_type = 'komik' THEN exp ELSE 0 END) as exp_komik")
                 ->selectRaw('MAX(user_exp_events.updated_at) as last_at')
-                ->orderByDesc('total_exp')
-                ->get();
+                ->get()
+                ->map(function ($r) {
+                    $r->exp_loyal = self::loyaltyExp($r->created_at);
+                    $r->total_exp = (int) $r->total_exp + $r->exp_loyal;
+                    return $r;
+                })
+                ->sortByDesc('total_exp')
+                ->values();
 
             $map = fn ($r) => self::presentRow($r);
 
@@ -261,8 +284,10 @@ class ExpService
             ->whereDate('earned_on', Carbon::now(self::TZ)->toDateString())
             ->sum('exp');
 
-        $info = self::levelInfo((int) $r->total_exp);
+        $loyal = self::loyaltyExp($user->created_at);
+        $info = self::levelInfo((int) $r->total_exp + $loyal);
         return $info + [
+            'loyalty' => $loyal,
             'user_id' => $user->id,
             'name' => $user->name,
             'special' => $user->special_rank,
@@ -292,8 +317,9 @@ class ExpService
             'special' => $r->special_rank,
             'badge' => self::badgeUrl($info['level'], $r->special_rank),
             'title' => self::levelTitle($info['level'], $r->special_rank),
-            'breakdown' => $breakdown,
-            'top_source' => array_key_first($breakdown) ?? '-',
+            'breakdown' => $breakdown,          // hanya EXP konten; loyalitas dipisah agar "Paling banyak" tetap bermakna
+            'loyalty' => (int) ($r->exp_loyal ?? 0),
+            'top_source' => array_key_first($breakdown) ?? 'Loyalitas',
             'last_active' => $r->last_at ? Carbon::parse($r->last_at)->locale('id')->diffForHumans() : '-',
         ];
     }
