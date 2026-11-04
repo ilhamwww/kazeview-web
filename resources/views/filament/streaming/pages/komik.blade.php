@@ -208,46 +208,6 @@
 
     <div class="max-w-[1800px] mx-auto px-5 md:px-10 {{ $isLanding && !empty($heroItems) ? 'pt-4' : 'pt-24 md:pt-28' }} space-y-12">
 
-        {{-- ================= STICKY TOOLBAR: SEARCH + TAB + FORMAT ================= --}}
-        <div class="rounded-2xl bg-zinc-900/60 ring-1 ring-white/5 p-3 md:p-4 space-y-3">
-            <div class="flex flex-col md:flex-row md:items-center gap-3">
-                <div class="relative flex-1">
-                    <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-                    <input type="text"
-                           wire:model.live.debounce.400ms="search"
-                           aria-label="Cari webtoon"
-                           placeholder="Cari judul webtoon..."
-                           class="w-full pl-10 pr-10 py-3 rounded-xl bg-black/60 border border-white/5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition" />
-                    @if(!empty($search))
-                        <button type="button" wire:click="clearSearch" aria-label="Hapus pencarian"
-                                class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    @endif
-                </div>
-
-                <div class="flex items-center p-1 bg-black/60 rounded-xl ring-1 ring-white/5 self-start md:self-auto">
-                    <button type="button" wire:click="setTab('popular')"
-                            class="px-4 py-2 rounded-lg text-xs font-bold transition {{ $tab === 'popular' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white' }}">
-                        Populer
-                    </button>
-                    <button type="button" wire:click="setTab('latest')"
-                            class="px-4 py-2 rounded-lg text-xs font-bold transition {{ $tab === 'latest' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white' }}">
-                        Rilis Baru
-                    </button>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-2 overflow-x-auto overflow-y-hidden scrollbar-none -mx-3 px-3 md:-mx-4 md:px-4">
-                @foreach($formats as $fmt)
-                    <button type="button" wire:click="setFormat('{{ $fmt['id'] }}')"
-                            class="shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition {{ $format === $fmt['id'] ? 'bg-white text-black' : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10' }}">
-                        {{ $fmt['label'] }}
-                    </button>
-                @endforeach
-            </div>
-        </div>
-
         {{-- ================= TERAKHIR KALI DIBACA ================= --}}
         <section x-show="recentReads.length > 0 && @js($isLanding)" style="display: none;">
             <div class="flex items-center justify-between mb-4">
@@ -357,16 +317,56 @@
         @endif
 
         {{-- ================= KATALOG GRID ================= --}}
-        <section id="katalog-grid" class="scroll-mt-24">
+        <section id="katalog-grid" class="scroll-mt-24 space-y-5">
+            {{-- TOOLBAR: SEARCH + TAB + FORMAT (Dipindah ke atas Jelajahi Semua Webtoon) --}}
+            <div class="rounded-2xl bg-zinc-900/60 ring-1 ring-white/5 p-3 md:p-4 space-y-3">
+                <div class="flex flex-col md:flex-row md:items-center gap-3">
+                    <div class="relative flex-1">
+                        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                        <input type="text"
+                               wire:model.live.debounce.400ms="search"
+                               aria-label="Cari webtoon"
+                               placeholder="Cari judul webtoon..."
+                               class="w-full pl-10 pr-10 py-3 rounded-xl bg-black/60 border border-white/5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition" />
+                        @if(!empty($search))
+                            <button type="button" wire:click="clearSearch" aria-label="Hapus pencarian"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        @endif
+                    </div>
+
+                    <div class="flex items-center p-1 bg-black/60 rounded-xl ring-1 ring-white/5 self-start md:self-auto">
+                        <button type="button" wire:click="setTab('popular')"
+                                class="px-4 py-2 rounded-lg text-xs font-bold transition {{ $tab === 'popular' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white' }}">
+                            Populer
+                        </button>
+                        <button type="button" wire:click="setTab('latest')"
+                                class="px-4 py-2 rounded-lg text-xs font-bold transition {{ $tab === 'latest' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white' }}">
+                            Rilis Baru
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 overflow-x-auto overflow-y-hidden scrollbar-none -mx-3 px-3 md:-mx-4 md:px-4">
+                    @foreach($formats as $fmt)
+                        <button type="button" wire:click="setFormat('{{ $fmt['id'] }}')"
+                                class="shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition {{ $format === $fmt['id'] ? 'bg-white text-black' : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10' }}">
+                            {{ $fmt['label'] }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+
             <div class="flex items-end justify-between gap-3 mb-5">
                 <div>
                     <h2 class="text-xl md:text-2xl font-extrabold tracking-tight flex items-center gap-2">
                         @if(!empty($search))
                             Hasil untuk "<span class="text-red-500">{{ $search }}</span>"
                         @elseif($tab === 'latest')
-                            Rilis Terbaru · <span class="text-red-500">{{ collect($providers)->firstWhere('id', $provider)['name'] ?? 'Webtoon' }}</span>
+                            Rilis Terbaru
                         @else
-                            Jelajahi {{ $format !== 'all' ? ucfirst($format) : 'Semua Webtoon' }} (<span class="text-red-500">{{ collect($providers)->firstWhere('id', $provider)['name'] ?? 'Webtoon' }}</span>)
+                            Jelajahi {{ $format !== 'all' ? ucfirst($format) : 'Semua Webtoon' }}
                         @endif
                         <svg wire:loading wire:target="nextPage, prevPage, setProvider, setFormat, setTab, search, clearSearch" class="w-4 h-4 text-red-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                     </h2>
