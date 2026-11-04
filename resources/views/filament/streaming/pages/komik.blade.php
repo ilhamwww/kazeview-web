@@ -52,8 +52,8 @@
         <section id="provider-picker" class="max-w-7xl mx-auto px-5 md:px-10 pb-12">
             @include('filament.streaming.partials.comic-history')
             <h2 class="text-lg md:text-xl font-black mb-4">Pilih Provider</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                @foreach(['shinigami', 'kiryuu', 'izanami'] as $providerId)
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                @foreach(['shinigami', 'izanami'] as $providerId)
                     @php($source = collect($providers)->firstWhere('id', $providerId))
                     <a href="/komik?provider={{ $source['id'] }}" data-provider="{{ $source['id'] }}"
                        class="relative overflow-hidden rounded-2xl bg-zinc-900/70 border border-white/10 hover:border-red-500/60 active:scale-[0.98] transition p-5 flex flex-col gap-5 min-h-[210px]">
@@ -63,7 +63,7 @@
                         </div>
                         <div class="mt-auto">
                             <h3 class="text-xl font-black">{{ $source['name'] }}</h3>
-                            <p class="mt-2 text-xs leading-relaxed text-zinc-400">{{ $source['is_nuc'] ? 'Memerlukan koneksi NUC. Jika tidak tersedia, pilih provider lain.' : ($source['id'] === 'kiryuu' ? 'Jelajahi manga, manhwa, dan manhua dari Kiryuu.' : 'Baca koleksi manhua dan manhwa dari Izanami Scans.') }}</p>
+                            <p class="mt-2 text-xs leading-relaxed text-zinc-400">{{ $source['is_nuc'] ? 'Memerlukan koneksi NUC. Jika tidak tersedia, pilih provider lain.' : 'Baca koleksi manhua dan manhwa dari Izanami Scans.' }}</p>
                         </div>
                         <span class="text-xs font-bold text-red-400">Jelajahi koleksi →</span>
                     </a>
@@ -374,11 +374,8 @@
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         </div>
                         <p class="text-base font-bold text-white">Server Shinigami (NUC Relay) Sedang Offline</p>
-                        <p class="mt-1 text-xs text-zinc-400 max-w-md mx-auto">PC NUC saat ini sedang offline. Kamu tetap bisa membaca ribuan komik lengkap lewat server <strong class="text-red-400">Kiryuu ID</strong> atau <strong class="text-red-400">Izanami Scans</strong>!</p>
+                        <p class="mt-1 text-xs text-zinc-400 max-w-md mx-auto">Shinigami belum dapat diakses. Kamu bisa mencoba koleksi dari <strong class="text-red-400">Izanami Scans</strong>.</p>
                         <div class="mt-4 flex items-center justify-center gap-2 flex-wrap">
-                            <button type="button" wire:click="setProvider('kiryuu')" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white transition shadow-lg shadow-red-900/40">
-                                Beralih ke Kiryuu ID
-                            </button>
                             <button type="button" wire:click="setProvider('izanami')" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white transition">
                                 Beralih ke Izanami Scans
                             </button>

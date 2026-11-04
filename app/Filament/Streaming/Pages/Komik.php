@@ -4,7 +4,6 @@ namespace App\Filament\Streaming\Pages;
 
 use Filament\Pages\Page;
 use App\Services\ShinigamiService;
-use App\Services\KiryuuScraperService;
 use App\Services\IzanamiScansService;
 
 class Komik extends Page
@@ -40,13 +39,6 @@ class Komik extends Page
 
     public array $providers = [
         [
-            'id' => 'kiryuu',
-            'name' => 'Kiryuu ID',
-            'tag' => 'Utama / Direct',
-            'desc' => 'Ribuan Manga & Manhwa lengkap (HD WebP)',
-            'is_nuc' => false,
-        ],
-        [
             'id' => 'izanami',
             'name' => 'Izanami Scans',
             'tag' => 'Google CDN',
@@ -72,7 +64,7 @@ class Komik extends Page
     public function mount(): void
     {
         $requestedProvider = request()->query('provider', '');
-        $this->provider = is_string($requestedProvider) && in_array($requestedProvider, ['kiryuu', 'izanami', 'shinigami'], true)
+        $this->provider = is_string($requestedProvider) && in_array($requestedProvider, ['izanami', 'shinigami'], true)
             ? $requestedProvider : '';
 
         $this->format = request()->query('format', 'all');
@@ -85,7 +77,7 @@ class Komik extends Page
 
     public function setProvider(string $p): void
     {
-        if (in_array($p, ['kiryuu', 'izanami', 'shinigami'])) {
+        if (in_array($p, ['izanami', 'shinigami'])) {
             $this->provider = $p;
             $this->page = 1;
             $this->search = '';
@@ -163,7 +155,7 @@ class Komik extends Page
 
     public function loadData(): void
     {
-        if (!in_array($this->provider, ['kiryuu', 'izanami', 'shinigami'], true)) {
+        if (!in_array($this->provider, ['izanami', 'shinigami'], true)) {
             $this->heroItems = $this->latestHorizontal = $this->topRanked = $this->items = [];
             $this->hasMore = false;
             $this->totalPage = 1;
@@ -173,7 +165,7 @@ class Komik extends Page
         $service = match ($this->provider) {
             'izanami' => app(IzanamiScansService::class),
             'shinigami' => app(ShinigamiService::class),
-            default => app(KiryuuScraperService::class),
+            default => app(ShinigamiService::class),
         };
 
         // Jika user sedang tidak mencari kata kunci, siapkan hero banner, top 10, dan rilisan terbaru
