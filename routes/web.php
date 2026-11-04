@@ -302,6 +302,21 @@ Route::post('/api/watch-progress', function (\Illuminate\Http\Request $request) 
     return response()->json(['ok' => true]);
 })->middleware(['auth', 'throttle:60,1'])->name('api.watch-progress');
 
+// ============ KOMIK EXP ============
+// Dipanggil reader saat chapter dibaca sampai >= 90%. ExpService menolak duplikat & menerapkan cap harian.
+Route::post('/api/comic-exp', function (\Illuminate\Http\Request $request) {
+    $data = $request->validate([
+        'comic_id'   => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9_\-]+$/'],
+        'chapter_id' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
+        'progress'   => 'required|numeric|min:0|max:100',
+    ]);
+    if ((float) $data['progress'] < 90) {
+        return response()->json(['ok' => true, 'exp' => 0]);
+    }
+    $exp = \App\Services\ExpService::award(auth()->id(), 'komik', $data['comic_id'], $data['chapter_id']);
+    return response()->json(['ok' => true, 'exp' => $exp]);
+})->middleware(['auth', 'throttle:30,1'])->name('api.comic-exp');
+
 // ============ GET CONTINUE WATCHING DATA ============
 // Dipanggil oleh beranda untuk menampilkan kartu "Lanjutkan Menonton"
 Route::get('/api/continue-watching', function () {
@@ -551,12 +566,17 @@ Route::get('/traffic', function () {
 
 // Halaman Tersendiri: Leaderboard Penonton Komunitas KZSTRM
 Route::get('/leaderboard', function () {
-    $leaderboard = auth()->check() ? \App\Services\TrafficStatsService::getLeaderboard() : null;
+    // Leaderboard memuat nama akun, jadi hanya untuk pengguna yang sudah login
+    $board = auth()->check() ? \App\Services\ExpService::leaderboard() : null;
     return response(view('filament.streaming.layout', [
         'title' => 'Leaderboard Penonton Paling Aktif - KZSTRM',
         'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.leaderboard', [
-            'leaderboard' => $leaderboard,
+            'board' => $board,
+            'me' => auth()->check() ? \App\Services\ExpService::forUser(auth()->user()) : null,
             'meId' => auth()->id(),
+            'levels' => \App\Services\ExpService::LEVELS,
+            'values' => \App\Services\ExpService::VALUES,
+            'dailyCap' => \App\Services\ExpService::DAILY_CAP,
         ])->render())
     ])->render());
 })->name('streaming.leaderboard');

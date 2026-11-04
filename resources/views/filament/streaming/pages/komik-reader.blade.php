@@ -9,6 +9,7 @@
         showToast: false,
         toastMsg: '',
         saveTimer: null,
+        expSent: false,
         init() {
             // Cek apakah ada riwayat tersimpan untuk chapter ini
             try {
@@ -46,6 +47,18 @@
             const total = document.documentElement.scrollHeight - window.innerHeight;
             if (total > 0) {
                 this.currentProgress = Math.min(100, Math.max(0, Math.round((y / total) * 100)));
+            }
+
+            // EXP komik: kirim sekali saat chapter dibaca sampai >= 90% (server menolak duplikat & cap harian)
+            if (!this.expSent && {{ auth()->check() ? 'true' : 'false' }} && this.currentProgress >= 90) {
+                this.expSent = true;
+                fetch('/api/comic-exp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: JSON.stringify({ comic_id: '{{ $mangaId }}', chapter_id: '{{ $chapterId }}', progress: this.currentProgress })
+                }).then(r => r.ok ? r.json() : null).then(d => {
+                    if (d && d.exp > 0) { this.toastMsg = '+' + d.exp + ' EXP'; this.showToast = true; setTimeout(() => this.showToast = false, 2500); }
+                }).catch(() => {});
             }
 
             // Deteksi panel/halaman mana yang sedang aktif di viewport

@@ -1,166 +1,217 @@
 @php
     $fmt = fn ($n) => number_format((int) $n, 0, ',', '.');
-    $top3 = array_slice($leaderboard ?? [], 0, 3);
+    $royals = $board['royals'] ?? [];
+    $ranked = $board['ranked'] ?? [];
+    $top3 = array_slice($ranked, 0, 3);
+    $rest = array_slice($ranked, 3);
+    $titles = [1 => 'Squire', 2 => 'Footman', 3 => 'Sentinel', 4 => 'Knight', 5 => 'Mystic Knight', 6 => 'Paladin', 7 => 'Dragon Rider', 8 => 'Warlord', 9 => 'Archon', 10 => 'Legend'];
 @endphp
 
-<div class="min-h-screen bg-[#050505] text-white selection:bg-red-600 selection:text-white pb-28 md:pb-20">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
 
-    {{-- ================= HERO SECTION ================= --}}
-    <section class="relative overflow-hidden border-b border-white/[0.06] bg-gradient-to-b from-amber-500/[0.08] via-zinc-950/60 to-[#050505]">
-        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.18),transparent_60%)]" aria-hidden="true"></div>
+<style>
+    .md-title { font-family: 'Cinzel Decorative', 'Cinzel', serif; }
+    .md-serif { font-family: 'Cinzel', serif; }
+    .md-gold { background: linear-gradient(180deg, #fde9a8 0%, #e2b04a 45%, #9a6a1c 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .md-stone { background-color: #0b0907; background-image: radial-gradient(ellipse at top, rgba(180, 120, 40, .16), transparent 60%), repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 2px, transparent 2px 6px); }
+    .md-frame { position: relative; background: linear-gradient(180deg, rgba(40, 28, 14, .92), rgba(16, 11, 6, .96)); border: 1px solid rgba(214, 167, 78, .35); box-shadow: inset 0 0 0 1px rgba(0,0,0,.6), inset 0 0 40px rgba(0,0,0,.55), 0 10px 40px rgba(0,0,0,.45); }
+    .md-frame::before, .md-frame::after { content: ''; position: absolute; width: 18px; height: 18px; border-color: rgba(232, 187, 96, .75); pointer-events: none; }
+    .md-frame::before { top: 6px; left: 6px; border-top: 2px solid; border-left: 2px solid; }
+    .md-frame::after { bottom: 6px; right: 6px; border-bottom: 2px solid; border-right: 2px solid; }
+    .md-divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(226, 176, 74, .7), transparent); }
+    .md-bar { background: linear-gradient(90deg, #7a4f12, #e2b04a, #fde9a8); }
+    .md-badge { filter: drop-shadow(0 6px 14px rgba(0,0,0,.6)); }
+</style>
+
+<div class="md-stone min-h-screen text-amber-50 selection:bg-amber-700 selection:text-white pb-28 md:pb-20">
+
+    {{-- ================= HERO ================= --}}
+    <section class="relative overflow-hidden border-b border-amber-900/40">
         <div class="relative w-full max-w-5xl mx-auto px-5 md:px-8 pt-24 md:pt-32 pb-10 text-center">
-            <span class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-full">
-                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.504-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.004 0V9A3.75 3.75 0 009.75 5.25H8.25m5.25 0h1.5A3.75 3.75 0 0118.75 9v5.25m-9 0h6" />
-                </svg>
-                Peringkat Komunitas
-            </span>
-            <h1 class="mt-4 text-3xl md:text-5xl font-black tracking-tight leading-tight">Leaderboard Penonton</h1>
-            <p class="mt-3 max-w-xl mx-auto text-sm md:text-base text-zinc-400 leading-relaxed">
-                Peringkat penonton paling aktif di KZSTRM berdasarkan total episode yang telah diselesaikan.
+            <p class="md-serif text-[11px] font-bold uppercase tracking-[0.35em] text-amber-500/80">Hall of Champions</p>
+            <h1 class="md-title md-gold mt-3 text-4xl md:text-6xl font-black leading-tight">Leaderboard</h1>
+            <div class="md-divider max-w-xs mx-auto mt-4"></div>
+            <p class="mt-4 max-w-xl mx-auto text-sm md:text-base text-amber-100/60 leading-relaxed">
+                Kumpulkan EXP dari menonton Movie, TV Series, Indonesia, Anime, Dracin, dan membaca Komik. Naikkan levelmu dan rebut tempat di podium.
             </p>
-
-            <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold">
-                <a href="/traffic" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-300 hover:text-white hover:bg-white/10 transition">
-                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z"/></svg>
-                    Lihat Traffic Server
-                </a>
-                <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-400">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Update Realtime
-                </span>
-            </div>
         </div>
     </section>
 
-    <main class="w-full max-w-5xl mx-auto px-5 md:px-8 pt-8 space-y-8">
+    <main class="w-full max-w-5xl mx-auto px-5 md:px-8 pt-8 space-y-10">
 
-        {{-- JIKA BELUM LOGIN --}}
-        @if(is_null($leaderboard ?? null))
-            <div class="rounded-3xl bg-zinc-900/60 ring-1 ring-white/10 p-8 md:p-12 text-center max-w-lg mx-auto">
-                <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                    </svg>
-                </div>
-                <h2 class="text-xl font-black text-white">Khusus Anggota Terdaftar</h2>
-                <p class="mt-2 text-sm text-zinc-400 leading-relaxed">
-                    Masuk ke akun KZSTRM kamu untuk melihat peringkat lengkap komunitas penonton dan posisi kamu di leaderboard.
-                </p>
-                <div class="mt-6">
-                    <a href="{{ route('filament.streaming.auth.login') }}" class="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-lg shadow-red-900/30 transition active:scale-95">
-                        Masuk ke Akun
-                    </a>
-                </div>
-            </div>
-        @elseif(empty($leaderboard))
-            <div class="rounded-3xl bg-zinc-900/60 ring-1 ring-white/10 p-12 text-center">
-                <p class="text-zinc-400 text-sm">Belum ada riwayat tontonan yang tercatat di sistem.</p>
+        @if(is_null($board))
+            {{-- ================= BELUM LOGIN ================= --}}
+            <div class="md-frame rounded-2xl p-8 md:p-12 text-center max-w-lg mx-auto">
+                <img src="/images/badges/level-1.webp" alt="" class="md-badge w-24 h-24 mx-auto" loading="lazy">
+                <h2 class="md-serif mt-4 text-xl font-bold text-amber-200">Gerbang Kastil Tertutup</h2>
+                <p class="mt-2 text-sm text-amber-100/60 leading-relaxed">Masuk ke akun KZSTRM untuk melihat para juara, level, dan EXP kamu.</p>
+                <a href="{{ route('filament.streaming.auth.login') }}" class="md-serif mt-6 inline-flex items-center justify-center px-6 py-3 rounded-lg bg-gradient-to-b from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-black font-bold text-sm shadow-lg shadow-black/40 transition active:scale-95">
+                    Masuk ke Akun
+                </a>
             </div>
         @else
-            {{-- PODIUM TOP 3 (DESKTOP / TABLET) --}}
-            @if(count($top3) >= 3)
-                <div class="grid grid-cols-3 gap-3 md:gap-5 pt-6 pb-2 items-end max-w-2xl mx-auto">
-                    {{-- Juara 2 --}}
-                    @php $p2 = $top3[1]; $me2 = ($meId ?? null) === $p2['user_id']; @endphp
-                    <div class="flex flex-col items-center order-1">
-                        <div class="relative mb-2">
-                            <span class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 ring-2 ring-zinc-400 flex items-center justify-center text-sm md:text-base font-black text-white shadow-xl">
-                                {{ $p2['initial'] }}
-                            </span>
-                            <span class="absolute -top-2 -right-1 w-6 h-6 rounded-full bg-zinc-300 text-black text-xs font-black flex items-center justify-center shadow">2</span>
-                        </div>
-                        <p class="text-xs md:text-sm font-bold text-white text-center truncate max-w-[100px] md:max-w-[130px]">{{ $p2['name'] }}</p>
-                        <p class="text-[10px] md:text-xs font-black text-emerald-400 mt-0.5">{{ $fmt($p2['episodes']) }} ep</p>
-                        <div class="w-full h-24 md:h-32 bg-zinc-900/80 border border-zinc-700/50 rounded-t-2xl mt-3 flex items-center justify-center">
-                            <span class="text-xl md:text-2xl font-black text-zinc-400">#2</span>
-                        </div>
-                    </div>
 
-                    {{-- Juara 1 --}}
-                    @php $p1 = $top3[0]; $me1 = ($meId ?? null) === $p1['user_id']; @endphp
-                    <div class="flex flex-col items-center order-2 -mt-4">
-                        <div class="relative mb-2">
-                            <span class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-tr from-amber-600 to-amber-300 ring-4 ring-amber-400/60 flex items-center justify-center text-base md:text-xl font-black text-black shadow-2xl">
-                                {{ $p1['initial'] }}
-                            </span>
-                            <span class="absolute -top-3 left-1/2 -translate-x-1/2 text-2xl">👑</span>
-                            <span class="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center shadow-lg ring-2 ring-black">1</span>
-                        </div>
-                        <p class="text-sm md:text-base font-black text-amber-300 text-center truncate max-w-[110px] md:max-w-[150px]">{{ $p1['name'] }}</p>
-                        <p class="text-xs md:text-sm font-black text-emerald-400 mt-0.5">{{ $fmt($p1['episodes']) }} ep</p>
-                        <div class="w-full h-32 md:h-44 bg-gradient-to-b from-amber-500/20 to-zinc-900/90 border border-amber-500/40 rounded-t-2xl mt-3 flex items-center justify-center shadow-[0_0_30px_rgba(245,158,11,0.15)]">
-                            <span class="text-2xl md:text-3xl font-black text-amber-400">#1</span>
-                        </div>
+            {{-- ================= ROYAL ================= --}}
+            @if(count($royals))
+                <section aria-labelledby="royal-title">
+                    <div class="text-center mb-5">
+                        <h2 id="royal-title" class="md-title md-gold text-2xl md:text-3xl font-black">The Royal Court</h2>
+                        <p class="text-xs text-amber-100/70 mt-1">Penguasa kerajaan KZSTRM · tidak ikut peringkat</p>
                     </div>
-
-                    {{-- Juara 3 --}}
-                    @php $p3 = $top3[2]; $me3 = ($meId ?? null) === $p3['user_id']; @endphp
-                    <div class="flex flex-col items-center order-3">
-                        <div class="relative mb-2">
-                            <span class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 ring-2 ring-amber-700 flex items-center justify-center text-sm md:text-base font-black text-white shadow-xl">
-                                {{ $p3['initial'] }}
-                            </span>
-                            <span class="absolute -top-2 -right-1 w-6 h-6 rounded-full bg-amber-700 text-white text-xs font-black flex items-center justify-center shadow">3</span>
-                        </div>
-                        <p class="text-xs md:text-sm font-bold text-white text-center truncate max-w-[100px] md:max-w-[130px]">{{ $p3['name'] }}</p>
-                        <p class="text-[10px] md:text-xs font-black text-emerald-400 mt-0.5">{{ $fmt($p3['episodes']) }} ep</p>
-                        <div class="w-full h-20 md:h-24 bg-zinc-900/80 border border-zinc-700/50 rounded-t-2xl mt-3 flex items-center justify-center">
-                            <span class="text-xl md:text-2xl font-black text-amber-700">#3</span>
-                        </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 max-w-3xl mx-auto">
+                        @foreach($royals as $r)
+                            @php $isKing = $r['special'] === 'king'; @endphp
+                            <article class="md-frame rounded-2xl p-5 md:p-6 text-center overflow-hidden {{ $isKing ? 'ring-1 ring-amber-500/30' : 'ring-1 ring-fuchsia-400/25' }}">
+                                <div class="absolute inset-0 pointer-events-none {{ $isKing ? 'bg-[radial-gradient(circle_at_50%_25%,rgba(245,180,60,.22),transparent_60%)]' : 'bg-[radial-gradient(circle_at_50%_25%,rgba(217,120,220,.2),transparent_60%)]' }}" aria-hidden="true"></div>
+                                <div class="relative">
+                                    <img src="{{ $r['badge'] }}" alt="Badge {{ $r['title'] }}" class="md-badge w-32 h-32 md:w-40 md:h-40 mx-auto" loading="lazy">
+                                    <p class="md-serif mt-2 text-[11px] font-bold uppercase tracking-[0.3em] {{ $isKing ? 'text-amber-400' : 'text-fuchsia-300' }}">{{ $r['title'] }}</p>
+                                    <h3 class="md-serif mt-1 text-xl md:text-2xl font-black text-amber-50 truncate">{{ $r['name'] }}</h3>
+                                    <p class="mt-1 text-sm text-amber-100/70">Lv {{ $r['level'] }} · {{ $titles[$r['level']] ?? '' }} · <span class="font-bold text-amber-300">{{ $fmt($r['exp']) }} EXP</span></p>
+                                    <div class="mt-3 h-1.5 rounded-full bg-black/50 overflow-hidden" role="progressbar" aria-valuenow="{{ $r['progress'] }}" aria-valuemin="0" aria-valuemax="100" aria-label="Progres ke level berikutnya">
+                                        <div class="h-full md-bar" style="width: {{ $r['progress'] }}%"></div>
+                                    </div>
+                                </div>
+                            </article>
+                        @endforeach
                     </div>
-                </div>
+                </section>
             @endif
 
-            {{-- DAFTAR LENGKAP LEADERBOARD --}}
-            <div class="rounded-3xl bg-zinc-900/60 ring-1 ring-white/10 p-4 md:p-6">
-                <div class="flex items-center justify-between pb-4 border-b border-white/5 mb-4">
-                    <h2 class="text-base md:text-lg font-black tracking-tight">Daftar Peringkat Lengkap</h2>
-                    <span class="text-xs text-zinc-500 font-semibold">Top 20 Pengguna</span>
+            {{-- ================= LEVEL KAMU ================= --}}
+            @if($me && !in_array($me['special'], ['king', 'queen'], true))
+                <section class="md-frame rounded-2xl p-5 md:p-6 flex flex-col sm:flex-row items-center gap-5" aria-label="Level kamu">
+                    <img src="{{ $me['badge'] }}" alt="Badge level {{ $me['level'] }}" class="md-badge w-24 h-24 shrink-0" loading="lazy">
+                    <div class="flex-1 w-full min-w-0 text-center sm:text-left">
+                        <p class="md-serif text-[11px] font-bold uppercase tracking-[0.3em] text-amber-500">Level Kamu</p>
+                        <h2 class="md-serif text-xl md:text-2xl font-black text-amber-50">Lv {{ $me['level'] }} · {{ $me['title'] }}</h2>
+                        <p class="text-sm text-amber-100/70 mt-0.5">{{ $fmt($me['exp']) }} EXP
+                            @if(!$me['is_max'])
+                                <span class="text-amber-100/60">· {{ $fmt($me['to_next']) }} EXP lagi ke Lv {{ $me['level'] + 1 }}</span>
+                            @endif
+                        </p>
+                        <div class="mt-3 h-2 rounded-full bg-black/50 overflow-hidden" role="progressbar" aria-valuenow="{{ $me['progress'] }}" aria-valuemin="0" aria-valuemax="100" aria-label="Progres ke level berikutnya">
+                            <div class="h-full md-bar" style="width: {{ $me['progress'] }}%"></div>
+                        </div>
+                    </div>
+                    <div class="shrink-0 text-center px-4 py-3 rounded-xl bg-black/40 border border-amber-900/50">
+                        <p class="text-[10px] uppercase tracking-wider text-amber-100/70">EXP hari ini</p>
+                        <p class="md-serif text-lg font-black text-amber-300">{{ $me['today'] }} <span class="text-xs text-amber-100/60">/ {{ $dailyCap }}</span></p>
+                    </div>
+                </section>
+            @endif
+
+            {{-- ================= PODIUM ================= --}}
+            @if(count($top3))
+                <section aria-labelledby="podium-title">
+                    <div class="text-center mb-6">
+                        <h2 id="podium-title" class="md-title md-gold text-2xl md:text-3xl font-black">Champions</h2>
+                        <div class="md-divider max-w-[180px] mx-auto mt-3"></div>
+                    </div>
+
+                    @php
+                        $order = array_filter([1 => $top3[1] ?? null, 0 => $top3[0] ?? null, 2 => $top3[2] ?? null]);
+                        $style = [
+                            0 => ['h' => 'h-40 md:h-52', 'img' => 'w-24 h-24 md:w-32 md:h-32', 'ring' => 'border-amber-400/70', 'num' => 'text-amber-300', 'name' => 'text-amber-200', 'lift' => '-mt-6'],
+                            1 => ['h' => 'h-28 md:h-36', 'img' => 'w-20 h-20 md:w-24 md:h-24', 'ring' => 'border-zinc-300/50', 'num' => 'text-zinc-200', 'name' => 'text-amber-50', 'lift' => ''],
+                            2 => ['h' => 'h-20 md:h-28', 'img' => 'w-20 h-20 md:w-24 md:h-24', 'ring' => 'border-orange-700/60', 'num' => 'text-orange-400', 'name' => 'text-amber-50', 'lift' => ''],
+                        ];
+                    @endphp
+
+                    <div class="grid grid-cols-3 gap-2 md:gap-5 items-end max-w-3xl mx-auto">
+                        @foreach($order as $idx => $p)
+                            @php $s = $style[$idx]; $isMe = $meId === $p['user_id']; @endphp
+                            <div class="flex flex-col items-center min-w-0 {{ $s['lift'] }}">
+                                <img src="{{ $p['badge'] }}" alt="Badge level {{ $p['level'] }}" class="md-badge {{ $s['img'] }}" loading="lazy">
+                                <p class="md-serif mt-2 text-xs md:text-base font-black {{ $s['name'] }} text-center truncate max-w-full px-1">{{ $p['name'] }}</p>
+                                @if($isMe)
+                                    <span class="mt-0.5 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-700 text-white">Kamu</span>
+                                @endif
+                                <p class="text-[10px] md:text-xs text-amber-100/60 mt-0.5">Lv {{ $p['level'] }} · {{ $p['title'] }}</p>
+                                <p class="text-[11px] md:text-sm font-black text-amber-300">{{ $fmt($p['exp']) }} EXP</p>
+                                <div class="md-frame w-full {{ $s['h'] }} rounded-t-xl mt-3 flex items-start justify-center pt-3 md:pt-4 border-t-2 {{ $s['ring'] }}">
+                                    <span class="md-serif text-2xl md:text-4xl font-black tracking-widest {{ $s['num'] }}">{{ ['I', 'II', 'III'][$idx] }}</span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            {{-- ================= DAFTAR PERINGKAT ================= --}}
+            @if(count($rest))
+                <section class="md-frame rounded-2xl p-4 md:p-6" aria-labelledby="ranks-title">
+                    <div class="flex items-center justify-between pb-4 mb-4 border-b border-amber-900/50">
+                        <h2 id="ranks-title" class="md-serif text-base md:text-lg font-black text-amber-200">Barisan Ksatria</h2>
+                        <span class="text-xs text-amber-100/60">Top {{ count($ranked) }}</span>
+                    </div>
+                    <ol class="space-y-2">
+                        @foreach($rest as $u)
+                            @php $isMe = $meId === $u['user_id']; @endphp
+                            <li class="flex items-center gap-3 md:gap-4 rounded-xl p-2.5 md:p-3 {{ $isMe ? 'bg-red-900/25 ring-1 ring-red-600/60' : 'bg-black/30 ring-1 ring-amber-900/30' }}">
+                                <span class="w-8 shrink-0 text-center text-sm md:text-base font-black text-amber-100/70 tabular-nums">{{ $u['rank'] }}</span>
+                                <img src="{{ $u['badge'] }}" alt="Badge level {{ $u['level'] }}" class="md-badge w-11 h-11 md:w-12 md:h-12 shrink-0" loading="lazy">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm md:text-base font-bold text-amber-50 truncate">{{ $u['name'] }}</p>
+                                        @if($isMe)
+                                            <span class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-700 text-white shrink-0">Kamu</span>
+                                        @endif
+                                    </div>
+                                    <p class="text-[11px] md:text-xs text-amber-100/70 truncate">Lv {{ $u['level'] }} · {{ $u['title'] }}<span class="hidden sm:inline"> · Paling banyak: {{ $u['top_source'] }}</span></p>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <p class="md-serif text-sm md:text-lg font-black text-amber-300 tabular-nums">{{ $fmt($u['exp']) }}</p>
+                                    <p class="text-[10px] text-amber-100/60">EXP</p>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ol>
+                </section>
+            @elseif(!count($top3))
+                <div class="md-frame rounded-2xl p-10 text-center text-sm text-amber-100/60">Belum ada ksatria yang mengumpulkan EXP.</div>
+            @endif
+
+            {{-- ================= TANGGA LEVEL & ATURAN EXP ================= --}}
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                <div class="md-frame rounded-2xl p-5 md:p-6 lg:col-span-2">
+                    <h2 class="md-serif text-base md:text-lg font-black text-amber-200 mb-4">Tangga Level</h2>
+                    <ul class="grid grid-cols-5 gap-2 md:gap-3">
+                        @foreach($levels as $lv => $min)
+                            @php $reached = $me && $me['level'] >= $lv; @endphp
+                            <li class="text-center rounded-xl p-2 bg-black/30 ring-1 {{ $reached ? 'ring-amber-500/50' : 'ring-amber-900/30' }}">
+                                <img src="/images/badges/level-{{ $lv }}.webp" alt="Badge level {{ $lv }}" class="md-badge w-full max-w-[64px] mx-auto aspect-square {{ $reached ? '' : 'opacity-50 grayscale' }}">
+                                <p class="md-serif text-[11px] md:text-xs font-black text-amber-100 mt-1">Lv {{ $lv }}</p>
+                                <p class="text-[9px] md:text-[10px] leading-tight text-amber-100/70 break-words">{{ $titles[$lv] }}</p>
+                                <p class="text-[9px] md:text-[10px] text-amber-400/80 tabular-nums">{{ $fmt($min) }}</p>
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
 
-                <ol class="space-y-2.5">
-                    @foreach($leaderboard as $u)
-                        @php $me = ($meId ?? null) === $u['user_id']; @endphp
-                        <li class="flex items-center gap-3.5 rounded-2xl p-3 md:p-3.5 transition {{ $me ? 'bg-red-600/15 ring-2 ring-red-500/60 shadow-lg shadow-red-950/40' : 'bg-zinc-950/60 ring-1 ring-white/[0.04] hover:bg-zinc-950/90' }}">
-                            {{-- Badge Rank --}}
-                            <span class="w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-xl flex items-center justify-center text-xs md:text-sm font-black tabular-nums
-                                {{ $u['rank'] === 1 ? 'bg-amber-400 text-black shadow-md shadow-amber-500/30' : ($u['rank'] === 2 ? 'bg-zinc-300 text-black' : ($u['rank'] === 3 ? 'bg-amber-700 text-white' : 'bg-zinc-900 text-zinc-400 ring-1 ring-zinc-800')) }}">
-                                {{ $u['rank'] }}
-                            </span>
-
-                            {{-- Avatar --}}
-                            <span class="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 ring-1 ring-white/10 flex items-center justify-center text-xs font-black text-white">
-                                {{ $u['initial'] }}
-                            </span>
-
-                            {{-- User Info --}}
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center gap-2">
-                                    <p class="text-sm md:text-base font-bold text-white truncate">{{ $u['name'] }}</p>
-                                    @if($me)
-                                        <span class="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-red-600 text-white shadow">Kamu</span>
-                                    @endif
-                                </div>
-                                <p class="text-xs text-zinc-400 truncate mt-0.5">
-                                    {{ $fmt($u['titles']) }} judul · Favorit: <span class="text-zinc-300 font-semibold">{{ $u['fav'] }}</span>
-                                </p>
-                                <p class="text-[10px] text-zinc-500 truncate mt-0.5">Aktif {{ $u['last_active'] }}</p>
-                            </div>
-
-                            {{-- Episodes Watched --}}
-                            <div class="text-right shrink-0">
-                                <div class="text-base md:text-xl font-black tabular-nums text-emerald-400">{{ $fmt($u['episodes']) }}</div>
-                                <div class="text-[10px] text-zinc-500 font-semibold">episode</div>
-                            </div>
-                        </li>
-                    @endforeach
-                </ol>
-            </div>
+                <div class="md-frame rounded-2xl p-5 md:p-6">
+                    <h2 class="md-serif text-base md:text-lg font-black text-amber-200 mb-4">Cara Dapat EXP</h2>
+                    <ul class="space-y-2 text-sm">
+                        @foreach([
+                            ['Movie (ditonton ≥ 80%)', $values['movie']],
+                            ['Episode TV Series / Indonesia', $values['series']],
+                            ['Episode Anime', $values['anime']],
+                            ['Episode Dracin', $values['dracin']],
+                            ['Chapter Komik (dibaca ≥ 90%)', $values['komik']],
+                        ] as [$label, $val])
+                            <li class="flex items-center justify-between gap-3 rounded-lg px-3 py-2 bg-black/30">
+                                <span class="text-amber-100/70">{{ $label }}</span>
+                                <span class="md-serif font-black text-amber-300 shrink-0">+{{ $val }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                    <p class="mt-4 text-[11px] text-amber-100/60 leading-relaxed">
+                        Maksimal {{ $dailyCap }} EXP per hari (WIB). Episode atau chapter yang sama hanya dihitung sekali.
+                    </p>
+                </div>
+            </section>
         @endif
-
-        <p class="text-center text-xs text-zinc-500 leading-relaxed max-w-xl mx-auto pt-4">
-            Peringkat dihitung berdasarkan akumulasi seluruh judul dan episode yang ditonton di platform KZSTRM.
-        </p>
     </main>
 </div>
