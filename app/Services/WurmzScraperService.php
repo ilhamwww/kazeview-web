@@ -108,35 +108,11 @@ class WurmzScraperService
      */
     public function getPopular(int $page = 1, int $limit = 24, ?string $format = null): array
     {
-        $cacheKey = "wurmz_popular_p{$page}_f" . ($format ?? 'all');
+        $cacheKey = "wurmz_popular_v2_p{$page}_f" . ($format ?? 'all');
         return Cache::remember($cacheKey, 1800, function () use ($page, $limit, $format) {
-            $url = $this->baseUrl . '/populer';
-            if ($format && in_array(strtolower($format), ['manhwa', 'manga', 'manhua'])) {
-                $url .= '?type=' . strtolower($format);
-            }
-
-            $html = $this->fetchHtml($url);
-            if (!$html) {
-                return ['data' => [], 'total_page' => 1, 'has_next' => false];
-            }
-
-            $items = $this->parseCards($html);
-            return [
-                'data' => array_slice($items, 0, $limit),
-                'total_page' => 1,
-                'has_next' => false,
+            $params = [
+                'sort' => 'popular_all',
             ];
-        });
-    }
-
-    /**
-     * Get Latest Updated Comics
-     */
-    public function getLatest(int $page = 1, int $limit = 24, ?string $format = null): array
-    {
-        $cacheKey = "wurmz_latest_p{$page}_f" . ($format ?? 'all');
-        return Cache::remember($cacheKey, 600, function () use ($page, $limit, $format) {
-            $params = [];
             if ($page > 1) {
                 $params['page'] = $page;
             }
@@ -144,7 +120,7 @@ class WurmzScraperService
                 $params['type'] = strtolower($format);
             }
 
-            $url = $this->baseUrl . '/' . ($params ? '?' . http_build_query($params) : '');
+            $url = $this->baseUrl . '/semua-komik?' . http_build_query($params);
             $html = $this->fetchHtml($url);
             if (!$html) {
                 return ['data' => [], 'total_page' => 1, 'has_next' => false];
@@ -156,11 +132,54 @@ class WurmzScraperService
             $totalPage = 1;
             if (preg_match('/<span class="text-silver font-semibold">\d+<\/span>\s*\/\s*<!-- -->(\d+)/', $html, $tpMatch)) {
                 $totalPage = (int) $tpMatch[1];
+            } elseif (preg_match('/\/<!-- -->(\d+)/', $html, $tpMatch2)) {
+                $totalPage = (int) $tpMatch2[1];
             }
 
             return [
                 'data' => array_slice($items, 0, $limit),
-                'total_page' => $totalPage,
+                'total_page' => $totalPage > 1 ? $totalPage : 50,
+                'has_next' => $page < $totalPage,
+            ];
+        });
+    }
+
+    /**
+     * Get Latest Updated Comics
+     */
+    public function getLatest(int $page = 1, int $limit = 24, ?string $format = null): array
+    {
+        $cacheKey = "wurmz_latest_v2_p{$page}_f" . ($format ?? 'all');
+        return Cache::remember($cacheKey, 600, function () use ($page, $limit, $format) {
+            $params = [
+                'sort' => 'update',
+            ];
+            if ($page > 1) {
+                $params['page'] = $page;
+            }
+            if ($format && in_array(strtolower($format), ['manhwa', 'manga', 'manhua'])) {
+                $params['type'] = strtolower($format);
+            }
+
+            $url = $this->baseUrl . '/semua-komik?' . http_build_query($params);
+            $html = $this->fetchHtml($url);
+            if (!$html) {
+                return ['data' => [], 'total_page' => 1, 'has_next' => false];
+            }
+
+            $items = $this->parseCards($html);
+
+            // Total page check
+            $totalPage = 1;
+            if (preg_match('/<span class="text-silver font-semibold">\d+<\/span>\s*\/\s*<!-- -->(\d+)/', $html, $tpMatch)) {
+                $totalPage = (int) $tpMatch[1];
+            } elseif (preg_match('/\/<!-- -->(\d+)/', $html, $tpMatch2)) {
+                $totalPage = (int) $tpMatch2[1];
+            }
+
+            return [
+                'data' => array_slice($items, 0, $limit),
+                'total_page' => $totalPage > 1 ? $totalPage : 387,
                 'has_next' => $page < $totalPage,
             ];
         });
