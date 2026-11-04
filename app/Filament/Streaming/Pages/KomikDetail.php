@@ -26,6 +26,12 @@ class KomikDetail extends Page
 
     public function mount(string $id): void
     {
+        // Jika parameter adalah slug provider, redirect ke /komik?provider={id}
+        if (in_array(strtolower($id), ['shinigami', 'wurmz', 'izanami'], true)) {
+            $this->redirect('/komik?provider=' . strtolower($id));
+            return;
+        }
+
         $this->mangaId = $id;
 
         if (str_starts_with($id, 'kiryuu__')) {

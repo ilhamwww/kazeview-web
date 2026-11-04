@@ -55,7 +55,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 @foreach(['shinigami', 'wurmz', 'izanami'] as $providerId)
                     @php($source = collect($providers)->firstWhere('id', $providerId))
-                    <a href="/komik?provider={{ $source['id'] }}" data-provider="{{ $source['id'] }}"
+                    <a href="/komik/{{ $source['id'] }}/" data-provider="{{ $source['id'] }}"
                        class="relative overflow-hidden rounded-2xl bg-zinc-900/70 border border-white/10 hover:border-red-500/60 active:scale-[0.98] transition p-5 flex flex-col gap-5 min-h-[210px]">
                         <div class="flex items-start justify-between gap-3">
                             <span class="w-14 h-14 rounded-2xl bg-red-600/15 border border-red-600/20 flex items-center justify-center text-2xl font-black text-red-400">{{ mb_substr($source['name'], 0, 1) }}</span>
@@ -376,9 +376,12 @@
                         <p class="text-base font-bold text-white">Server Shinigami (NUC Relay) Sedang Offline</p>
                         <p class="mt-1 text-xs text-zinc-400 max-w-md mx-auto">Shinigami belum dapat diakses. Kamu bisa mencoba koleksi dari <strong class="text-red-400">Izanami Scans</strong>.</p>
                         <div class="mt-4 flex items-center justify-center gap-2 flex-wrap">
-                            <button type="button" wire:click="setProvider('izanami')" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white transition">
+                            <a href="/komik/wurmz/" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white transition shadow-lg shadow-red-900/40">
+                                Beralih ke Wurmz Scans
+                            </a>
+                            <a href="/komik/izanami/" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white transition">
                                 Beralih ke Izanami Scans
-                            </button>
+                            </a>
                         </div>
                     @else
                         <p class="text-sm font-bold text-zinc-300">Webtoon tidak ditemukan</p>
