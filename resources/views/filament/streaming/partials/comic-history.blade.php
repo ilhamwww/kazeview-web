@@ -5,7 +5,7 @@
     </div>
     <div class="flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none snap-x py-2 px-1">
         <template x-for="item in recentReads" :key="item.comicId">
-            <a :href="'/komik/' + item.comicId + '/read/' + item.chapterId" class="snap-start shrink-0 w-[260px] sm:w-[300px] flex gap-3 p-3 rounded-2xl bg-zinc-900/70 border border-white/10 hover:border-red-600/50 transition">
+            <a :href="'/komik/detail/' + item.comicId" class="snap-start shrink-0 w-[260px] sm:w-[300px] flex gap-3 p-3 rounded-2xl bg-zinc-900/70 border border-white/10 hover:border-red-600/50 transition">
                 <div class="relative shrink-0 w-16 aspect-[2/3] rounded-lg overflow-hidden bg-zinc-800">
                     <span class="absolute inset-0 flex items-center justify-center text-lg font-black text-zinc-600" x-text="(item.comicTitle || '?').charAt(0)"></span>
                     <template x-if="item.comicCover"><img :src="item.comicCover" alt="" class="relative w-full h-full object-cover" loading="lazy" x-on:error="$el.style.display='none'"></template>

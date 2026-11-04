@@ -12,7 +12,7 @@ class Komik extends Page
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationLabel = 'Webtoon';
     protected static ?string $title = 'Baca Webtoon & Manhwa Sub Indo - KZSTRM';
-    protected static ?string $slug = 'komik';
+    protected static ?string $slug = 'komik/{provider?}';
     protected static string $view = 'filament.streaming.pages.komik';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
@@ -31,7 +31,6 @@ class Komik extends Page
     public bool $hasMore = false;
 
     protected $queryString = [
-        'provider' => ['except' => ''],
         'format' => ['except' => 'all'],
         'tab' => ['except' => 'popular'],
         'search' => ['except' => '', 'as' => 'q'],
@@ -69,11 +68,11 @@ class Komik extends Page
         ['id' => 'manhua', 'label' => 'Manhua (China)', 'icon' => 'bolt'],
     ];
 
-    public function mount(): void
+    public function mount(?string $provider = null): void
     {
-        $requestedProvider = request()->query('provider', '');
-        $this->provider = is_string($requestedProvider) && in_array($requestedProvider, ['wurmz', 'izanami', 'shinigami'], true)
-            ? $requestedProvider : '';
+        $requestedProvider = $provider ?: request()->query('provider', '');
+        $this->provider = is_string($requestedProvider) && in_array(strtolower($requestedProvider), ['wurmz', 'izanami', 'shinigami'], true)
+            ? strtolower($requestedProvider) : '';
 
         $this->format = request()->query('format', 'all');
         $this->tab = request()->query('tab', 'popular');

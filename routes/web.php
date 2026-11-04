@@ -8,8 +8,6 @@ use App\Services\GoogleDriveService;
 use App\Services\AnoboyScraperService;
 use Spatie\GoogleCalendar\Event;
 
-// Route::get('/admin/login')->name('login');
-
 Route::get(
     '/media/photos/{photo}/thumbnail',
     PhotoThumbnailController::class,
@@ -21,6 +19,14 @@ Route::redirect('/drakor', '/korean-drama');
 Route::get('/streaming/{any}', function ($any) {
     return redirect('/' . $any);
 })->where('any', '.*');
+
+// Redirect legacy komik detail /komik/{id} to /komik/detail/{id} jika ada ID komik lama
+Route::get('/komik/{id}', function (string $id) {
+    if (!in_array(strtolower($id), ['shinigami', 'wurmz', 'izanami'])) {
+        return redirect('/komik/detail/' . $id);
+    }
+    return app()->call('App\Filament\Streaming\Pages\Komik@render');
+})->where('id', '.*__.*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
 
 Route::prefix('api/v1/public')
     ->middleware('throttle:120,1')

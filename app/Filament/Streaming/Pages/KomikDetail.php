@@ -13,7 +13,8 @@ class KomikDetail extends Page
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationLabel = 'Detail Webtoon';
     protected static ?string $title = 'Detail Webtoon - KZSTRM';
-    protected static ?string $slug = 'komik/{id}';
+    // Detail komik dipindah ke /komik/detail/{id} agar /komik/{provider} murni menjadi route katalog provider
+protected static ?string $slug = 'komik/detail/{id}';
     protected static string $view = 'filament.streaming.pages.komik-detail';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
@@ -26,12 +27,6 @@ class KomikDetail extends Page
 
     public function mount(string $id): void
     {
-        // Jika parameter adalah slug provider, redirect ke /komik?provider={id}
-        if (in_array(strtolower($id), ['shinigami', 'wurmz', 'izanami'], true)) {
-            $this->redirect('/komik?provider=' . strtolower($id));
-            return;
-        }
-
         $this->mangaId = $id;
 
         if (str_starts_with($id, 'kiryuu__')) {

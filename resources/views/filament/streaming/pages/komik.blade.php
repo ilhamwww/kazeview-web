@@ -116,7 +116,7 @@
                         {{-- Content --}}
                         <div class="relative h-full max-w-[1800px] mx-auto px-5 md:px-10 flex items-end pb-20 md:pb-20 pt-24">
                             <div class="flex items-end gap-5 md:gap-10 w-full">
-                                <a href="/komik/{{ $hero['id'] }}"
+                                <a href="/komik/detail/{{ $hero['id'] }}"
                                    class="hidden sm:block shrink-0 w-36 md:w-52 lg:w-60 aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/15 shadow-2xl shadow-black bg-zinc-900">
                                     <img src="{{ $hero['cover'] }}" alt="{{ $hero['title'] }}" class="w-full h-full object-cover object-top" loading="{{ $i === 0 ? 'eager' : 'lazy' }}" />
                                 </a>
@@ -152,7 +152,7 @@
                                     @endif
 
                                     <div class="mt-5 grid grid-cols-2 sm:flex sm:items-center gap-3">
-                                        <a href="/komik/{{ $hero['id'] }}"
+                                        <a href="/komik/detail/{{ $hero['id'] }}"
                                            class="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-xl whitespace-nowrap bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-900/40 transition active:scale-95">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
                                             Baca Sekarang
@@ -252,7 +252,7 @@
 
             <div class="flex gap-3 md:gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none snap-x">
                 <template x-for="item in recentReads" :key="item.comicId">
-                    <a :href="'/komik/' + item.comicId + '/read/' + item.chapterId"
+                    <a :href="'/komik/detail/' + item.comicId"
                        class="snap-start shrink-0 w-[260px] sm:w-[300px] flex gap-3 p-2.5 rounded-2xl bg-zinc-900/70 ring-1 ring-white/5 hover:ring-red-600/50 transition group">
                         <div class="relative shrink-0 w-16 aspect-[2/3] rounded-lg overflow-hidden bg-zinc-800">
                             <img x-show="item.comicCover" :src="item.comicCover" alt="" class="relative z-10 w-full h-full object-cover" loading="lazy" x-on:error="$el.style.display='none'" />
@@ -291,7 +291,7 @@
 
                 <div id="rail-top10" class="flex items-end gap-5 md:gap-7 pt-3 pb-3 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none snap-x scroll-smooth">
                     @foreach($topRanked as $rank => $item)
-                        <a href="/komik/{{ $item['id'] }}" class="snap-start shrink-0 flex items-end overflow-hidden py-1 group">
+                        <a href="/komik/detail/{{ $item['id'] }}" class="snap-start shrink-0 flex items-end overflow-hidden py-1 group">
                             <span class="text-[84px] md:text-[112px] font-black leading-[0.78] tracking-tighter text-[#050505] select-none -mr-1 md:-mr-2 z-0"
                                   style="-webkit-text-stroke: 3px rgba(255,255,255,0.55);" aria-hidden="true">{{ $rank + 1 }}</span>
                             <div class="relative z-10 w-28 md:w-36 aspect-[2/3] rounded-xl overflow-hidden ring-1 ring-white/10 bg-zinc-800 shadow-xl group-hover:ring-red-600/60 transition">
@@ -325,11 +325,11 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
                     @foreach(array_slice($latestHorizontal, 0, 8) as $item)
                         <div class="flex gap-3 p-2.5 rounded-2xl bg-zinc-900/50 ring-1 ring-white/5 hover:bg-zinc-900 transition">
-                            <a href="/komik/{{ $item['id'] }}" class="shrink-0 w-16 aspect-[2/3] rounded-lg overflow-hidden bg-zinc-800">
+                            <a href="/komik/detail/{{ $item['id'] }}" class="shrink-0 w-16 aspect-[2/3] rounded-lg overflow-hidden bg-zinc-800">
                                 <img src="{{ $item['cover'] }}" alt="{{ $item['title'] }}" class="w-full h-full object-cover" loading="lazy" />
                             </a>
                             <div class="flex-1 min-w-0 flex flex-col">
-                                <a href="/komik/{{ $item['id'] }}" title="{{ $item['title'] }}" class="text-sm font-bold text-white line-clamp-2 leading-snug hover:text-red-400 transition">{{ $item['title'] }}</a>
+                                <a href="/komik/detail/{{ $item['id'] }}" title="{{ $item['title'] }}" class="text-sm font-bold text-white line-clamp-2 leading-snug hover:text-red-400 transition">{{ $item['title'] }}</a>
                                 <p class="mt-0.5 text-[11px] text-zinc-500">{{ $item['format'] }}{{ !empty($item['genres'][0]) ? ' • ' . $item['genres'][0] : '' }}</p>
                                 <div class="mt-auto pt-2 flex items-center justify-between gap-2">
                                     @if(!empty($item['latest_chapter_id']))
@@ -396,7 +396,7 @@
                      wire:loading.class="opacity-40 pointer-events-none"
                      wire:target="nextPage, prevPage, setFormat, setTab, search, clearSearch">
                     @foreach($items as $comic)
-                        <a wire:key="comic-card-p{{ $page }}-{{ $comic['id'] }}" href="/komik/{{ $comic['id'] }}" class="group flex flex-col">
+                        <a wire:key="comic-card-p{{ $page }}-{{ $comic['id'] }}" href="/komik/detail/{{ $comic['id'] }}" class="group flex flex-col">
                             <div class="relative aspect-[2/3] w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-zinc-800 group-hover:ring-red-600/60 transition">
                                 <img src="{{ $comic['cover'] }}" alt="{{ $comic['title'] }}"
                                      class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
