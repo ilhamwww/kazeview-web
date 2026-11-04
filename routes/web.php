@@ -50,10 +50,12 @@ Route::post('/api/sync-native-comic', function (\Illuminate\Http\Request $reques
             'original_cover_url' => $comicData['original_cover_url'] ?? null,
             'description' => $comicData['description'] ?? null,
             'type' => $comicData['type'] ?? 'manhwa',
+            'format' => $comicData['format'] ?? ($comicData['type'] ?? 'manhwa'),
             'status' => $comicData['status'] ?? 'Ongoing',
             'rating' => $comicData['rating'] ?? 9.0,
             'genres' => $comicData['genres'] ?? [],
             'author' => $comicData['author'] ?? '',
+            'artist' => $comicData['artist'] ?? '',
             'latest_chapter' => $comicData['latest_chapter'] ?? '',
             'latest_chapter_at' => now(),
         ]

@@ -50,10 +50,26 @@
                     {{ $comic['title'] }}
                 </h1>
 
-                @if(!empty($comic['alternative_title']))
+                @if(!empty($comic['alternative_title']) || !empty($comic['alt_title']))
                     <p class="text-xs sm:text-sm text-zinc-400 mt-1.5 font-medium line-clamp-1">
-                        {{ $comic['alternative_title'] }}
+                        {{ $comic['alternative_title'] ?? $comic['alt_title'] }}
                     </p>
+                @endif
+
+                {{-- Author & Artist Badges --}}
+                @if(!empty($comic['author']) || !empty($comic['artist']))
+                    <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                        @if(!empty($comic['author']))
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300">
+                                <span class="text-zinc-500">Author:</span> <strong class="text-white">{{ $comic['author'] }}</strong>
+                            </span>
+                        @endif
+                        @if(!empty($comic['artist']))
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300">
+                                <span class="text-zinc-500">Artist:</span> <strong class="text-white">{{ $comic['artist'] }}</strong>
+                            </span>
+                        @endif
+                    </div>
                 @endif
 
                 {{-- Authors & Genres --}}

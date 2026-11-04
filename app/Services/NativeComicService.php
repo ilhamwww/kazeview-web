@@ -19,9 +19,11 @@ class NativeComicService
             'title' => $c->title,
             'cover' => $c->cover_path ?: $c->original_cover_url,
             'type' => $c->type,
-            'format' => $c->type,
+            'format' => $c->format ?: $c->type,
             'status' => $c->status ?: 'Ongoing',
             'description' => $c->description ?: '',
+            'author' => $c->author ?: '',
+            'artist' => $c->artist ?: '',
             'latest_chapter' => $c->latest_chapter ?: '',
             'latest_chapter_time' => $c->latest_chapter_at ? $c->latest_chapter_at->diffForHumans() : '',
             'rating' => $c->rating,
@@ -116,6 +118,7 @@ class NativeComicService
             'rating' => $comic->rating,
             'genres' => $comic->genres ?: [],
             'author' => $comic->author ?: '',
+            'artist' => $comic->artist ?: '',
             'chapters' => $chapters,
         ];
     }
