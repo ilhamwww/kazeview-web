@@ -355,52 +355,23 @@
             </section>
         @endif
 
-        {{-- ================= LEADERBOARD (login only) ================= --}}
-        <section class="rounded-3xl bg-gradient-to-b from-amber-500/[0.06] to-zinc-900/50 ring-1 ring-amber-500/20 p-5 md:p-6">
-            <div class="flex items-center justify-between gap-2">
+        {{-- Banner Shortcut ke Halaman Leaderboard --}}
+        <section class="rounded-3xl bg-gradient-to-r from-amber-500/10 via-zinc-900/60 to-zinc-900/40 ring-1 ring-amber-500/20 p-5 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.504-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.004 0V9A3.75 3.75 0 009.75 5.25H8.25m5.25 0h1.5A3.75 3.75 0 0118.75 9v5.25m-9 0h6" />
+                    </svg>
+                </div>
                 <div>
-                    <h2 class="text-base md:text-lg font-black tracking-tight">Penonton paling aktif</h2>
-                    <p class="text-xs text-zinc-400 mt-0.5">Peringkat komunitas penonton KZSTRM</p>
+                    <h2 class="text-base md:text-lg font-black text-white tracking-tight">Leaderboard Komunitas Penonton</h2>
+                    <p class="text-xs text-zinc-400 mt-0.5">Lihat peringkat penonton paling aktif dan podium juara di KZSTRM.</p>
                 </div>
-                <a href="/leaderboard" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-bold transition">
-                    <span>Lihat Halaman Penuh</span>
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-                </a>
             </div>
-
-            @if(is_null($leaderboard ?? null))
-                <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-zinc-950/60 ring-1 ring-white/[0.06] p-4">
-                    <p class="text-sm text-zinc-400">Masuk dulu untuk melihat peringkat penonton dan posisi kamu.</p>
-                    <a href="{{ route('filament.streaming.auth.login') }}" class="shrink-0 inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-bold transition">Masuk</a>
-                </div>
-            @elseif(empty($leaderboard))
-                <p class="mt-4 text-sm text-zinc-500">Belum ada riwayat tontonan.</p>
-            @else
-                <ol class="mt-4 space-y-2">
-                    @foreach(array_slice($leaderboard, 0, 5) as $u)
-                        @php $me = ($meId ?? null) === $u['user_id']; @endphp
-                        <li class="flex items-center gap-3 rounded-2xl p-2.5 {{ $me ? 'bg-red-600/10 ring-1 ring-red-500/40' : 'bg-zinc-950/50 ring-1 ring-white/[0.04]' }}">
-                            <span class="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center text-xs font-black tabular-nums
-                                {{ $u['rank'] === 1 ? 'bg-amber-400 text-black' : ($u['rank'] === 2 ? 'bg-zinc-300 text-black' : ($u['rank'] === 3 ? 'bg-amber-700 text-white' : 'bg-zinc-900 text-zinc-400 ring-1 ring-zinc-800')) }}">{{ $u['rank'] }}</span>
-                            <span class="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center text-[11px] font-black">{{ $u['initial'] }}</span>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-sm font-bold truncate">{{ $u['name'] }} @if($me)<span class="ml-1 text-[9px] font-black uppercase tracking-wider text-red-300">Kamu</span>@endif</p>
-                                <p class="text-[11px] text-zinc-400 truncate">{{ $fmt($u['titles']) }} judul · {{ $u['fav'] }}</p>
-                                <p class="text-[10px] text-zinc-500 truncate">Aktif {{ $u['last_active'] }}</p>
-                            </div>
-                            <div class="text-right shrink-0">
-                                <div class="text-base font-black tabular-nums text-emerald-400">{{ $fmt($u['episodes']) }}</div>
-                                <div class="text-[9px] text-zinc-500">episode</div>
-                            </div>
-                        </li>
-                    @endforeach
-                </ol>
-                <div class="mt-3 text-center">
-                    <a href="/leaderboard" class="text-xs font-bold text-amber-400 hover:text-amber-300 transition">
-                        Buka Leaderboard Penuh (Top 20 & Podium) →
-                    </a>
-                </div>
-            @endif
+            <a href="/leaderboard" class="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition shadow-sm active:scale-95">
+                <span>Buka Leaderboard</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </a>
         </section>
 
         <p class="text-center text-[11px] text-zinc-500 leading-relaxed max-w-2xl mx-auto">

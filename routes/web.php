@@ -541,14 +541,10 @@ Route::get('/api/streaming/subtitle', function (\Illuminate\Http\Request $reques
 // Public Streaming Traffic Stats (100% PUBLIC)
 Route::get('/traffic', function () {
     $stats = \App\Services\TrafficStatsService::getPublicStats();
-    // Leaderboard memuat nama akun, jadi hanya untuk pengguna yang sudah login
-    $leaderboard = auth()->check() ? \App\Services\TrafficStatsService::getLeaderboard() : null;
     return response(view('filament.streaming.layout', [
         'title' => 'Statistik Traffic Streaming - KZSTRM',
         'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.traffic-stats', [
             'stats' => $stats,
-            'leaderboard' => $leaderboard,
-            'meId' => auth()->id(),
         ])->render())
     ])->render());
 })->name('streaming.traffic.public');
