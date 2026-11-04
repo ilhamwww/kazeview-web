@@ -410,7 +410,7 @@
                                 @endif
                                 <div class="absolute bottom-1.5 inset-x-1.5 flex items-center justify-between gap-1">
                                     <span class="px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-black text-white">
-                                        {{ !empty($comic['latest_chapter']) ? 'Ch. ' . $comic['latest_chapter'] : $comic['status'] }}
+                                        {{ !empty($comic['latest_chapter']) ? (str_starts_with(strtolower(trim($comic['latest_chapter'])), 'ch') ? $comic['latest_chapter'] : 'Ch. ' . $comic['latest_chapter']) : $comic['status'] }}
                                     </span>
                                     @if(!empty($comic['views']))
                                         <span class="hidden sm:inline px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-semibold text-zinc-200">{{ $kzNum($comic['views']) }}</span>

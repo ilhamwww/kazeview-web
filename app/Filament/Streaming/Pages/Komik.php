@@ -203,13 +203,14 @@ class Komik extends Page
 
         // Main Grid items
         $fmt = $this->format !== 'all' ? $this->format : null;
+        $gridLimit = $this->provider === 'wurmz' ? 48 : 24;
 
         if (!empty($this->search)) {
             $result = $service->search($this->search, $this->page, 24);
         } elseif ($this->tab === 'latest') {
-            $result = $service->getLatest($this->page, 24, $fmt);
+            $result = $service->getLatest($this->page, $gridLimit, $fmt);
         } else {
-            $result = $service->getPopular($this->page, 24, $fmt);
+            $result = $service->getPopular($this->page, $gridLimit, $fmt);
         }
 
         $this->items = $result['data'] ?? [];

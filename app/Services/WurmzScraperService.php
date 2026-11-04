@@ -76,7 +76,8 @@ class WurmzScraperService
             $latestChapter = '';
             if (preg_match('/<span class="ch-num">(.*?)<\/span>/s', $cardHtml, $chMatch)) {
                 $rawCh = trim(preg_replace('/<!--.*?-->/', '', strip_tags($chMatch[1])));
-                $latestChapter = $rawCh;
+                // Buang prefiks 'Ch.' atau 'Chapter' jika ada agar bersih
+                $latestChapter = trim(preg_replace('/^(ch\.?|chapter)\s*/i', '', $rawCh));
             }
 
             // Chapter Time
@@ -106,40 +107,54 @@ class WurmzScraperService
     /**
      * Get Popular Comics
      */
-    public function getPopular(int $page = 1, int $limit = 24, ?string $format = null): array
+    public function getPopular(int $page = 1, int $limit = 60, ?string $format = null): array
     {
-        $cacheKey = "wurmz_popular_v2_p{$page}_f" . ($format ?? 'all');
+        $cacheKey = "wurmz_popular_v3_p{$page}_l{$limit}_f" . ($format ?? 'all');
         return Cache::remember($cacheKey, 1800, function () use ($page, $limit, $format) {
-            $params = [
-                'sort' => 'popular_all',
-            ];
-            if ($page > 1) {
-                $params['page'] = $page;
-            }
-            if ($format && in_array(strtolower($format), ['manhwa', 'manga', 'manhua'])) {
-                $params['type'] = strtolower($format);
+            $items = [];
+            $totalPage = 388;
+
+            // Fetch 2 halaman Wurmz (masing-masing ~30 item) per 1 halaman KZSTRM agar grid padat (50-60 item)
+            $startPage = ($page - 1) * 2 + 1;
+            for ($p = $startPage; $p <= $startPage + 1; $p++) {
+                $params = [
+                    'sort' => 'popular_all',
+                ];
+                if ($p > 1) {
+                    $params['page'] = $p;
+                }
+                if ($format && in_array(strtolower($format), ['manhwa', 'manga', 'manhua'])) {
+                    $params['type'] = strtolower($format);
+                }
+
+                $url = $this->baseUrl . '/semua-komik?' . http_build_query($params);
+                $html = $this->fetchHtml($url);
+                if ($html) {
+                    $parsed = $this->parseCards($html);
+                    $items = array_merge($items, $parsed);
+
+                    if (preg_match('/<span class="text-silver font-semibold">\d+<\/span>\s*\/\s*<!-- -->(\d+)/', $html, $tpMatch)) {
+                        $totalPage = (int) $tpMatch[1];
+                    }
+                }
             }
 
-            $url = $this->baseUrl . '/semua-komik?' . http_build_query($params);
-            $html = $this->fetchHtml($url);
-            if (!$html) {
-                return ['data' => [], 'total_page' => 1, 'has_next' => false];
+            // Deduplicate berdasarkan ID
+            $unique = [];
+            $filtered = [];
+            foreach ($items as $it) {
+                if (!isset($unique[$it['id']])) {
+                    $unique[$it['id']] = true;
+                    $filtered[] = $it;
+                }
             }
 
-            $items = $this->parseCards($html);
-
-            // Total page check
-            $totalPage = 1;
-            if (preg_match('/<span class="text-silver font-semibold">\d+<\/span>\s*\/\s*<!-- -->(\d+)/', $html, $tpMatch)) {
-                $totalPage = (int) $tpMatch[1];
-            } elseif (preg_match('/\/<!-- -->(\d+)/', $html, $tpMatch2)) {
-                $totalPage = (int) $tpMatch2[1];
-            }
+            $adjustedTotalPage = max(1, (int) ceil($totalPage / 2));
 
             return [
-                'data' => array_slice($items, 0, $limit),
-                'total_page' => $totalPage > 1 ? $totalPage : 50,
-                'has_next' => $page < $totalPage,
+                'data' => array_slice($filtered, 0, $limit),
+                'total_page' => $adjustedTotalPage,
+                'has_next' => $page < $adjustedTotalPage,
             ];
         });
     }
@@ -147,40 +162,53 @@ class WurmzScraperService
     /**
      * Get Latest Updated Comics
      */
-    public function getLatest(int $page = 1, int $limit = 24, ?string $format = null): array
+    public function getLatest(int $page = 1, int $limit = 60, ?string $format = null): array
     {
-        $cacheKey = "wurmz_latest_v2_p{$page}_f" . ($format ?? 'all');
+        $cacheKey = "wurmz_latest_v3_p{$page}_l{$limit}_f" . ($format ?? 'all');
         return Cache::remember($cacheKey, 600, function () use ($page, $limit, $format) {
-            $params = [
-                'sort' => 'update',
-            ];
-            if ($page > 1) {
-                $params['page'] = $page;
-            }
-            if ($format && in_array(strtolower($format), ['manhwa', 'manga', 'manhua'])) {
-                $params['type'] = strtolower($format);
+            $items = [];
+            $totalPage = 387;
+
+            // Fetch 2 halaman Wurmz per 1 halaman KZSTRM
+            $startPage = ($page - 1) * 2 + 1;
+            for ($p = $startPage; $p <= $startPage + 1; $p++) {
+                $params = [
+                    'sort' => 'update',
+                ];
+                if ($p > 1) {
+                    $params['page'] = $p;
+                }
+                if ($format && in_array(strtolower($format), ['manhwa', 'manga', 'manhua'])) {
+                    $params['type'] = strtolower($format);
+                }
+
+                $url = $this->baseUrl . '/semua-komik?' . http_build_query($params);
+                $html = $this->fetchHtml($url);
+                if ($html) {
+                    $parsed = $this->parseCards($html);
+                    $items = array_merge($items, $parsed);
+
+                    if (preg_match('/<span class="text-silver font-semibold">\d+<\/span>\s*\/\s*<!-- -->(\d+)/', $html, $tpMatch)) {
+                        $totalPage = (int) $tpMatch[1];
+                    }
+                }
             }
 
-            $url = $this->baseUrl . '/semua-komik?' . http_build_query($params);
-            $html = $this->fetchHtml($url);
-            if (!$html) {
-                return ['data' => [], 'total_page' => 1, 'has_next' => false];
+            $unique = [];
+            $filtered = [];
+            foreach ($items as $it) {
+                if (!isset($unique[$it['id']])) {
+                    $unique[$it['id']] = true;
+                    $filtered[] = $it;
+                }
             }
 
-            $items = $this->parseCards($html);
-
-            // Total page check
-            $totalPage = 1;
-            if (preg_match('/<span class="text-silver font-semibold">\d+<\/span>\s*\/\s*<!-- -->(\d+)/', $html, $tpMatch)) {
-                $totalPage = (int) $tpMatch[1];
-            } elseif (preg_match('/\/<!-- -->(\d+)/', $html, $tpMatch2)) {
-                $totalPage = (int) $tpMatch2[1];
-            }
+            $adjustedTotalPage = max(1, (int) ceil($totalPage / 2));
 
             return [
-                'data' => array_slice($items, 0, $limit),
-                'total_page' => $totalPage > 1 ? $totalPage : 387,
-                'has_next' => $page < $totalPage,
+                'data' => array_slice($filtered, 0, $limit),
+                'total_page' => $adjustedTotalPage,
+                'has_next' => $page < $adjustedTotalPage,
             ];
         });
     }
