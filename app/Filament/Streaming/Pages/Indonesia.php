@@ -46,9 +46,9 @@ class Indonesia extends Page
     ];
 
     public array $providers = [
-        ['id' => 'all', 'label' => 'Semua Provider (Combo)', 'badge' => 'Combo'],
-        ['id' => 'moviebox', 'label' => 'MovieBox (1080p Ultra HD)', 'badge' => 'HD HLS'],
-        ['id' => 'rebahin', 'label' => 'Rebahin (Arsip Lengkap)', 'badge' => 'Mirror'],
+        ['id' => 'all', 'label' => 'Semua Server', 'badge' => 'Combo'],
+        ['id' => 'moviebox', 'label' => 'Server 1 (1080p Ultra HD)', 'badge' => 'Server 1'],
+        ['id' => 'rebahin', 'label' => 'Server 2 (Arsip Lengkap)', 'badge' => 'Server 2'],
     ];
 
     public function mount(): void
@@ -129,6 +129,10 @@ class Indonesia extends Page
         if ($this->provider === 'all' || $this->provider === 'rebahin') {
             $rbRes = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
             $rbItems = $rbRes['data'] ?? [];
+            foreach ($rbItems as &$it) {
+                $it['provider_badge'] = 'Server 2';
+            }
+            unset($it);
         }
 
         // Gabungkan items berdasarkan pilihan provider
@@ -162,6 +166,10 @@ class Indonesia extends Page
             // Latest Movies (MovieBox movies + Rebahin movies, deduplicated by title)
             $mbMovies = array_filter($mbItems, fn($it) => ($it['type'] ?? '') === 'movie');
             $rbMovies = RebahinService::getIndonesiaCatalog('movie', 1)['data'] ?? [];
+            foreach ($rbMovies as &$it) {
+                $it['provider_badge'] = 'Server 2';
+            }
+            unset($it);
             $seenMovieTitles = [];
             $allMovies = [];
             foreach ($mbMovies as $it) {
@@ -181,6 +189,10 @@ class Indonesia extends Page
             // Latest Series (MovieBox series + Rebahin series, deduplicated by title)
             $mbSeries = array_filter($mbItems, fn($it) => ($it['type'] ?? '') === 'series');
             $rbSeries = RebahinService::getIndonesiaCatalog('series', 1)['data'] ?? [];
+            foreach ($rbSeries as &$it) {
+                $it['provider_badge'] = 'Server 2';
+            }
+            unset($it);
             $seenSeriesTitles = [];
             $allSeries = [];
             foreach ($mbSeries as $it) {

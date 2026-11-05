@@ -1023,6 +1023,11 @@
                             });
                         };
                         this.art.on('setting', stampSettingNames);
+                        this.art.on('fullscreenWeb', (state) => {
+                            document.body.classList.toggle('kz-fullscreen-web-active', state);
+                            document.documentElement.classList.toggle('kz-fullscreen-web-active', state);
+                            window.dispatchEvent(new CustomEvent('artplayer:fullscreenWeb', { detail: state }));
+                        });
 
                         // Auto-resume ke posisi menit terakhir ditonton
                         if (this.savedProgressSeconds > 5) {

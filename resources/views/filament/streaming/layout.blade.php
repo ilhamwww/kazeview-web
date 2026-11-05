@@ -148,6 +148,26 @@
             isolation: isolate !important;
         }
 
+        /* Saat Web Fullscreen aktif: naikkan z-index player dan sembunyikan seluruh navbar */
+        .art-video-player.art-fullscreen-web {
+            z-index: 99999 !important;
+            isolation: auto !important;
+        }
+
+        body:has(.art-fullscreen-web) header,
+        body:has([class*="fullscreen-web"]) header,
+        body.kz-fullscreen-web-active header,
+        body.art-fullscreen-web header,
+        html:has(.art-fullscreen-web) header,
+        html.kz-fullscreen-web-active header,
+        html.art-fullscreen-web header {
+            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+            transform: translateY(-200%) !important;
+        }
+
         /* Saat seeking / geser bar waktu, pastikan bar kontrol (.art-bottom) tetap terlihat jelas */
         .art-video-player.art-control-show .art-bottom,
         .art-video-player.art-hover .art-bottom {
@@ -364,9 +384,9 @@
     </header>
 
     {{-- ================= DESKTOP TOPBAR (lg+) ================= --}}
-    <header class="hidden lg:flex fixed top-4 inset-x-0 z-50 justify-center px-4">
+    <header class="hidden lg:flex fixed top-4 inset-x-0 z-50 justify-center px-4 md:px-8">
         <div
-            class="w-full max-w-7xl h-14 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-between px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)]">
+            class="w-full max-w-[1740px] 2xl:max-w-[1840px] h-14 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-between px-6 xl:px-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)]">
             <!-- Logo -->
             <a href="{{ \App\Filament\Streaming\Pages\StreamingHome::getUrl(panel: 'streaming') }}" class="flex items-center gap-2.5">
                 <img src="/icons/kaze-app-192.png" alt="Logo" class="w-8 h-8 rounded-lg object-contain shadow-sm">
@@ -1434,6 +1454,22 @@
                     localStorage.setItem('kz_comic_v2_reset', '1');
                 }
             } catch(e) {}
+        })();
+
+        // Auto-detect Web Fullscreen on any player to hide navbar cleanly
+        (function() {
+            function syncFsWeb() {
+                const isFs = !!document.querySelector('.art-fullscreen-web, [class*="fullscreen-web"]');
+                document.body.classList.toggle('kz-fullscreen-web-active', isFs);
+                document.documentElement.classList.toggle('kz-fullscreen-web-active', isFs);
+            }
+            const observer = new MutationObserver(() => syncFsWeb());
+            observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+            window.addEventListener('resize', syncFsWeb);
+            window.addEventListener('artplayer:fullscreenWeb', (e) => {
+                document.body.classList.toggle('kz-fullscreen-web-active', !!e.detail);
+                document.documentElement.classList.toggle('kz-fullscreen-web-active', !!e.detail);
+            });
         })();
     </script>
 </body>

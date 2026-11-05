@@ -948,6 +948,12 @@
                         // Hubungkan controller auto-hide dan tap manual hide/show
                         self.setupControlsAutoHideAndTap(_art);
 
+                        _art.on('fullscreenWeb', (state) => {
+                            document.body.classList.toggle('kz-fullscreen-web-active', state);
+                            document.documentElement.classList.toggle('kz-fullscreen-web-active', state);
+                            window.dispatchEvent(new CustomEvent('artplayer:fullscreenWeb', { detail: state }));
+                        });
+
                         _art.on('play', () => {
                             if (self.useNativeFs() && window.KzFs && !KzFs.current()) {
                                 self.enterNativeFs();

@@ -187,7 +187,7 @@ class NartoMovieBoxService
                             'banner' => $poster,
                             'isEmbed' => false,
                             'source' => 'moviebox',
-                            'provider_badge' => 'MovieBox HD',
+                            'provider_badge' => 'Server 1',
                             'genres' => $tags,
                         ];
                     }
@@ -285,11 +285,11 @@ class NartoMovieBoxService
                     }
                 }
 
-                // Servers setup: Server 1 = MovieBox HD HLS, Server 2 = Rebahin Alternatif (jika ada)
+                // Servers setup: Server 1 = HD HLS, Server 2 = Mirror / Cadangan
                 $servers = [
                     [
                         'id' => 'server_moviebox_hd',
-                        'name' => 'Server 1: MovieBox (1080p Ultra HD)',
+                        'name' => 'Server 1 (1080p Ultra HD)',
                         'type' => 'hls',
                         'embed_url' => '',
                         'video_url' => $playUrl,
@@ -308,7 +308,7 @@ class NartoMovieBoxService
                                 foreach ($rbDetail['servers'] as $idx => $rbs) {
                                     $servers[] = [
                                         'id' => 'server_rebahin_' . ($idx + 1),
-                                        'name' => 'Server ' . (count($servers) + 1) . ': Rebahin Mirror',
+                                        'name' => 'Server ' . (count($servers) + 1) . ' (Arsip)',
                                         'type' => 'embed',
                                         'embed_url' => $rbs['embed_url'] ?? '',
                                     ];

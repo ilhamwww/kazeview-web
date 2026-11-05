@@ -268,7 +268,7 @@
                                     <div class="absolute inset-x-0 top-0 flex justify-between p-2">
                                         <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">Film</span>
                                         @if(!empty($movie['provider_badge']))
-                                            <span class="rounded bg-emerald-600/90 text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $movie['provider_badge'] }}</span>
+                                            <span class="rounded {{ str_contains(strtolower($movie['provider_badge']), 'server 2') ? 'bg-blue-600/90' : 'bg-emerald-600/90' }} text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $movie['provider_badge'] }}</span>
                                         @elseif(!empty($movie['quality']))
                                             <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $movie['quality'] }}</span>
                                         @endif
@@ -308,7 +308,7 @@
                                     <div class="absolute inset-x-0 top-0 flex justify-between p-2">
                                         <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">Series</span>
                                         @if(!empty($sItem['provider_badge']))
-                                            <span class="rounded bg-emerald-600/90 text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $sItem['provider_badge'] }}</span>
+                                            <span class="rounded {{ str_contains(strtolower($sItem['provider_badge']), 'server 2') ? 'bg-blue-600/90' : 'bg-emerald-600/90' }} text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $sItem['provider_badge'] }}</span>
                                         @elseif(!empty($sItem['quality']))
                                             <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $sItem['quality'] }}</span>
                                         @endif
@@ -383,7 +383,7 @@
                                     <div class="absolute inset-x-0 top-0 flex justify-between p-2">
                                         <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">{{ ($item['type'] ?? '') === 'series' ? 'Series' : 'Film' }}</span>
                                         @if(!empty($item['provider_badge']))
-                                            <span class="rounded bg-emerald-600/90 text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $item['provider_badge'] }}</span>
+                                            <span class="rounded {{ str_contains(strtolower($item['provider_badge']), 'server 2') ? 'bg-blue-600/90' : 'bg-emerald-600/90' }} text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $item['provider_badge'] }}</span>
                                         @elseif(!empty($item['quality']))
                                             <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $item['quality'] }}</span>
                                         @endif
