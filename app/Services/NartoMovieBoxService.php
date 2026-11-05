@@ -399,8 +399,33 @@ class NartoMovieBoxService
                     }
                 }
 
-                if (empty($poster) && !empty($episodesRaw[0]['thumb_url'])) {
-                    $poster = $episodesRaw[0]['thumb_url'];
+                if ($poster && str_starts_with($poster, '/')) {
+                    $poster = self::$baseUrl . $poster;
+                }
+
+                $firstThumb = !empty($episodesRaw[0]['thumb_url']) ? $episodesRaw[0]['thumb_url'] : '';
+                if (empty($poster) && $firstThumb) {
+                    $poster = $firstThumb;
+                }
+
+                // Backdrop: prioritaskan still frame 16:9 episode pertama yang jernih, fallback ke poster
+                $backdrop = $firstThumb ?: $poster;
+
+                // Parse tags/genres dari HTML
+                preg_match_all('/<a[^>]+class=[\x27\x22][^\x27\x22]*tag[^\x27\x22]*[\x27\x22][^>]*>(.*?)<\/a>/i', $html, $tagMatches);
+                $tags = [];
+                if (!empty($tagMatches[1])) {
+                    foreach ($tagMatches[1] as $t) {
+                        $cleanTag = trim(str_replace('#', '', strip_tags($t)));
+                        if ($cleanTag && !in_array($cleanTag, $tags)) {
+                            $tags[] = $cleanTag;
+                        }
+                    }
+                }
+                if (empty($tags)) {
+                    $tags = ['Series Lokal', 'Drama'];
+                } elseif (!in_array('Series Lokal', $tags)) {
+                    array_unshift($tags, 'Series Lokal');
                 }
 
                 $episodesFormatted = [];
@@ -428,7 +453,7 @@ class NartoMovieBoxService
                         'id' => 'mb-' . $rawSlug . '-ep-' . $epNum,
                         'episodeNumber' => $epNum,
                         'name' => 'Episode ' . $epNum,
-                        'stillPath' => $ep['thumb_url'] ?? $poster,
+                        'stillPath' => $ep['thumb_url'] ?? $backdrop,
                         'overview' => "Nonton {$cleanTitle} Episode {$epNum} Subtitle Indonesia.",
                         'stream_url' => $epPlayUrl,
                         'subtitles' => $subtitles,
@@ -442,13 +467,27 @@ class NartoMovieBoxService
                     'raw_slug' => $rawSlug,
                     'overview' => $synopsis,
                     'poster' => $poster,
-                    'backdrop' => $poster,
+                    'posterPath' => $poster,
+                    'backdrop' => $backdrop,
+                    'backdropPath' => $backdrop,
                     'thumbnail' => $poster,
                     'voteAverage' => 8.8,
                     'year' => $year,
-                    'genres' => ['Series Indonesia', 'MovieBox HD'],
+                    'firstAirDate' => $year ? ($year . '-01-01') : null,
+                    'numberOfSeasons' => 1,
+                    'numberOfEpisodes' => count($episodesFormatted),
+                    'country' => 'Indonesia',
+                    'status' => 'Returning Series',
+                    'genres' => array_map(fn($t) => ['name' => $t], $tags),
                     'isEmbed' => false,
                     'source' => 'moviebox',
+                    'seasons' => [
+                        [
+                            'seasonNumber' => 1,
+                            'name' => 'Season 1',
+                            'episodeCount' => count($episodesFormatted),
+                        ]
+                    ],
                     'defaultSeason' => [
                         'seasonNumber' => 1,
                         'name' => 'Season 1',

@@ -7,17 +7,42 @@
         return "https://image.tmdb.org/t/p/{$size}" . $path;
     };
 
-    $backdrop = $tmdbImg($series['backdropPath'] ?? null, 'w1280') ?: $tmdbImg($series['posterPath'] ?? null, 'w780');
-    $poster = $tmdbImg($series['posterPath'] ?? null, 'w500');
+    $backdrop = $tmdbImg($series['backdropPath'] ?? null, 'w1280')
+        ?: $tmdbImg($series['posterPath'] ?? null, 'w780')
+        ?: ($series['backdrop'] ?? ($series['poster'] ?? ($series['thumbnail'] ?? null)));
+
+    $poster = $tmdbImg($series['posterPath'] ?? null, 'w500')
+        ?: ($series['poster'] ?? ($series['thumbnail'] ?? null));
+
     $logo = $tmdbImg($series['logoPath'] ?? null, 'w500');
     $rating = (float) ($series['voteAverage'] ?? 0);
-    $year = !empty($series['firstAirDate']) ? \Carbon\Carbon::parse($series['firstAirDate'])->format('Y') : null;
-    $genreNames = array_column($series['genres'] ?? [], 'name');
+    $year = !empty($series['firstAirDate'])
+        ? \Carbon\Carbon::parse($series['firstAirDate'])->format('Y')
+        : ($series['year'] ?? null);
+
+    $genreNames = [];
+    if (!empty($series['genres'])) {
+        foreach ($series['genres'] as $g) {
+            if (is_array($g) && !empty($g['name'])) $genreNames[] = $g['name'];
+            elseif (is_string($g)) $genreNames[] = $g;
+        }
+    }
+
     $seasons = $series['seasons'] ?? [];
     $episodes = $currentSeasonData['episodes'] ?? [];
+    if (empty($seasons) && !empty($episodes)) {
+        $seasons = [
+            [
+                'seasonNumber' => $selectedSeasonNumber ?? 1,
+                'name' => 'Season ' . ($selectedSeasonNumber ?? 1),
+                'episodeCount' => count($episodes)
+            ]
+        ];
+    }
+
     $cast = array_slice($series['cast'] ?? [], 0, 14);
     $networks = $series['networks'] ?? [];
-    $status = $series['status'] ?? null;
+    $status = $series['status'] ?? (str_starts_with($seriesSlug ?? '', 'mb-') ? 'Returning Series' : null);
     $statusLabel = ['Ended' => 'Tamat', 'Returning Series' => 'Berlanjut', 'Canceled' => 'Dibatalkan', 'In Production' => 'Produksi'][$status] ?? $status;
 
     $firstEpisode = $episodes[0] ?? null;
