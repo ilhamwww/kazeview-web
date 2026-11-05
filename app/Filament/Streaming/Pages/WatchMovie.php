@@ -60,9 +60,9 @@ class WatchMovie extends Page
 
         // Setup servers (HLS vs Embed)
         $servers = [];
-        $isEmbedMovie = !empty($this->media['isEmbed']);
-
-        if ($isEmbedMovie) {
+        if (!empty($this->media['source']) && $this->media['source'] === 'moviebox' && !empty($this->media['servers'])) {
+            $servers = $this->media['servers'];
+        } elseif (!empty($this->media['isEmbed'])) {
             // Server 1 (HD) uses native Artplayer via Stream Relay (Rebahin / Indonesia)
             $servers[] = [
                 'id' => 'server1',

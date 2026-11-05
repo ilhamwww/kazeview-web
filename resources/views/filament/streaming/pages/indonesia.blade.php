@@ -6,6 +6,8 @@
     'hasMorePages' => $hasMorePages,
     'categories' => $categories,
     'category' => $category,
+    'providers' => $providers,
+    'provider' => $provider,
     'search' => $search,
     'activeCategoryLabel' => collect($categories)->firstWhere('id', $category)['label'] ?? ucfirst($category),
     'latestMovies' => $latestMovies,

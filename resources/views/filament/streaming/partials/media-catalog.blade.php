@@ -189,6 +189,28 @@
                     @endforeach
                 </div>
             </div>
+
+            {{-- Provider Selector Pills (Khusus Halaman Combo Indonesia) --}}
+            @if(!empty($providers))
+                <div class="flex items-center gap-2 overflow-x-auto kz-noscroll py-2.5">
+                    <span class="text-xs font-bold text-zinc-400 mr-1 shrink-0 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
+                        Sumber Server:
+                    </span>
+                    @foreach($providers as $pv)
+                        @php $isPvActive = ($provider ?? 'all') === $pv['id']; @endphp
+                        <button type="button"
+                                wire:click="setProvider('{{ $pv['id'] }}')"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition shrink-0 border flex items-center gap-1.5
+                                {{ $isPvActive
+                                    ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/50 shadow-sm'
+                                    : 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border-zinc-800' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ $isPvActive ? 'bg-emerald-400' : 'bg-zinc-600' }}"></span>
+                            {{ $pv['label'] }}
+                        </button>
+                    @endforeach
+                </div>
+            @endif
         </section>
     @endif
 
@@ -245,7 +267,9 @@
                                     <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/60 to-transparent"></div>
                                     <div class="absolute inset-x-0 top-0 flex justify-between p-2">
                                         <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">Film</span>
-                                        @if(!empty($movie['quality']))
+                                        @if(!empty($movie['provider_badge']))
+                                            <span class="rounded bg-emerald-600/90 text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $movie['provider_badge'] }}</span>
+                                        @elseif(!empty($movie['quality']))
                                             <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $movie['quality'] }}</span>
                                         @endif
                                     </div>
@@ -283,7 +307,9 @@
                                     <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/60 to-transparent"></div>
                                     <div class="absolute inset-x-0 top-0 flex justify-between p-2">
                                         <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">Series</span>
-                                        @if(!empty($sItem['quality']))
+                                        @if(!empty($sItem['provider_badge']))
+                                            <span class="rounded bg-emerald-600/90 text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $sItem['provider_badge'] }}</span>
+                                        @elseif(!empty($sItem['quality']))
                                             <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $sItem['quality'] }}</span>
                                         @endif
                                     </div>
@@ -356,7 +382,9 @@
                                     <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/60 to-transparent"></div>
                                     <div class="absolute inset-x-0 top-0 flex justify-between p-2">
                                         <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">{{ ($item['type'] ?? '') === 'series' ? 'Series' : 'Film' }}</span>
-                                        @if(!empty($item['quality']))
+                                        @if(!empty($item['provider_badge']))
+                                            <span class="rounded bg-emerald-600/90 text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $item['provider_badge'] }}</span>
+                                        @elseif(!empty($item['quality']))
                                             <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $item['quality'] }}</span>
                                         @endif
                                     </div>
@@ -437,7 +465,9 @@
                             @endif
                             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/0 to-black/0 opacity-70 group-hover:opacity-100 transition"></div>
 
-                            @if(!empty($item['quality']))
+                            @if(!empty($item['provider_badge']))
+                                <span class="absolute top-2 left-2 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-emerald-600/90 text-white border border-emerald-400/30">{{ $item['provider_badge'] }}</span>
+                            @elseif(!empty($item['quality']))
                                 <span class="absolute top-2 left-2 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-black/60 backdrop-blur text-white border border-white/10">{{ $item['quality'] }}</span>
                             @endif
                             @if($hasRating($item['rating'] ?? null))

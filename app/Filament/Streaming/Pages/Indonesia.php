@@ -4,12 +4,13 @@ namespace App\Filament\Streaming\Pages;
 
 use Filament\Pages\Page;
 use App\Services\RebahinService;
+use App\Services\NartoMovieBoxService;
 
 class Indonesia extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-globe-asia-australia';
     protected static ?string $navigationLabel = 'Indonesia';
-    protected static ?string $title = 'Film & Series Indonesia';
+    protected static ?string $title = 'Film & Series Indonesia - KZSTRM';
     protected static ?string $slug = 'indonesia';
     protected static string $view = 'filament.streaming.pages.indonesia';
     protected static string $layout = 'filament.streaming.layout';
@@ -17,6 +18,7 @@ class Indonesia extends Page
 
     public int $page = 1;
     public string $category = 'all';
+    public string $provider = 'all'; // 'all', 'moviebox', 'rebahin'
     public string $search = '';
 
     public array $trending = [];
@@ -29,6 +31,7 @@ class Indonesia extends Page
 
     protected $queryString = [
         'category' => ['except' => 'all'],
+        'provider' => ['except' => 'all'],
         'search' => ['except' => '', 'as' => 'q'],
     ];
 
@@ -42,10 +45,17 @@ class Indonesia extends Page
         ['id' => 'classic', 'label' => '2023 & Sebelumnya'],
     ];
 
+    public array $providers = [
+        ['id' => 'all', 'label' => 'Semua Provider (Combo)', 'badge' => 'Combo'],
+        ['id' => 'moviebox', 'label' => 'MovieBox (1080p Ultra HD)', 'badge' => 'HD HLS'],
+        ['id' => 'rebahin', 'label' => 'Rebahin (Arsip Lengkap)', 'badge' => 'Mirror'],
+    ];
+
     public function mount(): void
     {
         $this->page = 1;
         $this->category = request()->query('category', 'all');
+        $this->provider = request()->query('provider', 'all');
         $this->search = request()->query('q', '');
         $this->loadItems();
     }
@@ -54,6 +64,13 @@ class Indonesia extends Page
     {
         $this->category = $cat;
         $this->search = '';
+        $this->page = 1;
+        $this->loadItems();
+    }
+
+    public function setProvider(string $prov): void
+    {
+        $this->provider = $prov;
         $this->page = 1;
         $this->loadItems();
     }
@@ -74,6 +91,7 @@ class Indonesia extends Page
     public function resetFilter(): void
     {
         $this->category = 'all';
+        $this->provider = 'all';
         $this->search = '';
         $this->page = 1;
         $this->loadItems();
@@ -84,11 +102,15 @@ class Indonesia extends Page
         if (!$this->hasMorePages) return;
 
         $this->page++;
-        $response = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
-        
-        $newItems = $response['data'] ?? [];
+        $newItems = [];
+
+        if ($this->provider === 'all' || $this->provider === 'rebahin') {
+            $response = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
+            $newItems = $response['data'] ?? [];
+        }
+
         $this->items = array_merge($this->items, $newItems);
-        
+
         if (empty($newItems) || $this->page >= 100) {
             $this->hasMorePages = false;
         }
@@ -96,27 +118,63 @@ class Indonesia extends Page
 
     public function loadItems(): void
     {
-        $response = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
-        
-        $this->items = $response['data'] ?? [];
+        $mbItems = [];
+        $rbItems = [];
+
+        if ($this->provider === 'all' || $this->provider === 'moviebox') {
+            $mbRes = NartoMovieBoxService::getIndonesiaCatalog($this->category, $this->page, $this->search);
+            $mbItems = $mbRes['data'] ?? [];
+        }
+
+        if ($this->provider === 'all' || $this->provider === 'rebahin') {
+            $rbRes = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
+            $rbItems = $rbRes['data'] ?? [];
+        }
+
+        // Gabungkan items berdasarkan pilihan provider
+        if ($this->provider === 'moviebox') {
+            $this->items = $mbItems;
+        } elseif ($this->provider === 'rebahin') {
+            $this->items = $rbItems;
+        } else {
+            // Combo mode: MovieBox (1080p Ultra HD) diutamakan, lalu Rebahin
+            $seenTitles = [];
+            $combined = [];
+            foreach ($mbItems as $it) {
+                $clean = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
+                if ($clean) $seenTitles[$clean] = true;
+                $combined[] = $it;
+            }
+            foreach ($rbItems as $it) {
+                $clean = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
+                if ($clean && !isset($seenTitles[$clean])) {
+                    $seenTitles[$clean] = true;
+                    $combined[] = $it;
+                }
+            }
+            $this->items = $combined;
+        }
+
         if ($this->category === 'all' && empty($this->search)) {
-            $this->trending = array_slice($this->items, 0, 10);
-            
-            // Siapkan sections berjejer ala Home (Movies, Series, dan Spotlight)
-            if (empty($this->latestMovies)) {
-                $moviesRes = RebahinService::getIndonesiaCatalog('movie', 1);
-                $this->latestMovies = array_slice($moviesRes['data'] ?? [], 0, 15);
-            }
-            if (empty($this->latestSeries)) {
-                $seriesRes = RebahinService::getIndonesiaCatalog('series', 1);
-                $this->latestSeries = array_slice($seriesRes['data'] ?? [], 0, 15);
-            }
-            if (empty($this->spotlightItems)) {
-                $this->spotlightItems = array_slice($this->items, 2, 6);
-            }
+            // Trending: ambil dari MovieBox teratas (10 judul)
+            $this->trending = array_slice($mbItems ?: $this->items, 0, 10);
+
+            // Latest Movies (MovieBox movies + Rebahin movies)
+            $mbMovies = array_filter($mbItems, fn($it) => ($it['type'] ?? '') === 'movie');
+            $rbMovies = RebahinService::getIndonesiaCatalog('movie', 1)['data'] ?? [];
+            $this->latestMovies = array_slice(array_merge(array_values($mbMovies), $rbMovies), 0, 15);
+
+            // Latest Series (MovieBox series + Rebahin series)
+            $mbSeries = array_filter($mbItems, fn($it) => ($it['type'] ?? '') === 'series');
+            $rbSeries = RebahinService::getIndonesiaCatalog('series', 1)['data'] ?? [];
+            $this->latestSeries = array_slice(array_merge(array_values($mbSeries), $rbSeries), 0, 15);
+
+            // Spotlight Items
+            $this->spotlightItems = array_slice($mbItems ?: $this->items, 2, 6);
         } else {
             $this->trending = [];
         }
+
         $this->hasMorePages = count($this->items) > 0;
     }
 }

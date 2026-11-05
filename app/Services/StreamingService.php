@@ -1264,6 +1264,10 @@ class StreamingService
      */
     public static function getSeriesDetail(string $slug)
     {
+        if (str_starts_with($slug, 'mb-')) {
+            return NartoMovieBoxService::getSeriesDetail($slug);
+        }
+
         if (str_starts_with($slug, 'rb-')) {
             return RebahinService::getSeriesDetail($slug);
         }
@@ -1338,6 +1342,13 @@ class StreamingService
      */
     public static function getSeriesSeasonDetail(string $slug, int $seasonNumber)
     {
+        if (str_starts_with($slug, 'mb-')) {
+            $s = NartoMovieBoxService::getSeriesDetail($slug);
+            return [
+                'season' => $s['defaultSeason'] ?? ['seasonNumber' => $seasonNumber, 'episodes' => []]
+            ];
+        }
+
         if (str_starts_with($slug, 'rb-')) {
             $s = RebahinService::getSeriesDetail($slug);
             return [
@@ -1434,6 +1445,12 @@ class StreamingService
      */
     public static function getEpisodeStream(string $episodeId, bool $force = false)
     {
+        if (str_starts_with($episodeId, 'mb-')) {
+            if (preg_match('/^mb-(.*?)-ep-(\d+)$/', $episodeId, $m)) {
+                return NartoMovieBoxService::resolveEpisodeStream('mb-' . $m[1], (int)$m[2]);
+            }
+        }
+
         if (str_starts_with($episodeId, 'rb-')) {
             return RebahinService::resolveStream($episodeId);
         }
@@ -1669,6 +1686,10 @@ class StreamingService
      */
     public static function getMovieDetail(string $slug)
     {
+        if (str_starts_with($slug, 'mb-')) {
+            return NartoMovieBoxService::getMovieDetail($slug);
+        }
+
         if (str_starts_with($slug, 'rb-')) {
             return RebahinService::getMovieDetail($slug);
         }
@@ -1956,6 +1977,16 @@ class StreamingService
      */
     public static function getMovieStream(string $movieId, bool $force = false)
     {
+        if (str_starts_with($movieId, 'mb-')) {
+            $detail = NartoMovieBoxService::getMovieDetail($movieId);
+            if ($detail && !empty($detail['video_url'])) {
+                return [
+                    'video_url' => $detail['video_url'],
+                    'subtitles' => $detail['subtitles'] ?? [],
+                ];
+            }
+        }
+
         if (str_starts_with($movieId, 'rb-')) {
             $rbStream = RebahinService::resolveStream($movieId);
             if ($rbStream && !empty($rbStream['video_url'])) {
