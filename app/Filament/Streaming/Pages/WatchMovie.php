@@ -43,8 +43,8 @@ class WatchMovie extends Page
         }
 
         // Fetch direct stream first if available (IDLIX via NUC Relay / Rebahin / LK21)
-        if (!empty($this->media['source']) && $this->media['source'] === 'moviebox' && !empty($this->media['video_url'])) {
-            // MovieBox sudah membawa video_url dan subtitles HLS asli langsung
+        if (!empty($this->media['source']) && in_array($this->media['source'], ['moviebox', 'indoxxi'])) {
+            // MovieBox & IndoXXI sudah membawa jalur streaming masing-masing
         } else {
             $stream = !empty($this->media['id']) ? StreamingService::getValidCachedMovieStream($this->media['id']) : null;
             if (!$stream && !empty($this->media['id'])) {

@@ -142,22 +142,39 @@ class IndoxxiTechService
     }
 
     /**
-     * Resolusi iframe embed pemutar video dari post_id IndoXXI (cek tab p1, p2, p3)
+     * Resolusi seluruh pilihan server dari halaman film IndoXXI
      */
-    public static function resolvePlayerEmbeds(string $postId): array
+    public static function resolveAllServers(string $postId, string $html): array
     {
-        $cacheKey = "indoxxi_embeds_v2_{$postId}";
-        return Cache::remember($cacheKey, 86400, function () use ($postId) {
-            $embeds = [];
-            $client = self::getClient();
+        $cacheKey = "indoxxi_servers_v3_{$postId}";
+        return Cache::remember($cacheKey, 86400, function () use ($postId, $html) {
+            $tabs = [];
+            // Cari tab server asli dari halaman IndoXXI (<a href="#p1">Server 1</a>)
+            if (preg_match_all('/<a\s+href="#(p\d+)"[^>]*>([^<]+)<\/a>/i', $html, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $m) {
+                    $tabs[$m[1]] = trim($m[2]);
+                }
+            }
 
-            foreach (['p2', 'p1', 'p3'] as $tab) {
+            if (empty($tabs)) {
+                $tabs = [
+                    'p1' => 'Server 1',
+                    'p2' => 'Server 2',
+                    'p3' => 'Server 3',
+                    'p4' => 'Server 4',
+                ];
+            }
+
+            $client = self::getClient();
+            $resolvedServers = [];
+
+            foreach ($tabs as $tabKey => $tabLabel) {
                 try {
                     $res = $client->post(self::$baseUrl . '/wp-admin/admin-ajax.php', [
                         'form_params' => [
                             'action' => 'muvipro_player_content',
                             'post_id' => $postId,
-                            'tab' => $tab,
+                            'tab' => $tabKey,
                         ],
                         'headers' => [
                             'X-Requested-With' => 'XMLHttpRequest',
@@ -167,28 +184,35 @@ class IndoxxiTechService
                     if ($res->getStatusCode() === 200) {
                         $body = (string) $res->getBody();
                         if (preg_match('/<iframe[^>]+src=[\x27\x22]([^\x27\x22]+)[\x27\x22]/i', $body, $m)) {
-                            $src = $m[1];
-                            if (!empty($src) && !in_array($src, $embeds, true)) {
-                                $embeds[$tab] = $src;
+                            $src = trim($m[1]);
+                            if (!empty($src)) {
+                                $isLikelyDown = str_contains($src, 'playerekusu.stream');
+                                $resolvedServers[] = [
+                                    'id' => 'server_ix_' . $tabKey,
+                                    'name' => 'Server 3 (' . $tabLabel . ')',
+                                    'type' => 'embed',
+                                    'embed_url' => $src,
+                                    'tab_key' => $tabKey,
+                                    'is_down' => $isLikelyDown,
+                                ];
                             }
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::warning("IndoxxiTechService::resolvePlayerEmbeds tab {$tab} failed for {$postId}: " . $e->getMessage());
+                    Log::warning("IndoxxiTechService::resolveAllServers tab {$tabKey} failed: " . $e->getMessage());
                 }
             }
-            return $embeds;
-        });
-    }
 
-    /**
-     * Resolusi iframe embed pemutar video tunggal
-     */
-    public static function resolvePlayerEmbed(string $postId): ?string
-    {
-        $embeds = self::resolvePlayerEmbeds($postId);
-        // Prioritaskan p2 atau p3 jika ada karena p1 sering down di playerekusu
-        return $embeds['p2'] ?? ($embeds['p1'] ?? ($embeds['p3'] ?? null));
+            // Jika ada server yang diketahui down (misal playerekusu), urutkan server yang aktif/sehat lebih dulu
+            usort($resolvedServers, function ($a, $b) {
+                if ($a['is_down'] === $b['is_down']) {
+                    return 0;
+                }
+                return $a['is_down'] ? 1 : -1;
+            });
+
+            return $resolvedServers;
+        });
     }
 
     /**
@@ -237,8 +261,6 @@ class IndoxxiTechService
                     $externalId = $pm[1];
                 }
 
-                $embedUrl = $externalId ? self::resolvePlayerEmbed($externalId) : null;
-
                 preg_match('/<title>(.*?)<\/title>/i', $html, $tm);
                 $titleRaw = html_entity_decode(trim($tm[1] ?? $rawSlug), ENT_QUOTES, 'UTF-8');
                 $cleanTitle = trim(preg_replace('/\s*-\s*INDOXXI.*$/i', '', $titleRaw));
@@ -266,18 +288,7 @@ class IndoxxiTechService
                 $cleanTitle = preg_replace('/^Nonton Film\s*/i', '', $cleanTitle);
                 $cleanTitle = preg_replace('/^Nonton\s*/i', '', $cleanTitle);
 
-                $embeds = $externalId ? self::resolvePlayerEmbeds($externalId) : [];
-                $servers = [];
-                $idx = 1;
-                foreach ($embeds as $tab => $src) {
-                    $servers[] = [
-                        'id' => 'server_indoxxi_' . $tab,
-                        'name' => 'Server 3 (Mirror ' . $idx . ')',
-                        'type' => 'embed',
-                        'embed_url' => $src,
-                    ];
-                    $idx++;
-                }
+                $servers = $externalId ? self::resolveAllServers($externalId, $html) : [];
 
                 if (empty($servers)) {
                     $servers[] = [
