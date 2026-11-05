@@ -154,11 +154,19 @@ class WatchIndonesia extends Page
                     foreach ($rawEps as $re) {
                         $num = (int) ($re['episodeNumber'] ?? ($re['number'] ?? 1));
                         $name = $re['name'] ?? ($re['title'] ?? ('Episode ' . $num));
-                        $epServers = [];
-                        foreach ($re['servers'] ?? [] as $s) {
+                        $rebahinWatchUrl = "https://rebahinxxi3.mom/series/{$rawSlug}/watch/";
+                        $epServers = [
+                            [
+                                'id' => 'server_rb_player',
+                                'name' => 'Server 2 (HD)',
+                                'type' => 'embed',
+                                'embed_url' => $rebahinWatchUrl,
+                            ]
+                        ];
+                        foreach ($re['servers'] ?? [] as $idx => $s) {
                             $epServers[] = [
-                                'id' => $s['id'] ?? 'server1',
-                                'name' => str_replace('Server 1', 'Server 2', $s['name'] ?? 'Server 2 (HD)'),
+                                'id' => 'server_rb_mirror_' . ($idx + 1),
+                                'name' => 'Server 2 (Mirror ' . ($idx + 1) . ')',
                                 'type' => 'embed',
                                 'embed_url' => $s['embed_url'] ?? '',
                             ];

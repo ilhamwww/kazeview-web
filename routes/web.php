@@ -404,11 +404,11 @@ Route::get('/api/streaming/embed', function (\Illuminate\Http\Request $request) 
 <script>
 window.open = function() { console.log("Popup blocked"); return null; };
 (function() {
-    const PROXY_BASE = 'https://www.kazeview.com/api/streaming/embed-proxy?url=';
+    const PROXY_BASE = 'https://streaming.kazeview.com/api/streaming/embed-proxy?url=';
     function wrapUrl(u) {
         if (!u) return u;
         if (typeof u === 'string') {
-            if (u.includes('groovy.monster') || u.includes('178.211.139.171') || u.includes('199.87.210.226') || u.includes('/api/videos/')) {
+            if (u.includes('178.211.139.171') || u.includes('199.87.210.226') || u.includes('/api/videos/')) {
                 if (u.startsWith('/')) {
                     u = 'https://178.211.139.171' + u;
                 }
