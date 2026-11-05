@@ -229,12 +229,36 @@ class WatchIndonesia extends Page
             $detail = IndoxxiTechService::getMovieDetail($fullSlug);
             if ($detail) {
                 $this->media = $detail;
-                // Hanya server-server bawaan IndoXXI (TIDAK ADA REBAHIN / MOVIEBOX)
+                // Hanya server-server bawaan IndoXXI
                 $rawServers = $detail['servers'] ?? [];
                 $ixServers = array_values(array_filter($rawServers, function ($s) {
                     return str_starts_with($s['id'] ?? '', 'server_ix') || str_starts_with($s['id'] ?? '', 'server_indoxxi');
                 }));
                 $this->servers = !empty($ixServers) ? $ixServers : $rawServers;
+
+                // Tambahkan mirror failover dari Rebahin jika tersedia
+                $failoverServers = [];
+                try {
+                    $cleanTitle = $detail['title'] ?? '';
+                    $rbSearch = RebahinService::search($cleanTitle);
+                    if (!empty($rbSearch[0]['slug'])) {
+                        $rbDetail = RebahinService::getMovieDetail($rbSearch[0]['slug']);
+                        if (!empty($rbDetail['servers'])) {
+                            foreach ($rbDetail['servers'] as $idx => $s) {
+                                $failoverServers[] = [
+                                    'id' => 'server_ix_failover_' . ($idx + 1),
+                                    'name' => 'Server 3 (Cadangan ' . ($idx + 1) . ')',
+                                    'type' => 'embed',
+                                    'embed_url' => $s['embed_url'] ?? '',
+                                    'is_down' => false,
+                                ];
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {}
+
+                // Jika server bawaan IndoXXI (Ryderjet/Playerekusu) terindikasi bermasalah, prioritaskan server Cadangan yang aktif
+                $this->servers = array_merge($failoverServers, $this->servers);
             }
         }
         // 4. SERVER 4 (PENCURIMOVIE) - HANYA RESOURCE SERVER 4 (BEBAS IKLAN / NATIVE MP4)

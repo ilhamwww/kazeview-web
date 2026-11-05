@@ -60,7 +60,7 @@
                     </div>
 
                     <div x-show="isPlaying && isEmbed" class="w-full h-full relative bg-black" style="display: none;">
-                        <iframe :src="currentEmbedUrl" class="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-forms" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+                        <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
                     </div>
 
                     <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
