@@ -5,6 +5,7 @@ namespace App\Filament\Streaming\Pages;
 use Filament\Pages\Page;
 use App\Services\RebahinService;
 use App\Services\NartoMovieBoxService;
+use App\Services\IndonesiaCatalogVaultService;
 
 class Indonesia extends Page
 {
@@ -102,122 +103,43 @@ class Indonesia extends Page
         if (!$this->hasMorePages) return;
 
         $this->page++;
-        $newItems = [];
+        $vault = IndonesiaCatalogVaultService::getCatalog(
+            $this->category,
+            $this->page,
+            24,
+            $this->search,
+            $this->provider
+        );
 
-        if ($this->provider === 'all' || $this->provider === 'rebahin') {
-            $response = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
-            $newItems = $response['data'] ?? [];
-            foreach ($newItems as &$it) {
-                $it['provider_badge'] = 'Server 2';
-                $it['source'] = 'server2';
-            }
-            unset($it);
-        }
-
+        $newItems = $vault['data'] ?? [];
         $this->items = array_merge($this->items, $newItems);
-
-        if (empty($newItems) || $this->page >= 100) {
-            $this->hasMorePages = false;
-        }
+        $this->hasMorePages = $vault['pagination']['hasMore'] ?? false;
     }
 
     public function loadItems(): void
     {
-        $mbItems = [];
-        $rbItems = [];
+        $vault = IndonesiaCatalogVaultService::getCatalog(
+            $this->category,
+            $this->page,
+            24,
+            $this->search,
+            $this->provider
+        );
 
-        if ($this->provider === 'all' || $this->provider === 'moviebox') {
-            $mbRes = NartoMovieBoxService::getIndonesiaCatalog($this->category, $this->page, $this->search);
-            $mbItems = $mbRes['data'] ?? [];
-        }
-
-        if ($this->provider === 'all' || $this->provider === 'rebahin') {
-            $rbRes = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
-            $rbItems = $rbRes['data'] ?? [];
-            foreach ($rbItems as &$it) {
-                $it['provider_badge'] = 'Server 2';
-            }
-            unset($it);
-        }
-
-        // Gabungkan items berdasarkan pilihan provider
-        if ($this->provider === 'moviebox') {
-            $this->items = $mbItems;
-        } elseif ($this->provider === 'rebahin') {
-            $this->items = $rbItems;
-        } else {
-            // Combo mode: MovieBox (1080p Ultra HD) diutamakan, lalu Rebahin
-            $seenTitles = [];
-            $combined = [];
-            foreach ($mbItems as $it) {
-                $clean = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
-                if ($clean) $seenTitles[$clean] = true;
-                $combined[] = $it;
-            }
-            foreach ($rbItems as $it) {
-                $clean = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
-                if ($clean && !isset($seenTitles[$clean])) {
-                    $seenTitles[$clean] = true;
-                    $combined[] = $it;
-                }
-            }
-            $this->items = $combined;
-        }
+        $this->items = $vault['data'] ?? [];
+        $this->totalPages = $vault['pagination']['totalPages'] ?? 1;
+        $this->hasMorePages = $vault['pagination']['hasMore'] ?? false;
 
         if ($this->category === 'all' && empty($this->search)) {
-            // Trending: ambil dari MovieBox teratas (10 judul)
-            $this->trending = array_slice($mbItems ?: $this->items, 0, 10);
-
-            // Latest Movies (MovieBox movies + Rebahin movies, deduplicated by title)
-            $mbMovies = array_filter($mbItems, fn($it) => ($it['type'] ?? '') === 'movie');
-            $rbMovies = RebahinService::getIndonesiaCatalog('movie', 1)['data'] ?? [];
-            foreach ($rbMovies as &$it) {
-                $it['provider_badge'] = 'Server 2';
-            }
-            unset($it);
-            $seenMovieTitles = [];
-            $allMovies = [];
-            foreach ($mbMovies as $it) {
-                $k = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
-                if ($k) $seenMovieTitles[$k] = true;
-                $allMovies[] = $it;
-            }
-            foreach ($rbMovies as $it) {
-                $k = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
-                if ($k && !isset($seenMovieTitles[$k])) {
-                    $seenMovieTitles[$k] = true;
-                    $allMovies[] = $it;
-                }
-            }
-            $this->latestMovies = array_slice($allMovies, 0, 15);
-
-            // Latest Series (MovieBox series + Rebahin series, deduplicated by title)
-            $mbSeries = array_filter($mbItems, fn($it) => ($it['type'] ?? '') === 'series');
-            $rbSeries = RebahinService::getIndonesiaCatalog('series', 1)['data'] ?? [];
-            foreach ($rbSeries as &$it) {
-                $it['provider_badge'] = 'Server 2';
-            }
-            unset($it);
-            $seenSeriesTitles = [];
-            $allSeries = [];
-            foreach ($mbSeries as $it) {
-                $k = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
-                if ($k) $seenSeriesTitles[$k] = true;
-                $allSeries[] = $it;
-            }
-            foreach ($rbSeries as $it) {
-                $k = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
-                if ($k && !isset($seenSeriesTitles[$k])) {
-                    $seenSeriesTitles[$k] = true;
-                    $allSeries[] = $it;
-                }
-            }
-            $this->latestSeries = array_slice($allSeries, 0, 15);
-
-            // Spotlight Items
-            $this->spotlightItems = array_slice($mbItems ?: $this->items, 2, 6);
+            $this->trending = IndonesiaCatalogVaultService::getTrending(10);
+            $this->latestMovies = IndonesiaCatalogVaultService::getLatestMovies(15);
+            $this->latestSeries = IndonesiaCatalogVaultService::getLatestSeries(15);
+            $this->spotlightItems = array_slice($this->trending, 2, 6);
         } else {
             $this->trending = [];
+            $this->latestMovies = [];
+            $this->latestSeries = [];
+            $this->spotlightItems = [];
         }
 
         $this->hasMorePages = count($this->items) > 0;
