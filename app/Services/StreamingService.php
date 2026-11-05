@@ -1265,7 +1265,24 @@ class StreamingService
     public static function getSeriesDetail(string $slug)
     {
         if (str_starts_with($slug, 'mb-')) {
-            return NartoMovieBoxService::getSeriesDetail($slug);
+            $mbDetail = NartoMovieBoxService::getSeriesDetail($slug);
+            if ($mbDetail) {
+                return $mbDetail;
+            }
+            // Seamless Failover: jika MovieBox series gagal / 404, coba cari padanannya di Rebahin
+            try {
+                $cleanTitle = str_replace('-', ' ', preg_replace('/^mb-/', '', $slug));
+                $rbMatch = RebahinService::getIndonesiaCatalog('series', 1, $cleanTitle);
+                if (!empty($rbMatch['data'][0]['raw_slug'])) {
+                    $rbDetail = RebahinService::getSeriesDetail('rb-' . $rbMatch['data'][0]['raw_slug']);
+                    if ($rbDetail) {
+                        $rbDetail['id'] = $slug;
+                        $rbDetail['slug'] = $slug;
+                        return $rbDetail;
+                    }
+                }
+            } catch (\Throwable $e) {}
+            return null;
         }
 
         if (str_starts_with($slug, 'rb-')) {
@@ -1687,7 +1704,24 @@ class StreamingService
     public static function getMovieDetail(string $slug)
     {
         if (str_starts_with($slug, 'mb-')) {
-            return NartoMovieBoxService::getMovieDetail($slug);
+            $mbDetail = NartoMovieBoxService::getMovieDetail($slug);
+            if ($mbDetail) {
+                return $mbDetail;
+            }
+            // Seamless Failover: jika MovieBox gagal / 404, coba cari padanannya di Rebahin
+            try {
+                $cleanTitle = str_replace('-', ' ', preg_replace('/^mb-/', '', $slug));
+                $rbMatch = RebahinService::getIndonesiaCatalog('movie', 1, $cleanTitle);
+                if (!empty($rbMatch['data'][0]['raw_slug'])) {
+                    $rbDetail = RebahinService::getMovieDetail('rb-' . $rbMatch['data'][0]['raw_slug']);
+                    if ($rbDetail) {
+                        $rbDetail['id'] = $slug;
+                        $rbDetail['slug'] = $slug;
+                        return $rbDetail;
+                    }
+                }
+            } catch (\Throwable $e) {}
+            return null;
         }
 
         if (str_starts_with($slug, 'rb-')) {

@@ -121,13 +121,17 @@ class NartoMovieBoxService
                         }
 
                         // Ekstrak slug
-                        // URL format: /search/import?provider=moviebox&book_id=...&title=...
-                        // atau /detail/watch/{slug}
+                        // Format: /detail/watch/{slug} atau /search/import?provider=moviebox&book_id=...
                         $slug = '';
-                        if (preg_match('/[?&]title=([^&]+)/', $wUrl, $sm)) {
-                            $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '-', urldecode($sm[1])), '-'));
-                        } elseif (preg_match('/\/detail\/watch\/([^\/\?]+)/', $wUrl, $sm)) {
+                        if (preg_match('/\/detail\/watch\/([^\/\?]+)/', $wUrl, $sm)) {
                             $slug = $sm[1];
+                        } elseif (str_contains($wUrl, '/search/import')) {
+                            // Resolusi redirect 302 otomatis dari Narto-Drama agar dapat slug asli (misal: five-friends-2-mount-klawih)
+                            $slug = self::resolveImportSlug($wUrl);
+                        }
+                        // Fallback jika belum teresolusi
+                        if (empty($slug) && preg_match('/[?&]title=([^&]+)/', $wUrl, $sm)) {
+                            $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '-', urldecode($sm[1])), '-'));
                         }
                         if (empty($slug) || isset($seenSlugs[$slug])) continue;
                         $seenSlugs[$slug] = true;
@@ -609,6 +613,38 @@ class NartoMovieBoxService
                 }
             } catch (\Throwable $e) {
                 Log::warning('NartoMovieBoxService::searchRealSlug failed for ' . $rawSlug . ': ' . $e->getMessage());
+            }
+            return null;
+        });
+    }
+
+    /**
+     * Resolusi URL redirect 302 dari /search/import Narto-Drama untuk mendapatkan slug asli
+     */
+    public static function resolveImportSlug(string $wUrl): ?string
+    {
+        $cacheKey = 'mb_import_slug_res_' . md5($wUrl);
+        return Cache::remember($cacheKey, 86400 * 30, function () use ($wUrl) {
+            try {
+                $client = self::getClient();
+                $res = $client->get($wUrl, [
+                    'allow_redirects' => [
+                        'max' => 5,
+                        'track_redirects' => true,
+                    ],
+                    'headers' => [
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                        'Cookie' => 'nd_ck=' . self::generateNdCookie() . '; path=/',
+                    ],
+                    'timeout' => 5,
+                ]);
+                $history = $res->getHeader('X-Guzzle-Redirect-History');
+                $finalUrl = !empty($history) ? end($history) : (string) $res->getBody();
+                if (preg_match('/\/detail\/watch\/([^\/\?]+)/', $finalUrl, $m)) {
+                    return $m[1];
+                }
+            } catch (\Throwable $e) {
+                // Ignore and return null
             }
             return null;
         });
