@@ -967,9 +967,9 @@
                                             // Deteksi browser tidak mendukung codec tertentu (misal HEVC di browser non-hardware)
                                             if (/buffer.*Codec/i.test(data.details || '')) {
                                                 console.warn('[KZSTRM] Codec tidak didukung browser ini (' + data.details + '). Berpindah ke server cadangan...');
-                                                const altServer = Array.isArray(self.serversList) ? self.serversList.find(s => s.id !== self.activeServerId) : null;
+                                                const altServer = Array.isArray(self.serversList) ? self.serversList.find(s => s.id !== self.activeServer) : null;
                                                 if (altServer) {
-                                                    self.switchServer(altServer.id, altServer.embed_url, altServer.is_embed);
+                                                    self.switchServer(altServer.id);
                                                     return;
                                                 }
                                             }
@@ -1022,6 +1022,7 @@
                                 if (names[idx]) item.setAttribute('data-name', names[idx]);
                             });
                         };
+                        window.art = this.art;
                         this.art.on('setting', stampSettingNames);
                         this.art.on('fullscreenWeb', (state) => {
                             document.body.classList.toggle('kz-fullscreen-web-active', state);

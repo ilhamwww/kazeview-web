@@ -209,19 +209,30 @@ class NartoMovieBoxService
     public static function getMovieDetail(string $slug, bool $force = false): ?array
     {
         $rawSlug = preg_replace('/^mb-/', '', $slug);
-        $cacheKey = "mb_movie_detail_v2_" . md5($rawSlug);
+
+        $aliasMap = [
+            'sekawan-limo-2-gunung-klawih' => 'five-friends-2-mount-klawih',
+            'sekawan-limo-2' => 'five-friends-2-mount-klawih',
+            'badut-gendong' => 'dance-of-the-damned',
+            'project-sacrifice' => 'tumbal-proyek',
+            'pernikahan-dini-gen-z' => 'playing-adult-pernikahan-dini-gen-z',
+            'terikat-janji' => 'bound-by-promise',
+            'kuyank' => 'kuyank-indonesian',
+        ];
+        $targetSlug = $aliasMap[$rawSlug] ?? $rawSlug;
+        $cacheKey = "mb_movie_detail_v3_" . md5($slug);
 
         if ($force) {
             Cache::forget($cacheKey);
         }
 
         // Cache stream dan detail selama 5 menit (300 detik) agar token HLS selalu segar
-        return Cache::remember($cacheKey, 300, function () use ($rawSlug, $slug) {
+        return Cache::remember($cacheKey, 300, function () use ($rawSlug, $targetSlug, $slug) {
             try {
                 $client = self::getClient();
 
                 // Kunjungi halaman detail/watch episode 1
-                $watchUrl = self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home";
+                $watchUrl = self::$baseUrl . "/detail/watch/{$targetSlug}/1?lang=id-ID&from=home";
                 $res = null;
                 try {
                     $res = $client->get($watchUrl);
@@ -231,10 +242,10 @@ class NartoMovieBoxService
 
                 // Jika gagal/404, coba cari slug asli via API search Narto
                 if (!$res || $res->getStatusCode() !== 200) {
-                    $realSlug = self::searchRealSlug($rawSlug);
-                    if ($realSlug && $realSlug !== $rawSlug) {
-                        $rawSlug = $realSlug;
-                        $watchUrl = self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home";
+                    $realSlug = self::searchRealSlug($targetSlug);
+                    if ($realSlug && $realSlug !== $targetSlug) {
+                        $targetSlug = $realSlug;
+                        $watchUrl = self::$baseUrl . "/detail/watch/{$targetSlug}/1?lang=id-ID&from=home";
                         try {
                             $res = $client->get($watchUrl);
                         } catch (\Throwable $e) {
@@ -254,6 +265,9 @@ class NartoMovieBoxService
                 $titleRaw = $tm[1] ?? $rawSlug;
                 $cleanTitle = trim(preg_replace('/\s*-\s*Streaming Gratis.*$/i', '', $titleRaw));
                 $cleanTitle = trim(preg_replace('/\s*\(\d{4}\).*$/i', '', $cleanTitle));
+                if (str_contains(strtolower($cleanTitle), 'five friends 2') || $rawSlug === 'sekawan-limo-2-gunung-klawih') {
+                    $cleanTitle = 'Sekawan Limo 2: Gunung Klawih';
+                }
 
                 // Parse tahun
                 $year = '';
