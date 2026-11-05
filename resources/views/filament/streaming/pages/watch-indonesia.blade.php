@@ -60,7 +60,7 @@
                     </div>
 
                     <div x-show="isPlaying && isEmbed" class="w-full h-full relative bg-black" style="display: none;">
-                        <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+                        <iframe :src="currentEmbedUrl" class="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-forms" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
                     </div>
 
                     <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
@@ -277,6 +277,9 @@
                             this.activeServer = target.id;
                             this.isEmbed = target.type === 'embed';
                             this.currentEmbedUrl = target.embed_url || '';
+                            if (!this.isEmbed && (target.type === 'mp4' || target.type === 'hls' || target.video_url)) {
+                                this.videoSrc = target.video_url || this.videoSrc;
+                            }
                         } else {
                             this.activeServer = id;
                             this.isEmbed = isEmbedServer;
@@ -319,11 +322,22 @@
                         }
 
                         const self = this;
+                        const isHlsSource = this.videoSrc && (this.videoSrc.includes('.m3u8') || this.videoSrc.includes('/master') || this.videoSrc.includes('moviebox'));
                         const artConfig = {
                             container: container,
                             url: this.videoSrc,
-                            type: 'm3u8',
-                            customType: {
+                            type: isHlsSource ? 'm3u8' : 'mp4',
+                            autoplay: true,
+                            pip: true,
+                            fullscreen: true,
+                            fullscreenWeb: true,
+                            theme: '#E50914',
+                            icons: {
+                                loading: '<div class="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>'
+                            }
+                        };
+                        if (isHlsSource) {
+                            artConfig.customType = {
                                 m3u8: function (video, url, artInstance) {
                                     if (window.Hls && window.Hls.isSupported()) {
                                         if (self.hls) {
@@ -400,16 +414,8 @@
                                         video.play().catch(() => {});
                                     }
                                 }
-                            },
-                            autoplay: true,
-                            pip: true,
-                            fullscreen: true,
-                            fullscreenWeb: true,
-                            theme: '#E50914',
-                            icons: {
-                                loading: '<div class="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>'
-                            }
-                        };
+                            };
+                        }
 
                         this.art = new Artplayer(artConfig);
 

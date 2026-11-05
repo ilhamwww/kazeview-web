@@ -43,12 +43,14 @@ class IndonesiaCatalogVaultService
         }
 
         // Filter Sumber Server
-        if ($provider === 'moviebox') {
+        if ($provider === 'moviebox' || $provider === 'server-1') {
             $query->where('source', 'moviebox');
-        } elseif ($provider === 'rebahin') {
+        } elseif ($provider === 'rebahin' || $provider === 'server-2') {
             $query->where('source', 'server2');
-        } elseif ($provider === 'indoxxi') {
+        } elseif ($provider === 'indoxxi' || $provider === 'server-3') {
             $query->where('source', 'indoxxi');
+        } elseif ($provider === 'pencurimovie' || $provider === 'server-4') {
+            $query->where('source', 'pencurimovie');
         }
 
         // Urutan: Server 1 (MovieBox HD) diutamakan di baris atas, lalu tahun terbaru, lalu id terbaru
@@ -88,6 +90,8 @@ class IndonesiaCatalogVaultService
             $q->where('source', 'server2');
         } elseif ($provider === 'indoxxi' || $provider === 'server-3') {
             $q->where('source', 'indoxxi');
+        } elseif ($provider === 'pencurimovie' || $provider === 'server-4') {
+            $q->where('source', 'pencurimovie');
         }
 
         return $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
@@ -112,6 +116,8 @@ class IndonesiaCatalogVaultService
             $q->where('source', 'server2');
         } elseif ($provider === 'indoxxi' || $provider === 'server-3') {
             $q->where('source', 'indoxxi');
+        } elseif ($provider === 'pencurimovie' || $provider === 'server-4') {
+            $q->where('source', 'pencurimovie');
         }
 
         return $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
@@ -136,6 +142,8 @@ class IndonesiaCatalogVaultService
             $q->where('source', 'server2');
         } elseif ($provider === 'indoxxi' || $provider === 'server-3') {
             $q->where('source', 'indoxxi');
+        } elseif ($provider === 'pencurimovie' || $provider === 'server-4') {
+            $q->where('source', 'pencurimovie');
         }
 
         return $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
@@ -318,6 +326,69 @@ class IndonesiaCatalogVaultService
             }
         } catch (\Throwable $e) {
             Log::warning('IndonesiaCatalogVaultService::syncFromIndoxxi failed: ' . $e->getMessage());
+        }
+
+        return $count;
+    }
+
+    /**
+     * Simpan / Sync item dari PencuriMovie ke database (dengan proteksi filter konten dewasa & genre semi)
+     */
+    public static function syncFromPencuriMovie(int $maxPages = 5): int
+    {
+        $count = 0;
+        try {
+            for ($page = 1; $page <= $maxPages; $page++) {
+                $pmRes = PencuriMovieService::getIndonesiaCatalog($page);
+                $items = $pmRes['data'] ?? [];
+                if (empty($items)) break;
+
+                foreach ($items as $it) {
+                    $slug = $it['slug'] ?? '';
+                    if (empty($slug)) continue;
+
+                    // Sensor konten dewasa & genre semi
+                    if (MediaContentSanitizerService::isAdult($it)) {
+                        continue;
+                    }
+
+                    $rawSlug = $it['raw_slug'] ?? preg_replace('/^pm-/', '', $slug);
+
+                    // Cek jika sudah ada judul yang sama persis di vault
+                    $cleanTitle = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
+                    $exists = IndonesiaMediaItem::whereRaw("LOWER(REGEXP_REPLACE(title, '[^a-zA-Z0-9]+', '', 'g')) = ?", [$cleanTitle])
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
+                    }
+
+                    IndonesiaMediaItem::updateOrCreate(
+                        ['slug' => $slug],
+                        [
+                            'raw_slug' => $rawSlug,
+                            'title' => $it['title'] ?? 'Film Indonesia',
+                            'type' => $it['type'] ?? 'movie',
+                            'year' => $it['year'] ?? null,
+                            'rating' => (float) ($it['rating'] ?? 7.8),
+                            'quality' => $it['quality'] ?? 'HD',
+                            'duration' => null,
+                            'poster' => $it['poster'] ?? null,
+                            'backdrop' => $it['banner'] ?? ($it['poster'] ?? null),
+                            'genres' => $it['genres'] ?? ['Indonesia', 'Bioskop'],
+                            'source' => 'pencurimovie',
+                            'provider_badge' => 'Server 4',
+                            'external_id' => $it['external_id'] ?? null,
+                            'watch_url' => $it['watch_url'] ?? null,
+                            'is_published' => true,
+                            'last_synced_at' => Carbon::now(),
+                        ]
+                    );
+                    $count++;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('IndonesiaCatalogVaultService::syncFromPencuriMovie failed: ' . $e->getMessage());
         }
 
         return $count;

@@ -7,6 +7,7 @@ use App\Models\IndonesiaMediaItem;
 use App\Services\NartoMovieBoxService;
 use App\Services\RebahinService;
 use App\Services\IndoxxiTechService;
+use App\Services\PencuriMovieService;
 use App\Services\StreamingService;
 
 class WatchIndonesia extends Page
@@ -54,6 +55,12 @@ class WatchIndonesia extends Page
                 'source' => 'indoxxi',
                 'label' => 'Server 3 (Mirror)',
                 'badge' => 'Server 3',
+            ],
+            'server-4' => [
+                'prefix' => 'pm-',
+                'source' => 'pencurimovie',
+                'label' => 'Server 4 (Arsip Bioskop)',
+                'badge' => 'Server 4',
             ],
         ];
 
@@ -228,6 +235,14 @@ class WatchIndonesia extends Page
                     return str_starts_with($s['id'] ?? '', 'server_ix') || str_starts_with($s['id'] ?? '', 'server_indoxxi');
                 }));
                 $this->servers = !empty($ixServers) ? $ixServers : $rawServers;
+            }
+        }
+        // 4. SERVER 4 (PENCURIMOVIE) - HANYA RESOURCE SERVER 4 (BEBAS IKLAN / NATIVE MP4)
+        elseif ($this->server === 'server-4') {
+            $detail = PencuriMovieService::getMovieDetail($fullSlug);
+            if ($detail) {
+                $this->media = $detail;
+                $this->servers = $detail['servers'] ?? [];
             }
         }
 

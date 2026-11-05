@@ -48,6 +48,7 @@ class Indonesia extends Page
         ['id' => 'server-1', 'provider' => 'moviebox', 'label' => 'Server 1 (1080p Ultra HD)', 'badge' => 'Server 1', 'url' => '/indonesia/server-1'],
         ['id' => 'server-2', 'provider' => 'rebahin', 'label' => 'Server 2 (Arsip Lengkap)', 'badge' => 'Server 2', 'url' => '/indonesia/server-2'],
         ['id' => 'server-3', 'provider' => 'indoxxi', 'label' => 'Server 3 (Mirror)', 'badge' => 'Server 3', 'url' => '/indonesia/server-3'],
+        ['id' => 'server-4', 'provider' => 'pencurimovie', 'label' => 'Server 4 (Arsip Bioskop)', 'badge' => 'Server 4', 'url' => '/indonesia/server-4'],
     ];
 
     public function mount(?string $server = null): void
@@ -56,13 +57,14 @@ class Indonesia extends Page
         if (empty($serverParam) || $serverParam === 'indonesia') {
             $this->server = 'server-1';
         } else {
-            $this->server = in_array($serverParam, ['server-1', 'server-2', 'server-3']) ? $serverParam : 'server-1';
+            $this->server = in_array($serverParam, ['server-1', 'server-2', 'server-3', 'server-4']) ? $serverParam : 'server-1';
         }
 
         $serverMap = [
             'server-1' => 'moviebox',
             'server-2' => 'rebahin',
             'server-3' => 'indoxxi',
+            'server-4' => 'pencurimovie',
         ];
         $this->provider = $serverMap[$this->server] ?? 'moviebox';
 
@@ -86,6 +88,7 @@ class Indonesia extends Page
         if ($prov === 'moviebox') $srv = 'server-1';
         elseif ($prov === 'rebahin') $srv = 'server-2';
         elseif ($prov === 'indoxxi') $srv = 'server-3';
+        elseif ($prov === 'pencurimovie') $srv = 'server-4';
 
         return redirect()->to('/indonesia/' . $srv);
     }

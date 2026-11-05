@@ -15,6 +15,8 @@ Artisan::command('kz:sync-indonesia-vault', function () {
     $this->info("Synced Rebahin: {$rb} items");
     $ix = \App\Services\IndonesiaCatalogVaultService::syncFromIndoxxi(5);
     $this->info("Synced IndoXXI (filtered clean): {$ix} items");
+    $pm = \App\Services\IndonesiaCatalogVaultService::syncFromPencuriMovie(5);
+    $this->info("Synced PencuriMovie (filtered clean): {$pm} items");
     $purged = \App\Services\IndonesiaCatalogVaultService::purgeAdultContent();
     $this->info("Purged adult items: {$purged}");
     $total = \App\Models\IndonesiaMediaItem::count();
