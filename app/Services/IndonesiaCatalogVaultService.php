@@ -53,10 +53,18 @@ class IndonesiaCatalogVaultService
             $query->where('source', 'pencurimovie');
         }
 
-        // Urutan: Server 1 (MovieBox HD) diutamakan di baris atas, lalu tahun terbaru, lalu id terbaru
-        $query->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
-              ->orderByRaw("COALESCE(year, '2000') DESC")
-              ->orderBy('id', 'DESC');
+        // Urutan Sorting:
+        // Khusus Server 3 (IndoXXI): Fokuskan film rilisan terbaru (2026, 2025...) dan yang baru di-upload/post ID tertinggi
+        if ($provider === 'indoxxi' || $provider === 'server-3') {
+            $query->orderByRaw("COALESCE(year, '2000') DESC")
+                  ->orderByRaw("CAST(COALESCE(NULLIF(external_id, ''), '0') AS BIGINT) DESC")
+                  ->orderBy('id', 'DESC');
+        } else {
+            // Urutan umum: Server 1 (MovieBox HD) diutamakan di baris atas jika combo, lalu tahun terbaru, lalu id terbaru
+            $query->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
+                  ->orderByRaw("COALESCE(year, '2000') DESC")
+                  ->orderBy('id', 'DESC');
+        }
 
         $total = $query->count();
         $totalPages = max(1, (int) ceil($total / $perPage));
@@ -94,10 +102,17 @@ class IndonesiaCatalogVaultService
             $q->where('source', 'pencurimovie');
         }
 
-        return $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
-            ->orderByRaw("COALESCE(year, '2000') DESC")
-            ->orderBy('id', 'DESC')
-            ->take($limit)
+        if ($provider === 'indoxxi' || $provider === 'server-3') {
+            $q->orderByRaw("COALESCE(year, '2000') DESC")
+              ->orderByRaw("CAST(COALESCE(NULLIF(external_id, ''), '0') AS BIGINT) DESC")
+              ->orderBy('id', 'DESC');
+        } else {
+            $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
+              ->orderByRaw("COALESCE(year, '2000') DESC")
+              ->orderBy('id', 'DESC');
+        }
+
+        return $q->take($limit)
             ->get()
             ->map(fn($item) => $item->toCard())
             ->all();
@@ -120,10 +135,17 @@ class IndonesiaCatalogVaultService
             $q->where('source', 'pencurimovie');
         }
 
-        return $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
-            ->orderByRaw("COALESCE(year, '2000') DESC")
-            ->orderBy('id', 'DESC')
-            ->take($limit)
+        if ($provider === 'indoxxi' || $provider === 'server-3') {
+            $q->orderByRaw("COALESCE(year, '2000') DESC")
+              ->orderByRaw("CAST(COALESCE(NULLIF(external_id, ''), '0') AS BIGINT) DESC")
+              ->orderBy('id', 'DESC');
+        } else {
+            $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
+              ->orderByRaw("COALESCE(year, '2000') DESC")
+              ->orderBy('id', 'DESC');
+        }
+
+        return $q->take($limit)
             ->get()
             ->map(fn($item) => $item->toCard())
             ->all();
