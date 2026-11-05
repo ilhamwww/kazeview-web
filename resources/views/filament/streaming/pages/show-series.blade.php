@@ -56,7 +56,7 @@
     {{-- ================= HERO ================= --}}
     <section class="relative w-full min-h-[640px] md:min-h-[88vh] overflow-hidden bg-black flex flex-col justify-end">
         @if($backdrop)
-            <img src="{{ $backdrop }}" alt="" class="absolute inset-0 w-full h-full object-cover object-top">
+            <img src="{{ $backdrop }}" alt="" class="absolute inset-0 w-full h-full object-cover object-top scale-105 filter blur-[8px] md:blur-[12px] opacity-75">
         @endif
         <div class="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/75 to-transparent"></div>
         <div class="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent"></div>
