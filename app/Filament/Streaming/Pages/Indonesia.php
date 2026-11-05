@@ -159,15 +159,43 @@ class Indonesia extends Page
             // Trending: ambil dari MovieBox teratas (10 judul)
             $this->trending = array_slice($mbItems ?: $this->items, 0, 10);
 
-            // Latest Movies (MovieBox movies + Rebahin movies)
+            // Latest Movies (MovieBox movies + Rebahin movies, deduplicated by title)
             $mbMovies = array_filter($mbItems, fn($it) => ($it['type'] ?? '') === 'movie');
             $rbMovies = RebahinService::getIndonesiaCatalog('movie', 1)['data'] ?? [];
-            $this->latestMovies = array_slice(array_merge(array_values($mbMovies), $rbMovies), 0, 15);
+            $seenMovieTitles = [];
+            $allMovies = [];
+            foreach ($mbMovies as $it) {
+                $k = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
+                if ($k) $seenMovieTitles[$k] = true;
+                $allMovies[] = $it;
+            }
+            foreach ($rbMovies as $it) {
+                $k = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
+                if ($k && !isset($seenMovieTitles[$k])) {
+                    $seenMovieTitles[$k] = true;
+                    $allMovies[] = $it;
+                }
+            }
+            $this->latestMovies = array_slice($allMovies, 0, 15);
 
-            // Latest Series (MovieBox series + Rebahin series)
+            // Latest Series (MovieBox series + Rebahin series, deduplicated by title)
             $mbSeries = array_filter($mbItems, fn($it) => ($it['type'] ?? '') === 'series');
             $rbSeries = RebahinService::getIndonesiaCatalog('series', 1)['data'] ?? [];
-            $this->latestSeries = array_slice(array_merge(array_values($mbSeries), $rbSeries), 0, 15);
+            $seenSeriesTitles = [];
+            $allSeries = [];
+            foreach ($mbSeries as $it) {
+                $k = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
+                if ($k) $seenSeriesTitles[$k] = true;
+                $allSeries[] = $it;
+            }
+            foreach ($rbSeries as $it) {
+                $k = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
+                if ($k && !isset($seenSeriesTitles[$k])) {
+                    $seenSeriesTitles[$k] = true;
+                    $allSeries[] = $it;
+                }
+            }
+            $this->latestSeries = array_slice($allSeries, 0, 15);
 
             // Spotlight Items
             $this->spotlightItems = array_slice($mbItems ?: $this->items, 2, 6);

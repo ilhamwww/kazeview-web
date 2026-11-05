@@ -63,32 +63,62 @@ class NartoMovieBoxService
                 $json = json_decode((string) $res->getBody(), true);
                 $sections = $json['sections'] ?? [];
 
-                // Filter sections yang relevan dengan Indonesia
-                $targetTabs = [
-                    'to:1:9' => 'Drama Indonesia',
-                    'to:1:12' => 'Horor Indonesia',
-                    'to:1:5' => 'Halloween & Populer',
-                    'to:1:1' => 'Trending',
-                    'to:1:2' => 'Film Tren',
-                ];
-
+                // Filter sections yang relevan dengan Indonesia murni
                 $allItems = [];
                 $seenSlugs = [];
+
+                // Daftar judul non-Indonesia yang sering muncul di tab umum MovieBox untuk diblokir
+                $foreignKeywords = [
+                    'the remarried empress', 'dead-end job', '100 days of deception', 'doctor x', 'black clover',
+                    'resident evil', 'forgotten island', 'drive - the pretenders', 'spider-man', 'the dog stars',
+                    'kung fu soccer', 'runner', 'our sticky love', 'solo leveling', 'that time i got reincarnated',
+                    'spooky in love', 'the apothecary diaries', 'coco', 'the conjuring', 'hotel transylvania',
+                    'immortal king', 'boruto', 'one piece', 'firefly wedding', 'tokyo revengers',
+                    'bass x machina', 'lovers & gangsters', 'khemjira forever', 'the perfect lie', 'love in disguise',
+                    'final table', 'reacher', 'minions & monsters', 'the walking dead', 'tigers sniff the rose',
+                    'where the mask ends', 'love for you', 'the lament of autumn', 'cerahnya awal musim semi'
+                ];
+
+                // Judul Indonesia populer di tab umum (seperti Halloween) yang boleh masuk
+                $knownIndoExtra = [
+                    'sijjin', 'kkn di desa penari', 'demon\'s slaves', 'pengabdi setan', 'sewu dino', 'dilan', 'layangan putus', 'ivanna', 'makmum'
+                ];
 
                 foreach ($sections as $sec) {
                     $tabKey = $sec['tab_key'] ?? '';
                     $tabLabel = $sec['tab_label'] ?? '';
 
-                    // Prioritaskan section Indonesia
-                    $isIndoSection = str_contains(strtolower($tabLabel), 'indonesia') || in_array($tabKey, ['to:1:9', 'to:1:12', 'to:1:5']);
-                    if (!$isIndoSection && $category !== 'all') {
-                        continue;
-                    }
+                    // Hanya ambil section yang murni bertema Indonesia ATAU memiliki item Indonesia yang valid
+                    $isIndoSection = str_contains(strtolower($tabLabel), 'indonesia') || in_array($tabKey, ['to:1:9', 'to:1:12']);
 
                     foreach ($sec['items'] ?? [] as $item) {
                         $wUrl = $item['watch_url'] ?? '';
                         $titleRaw = $item['title'] ?? '';
                         if (empty($wUrl) || empty($titleRaw)) continue;
+
+                        $titleLower = strtolower($titleRaw);
+
+                        // Blokir judul foreign
+                        $isForeign = false;
+                        foreach ($foreignKeywords as $fk) {
+                            if (str_contains($titleLower, $fk)) {
+                                $isForeign = true;
+                                break;
+                            }
+                        }
+                        if ($isForeign) continue;
+
+                        // Jika bukan section Indonesia, hanya izinkan jika judul cocok dengan konten Indonesia yang terverifikasi
+                        if (!$isIndoSection) {
+                            $isIndoTitle = false;
+                            foreach ($knownIndoExtra as $ik) {
+                                if (str_contains($titleLower, $ik)) {
+                                    $isIndoTitle = true;
+                                    break;
+                                }
+                            }
+                            if (!$isIndoTitle) continue;
+                        }
 
                         // Ekstrak slug
                         // URL format: /search/import?provider=moviebox&book_id=...&title=...
@@ -122,7 +152,8 @@ class NartoMovieBoxService
                         $isSeries = str_contains(strtolower($cleanTitle), 'series') ||
                                     str_contains(strtolower($cleanTitle), 'season') ||
                                     in_array('TVSeries', $tags) ||
-                                    str_contains(strtolower($tabLabel), 'drama');
+                                    str_contains(strtolower($tabLabel), 'drama') ||
+                                    $tabKey === 'to:1:9';
 
                         $type = $isSeries ? 'series' : 'movie';
 
@@ -175,12 +206,17 @@ class NartoMovieBoxService
     /**
      * Ambil detail film dari MovieBox (Narto)
      */
-    public static function getMovieDetail(string $slug): ?array
+    public static function getMovieDetail(string $slug, bool $force = false): ?array
     {
         $rawSlug = preg_replace('/^mb-/', '', $slug);
-        $cacheKey = "mb_movie_detail_" . md5($rawSlug);
+        $cacheKey = "mb_movie_detail_v2_" . md5($rawSlug);
 
-        return Cache::remember($cacheKey, 1800, function () use ($rawSlug, $slug) {
+        if ($force) {
+            Cache::forget($cacheKey);
+        }
+
+        // Cache stream dan detail selama 5 menit (300 detik) agar token HLS selalu segar
+        return Cache::remember($cacheKey, 300, function () use ($rawSlug, $slug) {
             try {
                 $client = self::getClient();
 
@@ -314,12 +350,17 @@ class NartoMovieBoxService
     /**
      * Ambil detail TV series dari MovieBox (Narto) lengkap per episode
      */
-    public static function getSeriesDetail(string $slug): ?array
+    public static function getSeriesDetail(string $slug, bool $force = false): ?array
     {
         $rawSlug = preg_replace('/^mb-/', '', $slug);
-        $cacheKey = "mb_series_detail_" . md5($rawSlug);
+        $cacheKey = "mb_series_detail_v2_" . md5($rawSlug);
 
-        return Cache::remember($cacheKey, 1800, function () use ($rawSlug, $slug) {
+        if ($force) {
+            Cache::forget($cacheKey);
+        }
+
+        // Cache stream dan detail series selama 5 menit (300 detik)
+        return Cache::remember($cacheKey, 300, function () use ($rawSlug, $slug) {
             try {
                 $client = self::getClient();
 

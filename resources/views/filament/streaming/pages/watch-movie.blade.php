@@ -964,6 +964,16 @@
                                         });
 
                                         hls.on(window.Hls.Events.ERROR, async function (event, data) {
+                                            // Deteksi browser tidak mendukung codec tertentu (misal HEVC di browser non-hardware)
+                                            if (/buffer.*Codec/i.test(data.details || '')) {
+                                                console.warn('[KZSTRM] Codec tidak didukung browser ini (' + data.details + '). Berpindah ke server cadangan...');
+                                                const altServer = Array.isArray(self.serversList) ? self.serversList.find(s => s.id !== self.activeServerId) : null;
+                                                if (altServer) {
+                                                    self.switchServer(altServer.id, altServer.embed_url, altServer.is_embed);
+                                                    return;
+                                                }
+                                            }
+
                                             // Potongan video/audio gagal diambil langsung (biasanya domain CDN diblok operator):
                                             // pindah ke proxy server. Retry berikutnya otomatis lewat proxy.
                                             const segErr = data.type === window.Hls.ErrorTypes.NETWORK_ERROR && /frag|key|init/i.test(data.details || '');
