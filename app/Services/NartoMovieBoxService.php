@@ -222,8 +222,28 @@ class NartoMovieBoxService
 
                 // Kunjungi halaman detail/watch episode 1
                 $watchUrl = self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home";
-                $res = $client->get($watchUrl);
-                if ($res->getStatusCode() !== 200) {
+                $res = null;
+                try {
+                    $res = $client->get($watchUrl);
+                } catch (\Throwable $e) {
+                    $res = null;
+                }
+
+                // Jika gagal/404, coba cari slug asli via API search Narto
+                if (!$res || $res->getStatusCode() !== 200) {
+                    $realSlug = self::searchRealSlug($rawSlug);
+                    if ($realSlug && $realSlug !== $rawSlug) {
+                        $rawSlug = $realSlug;
+                        $watchUrl = self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home";
+                        try {
+                            $res = $client->get($watchUrl);
+                        } catch (\Throwable $e) {
+                            $res = null;
+                        }
+                    }
+                }
+
+                if (!$res || $res->getStatusCode() !== 200) {
                     return null;
                 }
 
@@ -365,8 +385,28 @@ class NartoMovieBoxService
                 $client = self::getClient();
 
                 $watchUrl = self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home";
-                $res = $client->get($watchUrl);
-                if ($res->getStatusCode() !== 200) {
+                $res = null;
+                try {
+                    $res = $client->get($watchUrl);
+                } catch (\Throwable $e) {
+                    $res = null;
+                }
+
+                // Jika gagal/404, coba cari slug asli via API search Narto
+                if (!$res || $res->getStatusCode() !== 200) {
+                    $realSlug = self::searchRealSlug($rawSlug);
+                    if ($realSlug && $realSlug !== $rawSlug) {
+                        $rawSlug = $realSlug;
+                        $watchUrl = self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home";
+                        try {
+                            $res = $client->get($watchUrl);
+                        } catch (\Throwable $e) {
+                            $res = null;
+                        }
+                    }
+                }
+
+                if (!$res || $res->getStatusCode() !== 200) {
                     return null;
                 }
 
@@ -520,5 +560,43 @@ class NartoMovieBoxService
         }
 
         return null;
+    }
+
+    /**
+     * Cari slug asli di Narto Drama jika slug hasil judul berbeda dari rute internal
+     */
+    public static function searchRealSlug(string $rawSlug): ?string
+    {
+        $cacheKey = 'mb_real_slug_' . md5($rawSlug);
+        return Cache::remember($cacheKey, 86400, function () use ($rawSlug) {
+            try {
+                $query = str_replace('-', ' ', $rawSlug);
+                $client = self::getClient();
+                $res = $client->get(self::$baseUrl . '/search', [
+                    'query' => [
+                        'q' => $query,
+                        'limit' => 5,
+                        'lang' => 'id-ID',
+                    ],
+                    'headers' => [
+                        'X-Requested-With' => 'XMLHttpRequest',
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                        'Cookie' => 'nd_ck=' . self::generateNdCookie() . '; path=/',
+                    ],
+                ]);
+                if ($res->getStatusCode() === 200) {
+                    $data = json_decode((string) $res->getBody(), true);
+                    foreach ($data['items'] ?? [] as $it) {
+                        $url = $it['url'] ?? '';
+                        if (preg_match('/\/detail\/watch\/([^\/\?]+)/', $url, $m)) {
+                            return $m[1];
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('NartoMovieBoxService::searchRealSlug failed for ' . $rawSlug . ': ' . $e->getMessage());
+            }
+            return null;
+        });
     }
 }
