@@ -186,7 +186,15 @@ class IndoxxiTechService
                         if (preg_match('/<iframe[^>]+src=[\x27\x22]([^\x27\x22]+)[\x27\x22]/i', $body, $m)) {
                             $src = trim($m[1]);
                             if (!empty($src)) {
-                                $isLikelyDown = str_contains($src, 'playerekusu.stream');
+                                $host = parse_url($src, PHP_URL_HOST);
+                                $dnsAlive = $host ? (filter_var($host, FILTER_VALIDATE_IP) || @checkdnsrr($host, 'A')) : false;
+                                $isLikelyDown = !$dnsAlive || str_contains($src, 'playerekusu.stream');
+
+                                // Jika domainnya mati total (NXDOMAIN), jangan masukkan
+                                if (!$dnsAlive) {
+                                    continue;
+                                }
+
                                 $resolvedServers[] = [
                                     'id' => 'server_ix_' . $tabKey,
                                     'name' => 'Server 3 (' . $tabLabel . ')',
@@ -298,24 +306,6 @@ class IndoxxiTechService
                         'embed_url' => $watchUrl,
                     ];
                 }
-
-                // Cari mirror tambahan di Rebahin jika tersedia
-                try {
-                    $rbSearch = RebahinService::search($cleanTitle);
-                    if (!empty($rbSearch[0]['slug'])) {
-                        $rbDetail = RebahinService::getMovieDetail($rbSearch[0]['slug']);
-                        if (!empty($rbDetail['servers'])) {
-                            foreach ($rbDetail['servers'] as $idx => $s) {
-                                $servers[] = [
-                                    'id' => 'server_rb_' . ($idx + 1),
-                                    'name' => 'Server 2 (Arsip ' . ($idx + 1) . ')',
-                                    'type' => 'embed',
-                                    'embed_url' => $s['embed_url'] ?? '',
-                                ];
-                            }
-                        }
-                    }
-                } catch (\Throwable $e) {}
 
                 return [
                     'id' => $slug,

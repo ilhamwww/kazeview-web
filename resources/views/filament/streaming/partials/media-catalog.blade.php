@@ -8,9 +8,14 @@
 
     $isSeries = $kind === 'series';
     $label = $customLabel ?? ($isSeries ? 'TV Series' : ($kind === 'indonesia' ? 'Indonesia' : 'Movies'));
-    $urlFor = function (array $it) use ($isSeries) {
+    $urlFor = function (array $it) use ($isSeries, $kind, $server) {
         if (empty($it['slug'])) {
             return '#';
+        }
+        if ($kind === 'indonesia') {
+            $srv = $server ?? 'server-1';
+            $cleanSlug = preg_replace('/^(mb-|rb-|ix-)/', '', $it['slug']);
+            return "/indonesia/{$srv}/{$cleanSlug}";
         }
         $series = $isSeries || in_array($it['type'] ?? '', ['tv_series', 'tv', 'series'], true);
         return $series
@@ -198,16 +203,15 @@
                         Sumber Server:
                     </span>
                     @foreach($providers as $pv)
-                        @php $isPvActive = ($provider ?? 'all') === $pv['id']; @endphp
-                        <button type="button"
-                                wire:click="setProvider('{{ $pv['id'] }}')"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition shrink-0 border flex items-center gap-1.5
+                        @php $isPvActive = ($server ?? 'server-1') === $pv['id']; @endphp
+                        <a href="{{ $pv['url'] ?? ('/indonesia/' . $pv['id']) }}"
+                           class="px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition shrink-0 border flex items-center gap-1.5
                                 {{ $isPvActive
-                                    ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/50 shadow-sm'
+                                    ? 'bg-red-600 text-white border-red-500 shadow-md shadow-red-600/30'
                                     : 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border-zinc-800' }}">
-                            <span class="w-1.5 h-1.5 rounded-full {{ $isPvActive ? 'bg-emerald-400' : 'bg-zinc-600' }}"></span>
+                            <span class="w-1.5 h-1.5 rounded-full {{ $isPvActive ? 'bg-white' : 'bg-zinc-600' }}"></span>
                             {{ $pv['label'] }}
-                        </button>
+                        </a>
                     @endforeach
                 </div>
             @endif

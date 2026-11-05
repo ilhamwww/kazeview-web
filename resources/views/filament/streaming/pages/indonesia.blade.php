@@ -8,6 +8,7 @@
     'category' => $category,
     'providers' => $providers,
     'provider' => $provider,
+    'server' => $server,
     'search' => $search,
     'activeCategoryLabel' => collect($categories)->firstWhere('id', $category)['label'] ?? ucfirst($category),
     'latestMovies' => $latestMovies,
