@@ -32,6 +32,12 @@ class ScraperSettingPage extends Page implements HasForms
         if (empty($data['dramabuzz_api_keys'])) {
             $data['dramabuzz_api_keys'] = $this->record->getDramabuzzApiKeysList();
         }
+        if (empty($data['adult_keywords'])) {
+            $data['adult_keywords'] = $this->record->getAdultKeywordsList();
+        }
+        if (!isset($data['adult_filter_enabled'])) {
+            $data['adult_filter_enabled'] = true;
+        }
         $this->form->fill($data);
     }
 
@@ -135,6 +141,23 @@ class ScraperSettingPage extends Page implements HasForms
                             })
                             ->columns(3),
                     ]),
+
+                Forms\Components\Section::make('Sensor Konten Dewasa (Adult Content Filter)')
+                    ->description('Filter otomatis untuk mencegah video bokep, semi, atau konten vulgar masuk ke katalog publik KZSTRM.')
+                    ->schema([
+                        Forms\Components\Toggle::make('adult_filter_enabled')
+                            ->label('Aktifkan Sensor Konten Dewasa')
+                            ->helperText('Jika aktif, konten scraper yang judul, slug, atau tag-nya mengandung kata terlarang akan otomatis diblokir.')
+                            ->default(true),
+
+                        Forms\Components\TagsInput::make('adult_keywords')
+                            ->label('Daftar Kata Kunci Terlarang (Blacklist adultKeywords)')
+                            ->placeholder('Tambah kata kunci lalu tekan Enter')
+                            ->helperText('Daftar kata kunci yang diblokir otomatis. Pisahkan dengan menekan Enter.')
+                            ->suggestions(ScraperSetting::DEFAULT_ADULT_KEYWORDS)
+                            ->default(ScraperSetting::DEFAULT_ADULT_KEYWORDS)
+                            ->columnSpanFull(),
+                    ]),
             ])
             ->statePath('data');
     }
@@ -160,6 +183,8 @@ class ScraperSettingPage extends Page implements HasForms
         Cache::forget('dramabuzz_networks');
         Cache::forget('dramabuzz_networks_options');
         Cache::forget('dramabuzz_active_key');
+        Cache::forget('kz_adult_keywords_list');
+        Cache::forget('kz_adult_filter_enabled');
 
         Notification::make()
             ->title('Scraper settings berhasil disimpan')

@@ -824,6 +824,6 @@ class RebahinService
             ];
         }
 
-        return $cards;
+        return MediaContentSanitizerService::filterList($cards);
     }
 }

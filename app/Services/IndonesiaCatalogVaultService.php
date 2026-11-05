@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\IndonesiaMediaItem;
+use App\Services\MediaContentSanitizerService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -134,6 +135,11 @@ class IndonesiaCatalogVaultService
                 $slug = $it['slug'] ?? '';
                 if (empty($slug)) continue;
 
+                // Sensor konten dewasa
+                if (MediaContentSanitizerService::isAdult($it)) {
+                    continue;
+                }
+
                 $rawSlug = $it['raw_slug'] ?? preg_replace('/^mb-/', '', $slug);
 
                 IndonesiaMediaItem::updateOrCreate(
@@ -182,6 +188,11 @@ class IndonesiaCatalogVaultService
                     $slug = $it['slug'] ?? '';
                     if (empty($slug)) continue;
 
+                    // Sensor konten dewasa
+                    if (MediaContentSanitizerService::isAdult($it)) {
+                        continue;
+                    }
+
                     $rawSlug = $it['raw_slug'] ?? preg_replace('/^rb-/', '', $slug);
 
                     // Jangan timpa jika sudah ada versi MovieBox dengan judul yang sama
@@ -221,5 +232,23 @@ class IndonesiaCatalogVaultService
         }
 
         return $count;
+    }
+
+    /**
+     * Bersihkan konten dewasa yang terlanjur tersimpan di database vault
+     */
+    public static function purgeAdultContent(): int
+    {
+        $all = IndonesiaMediaItem::all();
+        $deleted = 0;
+        foreach ($all as $item) {
+            $matched = MediaContentSanitizerService::findMatchedKeyword($item->toCard());
+            if ($matched) {
+                Log::info("[VaultPurge] Deleted adult item ID {$item->id}: '{$item->title}' (matched: '{$matched}')");
+                $item->delete();
+                $deleted++;
+            }
+        }
+        return $deleted;
     }
 }
