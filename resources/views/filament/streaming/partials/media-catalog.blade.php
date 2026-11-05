@@ -8,14 +8,14 @@
 
     $isSeries = $kind === 'series';
     $label = $customLabel ?? ($isSeries ? 'TV Series' : ($kind === 'indonesia' ? 'Indonesia' : 'Movies'));
-    $urlFor = function (array $it) use ($isSeries, $kind, $server) {
+    $currentServer = $server ?? 'server-1';
+    $urlFor = function (array $it) use ($isSeries, $kind, $currentServer) {
         if (empty($it['slug'])) {
             return '#';
         }
         if ($kind === 'indonesia') {
-            $srv = $server ?? 'server-1';
             $cleanSlug = preg_replace('/^(mb-|rb-|ix-)/', '', $it['slug']);
-            return "/indonesia/{$srv}/{$cleanSlug}";
+            return "/indonesia/{$currentServer}/{$cleanSlug}";
         }
         $series = $isSeries || in_array($it['type'] ?? '', ['tv_series', 'tv', 'series'], true);
         return $series
