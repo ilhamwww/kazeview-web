@@ -86,13 +86,40 @@ class WatchIndonesia extends Page
                 if ($detail) {
                     $this->isSeries = true;
                     $this->media = $detail;
-                    $this->episodes = $detail['episodes'] ?? [];
+
+                    $rawEps = $detail['episodes'] ?? ($detail['defaultSeason']['episodes'] ?? []);
+                    $this->episodes = [];
+                    foreach ($rawEps as $re) {
+                        $num = (int) ($re['episodeNumber'] ?? ($re['number'] ?? ($re['episode_number'] ?? 1)));
+                        $name = $re['name'] ?? ($re['title'] ?? ('Episode ' . $num));
+                        $streamUrl = $re['stream_url'] ?? ($re['play_url'] ?? '');
+                        $subtitles = $re['subtitles'] ?? ($re['multi_subtitles'] ?? []);
+                        $this->episodes[] = [
+                            'episode_number' => $num,
+                            'episodeNumber' => $num,
+                            'title' => $name,
+                            'name' => $name,
+                            'stream_url' => $streamUrl,
+                            'subtitles' => $subtitles,
+                            'stillPath' => $re['stillPath'] ?? ($detail['poster'] ?? ''),
+                        ];
+                    }
+
+                    // Set video_url awal ke Episode 1
+                    $firstEp = $this->episodes[0] ?? null;
+                    if ($firstEp) {
+                        $this->media['video_url'] = $firstEp['stream_url'] ?? '';
+                        $this->media['subtitles'] = $firstEp['subtitles'] ?? [];
+                        $this->currentEpisode = $firstEp['episode_number'] ?? 1;
+                        $this->currentEpisodeTitle = $firstEp['title'] ?? 'Episode 1';
+                    }
+
                     $this->servers = [
                         [
                             'id' => 'server_mb_hls',
                             'name' => 'Server 1 (1080p Ultra HD)',
                             'type' => 'hls',
-                            'video_url' => $detail['video_url'] ?? '',
+                            'video_url' => $this->media['video_url'] ?? '',
                             'embed_url' => '',
                         ]
                     ];

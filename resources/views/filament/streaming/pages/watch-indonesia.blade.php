@@ -134,16 +134,14 @@
                             @foreach($episodes as $ep)
                                 @php
                                     $epNumber = $ep['episode_number'] ?? $loop->iteration;
-                                    $isCurrent = ($currentEpisode ?? 1) == $epNumber;
                                 @endphp
                                 <button type="button"
-                                        wire:click="selectEpisode({{ $epNumber }})"
-                                        class="p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer {{ $isCurrent ? 'bg-red-600/20 border-red-500 text-white shadow-sm' : 'bg-zinc-900/60 hover:bg-zinc-800 border-zinc-800 text-zinc-300' }}">
+                                        @click="changeEpisode({{ $epNumber }})"
+                                        :class="currentEp === {{ $epNumber }} ? 'bg-red-600/20 border-red-500 text-white shadow-sm ring-1 ring-red-500' : 'bg-zinc-900/60 hover:bg-zinc-800 border-zinc-800 text-zinc-300'"
+                                        class="p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer">
                                     <div class="flex items-center justify-between gap-1 mb-1">
-                                        <span class="text-xs font-black {{ $isCurrent ? 'text-red-400' : 'text-zinc-400' }}">EPS {{ $epNumber }}</span>
-                                        @if($isCurrent)
-                                            <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                                        @endif
+                                        <span class="text-xs font-black" :class="currentEp === {{ $epNumber }} ? 'text-red-400' : 'text-zinc-400'">EPS {{ $epNumber }}</span>
+                                        <span x-show="currentEp === {{ $epNumber }}" class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
                                     </div>
                                     <span class="text-xs font-medium line-clamp-1 text-zinc-200">{{ $ep['title'] ?? ('Episode ' . $epNumber) }}</span>
                                 </button>
@@ -235,12 +233,29 @@
                     currentEmbedUrl: {!! json_encode($servers[0]['embed_url'] ?? '') !!},
                     videoSrc: {!! json_encode($media['video_url'] ?? '') !!},
                     subtitles: @js($media['subtitles'] ?? []),
+                    episodesList: @js($episodes),
+                    currentEp: {{ (int) ($currentEpisode ?? 1) }},
+
+                    changeEpisode(epNum) {
+                        this.currentEp = epNum;
+                        const ep = Array.isArray(this.episodesList) ? this.episodesList.find(e => (e.episode_number == epNum || e.episodeNumber == epNum)) : null;
+                        if (ep && ep.stream_url) {
+                            this.videoSrc = ep.stream_url;
+                            this.subtitles = ep.subtitles || [];
+                            if (this.art) {
+                                this.art.switchUrl(this.videoSrc);
+                                this.art.play();
+                            } else {
+                                this.isPlaying = true;
+                                this.$nextTick(() => {
+                                    this.initArtPlayer();
+                                });
+                            }
+                        }
+                    },
 
                     init() {
-                        // Jika ada HLS stream siap putar
-                        if (this.videoSrc && !this.isEmbed) {
-                            // Player siap
-                        }
+                        // Player siap
                     },
 
                     switchServer(id, embedUrl, isEmbedServer) {
@@ -296,15 +311,80 @@
                             url: this.videoSrc,
                             type: 'm3u8',
                             customType: {
-                                m3u8: function (video, url, art) {
-                                    if (Hls.isSupported()) {
-                                        if (self.hls) self.hls.destroy();
-                                        const hls = new Hls();
+                                m3u8: function (video, url, artInstance) {
+                                    if (window.Hls && window.Hls.isSupported()) {
+                                        if (self.hls) {
+                                            try { self.hls.destroy(); } catch(e) {}
+                                        }
+                                        const hls = new window.Hls({
+                                            enableWorker: true,
+                                            lowLatencyMode: false,
+                                            maxBufferLength: 60,
+                                            backBufferLength: 30,
+                                            defaultAudioCodec: 'mp4a.40.2',
+                                        });
+                                        self.hls = hls;
+                                        artInstance.hls = hls;
+
+                                        hls.on(window.Hls.Events.MANIFEST_LOADED, function (event, data) {
+                                            if (data.levels && data.levels.length > 0) {
+                                                data.levels.forEach(function (l) {
+                                                    l.videoCodec = l.videoCodec || 'avc1.640028';
+                                                    l.audioCodec = l.audioCodec || 'mp4a.40.2';
+                                                    if (l.attrs) {
+                                                        l.attrs.CODECS = l.attrs.CODECS || 'avc1.640028,mp4a.40.2';
+                                                    }
+                                                });
+                                            }
+                                        });
+
+                                        hls.on(window.Hls.Events.BUFFER_CODECS, function (event, data) {
+                                            if (data.tracks) {
+                                                if (data.tracks.video && !data.tracks.video.codec) {
+                                                    data.tracks.video.codec = 'avc1.640028';
+                                                }
+                                                if (data.tracks.audio && !data.tracks.audio.codec) {
+                                                    data.tracks.audio.codec = 'mp4a.40.2';
+                                                }
+                                            }
+                                        });
+
                                         hls.loadSource(url);
                                         hls.attachMedia(video);
-                                        self.hls = hls;
+
+                                        hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
+                                            video.play().catch(() => {});
+                                            if (artInstance && artInstance.loading) {
+                                                artInstance.loading.show = false;
+                                            }
+                                        });
+
+                                        hls.on(window.Hls.Events.ERROR, function (event, data) {
+                                            console.error('[HLS_ERROR_DETAIL]', data.details, 'mimeType:', data.mimeType, 'err:', data.error ? data.error.message : null);
+                                            if (data.details === 'bufferAddCodecError' || (data.error && /unsupported/i.test(data.error.message || ''))) {
+                                                if (artInstance && artInstance.notice) {
+                                                    artInstance.notice.show = 'Format HEVC Ultra HD: Disarankan putar di HP (Chrome/Safari) dengan akselerasi hardware.';
+                                                }
+                                                if (artInstance && artInstance.loading) {
+                                                    artInstance.loading.show = false;
+                                                }
+                                            }
+                                        });
+
+                                        video.addEventListener('timeupdate', function () {
+                                            if (artInstance && artInstance.loading) {
+                                                artInstance.loading.show = false;
+                                            }
+                                        });
+
+                                        video.addEventListener('playing', function () {
+                                            if (artInstance && artInstance.loading) {
+                                                artInstance.loading.show = false;
+                                            }
+                                        });
                                     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                                         video.src = url;
+                                        video.play().catch(() => {});
                                     }
                                 }
                             },
@@ -319,6 +399,24 @@
                         };
 
                         this.art = new Artplayer(artConfig);
+
+                        this.art.on('ready', () => {
+                            const v = self.art && self.art.video;
+                            const pr = v && v.play ? v.play() : null;
+                            if (pr && pr.catch) {
+                                pr.catch((err) => {
+                                    self.art.muted = true;
+                                    Promise.resolve(self.art.play()).catch(() => {});
+                                    self.art.notice.show = 'Ketuk ikon suara untuk menyalakan audio';
+                                });
+                            }
+                        });
+
+                        this.art.on('video:playing', () => {
+                            if (self.art && self.art.loading) {
+                                self.art.loading.show = false;
+                            }
+                        });
                     }
                 });
 
