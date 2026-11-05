@@ -47,6 +47,8 @@ class IndonesiaCatalogVaultService
             $query->where('source', 'moviebox');
         } elseif ($provider === 'rebahin') {
             $query->where('source', 'server2');
+        } elseif ($provider === 'indoxxi') {
+            $query->where('source', 'indoxxi');
         }
 
         // Urutan: Server 1 (MovieBox HD) diutamakan di baris atas, lalu tahun terbaru, lalu id terbaru
@@ -229,6 +231,69 @@ class IndonesiaCatalogVaultService
             }
         } catch (\Throwable $e) {
             Log::warning('IndonesiaCatalogVaultService::syncFromRebahin failed: ' . $e->getMessage());
+        }
+
+        return $count;
+    }
+
+    /**
+     * Simpan / Sync item dari IndoXXI Tech ke database (dengan proteksi filter konten dewasa & genre semi)
+     */
+    public static function syncFromIndoxxi(int $maxPages = 5): int
+    {
+        $count = 0;
+        try {
+            for ($page = 1; $page <= $maxPages; $page++) {
+                $ixRes = IndoxxiTechService::getIndonesiaCatalog($page);
+                $items = $ixRes['data'] ?? [];
+                if (empty($items)) break;
+
+                foreach ($items as $it) {
+                    $slug = $it['slug'] ?? '';
+                    if (empty($slug)) continue;
+
+                    // Sensor konten dewasa & genre semi
+                    if (MediaContentSanitizerService::isAdult($it)) {
+                        continue;
+                    }
+
+                    $rawSlug = $it['raw_slug'] ?? preg_replace('/^ix-/', '', $slug);
+
+                    // Cek jika sudah ada judul yang sama di moviebox/server2
+                    $cleanTitle = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $it['title'] ?? ''));
+                    $exists = IndonesiaMediaItem::whereRaw("LOWER(REGEXP_REPLACE(title, '[^a-zA-Z0-9]+', '', 'g')) = ?", [$cleanTitle])
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
+                    }
+
+                    IndonesiaMediaItem::updateOrCreate(
+                        ['slug' => $slug],
+                        [
+                            'raw_slug' => $rawSlug,
+                            'title' => $it['title'] ?? 'Film Indonesia',
+                            'type' => $it['type'] ?? 'movie',
+                            'year' => $it['year'] ?? null,
+                            'rating' => (float) ($it['rating'] ?? 7.5),
+                            'quality' => 'HD',
+                            'duration' => null,
+                            'poster' => $it['poster'] ?? null,
+                            'backdrop' => $it['banner'] ?? ($it['poster'] ?? null),
+                            'genres' => $it['genres'] ?? ['Indonesia'],
+                            'source' => 'indoxxi',
+                            'provider_badge' => 'Server 3',
+                            'external_id' => $it['external_id'] ?? null,
+                            'watch_url' => $it['watch_url'] ?? null,
+                            'is_published' => true,
+                            'last_synced_at' => Carbon::now(),
+                        ]
+                    );
+                    $count++;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('IndonesiaCatalogVaultService::syncFromIndoxxi failed: ' . $e->getMessage());
         }
 
         return $count;

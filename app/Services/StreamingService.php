@@ -1728,6 +1728,10 @@ class StreamingService
             return RebahinService::getMovieDetail($slug);
         }
 
+        if (str_starts_with($slug, 'ix-')) {
+            return IndoxxiTechService::getMovieDetail($slug);
+        }
+
         return Cache::remember('idlix_movie_' . $slug, 3600, function () use ($slug) {
             try {
                 $domain = ScraperSetting::getInstance()->idlix_domain;

@@ -50,6 +50,7 @@ class Indonesia extends Page
         ['id' => 'all', 'label' => 'Semua Server', 'badge' => 'Combo'],
         ['id' => 'moviebox', 'label' => 'Server 1 (1080p Ultra HD)', 'badge' => 'Server 1'],
         ['id' => 'rebahin', 'label' => 'Server 2 (Arsip Lengkap)', 'badge' => 'Server 2'],
+        ['id' => 'indoxxi', 'label' => 'Server 3 (IndoXXI Mirror)', 'badge' => 'Server 3'],
     ];
 
     public function mount(): void

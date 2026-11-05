@@ -48,7 +48,52 @@ class MediaContentSanitizerService
             return null;
         }
 
-        // Kumpulkan seluruh string dari input (bisa string, array card, atau object)
+        // 1. Pemeriksaan eksplisit pada Genre / Kategori (jika input berupa array)
+        if (is_array($input)) {
+            $genresToCheck = [];
+            if (!empty($input['genres']) && is_array($input['genres'])) {
+                foreach ($input['genres'] as $g) {
+                    $genresToCheck[] = is_array($g) ? ($g['name'] ?? '') : (string) $g;
+                }
+            }
+            if (!empty($input['genre'])) {
+                $genresToCheck[] = (string) $input['genre'];
+            }
+            if (!empty($input['categories']) && is_array($input['categories'])) {
+                foreach ($input['categories'] as $c) {
+                    $genresToCheck[] = is_array($c) ? ($c['name'] ?? '') : (string) $c;
+                }
+            }
+            if (!empty($input['category'])) {
+                $genresToCheck[] = (string) $input['category'];
+            }
+
+            $strictlyForbiddenGenres = [
+                'semi', 'film semi', 'semi indonesia', 'semi jepang', 'semi korea', 'semi barat',
+                'erotic', 'erotis', 'adult', '18+', 'bokep', 'hentai', 'ecchi', 'kelas bintang', 'dewasa'
+            ];
+
+            foreach ($genresToCheck as $genreStr) {
+                $gLower = mb_strtolower(trim($genreStr), 'UTF-8');
+                if ($gLower === '') continue;
+                foreach ($strictlyForbiddenGenres as $fg) {
+                    if ($gLower === $fg || str_contains($gLower, $fg)) {
+                        return "Genre: {$genreStr}";
+                    }
+                }
+            }
+
+            // Cek juga URL jika mengandung path kategori terlarang
+            $urlToCheck = $input['url'] ?? ($input['watch_url'] ?? '');
+            if ($urlToCheck) {
+                $uLower = strtolower($urlToCheck);
+                if (str_contains($uLower, '/film-semi/') || str_contains($uLower, '/semi/') || str_contains($uLower, 'kelas-bintang')) {
+                    return "URL Path: {$urlToCheck}";
+                }
+            }
+        }
+
+        // 2. Kumpulkan seluruh string dari input (judul, slug, sinopsis, tag)
         $textToInspect = '';
         if (is_array($input)) {
             $textToInspect = implode(' ', array_filter([
@@ -57,6 +102,7 @@ class MediaContentSanitizerService
                 $input['raw_slug'] ?? '',
                 $input['synopsis'] ?? ($input['overview'] ?? ''),
                 is_array($input['genres'] ?? null) ? implode(' ', $input['genres']) : ($input['genre'] ?? ''),
+                is_array($input['tags'] ?? null) ? implode(' ', $input['tags']) : '',
             ]));
         } else {
             $textToInspect = (string) $input;

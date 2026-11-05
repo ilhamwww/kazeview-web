@@ -13,6 +13,10 @@ Artisan::command('kz:sync-indonesia-vault', function () {
     $this->info("Synced MovieBox: {$mb} items");
     $rb = \App\Services\IndonesiaCatalogVaultService::syncFromRebahin(5);
     $this->info("Synced Rebahin: {$rb} items");
+    $ix = \App\Services\IndonesiaCatalogVaultService::syncFromIndoxxi(5);
+    $this->info("Synced IndoXXI (filtered clean): {$ix} items");
+    $purged = \App\Services\IndonesiaCatalogVaultService::purgeAdultContent();
+    $this->info("Purged adult items: {$purged}");
     $total = \App\Models\IndonesiaMediaItem::count();
     $this->info("Total Vault Items in DB: {$total}");
 })->purpose('Sync and archive Indonesian movies & series into local database vault');
