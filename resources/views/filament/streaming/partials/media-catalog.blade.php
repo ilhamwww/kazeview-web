@@ -465,8 +465,12 @@
                             @endif
                             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/0 to-black/0 opacity-70 group-hover:opacity-100 transition"></div>
 
-                            @if(!empty($item['provider_badge']))
-                                <span class="absolute top-2 left-2 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-emerald-600/90 text-white border border-emerald-400/30">{{ $item['provider_badge'] }}</span>
+                            @php
+                                $badgeText = $item['provider_badge'] ?? ($kind === 'indonesia' ? (!empty($item['source']) && $item['source'] === 'moviebox' ? 'Server 1' : 'Server 2') : null);
+                                $isServer2 = $badgeText && str_contains(strtolower($badgeText), 'server 2');
+                            @endphp
+                            @if(!empty($badgeText))
+                                <span class="absolute top-2 left-2 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded {{ $isServer2 ? 'bg-blue-600/90 border-blue-400/30' : 'bg-emerald-600/90 border-emerald-400/30' }} text-white border">{{ $badgeText }}</span>
                             @elseif(!empty($item['quality']))
                                 <span class="absolute top-2 left-2 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-black/60 backdrop-blur text-white border border-white/10">{{ $item['quality'] }}</span>
                             @endif

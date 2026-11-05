@@ -820,6 +820,7 @@ class RebahinService
                 'banner' => $posterProxy ?: $imgSrc,
                 'isEmbed' => true,
                 'source' => 'server2',
+                'provider_badge' => 'Server 2',
             ];
         }
 

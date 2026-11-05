@@ -107,6 +107,11 @@ class Indonesia extends Page
         if ($this->provider === 'all' || $this->provider === 'rebahin') {
             $response = RebahinService::getIndonesiaCatalog($this->category, $this->page, $this->search);
             $newItems = $response['data'] ?? [];
+            foreach ($newItems as &$it) {
+                $it['provider_badge'] = 'Server 2';
+                $it['source'] = 'server2';
+            }
+            unset($it);
         }
 
         $this->items = array_merge($this->items, $newItems);
