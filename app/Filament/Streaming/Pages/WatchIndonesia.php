@@ -144,18 +144,69 @@ class WatchIndonesia extends Page
         }
         // 2. SERVER 2 (REBAHIN) - HANYA RESOURCE SERVER 2
         elseif ($this->server === 'server-2') {
-            $detail = RebahinService::getMovieDetail($fullSlug);
-            if ($detail) {
-                $this->media = $detail;
-                // Hanya server-server bawaan Rebahin
-                $this->servers = $detail['servers'] ?? [
-                    [
-                        'id' => 'server1',
-                        'name' => 'Server 2 (HD)',
-                        'type' => 'hls',
-                        'embed_url' => '',
-                    ]
-                ];
+            if ($this->isSeries || str_contains($fullSlug, 'series') || str_contains($fullSlug, 'season')) {
+                $detail = RebahinService::getSeriesDetail($fullSlug);
+                if ($detail) {
+                    $this->isSeries = true;
+                    $this->media = $detail;
+                    $rawEps = $detail['episodes'] ?? ($detail['defaultSeason']['episodes'] ?? []);
+                    $this->episodes = [];
+                    foreach ($rawEps as $re) {
+                        $num = (int) ($re['episodeNumber'] ?? ($re['number'] ?? 1));
+                        $name = $re['name'] ?? ($re['title'] ?? ('Episode ' . $num));
+                        $epServers = [];
+                        foreach ($re['servers'] ?? [] as $s) {
+                            $epServers[] = [
+                                'id' => $s['id'] ?? 'server1',
+                                'name' => str_replace('Server 1', 'Server 2', $s['name'] ?? 'Server 2 (HD)'),
+                                'type' => 'embed',
+                                'embed_url' => $s['embed_url'] ?? '',
+                            ];
+                        }
+                        $firstServer = $epServers[0] ?? null;
+                        $this->episodes[] = [
+                            'episode_number' => $num,
+                            'episodeNumber' => $num,
+                            'title' => $name,
+                            'name' => $name,
+                            'servers' => $epServers,
+                            'embed_url' => $firstServer['embed_url'] ?? '',
+                            'stillPath' => $re['stillPath'] ?? ($detail['poster'] ?? ''),
+                        ];
+                    }
+
+                    $firstEp = $this->episodes[0] ?? null;
+                    if ($firstEp) {
+                        $this->servers = $firstEp['servers'] ?? [];
+                        $this->currentEpisode = $firstEp['episode_number'] ?? 1;
+                        $this->currentEpisodeTitle = $firstEp['title'] ?? 'Episode 1';
+                    }
+                }
+            }
+
+            if (!$this->media) {
+                $detail = RebahinService::getMovieDetail($fullSlug);
+                if ($detail) {
+                    $this->media = $detail;
+                    $rawServers = $detail['servers'] ?? [];
+                    $this->servers = [];
+                    foreach ($rawServers as $s) {
+                        $this->servers[] = [
+                            'id' => $s['id'] ?? 'server1',
+                            'name' => str_replace('Server 1', 'Server 2', $s['name'] ?? 'Server 2 (HD)'),
+                            'type' => 'embed',
+                            'embed_url' => $s['embed_url'] ?? '',
+                        ];
+                    }
+                    if (empty($this->servers)) {
+                        $this->servers[] = [
+                            'id' => 'server_rb_default',
+                            'name' => 'Server 2 (HD)',
+                            'type' => 'embed',
+                            'embed_url' => $detail['url'] ?? '',
+                        ];
+                    }
+                }
             }
         }
         // 3. SERVER 3 (INDOXXI) - HANYA RESOURCE SERVER 3

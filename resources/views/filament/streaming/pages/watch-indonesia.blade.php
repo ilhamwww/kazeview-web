@@ -239,17 +239,30 @@
                     changeEpisode(epNum) {
                         this.currentEp = epNum;
                         const ep = Array.isArray(this.episodesList) ? this.episodesList.find(e => (e.episode_number == epNum || e.episodeNumber == epNum)) : null;
-                        if (ep && ep.stream_url) {
-                            this.videoSrc = ep.stream_url;
-                            this.subtitles = ep.subtitles || [];
-                            if (this.art) {
-                                this.art.switchUrl(this.videoSrc);
-                                this.art.play();
-                            } else {
+                        if (ep) {
+                            if (Array.isArray(ep.servers) && ep.servers.length > 0) {
+                                this.serversList = ep.servers;
+                                this.activeServer = ep.servers[0].id;
+                                this.isEmbed = true;
+                                this.currentEmbedUrl = ep.servers[0].embed_url || '';
+                                if (this.art) {
+                                    try { this.art.destroy(false); } catch(e) {}
+                                    this.art = null;
+                                }
                                 this.isPlaying = true;
-                                this.$nextTick(() => {
-                                    this.initArtPlayer();
-                                });
+                            } else if (ep.stream_url) {
+                                this.isEmbed = false;
+                                this.videoSrc = ep.stream_url;
+                                this.subtitles = ep.subtitles || [];
+                                if (this.art) {
+                                    this.art.switchUrl(this.videoSrc);
+                                    this.art.play();
+                                } else {
+                                    this.isPlaying = true;
+                                    this.$nextTick(() => {
+                                        this.initArtPlayer();
+                                    });
+                                }
                             }
                         }
                     },
