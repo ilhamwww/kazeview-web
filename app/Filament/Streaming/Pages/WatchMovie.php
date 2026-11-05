@@ -43,24 +43,28 @@ class WatchMovie extends Page
         }
 
         // Fetch direct stream first if available (IDLIX via NUC Relay / Rebahin / LK21)
-        $stream = !empty($this->media['id']) ? StreamingService::getValidCachedMovieStream($this->media['id']) : null;
-        if (!$stream && !empty($this->media['id'])) {
-            $stream = StreamingService::getMovieStream($this->media['id']);
-        }
-        if (!$stream && !empty($this->media['title'])) {
-            $stream = DirectStreamResolverService::resolveMovieStream($this->media['title'], $this->media['year'] ?? null);
-        }
-        if ($stream && !empty($stream['video_url'])) {
-            $this->media['video_url'] = $stream['video_url'];
-            $this->media['subtitles'] = $stream['subtitles'] ?? [];
+        if (!empty($this->media['source']) && $this->media['source'] === 'moviebox' && !empty($this->media['video_url'])) {
+            // MovieBox sudah membawa video_url dan subtitles HLS asli langsung
         } else {
-            $this->media['video_url'] = '';
-            $this->media['subtitles'] = [];
+            $stream = !empty($this->media['id']) ? StreamingService::getValidCachedMovieStream($this->media['id']) : null;
+            if (!$stream && !empty($this->media['id'])) {
+                $stream = StreamingService::getMovieStream($this->media['id']);
+            }
+            if (!$stream && !empty($this->media['title'])) {
+                $stream = DirectStreamResolverService::resolveMovieStream($this->media['title'], $this->media['year'] ?? null);
+            }
+            if ($stream && !empty($stream['video_url'])) {
+                $this->media['video_url'] = $stream['video_url'];
+                $this->media['subtitles'] = $stream['subtitles'] ?? [];
+            } else {
+                $this->media['video_url'] = '';
+                $this->media['subtitles'] = [];
+            }
         }
 
         // Setup servers (HLS vs Embed)
         $servers = [];
-        if (!empty($this->media['source']) && $this->media['source'] === 'moviebox' && !empty($this->media['servers'])) {
+        if (!empty($this->media['source']) && in_array($this->media['source'], ['moviebox', 'indoxxi']) && !empty($this->media['servers'])) {
             $servers = $this->media['servers'];
         } elseif (!empty($this->media['isEmbed'])) {
             // Server 1 (HD) uses native Artplayer via Stream Relay (Rebahin / Indonesia)

@@ -142,36 +142,53 @@ class IndoxxiTechService
     }
 
     /**
-     * Resolusi iframe embed pemutar video dari post_id IndoXXI
+     * Resolusi iframe embed pemutar video dari post_id IndoXXI (cek tab p1, p2, p3)
+     */
+    public static function resolvePlayerEmbeds(string $postId): array
+    {
+        $cacheKey = "indoxxi_embeds_v2_{$postId}";
+        return Cache::remember($cacheKey, 86400, function () use ($postId) {
+            $embeds = [];
+            $client = self::getClient();
+
+            foreach (['p2', 'p1', 'p3'] as $tab) {
+                try {
+                    $res = $client->post(self::$baseUrl . '/wp-admin/admin-ajax.php', [
+                        'form_params' => [
+                            'action' => 'muvipro_player_content',
+                            'post_id' => $postId,
+                            'tab' => $tab,
+                        ],
+                        'headers' => [
+                            'X-Requested-With' => 'XMLHttpRequest',
+                        ],
+                    ]);
+
+                    if ($res->getStatusCode() === 200) {
+                        $body = (string) $res->getBody();
+                        if (preg_match('/<iframe[^>]+src=[\x27\x22]([^\x27\x22]+)[\x27\x22]/i', $body, $m)) {
+                            $src = $m[1];
+                            if (!empty($src) && !in_array($src, $embeds, true)) {
+                                $embeds[$tab] = $src;
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning("IndoxxiTechService::resolvePlayerEmbeds tab {$tab} failed for {$postId}: " . $e->getMessage());
+                }
+            }
+            return $embeds;
+        });
+    }
+
+    /**
+     * Resolusi iframe embed pemutar video tunggal
      */
     public static function resolvePlayerEmbed(string $postId): ?string
     {
-        $cacheKey = "indoxxi_embed_{$postId}";
-        return Cache::remember($cacheKey, 86400, function () use ($postId) {
-            try {
-                $client = self::getClient();
-                $res = $client->post(self::$baseUrl . '/wp-admin/admin-ajax.php', [
-                    'form_params' => [
-                        'action' => 'muvipro_player_content',
-                        'post_id' => $postId,
-                        'tab' => 'p1',
-                    ],
-                    'headers' => [
-                        'X-Requested-With' => 'XMLHttpRequest',
-                    ],
-                ]);
-
-                if ($res->getStatusCode() === 200) {
-                    $body = (string) $res->getBody();
-                    if (preg_match('/<iframe[^>]+src=[\x27\x22]([^\x27\x22]+)[\x27\x22]/i', $body, $m)) {
-                        return $m[1];
-                    }
-                }
-            } catch (\Exception $e) {
-                Log::warning("IndoxxiTechService::resolvePlayerEmbed failed for {$postId}: " . $e->getMessage());
-            }
-            return null;
-        });
+        $embeds = self::resolvePlayerEmbeds($postId);
+        // Prioritaskan p2 atau p3 jika ada karena p1 sering down di playerekusu
+        return $embeds['p2'] ?? ($embeds['p1'] ?? ($embeds['p3'] ?? null));
     }
 
     /**
@@ -249,6 +266,46 @@ class IndoxxiTechService
                 $cleanTitle = preg_replace('/^Nonton Film\s*/i', '', $cleanTitle);
                 $cleanTitle = preg_replace('/^Nonton\s*/i', '', $cleanTitle);
 
+                $embeds = $externalId ? self::resolvePlayerEmbeds($externalId) : [];
+                $servers = [];
+                $idx = 1;
+                foreach ($embeds as $tab => $src) {
+                    $servers[] = [
+                        'id' => 'server_indoxxi_' . $tab,
+                        'name' => 'Server 3 (Mirror ' . $idx . ')',
+                        'type' => 'embed',
+                        'embed_url' => $src,
+                    ];
+                    $idx++;
+                }
+
+                if (empty($servers)) {
+                    $servers[] = [
+                        'id' => 'server_indoxxi_embed',
+                        'name' => 'Server 3 (Mirror)',
+                        'type' => 'embed',
+                        'embed_url' => $watchUrl,
+                    ];
+                }
+
+                // Cari mirror tambahan di Rebahin jika tersedia
+                try {
+                    $rbSearch = RebahinService::search($cleanTitle);
+                    if (!empty($rbSearch[0]['slug'])) {
+                        $rbDetail = RebahinService::getMovieDetail($rbSearch[0]['slug']);
+                        if (!empty($rbDetail['servers'])) {
+                            foreach ($rbDetail['servers'] as $idx => $s) {
+                                $servers[] = [
+                                    'id' => 'server_rb_' . ($idx + 1),
+                                    'name' => 'Server 2 (Arsip ' . ($idx + 1) . ')',
+                                    'type' => 'embed',
+                                    'embed_url' => $s['embed_url'] ?? '',
+                                ];
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {}
+
                 return [
                     'id' => $slug,
                     'title' => $cleanTitle,
@@ -267,14 +324,7 @@ class IndoxxiTechService
                     'video_url' => '',
                     'isEmbed' => true,
                     'source' => 'indoxxi',
-                    'servers' => [
-                        [
-                            'id' => 'server_indoxxi_embed',
-                            'name' => 'Server 3 (Mirror)',
-                            'type' => 'embed',
-                            'embed_url' => $embedUrl ?: $watchUrl,
-                        ]
-                    ],
+                    'servers' => $servers,
                 ];
             } catch (\Exception $e) {
                 Log::warning("IndoxxiTechService::getMovieDetail failed for {$rawSlug}: " . $e->getMessage());
