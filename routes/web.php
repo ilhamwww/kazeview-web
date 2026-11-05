@@ -399,7 +399,31 @@ Route::get('/api/streaming/embed', function (\Illuminate\Http\Request $request) 
                 $content = preg_replace('/(<html[^>]*>)/i', "$1<head><base href=\"{$origin}/\"></head>", $content);
             }
 
-            // Netralkan popup window.open & bypass CORS untuk stream/ping XHR
+            // Netralkan popup window.open, force responsive sizing, dan bypass token expiry/CORS
+            $cleanEmbedCss = <<<'CSS'
+<style>
+    html, body {
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: #000 !important;
+    }
+    .player-wrap, #player, .jwplayer, .jw-media, video {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        position: absolute !important;
+        inset: 0 !important;
+    }
+    /* Sembunyikan watermark logo atau elemen branding luar jika ada */
+    .jw-logo, .jw-title-primary, .jw-title-secondary {
+        display: none !important;
+    }
+</style>
+CSS;
             $antiPopScript = <<<'HTML'
 <script>
 window.open = function() { console.log("Popup blocked"); return null; };
@@ -433,7 +457,7 @@ window.open = function() { console.log("Popup blocked"); return null; };
 })();
 </script>
 HTML;
-            $content = str_replace('</head>', "{$antiPopScript}</head>", $content);
+            $content = str_replace('</head>', "{$cleanEmbedCss}\n{$antiPopScript}</head>", $content);
 
             return $content;
         } catch (\Exception $e) {

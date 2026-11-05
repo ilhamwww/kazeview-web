@@ -154,21 +154,21 @@ class WatchIndonesia extends Page
                     foreach ($rawEps as $re) {
                         $num = (int) ($re['episodeNumber'] ?? ($re['number'] ?? 1));
                         $name = $re['name'] ?? ($re['title'] ?? ('Episode ' . $num));
-                        $rebahinWatchUrl = "https://rebahinxxi3.mom/series/{$rawSlug}/watch/";
-                        $epServers = [
-                            [
-                                'id' => 'server_rb_player',
-                                'name' => 'Server 2 (HD)',
-                                'type' => 'embed',
-                                'embed_url' => $rebahinWatchUrl,
-                            ]
-                        ];
+                        $epServers = [];
                         foreach ($re['servers'] ?? [] as $idx => $s) {
                             $epServers[] = [
-                                'id' => 'server_rb_mirror_' . ($idx + 1),
-                                'name' => 'Server 2 (Mirror ' . ($idx + 1) . ')',
+                                'id' => 'server_rb_' . ($idx + 1),
+                                'name' => 'Server 2 (' . ($idx === 0 ? 'HD' : 'Mirror ' . $idx) . ')',
                                 'type' => 'embed',
                                 'embed_url' => $s['embed_url'] ?? '',
+                            ];
+                        }
+                        if (empty($epServers)) {
+                            $epServers[] = [
+                                'id' => 'server_rb_1',
+                                'name' => 'Server 2 (HD)',
+                                'type' => 'embed',
+                                'embed_url' => url('/api/streaming/embed?url=' . urlencode('https://178.211.139.171/embed/' . $rawSlug)),
                             ];
                         }
                         $firstServer = $epServers[0] ?? null;

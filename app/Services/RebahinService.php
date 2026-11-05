@@ -651,7 +651,7 @@ class RebahinService
                             $episodes[$epNum]['id'] = 'rb-' . $embedUrl;
                         }
                         $sNum = count($episodes[$epNum]['servers']) + 1;
-                        $label = $sNum === 1 ? 'Server 1 (HD)' : ($sNum === 2 ? 'Server 2 (Mirror)' : "Server {$sNum}");
+                        $label = $sNum === 1 ? 'Server 2 (HD)' : ($sNum === 2 ? 'Server 2 (Mirror)' : "Server 2 (Mirror " . ($sNum - 1) . ")");
                         $wrappedUrl = url('/api/streaming/embed?url=' . urlencode($embedUrl));
                         $episodes[$epNum]['servers'][] = [
                             'id' => "server{$sNum}",
