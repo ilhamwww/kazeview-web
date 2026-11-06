@@ -237,6 +237,9 @@
                     currentEp: {{ (int) ($currentEpisode ?? 1) }},
 
                     changeEpisode(epNum) {
+                        if (this.art && this.art.video) {
+                            this.art.video.dispatchEvent(new Event('pause'));
+                        }
                         this.currentEp = epNum;
                         const ep = Array.isArray(this.episodesList) ? this.episodesList.find(e => (e.episode_number == epNum || e.episodeNumber == epNum)) : null;
                         if (ep) {
@@ -322,6 +325,47 @@
                         }
 
                         const self = this;
+                        const progressMeta = {
+                            item_id: '{{ $slugParam }}',
+                            item_type: {{ $isSeries ? '"indonesia_series"' : '"indonesia_movie"' }},
+                            episode: String(this.currentEp || 1),
+                            title: {!! json_encode($mTitle ?? '') !!},
+                            thumbnail: {!! json_encode($mPoster ?? '') !!},
+                            url: window.location.pathname,
+                        };
+                        let lastSavedTime = 0;
+                        let lastRecordedEpisode = String(this.currentEp || 1);
+                        const csrfToken = '{{ csrf_token() }}';
+                        const saveProgress = (force = false) => {
+                            const video = self.art?.video;
+                            if (!video) return;
+                            const currentTime = self.art.currentTime || video.currentTime || 0;
+                            const duration = self.art.duration || video.duration || 0;
+                            if (duration < 10 || currentTime < 5) return;
+                            if (!force && Math.abs(currentTime - lastSavedTime) < 8) return;
+                            lastSavedTime = currentTime;
+                            const payload = {
+                                ...progressMeta,
+                                episode: String(self.currentEp || 1),
+                                progress: currentTime,
+                                duration,
+                            };
+                            const body = JSON.stringify(payload);
+                            if (force && navigator.sendBeacon) {
+                                const beaconBody = new FormData();
+                                Object.entries(payload).forEach(([key, value]) => beaconBody.append(key, String(value)));
+                                beaconBody.append('_token', csrfToken);
+                                navigator.sendBeacon('/api/watch-progress', beaconBody);
+                                return;
+                            }
+                            fetch('/api/watch-progress', {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                                body,
+                                keepalive: force,
+                            }).catch(() => {});
+                        };
                         const isHlsSource = this.videoSrc && (this.videoSrc.includes('.m3u8') || this.videoSrc.includes('/master') || this.videoSrc.includes('moviebox'));
                         const artConfig = {
                             container: container,
@@ -436,6 +480,18 @@
                                 self.art.loading.show = false;
                             }
                         });
+
+                        this.art.on('video:timeupdate', () => {
+                            const currentEpisode = String(self.currentEp || 1);
+                            if (currentEpisode !== lastRecordedEpisode) {
+                                lastRecordedEpisode = currentEpisode;
+                                lastSavedTime = 0;
+                            }
+                            if (self.art && !self.art.video?.paused) saveProgress(false);
+                        });
+                        this.art.on('video:pause', () => saveProgress(true));
+                        this.art.on('video:ended', () => saveProgress(true));
+                        this.art.on('destroy', () => saveProgress(true));
                     }
                 });
 

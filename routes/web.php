@@ -269,10 +269,19 @@ Route::post('/api/watch-progress', function (\Illuminate\Http\Request $request) 
     if (!auth()->check()) {
         return response()->json(['ok' => false], 401);
     }
+    $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
+    if ($token && !hash_equals((string) $request->session()->token(), (string) $token)) {
+        abort(419, 'CSRF token mismatch');
+    }
+    $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
+    if ($token && !hash_equals((string) $request->session()->token(), (string) $token)) {
+        abort(419, 'CSRF token mismatch');
+    }
 
     $data = $request->validate([
         'item_id'    => 'required|string|max:255',
-        'item_type'  => 'required|string|in:movie,series,anime,dracin',
+        'item_type'  => 'required|string|in:movie,series,anime,dracin,indonesia_movie,indonesia_series',
+        '_token'     => 'nullable|string',
         'progress'   => 'required|numeric|min:0',
         'duration'   => 'required|numeric|min:1',
         'episode'    => 'nullable|string|max:64',
@@ -295,13 +304,22 @@ Route::post('/api/watch-progress', function (\Illuminate\Http\Request $request) 
     if (!empty($data['url']))       $updatePayload['url'] = $data['url'];
     if (!empty($data['episode']))   $updatePayload['last_episode'] = $data['episode'];
 
-    auth()->user()->watchHistories()->updateOrCreate(
-        [
-            'item_id'   => $data['item_id'],
-            'item_type' => $data['item_type'],
-        ],
-        $updatePayload
-    );
+    $history = auth()->user()->watchHistories()->firstOrNew([
+        'item_id'   => $data['item_id'],
+        'item_type' => $data['item_type'],
+    ]);
+    $history->fill($updatePayload);
+    if (in_array($data['item_type'], ['series', 'indonesia_series'], true)
+        && !empty($data['episode'])
+        && $percent >= \App\Services\ExpService::MOVIE_DONE_PERCENT) {
+        $episodes = is_array($history->watched_episodes) ? $history->watched_episodes : [];
+        $episodes[] = (string) $data['episode'];
+        $history->watched_episodes = array_values(array_unique(array_map('strval', $episodes)));
+    }
+    $history->save();
+    if (in_array($data['item_type'], ['series', 'indonesia_movie', 'indonesia_series'], true)) {
+        \App\Services\ExpService::awardFromWatchHistory($history);
+    }
 
     return response()->json(['ok' => true]);
 })->middleware(['auth', 'throttle:60,1'])->name('api.watch-progress');

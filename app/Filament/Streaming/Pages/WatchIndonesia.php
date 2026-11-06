@@ -274,13 +274,51 @@ class WatchIndonesia extends Page
             abort(404, "Konten tidak ditemukan pada {$this->serverLabel}");
         }
 
+        // Simpan riwayat tontonan supaya EXP dan progress tercatat sejak pemutar dibuka.
+        // EXP film tetap menunggu progress >= 80%; serial mendapat EXP per episode yang baru ditonton.
+        if (auth()->check()) {
+            try {
+                $historyType = $this->isSeries ? 'indonesia_series' : 'indonesia_movie';
+                $history = auth()->user()->watchHistories()->firstOrNew([
+                    'item_id' => $this->slugParam,
+                    'item_type' => $historyType,
+                ]);
+                $history->fill([
+                    'title' => $this->media['title'] ?? 'Film Indonesia',
+                    'thumbnail' => $this->media['poster'] ?? ($this->media['posterPath'] ?? null),
+                    'last_episode' => (string) $this->currentEpisode,
+                    'url' => request()->url(),
+                ]);
+                $history->save();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Indonesia watch history skipped', ['error' => $e->getMessage()]);
+            }
+        }
+
         // Simpan title halaman
-        static::$title = ($this->media['title'] ?? 'Nonton Film') . " - {$this->serverLabel} - KZSTRM";
+        static::$title = ($this->media['title'] ?? 'Nonton Film') . " - {$this->serverLabel} - KZSTRM"; 
     }
 
     public function selectEpisode(int $epNum): void
     {
         $this->currentEpisode = $epNum;
+        if (auth()->check() && $this->isSeries) {
+            try {
+                $history = auth()->user()->watchHistories()->firstOrNew([
+                    'item_id' => $this->slugParam,
+                    'item_type' => 'indonesia_series',
+                ]);
+                $history->fill([
+                    'title' => $this->media['title'] ?? 'Series Indonesia',
+                    'thumbnail' => $this->media['poster'] ?? ($this->media['posterPath'] ?? null),
+                    'last_episode' => (string) $epNum,
+                    'url' => request()->url(),
+                ]);
+                $history->save();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Indonesia episode history skipped', ['error' => $e->getMessage()]);
+            }
+        }
         if ($this->server === 'server-1') {
             $stream = NartoMovieBoxService::getEpisodeStream($this->media['slug'] ?? '', 1, $epNum);
             if ($stream && !empty($stream['video_url'])) {

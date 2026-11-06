@@ -1189,7 +1189,7 @@
                             url: window.location.pathname,
                         };
                         let _lastSavedTime = 0;
-                        const _csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                        const _csrfToken = '{{ csrf_token() }}';
 
                         const saveProgress = (force = false) => {
                             if (!self.art || !self.art.video) return;
@@ -1201,7 +1201,10 @@
                             _lastSavedTime = ct;
                             const body = JSON.stringify({ ...progressMeta, progress: ct, duration: dur });
                             if (navigator.sendBeacon && force) {
-                                navigator.sendBeacon('/api/watch-progress', new Blob([body], { type: 'application/json' }));
+                                const beaconBody = new FormData();
+                                Object.entries(JSON.parse(body)).forEach(([key, value]) => beaconBody.append(key, String(value)));
+                                beaconBody.append('_token', _csrfToken);
+                                navigator.sendBeacon('/api/watch-progress', beaconBody);
                             } else {
                                 fetch('/api/watch-progress', {
                                     method: 'POST',

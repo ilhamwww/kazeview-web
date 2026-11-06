@@ -131,11 +131,34 @@ class ExpService
     public static function awardFromWatchHistory(WatchHistory $h): void
     {
         $type = $h->item_type;
-        if (!isset(self::VALUES[$type]) || $type === 'komik' || !$h->user_id) {
+        if ($type === 'komik' || !$h->user_id) {
             return;
         }
 
-        if ($type === 'movie') {
+        // Jenis Indonesia disimpan sebagai tipe terpisah untuk histori, tetapi
+        // mengikuti nilai EXP film/series yang sama.
+        $awardType = match ($type) {
+            'indonesia_movie' => 'movie',
+            'indonesia_series' => 'series',
+            default => $type,
+        };
+        if ($type === 'indonesia_series') {
+            $eps = is_array($h->watched_episodes) ? $h->watched_episodes : [];
+            $before = $h->getOriginal('watched_episodes');
+            $before = is_array($before) ? $before : (json_decode((string) $before, true) ?: []);
+            if ($h->wasRecentlyCreated) {
+                $before = [];
+            }
+            foreach (array_diff(array_map('strval', $eps), array_map('strval', $before)) as $ep) {
+                self::award((int) $h->user_id, $awardType, (string) $h->item_id, (string) $ep);
+            }
+            return;
+        }
+        if (!isset(self::VALUES[$awardType])) {
+            return;
+        }
+
+        if (in_array($type, ['movie', 'indonesia_movie'], true)) {
             // Movie baru dihitung kalau sudah ditonton minimal 80%
             if ((float) $h->progress_percent >= self::MOVIE_DONE_PERCENT) {
                 self::award($h->user_id, 'movie', (string) $h->item_id, '1');
@@ -152,7 +175,7 @@ class ExpService
 
         $new = array_diff(array_map('strval', $eps), array_map('strval', $before));
         foreach ($new as $ep) {
-            self::award($h->user_id, $type, (string) $h->item_id, (string) $ep);
+            self::award($h->user_id, $awardType, (string) $h->item_id, (string) $ep);
         }
     }
 
