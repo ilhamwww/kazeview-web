@@ -224,8 +224,84 @@ class IndoxxiTechService
     }
 
     /**
-     * Ambil detail film dari IndoXXI
+     * Parse and map source embed into provider group
      */
+    public static function categorizeServerEmbed(string $embedUrl): ?string
+    {
+        $host = strtolower(parse_url($embedUrl, PHP_URL_HOST) ?? '');
+        if (str_contains($host, 'hglink') || str_contains($host, 'hgcloud') || str_contains($host, 'vibuxer') || str_contains($host, 'cloudembed')) {
+            return 'hgcloud';
+        }
+        if (str_contains($host, 'minochinos') || str_contains($host, 'callistanise') || str_contains($host, 'abyssplayer') || str_contains($host, 'morencius') || str_contains($host, 'dramiyos')) {
+            return 'abyss';
+        }
+        return null;
+    }
+
+    /**
+     * Filter & urutkan server IndoXXI agar fokus pada 2 Provider Terbaik (HGCloud & AbyssPlayer)
+     */
+    public static function filterTopTwoServers(array $servers): array
+    {
+        $hgServer = null;
+        $abyssServer = null;
+        $fallbacks = [];
+
+        foreach ($servers as $s) {
+            $url = $s['embed_url'] ?? '';
+            $cat = self::categorizeServerEmbed($url);
+            if ($cat === 'hgcloud' && !$hgServer) {
+                $hgServer = $s;
+            } elseif ($cat === 'abyss' && !$abyssServer) {
+                $abyssServer = $s;
+            } else {
+                $fallbacks[] = $s;
+            }
+        }
+
+        $topServers = [];
+
+        // 1. Server 3 (HD Utama) -> HGCloud / Vibuxer
+        if ($hgServer) {
+            $topServers[] = [
+                'id' => 'server_ix_primary_hg',
+                'name' => 'Server 3 (HD Utama)',
+                'type' => 'embed',
+                'embed_url' => $hgServer['embed_url'],
+                'provider' => 'hgcloud',
+                'is_down' => false,
+            ];
+        }
+
+        // 2. Server 3 (Mirror HD) -> AbyssPlayer / Minochinos
+        if ($abyssServer) {
+            $topServers[] = [
+                'id' => 'server_ix_secondary_abyss',
+                'name' => 'Server 3 (Mirror HD)',
+                'type' => 'embed',
+                'embed_url' => $abyssServer['embed_url'],
+                'provider' => 'abyss',
+                'is_down' => false,
+            ];
+        }
+
+        // Jika salah satu atau keduanya belum ditemukan di link bawaan, masukkan fallback yang sehat
+        if (count($topServers) < 2) {
+            foreach ($fallbacks as $f) {
+                if (!empty($f['is_down'])) continue;
+                $topServers[] = [
+                    'id' => $f['id'] ?? ('server_ix_cadangan_' . count($topServers)),
+                    'name' => 'Server 3 (Cadangan ' . (count($topServers) + 1) . ')',
+                    'type' => 'embed',
+                    'embed_url' => $f['embed_url'] ?? '',
+                    'is_down' => false,
+                ];
+                if (count($topServers) >= 2) break;
+            }
+        }
+
+        return !empty($topServers) ? $topServers : $servers;
+    }
     public static function getMovieDetail(string $slug): ?array
     {
         $rawSlug = preg_replace('/^ix-/', '', $slug);

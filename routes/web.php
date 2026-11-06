@@ -381,7 +381,7 @@ Route::get('/api/streaming/embed', function (\Illuminate\Http\Request $request) 
             curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'User-Agent: ' . $ua,
-                'Referer: https://rebahinxxi3.mom/',
+                'Referer: ' . (str_contains($url, 'minochinos') || str_contains($url, 'callistanise') || str_contains($url, 'hglink') || str_contains($url, 'vibuxer') ? 'https://indoxxi.tech/' : 'https://rebahinxxi3.mom/'),
                 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             ]);
             $content = curl_exec($ch);
@@ -419,14 +419,31 @@ Route::get('/api/streaming/embed', function (\Illuminate\Http\Request $request) 
         inset: 0 !important;
     }
     /* Sembunyikan watermark logo atau elemen branding luar jika ada */
-    .jw-logo, .jw-title-primary, .jw-title-secondary {
+    .jw-logo, .jw-title-primary, .jw-title-secondary, .jw-watermark {
         display: none !important;
     }
 </style>
 CSS;
             $antiPopScript = <<<'HTML'
 <script>
-window.open = function() { console.log("Popup blocked"); return null; };
+// Netralkan segala bentuk popup iklan
+window.open = function() { console.log("[KZSTRM] Popup blocked"); return null; };
+window.alert = function() {};
+window.confirm = function() { return true; };
+window.prompt = function() { return null; };
+
+// Netralkan listener click nakal yang membajak body untuk redirect tab baru
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.tagName === 'A') {
+        const href = e.target.getAttribute('href') || '';
+        if (href && !href.startsWith('#') && !href.includes('javascript:')) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log("[KZSTRM] Anchor redirect blocked:", href);
+        }
+    }
+}, true);
+
 (function() {
     const PROXY_BASE = 'https://streaming.kazeview.com/api/streaming/embed-proxy?url=';
     function wrapUrl(u) {
@@ -457,7 +474,11 @@ window.open = function() { console.log("Popup blocked"); return null; };
 })();
 </script>
 HTML;
-            $content = str_replace('</head>', "{$cleanEmbedCss}\n{$antiPopScript}</head>", $content);
+            if (str_contains($content, '</head>')) {
+                $content = str_replace('</head>', "{$cleanEmbedCss}\n{$antiPopScript}</head>", $content);
+            } else {
+                $content = "{$cleanEmbedCss}\n{$antiPopScript}\n" . $content;
+            }
 
             return $content;
         } catch (\Exception $e) {
