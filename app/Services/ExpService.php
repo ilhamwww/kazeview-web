@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
  */
 class ExpService
 {
-    public const DAILY_CAP = 500;
+    public const DAILY_CAP = 3000;
     public const TZ = 'Asia/Jakarta';
     public const MOVIE_DONE_PERCENT = 80;
 
