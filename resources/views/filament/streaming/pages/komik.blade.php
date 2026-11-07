@@ -366,13 +366,13 @@
                     </div>
 
                     <div class="flex items-center p-1 bg-black/60 rounded-xl ring-1 ring-white/5 self-start md:self-auto">
+                        <button type="button" wire:click="setTab('latest')"
+                                class="px-4 py-2 rounded-lg text-xs font-bold transition {{ $tab === 'latest' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white' }}">
+                            Rilis Terbaru
+                        </button>
                         <button type="button" wire:click="setTab('popular')"
                                 class="px-4 py-2 rounded-lg text-xs font-bold transition {{ $tab === 'popular' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white' }}">
                             Populer
-                        </button>
-                        <button type="button" wire:click="setTab('latest')"
-                                class="px-4 py-2 rounded-lg text-xs font-bold transition {{ $tab === 'latest' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white' }}">
-                            Rilis Baru
                         </button>
                     </div>
                 </div>

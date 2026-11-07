@@ -20,7 +20,7 @@ class Komik extends Page
     public string $provider = 'native'; // Default langsung buka katalog Native KZSTRM
     public int $page = 1;
     public string $format = 'all'; // all, manhwa, manga, manhua
-    public string $tab = 'popular'; // popular, latest
+    public string $tab = 'latest'; // default Rilis Terbaru (latest), popular
     public string $search = '';
 
     public array $heroItems = [];
@@ -32,7 +32,7 @@ class Komik extends Page
 
     protected $queryString = [
         'format' => ['except' => 'all'],
-        'tab' => ['except' => 'popular'],
+        'tab' => ['except' => 'latest'],
         'search' => ['except' => '', 'as' => 'q'],
         'page' => ['except' => 1],
     ];
@@ -82,7 +82,7 @@ class Komik extends Page
             ? strtolower($requestedProvider) : 'native';
 
         $this->format = request()->query('format', 'all');
-        $this->tab = request()->query('tab', 'popular');
+        $this->tab = request()->query('tab', 'latest');
         $this->search = request()->query('q', '');
         $this->page = max(1, (int) request()->query('page', 1));
 
