@@ -34,27 +34,27 @@ class MirainimeScraperService
     {
         $fullUrl = str_starts_with($url, 'http') ? $url : rtrim($this->baseUrl, '/') . '/' . ltrim($url, '/');
 
-        // 1. Coba lewat NUC Relay terlebih dahulu (Bypass Cloudflare WAF Mirainime)
-        try {
-            $nucRes = \Illuminate\Support\Facades\Http::withOptions([
-                'proxy' => 'socks5h://127.0.0.1:1055',
-                'timeout' => 4,
-            ])->get('http://100.110.54.105:8765/proxy/html?url=' . urlencode($fullUrl));
-
-            if ($nucRes->successful() && !str_contains($nucRes->body(), 'Just a moment...') && !str_contains($nucRes->body(), 'Attention Required!')) {
-                return (string) $nucRes->body();
-            }
-        } catch (\Throwable $e) {}
-
-        // 2. Fallback TLS Impersonate curl_cffi (bypass Cloudflare langsung di VPS tanpa dependensi NUC)
+        // 1. Coba lewat TLS Impersonate curl_cffi langsung di VPS (200ms, 100% bebas NUC!)
         try {
             $helperPath = app_path('Services/fetch_cf.py');
             if (file_exists($helperPath)) {
-                $cmd = escapeshellcmd($helperPath) . ' ' . escapeshellarg($fullUrl);
+                $cmd = '/usr/bin/python3.10 ' . escapeshellarg($helperPath) . ' ' . escapeshellarg($fullUrl);
                 $pyRes = shell_exec($cmd);
                 if (!empty($pyRes) && !str_contains($pyRes, 'Just a moment...') && !str_contains($pyRes, 'Attention Required!')) {
                     return (string) $pyRes;
                 }
+            }
+        } catch (\Throwable $e) {}
+
+        // 2. Fallback NUC Relay jika curl_cffi gagal
+        try {
+            $nucRes = \Illuminate\Support\Facades\Http::withOptions([
+                'proxy' => 'socks5h://127.0.0.1:1055',
+                'timeout' => 3,
+            ])->get('http://100.110.54.105:8765/proxy/html?url=' . urlencode($fullUrl));
+
+            if ($nucRes->successful() && !str_contains($nucRes->body(), 'Just a moment...') && !str_contains($nucRes->body(), 'Attention Required!')) {
+                return (string) $nucRes->body();
             }
         } catch (\Throwable $e) {}
 

@@ -123,17 +123,31 @@ class StreamingService
             $searchPath = '/api/search?q=' . urlencode($query) . '&page=' . $page . '&limit=' . $limit;
             $url = rtrim($domain, '/') . $searchPath;
 
-            // 1. Coba lewat NUC Relay terlebih dahulu (Bypass Cloudflare & Super Fast ~500ms)
+            // 1. Coba lewat fetch_cf.py (curl_cffi TLS Impersonate langsung dari VPS ~200ms tanpa NUC!)
             $body = null;
             try {
-                $nucRes = Http::withOptions([
-                    'proxy' => 'socks5h://127.0.0.1:1055',
-                    'timeout' => 4,
-                ])->get('http://100.110.54.105:8765/json?path=' . urlencode($searchPath));
-                if ($nucRes->successful() && !str_contains($nucRes->body(), 'Cloudflare') && !str_contains($nucRes->body(), 'Just a moment...')) {
-                    $body = $nucRes->body();
+                $helperPath = app_path('Services/fetch_cf.py');
+                if (file_exists($helperPath)) {
+                    $cmd = '/usr/bin/python3.10 ' . escapeshellarg($helperPath) . ' ' . escapeshellarg($url);
+                    $pyRes = shell_exec($cmd);
+                    if (!empty($pyRes) && !str_contains($pyRes, 'Cloudflare') && !str_contains($pyRes, 'Just a moment...')) {
+                        $body = (string) $pyRes;
+                    }
                 }
-            } catch (\Throwable $ne) {}
+            } catch (\Throwable $pe) {}
+
+            // 2. Fallback NUC Relay jika tersedia
+            if (!$body) {
+                try {
+                    $nucRes = Http::withOptions([
+                        'proxy' => 'socks5h://127.0.0.1:1055',
+                        'timeout' => 3,
+                    ])->get('http://100.110.54.105:8765/json?path=' . urlencode($searchPath));
+                    if ($nucRes->successful() && !str_contains($nucRes->body(), 'Cloudflare') && !str_contains($nucRes->body(), 'Just a moment...')) {
+                        $body = $nucRes->body();
+                    }
+                } catch (\Throwable $ne) {}
+            }
 
             // 2. Fallback ke Direct Guzzle dengan timeout singkat (3 detik)
             if (!$body) {
@@ -1099,7 +1113,19 @@ class StreamingService
      */
     private static function fetchJsonWithPuppeteer(string $url): string
     {
-        // Try NUC Resolver first
+        // 1. Coba lewat fetch_cf.py (curl_cffi TLS Chrome Impersonation langsung dari VPS — Super Cepat ~200ms & Bebas NUC!)
+        try {
+            $helperPath = app_path('Services/fetch_cf.py');
+            if (file_exists($helperPath)) {
+                $cmd = '/usr/bin/python3.10 ' . escapeshellarg($helperPath) . ' ' . escapeshellarg($url);
+                $pyRes = shell_exec($cmd);
+                if (!empty($pyRes) && !str_contains($pyRes, 'Just a moment...') && !str_contains($pyRes, 'Attention Required!')) {
+                    return (string) $pyRes;
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        // 2. Fallback NUC Resolver jika tersedia
         try {
             $parsed = parse_url($url);
             $path = ($parsed['path'] ?? '') . (!empty($parsed['query']) ? '?' . $parsed['query'] : '');
@@ -1107,7 +1133,7 @@ class StreamingService
                 $nucUrl = 'http://100.110.54.105:8765/json?path=' . urlencode($path);
                 $res = Http::withOptions([
                     'proxy' => 'socks5h://127.0.0.1:1055',
-                    'timeout' => 15,
+                    'timeout' => 5,
                 ])->get($nucUrl);
 
                 if ($res->successful()) {
