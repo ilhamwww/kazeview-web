@@ -172,6 +172,76 @@ class NativeComicService
             }
         }
 
+        // 3. ZERO-NUC FAILOVER: Jika NUC Relay sedang offline / gagal, cari otomatis dari Wurmz atau Kiryuu!
+        $targetNum = (float) $chapter->chapter_number;
+        $normTitle = $this->normalizeTitle($comic->title);
+        $altTitles = array_filter(array_map([$this, 'normalizeTitle'], explode(',', (string) $comic->alt_title)));
+        $validNorms = array_unique(array_merge([$normTitle], $altTitles));
+
+        // 3a. Failover ke Wurmz Scans (Zero WAF di VPS)
+        try {
+            $wurmz = app(WurmzScraperService::class);
+            $searchRes = $wurmz->search($comic->title);
+            foreach ($searchRes['data'] ?? [] as $candidate) {
+                $candNorm = $this->normalizeTitle($candidate['title'] ?? '');
+                if (in_array($candNorm, $validNorms, true)) {
+                    $wChs = $wurmz->getChapters($candidate['id']);
+                    foreach ($wChs as $wc) {
+                        if (abs(((float) ($wc['number'] ?? -1)) - $targetNum) < 0.001) {
+                            $wPages = $wurmz->getChapterPages($candidate['id'], (string) $wc['id']);
+                            if (!empty($wPages) && is_array($wPages)) {
+                                $chapter->update(['pages' => $wPages]);
+                                return $wPages;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Native Wurmz failover error: " . $e->getMessage());
+        }
+
+        // 3b. Failover ke Kiryuu ID (Direct VPS)
+        try {
+            $kiryuu = app(KiryuuScraperService::class);
+            $kDetail = $kiryuu->getDetail('kiryuu__' . $comic->slug);
+            $kComicId = null;
+
+            if ($kDetail && in_array($this->normalizeTitle($kDetail['title'] ?? ''), $validNorms, true)) {
+                $kComicId = $kDetail['id'];
+            } else {
+                $kSearch = $kiryuu->search($comic->title);
+                foreach ($kSearch['data'] ?? [] as $cand) {
+                    if (in_array($this->normalizeTitle($cand['title'] ?? ''), $validNorms, true)) {
+                        $kComicId = $cand['id'];
+                        break;
+                    }
+                }
+            }
+
+            if ($kComicId) {
+                $kChs = $kiryuu->getChapters($kComicId);
+                foreach ($kChs as $kc) {
+                    if (abs(((float) ($kc['number'] ?? -1)) - $targetNum) < 0.001) {
+                        $kData = $kiryuu->getChapterPages((string) $kc['id'], $kComicId);
+                        if (!empty($kData['pages']) && is_array($kData['pages'])) {
+                            $chapter->update(['pages' => $kData['pages']]);
+                            return $kData['pages'];
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Native Kiryuu failover error: " . $e->getMessage());
+        }
+
         return [];
+    }
+
+    protected function normalizeTitle(string $title): string
+    {
+        $t = strtolower(trim($title));
+        $t = preg_replace('/[^a-z0-9]+/', ' ', $t);
+        return trim(preg_replace('/\s+/', ' ', $t));
     }
 }

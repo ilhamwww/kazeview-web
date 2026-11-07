@@ -347,12 +347,19 @@ class KiryuuScraperService
             $src = $node->attr('src') ?: ($node->attr('data-src') ?: '');
             if (
                 !empty($src) &&
-                (str_contains($src, 'uqni.net') || str_contains($src, '88cdn.cloud') || str_contains($src, '/users/')) &&
+                (
+                    str_contains($src, 'uqni.net') ||
+                    str_contains($src, '88cdn.cloud') ||
+                    str_contains($src, 'kiryuu.io') ||
+                    str_contains($src, '/users/') ||
+                    str_contains($src, '/v2/')
+                ) &&
                 !str_contains($src, '.gif') &&
                 !str_contains($src, 'logo')
             ) {
-                if (!in_array($src, $images, true)) {
-                    $images[] = $src;
+                $encodedSrc = str_replace(' ', '%20', trim($src));
+                if (!in_array($encodedSrc, $images, true)) {
+                    $images[] = $encodedSrc;
                 }
             }
         });
