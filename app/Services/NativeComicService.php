@@ -56,7 +56,8 @@ class NativeComicService
             $query->where('type', strtolower($format));
         }
 
-        $paginator = $query->orderBy('updated_at', 'desc')
+        $paginator = $query->orderByRaw('COALESCE(latest_chapter_at, updated_at) DESC')
+            ->orderBy('id', 'desc')
             ->paginate($limit, ['*'], 'page', $page);
 
         return [

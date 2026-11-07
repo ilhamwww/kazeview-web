@@ -196,7 +196,15 @@ Route::prefix('api/komik/client-sync')->middleware('throttle:60,1')->group(funct
 
             if ($latestCh !== null && $latestCh !== '') {
                 $payload['latest_chapter'] = $latestCh;
-                $payload['latest_chapter_at'] = now();
+                if (!empty($d['latest_chapter_time'])) {
+                    try {
+                        $payload['latest_chapter_at'] = \Carbon\Carbon::parse($d['latest_chapter_time']);
+                    } catch (\Throwable $e) {
+                        $payload['latest_chapter_at'] = now();
+                    }
+                } else {
+                    $payload['latest_chapter_at'] = now();
+                }
             }
 
             if ($existing) {
