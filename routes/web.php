@@ -116,6 +116,250 @@ Route::post('/api/upload-native-cover', function (\Illuminate\Http\Request $requ
     return response()->json(['success' => true, 'path' => $path]);
 });
 
+// ============ CLIENT-ASSISTED CROWDSOURCED COMIC SYNC (BYPASS DATACENTER WAF) ============
+Route::prefix('api/komik/client-sync')->middleware('throttle:60,1')->group(function () {
+    // 0. Status apakah katalog perlu disinkronkan oleh browser user (cooldown 15 menit)
+    Route::get('/status', function () {
+        $lastSync = (int) \Illuminate\Support\Facades\Cache::get('kz_comic_client_catalog_sync_ts', 0);
+        return response()->json([
+            'needs_catalog_sync' => (time() - $lastSync) >= 900,
+            'last_sync' => $lastSync,
+        ]);
+    });
+
+    // 1. Simpan update katalog judul & chapter terbaru dari browser user
+    Route::post('/catalog', function (\Illuminate\Http\Request $request) {
+        $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
+        if ($token && !hash_equals((string) $request->session()->token(), (string) $token)) {
+            abort(419, 'CSRF token mismatch');
+        }
+
+        $items = $request->input('items', []);
+        if (!is_array($items) || empty($items)) {
+            return response()->json(['ok' => false, 'msg' => 'Empty items'], 400);
+        }
+
+        $synced = 0;
+        foreach (array_slice($items, 0, 60) as $d) {
+            if (!is_array($d)) continue;
+            $mangaId = trim((string) ($d['manga_id'] ?? ''));
+            $title = trim(strip_tags((string) ($d['title'] ?? '')));
+            if ($title === '' || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $mangaId)) {
+                continue;
+            }
+
+            $slug = \Illuminate\Support\Str::slug($title);
+            if ($slug === '') continue;
+
+            $rawCover = trim((string) (($d['cover_portrait_url'] ?? '') ?: ($d['cover_image_url'] ?? '')));
+            if ($rawCover !== '' && !preg_match('#^https://[a-z0-9.\-]*shngm\.(id|io)/#i', $rawCover)) {
+                $rawCover = '';
+            }
+
+            $formatRaw = $d['taxonomy']['Format'][0]['name'] ?? 'Manhwa';
+            $format = in_array(ucfirst(strtolower((string) $formatRaw)), ['Manhwa', 'Manga', 'Manhua'], true)
+                ? ucfirst(strtolower((string) $formatRaw)) : 'Manhwa';
+            $type = strtolower($format);
+
+            $genres = [];
+            foreach (array_slice((array) ($d['taxonomy']['Genre'] ?? []), 0, 8) as $g) {
+                $gName = trim(strip_tags((string) ($g['name'] ?? '')));
+                if ($gName !== '' && strlen($gName) <= 30) {
+                    $genres[] = $gName;
+                }
+            }
+
+            $authors = array_filter(array_map(fn($a) => trim(strip_tags((string) ($a['name'] ?? ''))), (array) ($d['taxonomy']['Author'] ?? [])));
+            $artists = array_filter(array_map(fn($a) => trim(strip_tags((string) ($a['name'] ?? ''))), (array) ($d['taxonomy']['Artist'] ?? [])));
+
+            $latestCh = isset($d['latest_chapter_number']) ? (string) $d['latest_chapter_number'] : null;
+            $latestChId = isset($d['latest_chapter_id']) ? trim((string) $d['latest_chapter_id']) : null;
+
+            $existing = \App\Models\NativeComic::where('upstream_id', $mangaId)
+                ->orWhere('slug', $slug)
+                ->first();
+
+            $payload = [
+                'upstream_id' => $mangaId,
+                'title' => $title,
+                'alt_title' => !empty($d['alternative_title']) ? trim(strip_tags((string) $d['alternative_title'])) : ($existing?->alt_title),
+                'original_cover_url' => $rawCover ?: ($existing?->original_cover_url),
+                'description' => !empty($d['description']) ? trim(strip_tags((string) $d['description'])) : ($existing?->description),
+                'type' => $type,
+                'format' => $format,
+                'status' => (($d['status'] ?? 1) == 1) ? 'Ongoing' : 'Completed',
+                'rating' => isset($d['user_rate']) ? round((float) $d['user_rate'], 1) : ($existing?->rating ?? 9.0),
+                'genres' => !empty($genres) ? $genres : ($existing?->genres ?? []),
+                'author' => !empty($authors) ? implode(', ', $authors) : ($existing?->author ?? ''),
+                'artist' => !empty($artists) ? implode(', ', $artists) : ($existing?->artist ?? ''),
+            ];
+
+            if ($latestCh !== null && $latestCh !== '') {
+                $payload['latest_chapter'] = $latestCh;
+                $payload['latest_chapter_at'] = now();
+            }
+
+            if ($existing) {
+                $existing->update($payload);
+                $comic = $existing;
+            } else {
+                $payload['slug'] = $slug;
+                $comic = \App\Models\NativeComic::create($payload);
+            }
+
+            // Jika ada latest_chapter_number & latest_chapter_id yang belum ada di native_comic_chapters, buat stub-nya!
+            if ($latestCh !== null && is_numeric($latestCh) && $latestChId && preg_match('/^[0-9a-f\-]{36}$/i', $latestChId)) {
+                \App\Models\NativeComicChapter::firstOrCreate(
+                    [
+                        'comic_id' => $comic->id,
+                        'chapter_number' => (float) $latestCh,
+                    ],
+                    [
+                        'upstream_chapter_id' => $latestChId,
+                        'chapter_slug' => (string) $latestCh,
+                        'chapter_title' => 'Chapter ' . $latestCh,
+                        'pages' => [],
+                        'released_at' => now(),
+                    ]
+                );
+            }
+
+            $synced++;
+        }
+
+        if ($synced > 0) {
+            \Illuminate\Support\Facades\Cache::put('kz_comic_client_catalog_sync_ts', time(), 900);
+        }
+
+        return response()->json(['ok' => true, 'synced' => $synced]);
+    });
+
+    // 2. Simpan update daftar chapter lengkap pada halaman Detail Komik
+    Route::post('/detail', function (\Illuminate\Http\Request $request) {
+        $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
+        if ($token && !hash_equals((string) $request->session()->token(), (string) $token)) {
+            abort(419, 'CSRF token mismatch');
+        }
+
+        $slug = preg_replace('/^native__/', '', trim((string) $request->input('slug', '')));
+        $upstreamId = trim((string) $request->input('upstream_id', ''));
+        $chapters = $request->input('chapters', []);
+
+        $comic = \App\Models\NativeComic::where('slug', $slug)
+            ->when($upstreamId !== '', fn($q) => $q->orWhere('upstream_id', $upstreamId))
+            ->first();
+
+        if (!$comic || !is_array($chapters) || empty($chapters)) {
+            return response()->json(['ok' => false], 404);
+        }
+
+        $added = 0;
+        $maxNum = (float) ($comic->latest_chapter ?: 0);
+
+        foreach (array_slice($chapters, 0, 1500) as $c) {
+            if (!is_array($c) || !isset($c['chapter_number'])) continue;
+            $chId = trim((string) ($c['chapter_id'] ?? ''));
+            if (!preg_match('/^[0-9a-f\-]{36}$/i', $chId)) continue;
+
+            $num = (float) $c['chapter_number'];
+            $chSlug = rtrim(rtrim(number_format($num, 2, '.', ''), '0'), '.');
+            if ($chSlug === '') $chSlug = '0';
+
+            $chTitle = !empty($c['chapter_title'])
+                ? 'Chapter ' . $chSlug . ' - ' . trim(strip_tags((string) $c['chapter_title']))
+                : 'Chapter ' . $chSlug;
+
+            $chModel = \App\Models\NativeComicChapter::firstOrNew([
+                'comic_id' => $comic->id,
+                'chapter_number' => $num,
+            ]);
+
+            $isNew = !$chModel->exists;
+            $chModel->upstream_chapter_id = $chId;
+            $chModel->chapter_slug = $chModel->chapter_slug ?: $chSlug;
+            $chModel->chapter_title = $chModel->chapter_title ?: $chTitle;
+            if ($isNew) {
+                $chModel->pages = [];
+                $chModel->released_at = !empty($c['release_date']) ? \Carbon\Carbon::parse($c['release_date']) : now();
+                $added++;
+            }
+            $chModel->save();
+
+            if ($num > $maxNum) {
+                $maxNum = $num;
+            }
+        }
+
+        if ($added > 0) {
+            $maxStr = rtrim(rtrim(number_format($maxNum, 2, '.', ''), '0'), '.');
+            $comic->update([
+                'latest_chapter' => $maxStr,
+                'latest_chapter_at' => now(),
+            ]);
+        }
+
+        return response()->json(['ok' => true, 'added' => $added]);
+    });
+
+    // 3. Simpan daftar halaman gambar chapter dari browser user saat membaca
+    Route::post('/chapter', function (\Illuminate\Http\Request $request) {
+        $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
+        if ($token && !hash_equals((string) $request->session()->token(), (string) $token)) {
+            abort(419, 'CSRF token mismatch');
+        }
+
+        $slug = preg_replace('/^native__/', '', trim((string) $request->input('slug', '')));
+        $chapterSlug = trim((string) $request->input('chapter_id', ''));
+        $upstreamChapterId = trim((string) $request->input('upstream_chapter_id', ''));
+        $baseUrl = rtrim(trim((string) $request->input('base_url', 'https://assets.shngm.id')), '/');
+        $path = '/' . trim((string) $request->input('path', ''), '/') . '/';
+        $files = $request->input('data', []);
+
+        if (!preg_match('#^https://[a-z0-9.\-]*shngm\.(id|io)$#i', $baseUrl) || !is_array($files) || empty($files)) {
+            return response()->json(['ok' => false, 'msg' => 'Invalid chapter data'], 400);
+        }
+
+        $comic = \App\Models\NativeComic::where('slug', $slug)->first();
+        if (!$comic) {
+            return response()->json(['ok' => false], 404);
+        }
+
+        $chapter = \App\Models\NativeComicChapter::where('comic_id', $comic->id)
+            ->where(function ($w) use ($chapterSlug, $upstreamChapterId) {
+                $w->where('chapter_slug', $chapterSlug)
+                  ->orWhere('chapter_number', (float) $chapterSlug);
+                if ($upstreamChapterId !== '') {
+                    $w->orWhere('upstream_chapter_id', $upstreamChapterId);
+                }
+            })
+            ->first();
+
+        if (!$chapter) {
+            return response()->json(['ok' => false], 404);
+        }
+
+        $pages = [];
+        foreach (array_slice($files, 0, 300) as $idx => $imgName) {
+            $cleanName = trim((string) $imgName);
+            if ($cleanName === '' || str_contains($cleanName, '..') || !preg_match('/^[A-Za-z0-9_\-\.]+$/', $cleanName)) {
+                continue;
+            }
+            $fullUrl = $baseUrl . $path . $cleanName;
+            $pages[] = [
+                'index' => count($pages) + 1,
+                'url' => '/api/proxy-image?url=' . urlencode($fullUrl),
+                'raw_url' => $fullUrl,
+            ];
+        }
+
+        if (!empty($pages)) {
+            $chapter->update(['pages' => $pages]);
+        }
+
+        return response()->json(['ok' => true, 'pages_count' => count($pages), 'pages' => $pages]);
+    });
+});
+
 Route::prefix('api/v1/public')
     ->middleware('throttle:120,1')
     ->name('api.public.')

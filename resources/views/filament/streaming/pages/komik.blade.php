@@ -23,6 +23,35 @@
                 const raw = localStorage.getItem('kz_comic_recent_reads');
                 if (raw) this.recentReads = JSON.parse(raw);
             } catch(e) {}
+            this.runClientCatalogSync();
+        },
+        async runClientCatalogSync() {
+            try {
+                const st = await fetch('/api/komik/client-sync/status', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null);
+                if (!st || !st.needs_catalog_sync) return;
+
+                const [latestRes, popRes] = await Promise.all([
+                    fetch('https://api.shngm.io/v1/manga/list?page=1&page_size=24&sort=latest&sort_order=desc').then(r => r.ok ? r.json() : null).catch(() => null),
+                    fetch('https://api.shngm.io/v1/manga/list?page=1&page_size=24&sort=popularity&sort_order=desc').then(r => r.ok ? r.json() : null).catch(() => null),
+                ]);
+
+                const combined = [
+                    ...((latestRes && latestRes.retcode === 0 && Array.isArray(latestRes.data)) ? latestRes.data : []),
+                    ...((popRes && popRes.retcode === 0 && Array.isArray(popRes.data)) ? popRes.data : []),
+                ];
+                if (combined.length === 0) return;
+
+                await fetch('/api/komik/client-sync/catalog', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ items: combined })
+                });
+            } catch (e) {}
         },
         clearRecentReads() {
             if (confirm('Hapus seluruh riwayat webtoon yang terakhir dibaca?')) {

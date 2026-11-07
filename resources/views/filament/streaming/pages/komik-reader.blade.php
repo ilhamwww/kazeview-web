@@ -10,7 +10,10 @@
         toastMsg: '',
         saveTimer: null,
         expSent: false,
+        clientPages: [],
+        clientLoading: {{ empty($pages) && !empty($currentChapter['upstream_chapter_id']) ? 'true' : 'false' }},
         init() {
+            this.fetchChapterFromClientIfEmpty();
             // Cek apakah ada riwayat tersimpan untuk chapter ini
             try {
                 const raw = localStorage.getItem('kz_comic_{{ $mangaId }}');
@@ -122,6 +125,54 @@
         toggleNav() {
             this.navVisible = !this.navVisible;
         },
+        async fetchChapterFromClientIfEmpty() {
+            const hasServerPages = {{ !empty($pages) ? 'true' : 'false' }};
+            const upstreamChId = '{{ $currentChapter['upstream_chapter_id'] ?? '' }}';
+            const slug = '{{ $comic['slug'] ?? '' }}';
+            const chId = '{{ $chapterId }}';
+            if (hasServerPages || !upstreamChId) {
+                this.clientLoading = false;
+                return;
+            }
+            try {
+                const res = await fetch('https://api.shngm.io/v1/chapter/detail/' + upstreamChId).then(r => r.ok ? r.json() : null).catch(() => null);
+                if (res && res.retcode === 0 && res.data && res.data.chapter && Array.isArray(res.data.chapter.data)) {
+                    const baseUrl = (res.data.base_url || 'https://assets.shngm.id').replace(/\/+$/, '');
+                    const path = '/' + String(res.data.chapter.path || '').replace(/^\/+|\/+$/g, '') + '/';
+                    const files = res.data.chapter.data;
+                    this.clientPages = files.map((f, idx) => {
+                        const rawUrl = baseUrl + path + f;
+                        return {
+                            index: idx + 1,
+                            raw_url: rawUrl,
+                            url: '/api/proxy-image?url=' + encodeURIComponent(rawUrl)
+                        };
+                    });
+                    this.clientLoading = false;
+
+                    // Kirim ke server KZSTRM kita agar tersimpan permanen di DB untuk pembaca berikutnya
+                    fetch('/api/komik/client-sync/chapter', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            slug: slug,
+                            chapter_id: chId,
+                            upstream_chapter_id: upstreamChId,
+                            base_url: baseUrl,
+                            path: res.data.chapter.path,
+                            data: files
+                        })
+                    }).catch(() => {});
+                    return;
+                }
+            } catch (e) {}
+            this.clientLoading = false;
+        },
         toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(() => {});
@@ -211,7 +262,32 @@
             </div>
         </div>
         @if(empty($pages))
-            <div class="py-32 text-center text-zinc-500">
+            {{-- Loading spinner saat browser user sedang mengambil halaman langsung dari upstream --}}
+            <div x-show="clientLoading" class="py-32 text-center text-zinc-400">
+                <div class="w-10 h-10 mx-auto mb-4 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-sm font-bold">Menyinkronkan lembaran komik langsung dari sumber...</p>
+            </div>
+
+            {{-- Render lembaran yang berhasil diambil oleh browser user --}}
+            <template x-for="p in clientPages" :key="p.index">
+                <div :id="'panel-' + p.index"
+                     :data-panel-index="p.index"
+                     class="w-full relative flex items-center justify-center bg-black overflow-hidden"
+                     style="margin: 0; padding: 0; line-height: 0;">
+                    <img :src="p.raw_url || p.url"
+                         :data-fallback-proxy="p.url"
+                         :alt="'Halaman ' + p.index"
+                         :loading="p.index <= 4 ? 'eager' : 'lazy'"
+                         decoding="async"
+                         referrerpolicy="no-referrer"
+                         x-on:error="if ($el.getAttribute('data-fallback-proxy') && $el.src !== $el.getAttribute('data-fallback-proxy')) { $el.src = $el.getAttribute('data-fallback-proxy'); }"
+                         class="w-full h-auto block select-none pointer-events-none"
+                         style="display: block; margin: 0; padding: 0; border: 0;" />
+                </div>
+            </template>
+
+            {{-- Jika benar-benar kosong setelah client fetch --}}
+            <div x-show="!clientLoading && clientPages.length === 0" class="py-32 text-center text-zinc-500" style="display: none;">
                 <p class="text-sm font-bold">Halaman chapter sedang dimuat atau tidak tersedia.</p>
                 <a href="/komik/detail/{{ $comic['id'] }}" class="mt-4 inline-block px-5 py-2 rounded-xl bg-red-600 text-white text-xs font-bold">
                     Kembali

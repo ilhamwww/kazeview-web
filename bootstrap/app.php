@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/watch-progress',
             'api/sync-native-comic',
             'api/upload-native-cover',
+            'api/komik/client-sync/*',
         ]);
 
         $middleware->alias([

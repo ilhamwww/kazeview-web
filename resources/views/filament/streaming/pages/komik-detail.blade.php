@@ -6,6 +6,40 @@
                 const raw = localStorage.getItem('kz_comic_{{ $comic['id'] }}');
                 if (raw) this.history = JSON.parse(raw);
             } catch(e) {}
+            this.syncChaptersFromClient();
+        },
+        async syncChaptersFromClient() {
+            const upstreamId = '{{ $comic['upstream_id'] ?? '' }}';
+            const slug = '{{ $comic['slug'] ?? '' }}';
+            if (!upstreamId || !slug) return;
+            const syncKey = 'kz_ch_sync_' + slug;
+            const lastSync = parseInt(sessionStorage.getItem(syncKey) || '0');
+            if (Date.now() - lastSync < 600000) return;
+
+            try {
+                const res = await fetch('https://api.shngm.io/v1/chapter/' + upstreamId + '/list?page=1&page_size=1000').then(r => r.ok ? r.json() : null).catch(() => null);
+                if (!res || res.retcode !== 0 || !Array.isArray(res.data) || res.data.length === 0) return;
+                sessionStorage.setItem(syncKey, String(Date.now()));
+
+                const saveRes = await fetch('/api/komik/client-sync/detail', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        slug: slug,
+                        upstream_id: upstreamId,
+                        chapters: res.data
+                    })
+                }).then(r => r.ok ? r.json() : null).catch(() => null);
+
+                if (saveRes && saveRes.added > 0) {
+                    window.location.reload();
+                }
+            } catch (e) {}
         }
      }">
 

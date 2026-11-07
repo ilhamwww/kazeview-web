@@ -15,6 +15,7 @@ class NativeComicService
     {
         return [
             'id' => 'native__' . $c->slug,
+            'upstream_id' => $c->upstream_id,
             'slug' => $c->slug,
             'title' => $c->title,
             'cover' => $c->cover_path ?: $c->original_cover_url,
@@ -98,6 +99,7 @@ class NativeComicService
         $chapters = $comic->chapters()->get()->map(function ($ch) {
             return [
                 'id' => $ch->chapter_slug,
+                'upstream_chapter_id' => $ch->upstream_chapter_id,
                 'number' => (float) $ch->chapter_number,
                 'label' => $ch->chapter_title ?: ('Chapter ' . $ch->chapter_number),
                 'released_at' => $ch->released_at ? $ch->released_at->format('d M Y') : '',
@@ -106,6 +108,7 @@ class NativeComicService
 
         return [
             'id' => 'native__' . $comic->slug,
+            'upstream_id' => $comic->upstream_id,
             'slug' => $comic->slug,
             'title' => $comic->title,
             'alt_title' => $comic->alt_title,
@@ -119,6 +122,7 @@ class NativeComicService
             'genres' => $comic->genres ?: [],
             'author' => $comic->author ?: '',
             'artist' => $comic->artist ?: '',
+            'latest_chapter' => $comic->latest_chapter ?: '',
             'chapters' => $chapters,
         ];
     }
