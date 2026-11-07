@@ -275,6 +275,24 @@ class PencuriMovieService
                         'video_url' => $relayedVideoUrl,
                         'embed_url' => '',
                     ];
+                } else {
+                    // Jika Streamtape tidak ada/404, coba ekstrak Direct HLS (m3u8) dari HGCloud / Vibuxer untuk Artplayer Native!
+                    foreach ($rawEmbeds as $u) {
+                        if (str_contains($u, 'hgcloud.') || str_contains($u, 'hglink.') || str_contains($u, 'vibuxer.')) {
+                            $hgM3u8 = DirectStreamResolverService::extractHgCloudDirectM3u8($u);
+                            if ($hgM3u8) {
+                                $relayedVideoUrl = $hgM3u8;
+                                $servers[] = [
+                                    'id' => 'server_pm_direct_hls',
+                                    'name' => 'Server 4 (Native HD - Bebas Iklan)',
+                                    'type' => 'hls',
+                                    'video_url' => $hgM3u8,
+                                    'embed_url' => '',
+                                ];
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 // Masukkan server-server mirror pendukung (dengan sandbox anti-iklan)
@@ -317,7 +335,7 @@ class PencuriMovieService
                     'country' => 'Indonesia',
                     'genres' => ['Indonesia', 'Bioskop'],
                     'video_url' => $relayedVideoUrl ?? ($directMp4 ?: ''),
-                    'isEmbed' => empty($directMp4),
+                    'isEmbed' => empty($relayedVideoUrl) && empty($directMp4),
                     'source' => 'pencurimovie',
                     'servers' => $servers,
                 ];

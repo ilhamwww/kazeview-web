@@ -1662,7 +1662,8 @@ class StreamingService
             $url = 'http://100.110.54.105:8765/stream?type=' . urlencode($type) . '&id=' . urlencode($id);
             $response = Http::withOptions([
                 'proxy' => 'socks5h://127.0.0.1:1055',
-                'timeout' => 45,
+                'connect_timeout' => 3,
+                'timeout' => 15,
             ])->get($url);
 
             if ($response->successful()) {
@@ -2110,12 +2111,8 @@ class StreamingService
             $streamResult = null;
 
             if (!$response->successful() && ($response->status() === 503 || $response->status() === 403 || str_contains($response->body(), 'Cloudflare') || str_contains($response->body(), 'Just a moment'))) {
-                // Try NUC Residential Resolver first
+                // Try NUC Residential Resolver first (fast 3s connect timeout when NUC is offline)
                 $streamResult = self::fetchStreamWithNucResolver('movie', $movieId);
-                if (!$streamResult) {
-                    // Fallback to local Puppeteer Stream Scraper
-                    $streamResult = self::fetchStreamWithPuppeteer($domain, $playInfoPath);
-                }
             } else {
                 $playInfo = $response->json();
                 $gateToken = $playInfo['gateToken'] ?? null;
