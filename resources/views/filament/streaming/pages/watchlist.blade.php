@@ -162,16 +162,23 @@
                                     $networkSlug = $dracinParts[0] ?? '';
                                     $dramaId = $dracinParts[1] ?? '';
                                     $detailUrl = \App\Filament\Streaming\Pages\DracinDetail::getUrl(['network_slug' => $networkSlug, 'id' => $dramaId], panel: 'streaming');
+                                } elseif (in_array($fav->item_type, ['komik', 'comic', 'webtoon', 'manga'], true)) {
+                                    $comicId = preg_replace('/^comic:/', '', (string) $fav->item_id);
+                                    $detailUrl = !empty($fav->url) ? $fav->url : '/komik/detail/' . $comicId;
+                                } elseif (!empty($fav->url)) {
+                                    $detailUrl = $fav->url;
                                 }
                             } catch (\Throwable $e) {
                                 $detailUrl = $fav->url ?? '#';
                             }
 
+                            $isComicFav = in_array($fav->item_type, ['komik', 'comic', 'webtoon', 'manga'], true);
                             $badgeType = match($fav->item_type) {
                                 'movie' => ['label' => 'Movie', 'bg' => 'bg-red-600/80 text-white'],
                                 'tv_series' => ['label' => 'Series', 'bg' => 'bg-blue-600/80 text-white'],
                                 'dracin' => ['label' => 'Dracin', 'bg' => 'bg-amber-600/80 text-white'],
                                 'anime', 'bstation' => ['label' => 'Anime', 'bg' => 'bg-purple-600/80 text-white'],
+                                'komik', 'comic', 'webtoon', 'manga' => ['label' => 'Komik', 'bg' => 'bg-emerald-600/80 text-white'],
                                 default => ['label' => 'Video', 'bg' => 'bg-zinc-700 text-white'],
                             };
 
@@ -212,11 +219,13 @@
                                     <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                                 </button>
 
-                                <!-- Play Hover Overlay -->
+                                <!-- Play / Read Hover Overlay -->
                                 <a href="{{ $detailUrl }}" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
-                                    <div class="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl transform scale-75 group-hover:scale-100 transition duration-300">
-                                        <svg class="w-5 h-5 fill-current translate-x-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                    </div>
+                                    @if(!$isComicFav)
+                                        <div class="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl transform scale-75 group-hover:scale-100 transition duration-300">
+                                            <svg class="w-5 h-5 fill-current translate-x-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                        </div>
+                                    @endif
                                 </a>
                             </div>
 
@@ -237,8 +246,13 @@
 
                                 <div class="pt-1">
                                     <a href="{{ $detailUrl }}" class="w-full py-2 px-3 rounded-xl bg-zinc-800/80 hover:bg-red-600 active:scale-95 text-zinc-300 hover:text-white text-xs font-bold transition duration-200 flex items-center justify-center gap-1.5 shadow-sm">
-                                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                        <span>Tonton</span>
+                                        @if($isComicFav)
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                                            <span>Baca</span>
+                                        @else
+                                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                            <span>Tonton</span>
+                                        @endif
                                     </a>
                                 </div>
                             </div>
