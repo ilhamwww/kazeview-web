@@ -52,6 +52,8 @@
                      prev() { this.active = (this.active - 1 + this.total) % this.total },
                      go(i) { this.active = i; this.start() } }"
                  x-init="start()"
+                 @mouseenter="stop()"
+                 @mouseleave="start()"
                  @touchstart.passive="sx = $event.touches[0].clientX"
                  @touchend.passive="let dx = $event.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); start() }"
                  class="relative w-full h-[86vh] min-h-[600px] max-h-[920px] overflow-hidden bg-black">
@@ -59,14 +61,10 @@
             @foreach($hero as $i => $h)
                 @php $g = array_slice($genres($h['genre'] ?? ''), 0, 3); @endphp
                 <div x-show="active === {{ $i }}"
-                     x-transition:enter="transition ease-out duration-1000"
-                     x-transition:enter-start="opacity-0"
-                     x-transition:enter-end="opacity-100"
-                     x-transition:leave="transition ease-in duration-500"
-                     x-transition:leave-start="opacity-100"
-                     x-transition:leave-end="opacity-0"
-                     @if($i > 0) style="display:none" @endif
-                     class="absolute inset-0">
+                     x-cloak
+                     style="{{ $i === 0 ? '' : 'display: none !important;' }}"
+                     class="absolute inset-0 transition-opacity duration-700 ease-in-out"
+                     :class="active === {{ $i }} ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'">
                     <img src="{{ $banner($h) }}" alt="" class="absolute inset-0 w-full h-full object-cover kz-kenburns" @if($i > 0) loading="lazy" @endif>
                     <div class="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/70 to-transparent"></div>
                     <div class="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-[#050505] via-[#050505]/70 to-transparent"></div>

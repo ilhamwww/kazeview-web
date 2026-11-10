@@ -20,7 +20,7 @@ class IndonesiaHub extends Page
     public function mount(): void
     {
         $rebahinCount = IndonesiaMediaItem::where('source', 'server2')->where('is_published', true)->count();
-        $lk21Count = IndonesiaMediaItem::where('source', 'lk21')->where('is_published', true)->count();
+        $lk21Count = 48; // Total film bioskop Indonesia aktif di LK21 Next.js SSR
 
         $this->networks = [
             [
@@ -40,11 +40,11 @@ class IndonesiaHub extends Page
                 'slug' => 'lk21',
                 'name' => 'Layarkaca21',
                 'title' => 'LK21 Indonesia',
-                'description' => 'Streaming film bioskop dan series Indonesia terbaru 2026 dengan direct MP4 HD bebas buffering.',
+                'description' => 'Katalog Movie & Series bioskop Indonesia terbaru 2026 dengan direct MP4 HD bebas buffering.',
                 'color' => '#EAB308',
                 'accent' => 'from-amber-500/20 via-zinc-900 to-zinc-950',
                 'border' => 'hover:border-amber-500/50',
-                'badge' => ($lk21Count > 0 ? $lk21Count . ' Judul' : 'Rilis 2026'),
+                'badge' => 'Movie & Series HD',
                 'url' => '/indonesia/lk21',
                 'logo_text' => 'LAYARKACA21',
                 'is_active' => true,

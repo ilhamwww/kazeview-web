@@ -6,6 +6,7 @@ use Filament\Pages\Page;
 use App\Models\IndonesiaMediaItem;
 use App\Services\NartoMovieBoxService;
 use App\Services\RebahinService;
+use App\Services\NobarLk21Service;
 use App\Services\IndoxxiTechService;
 use App\Services\PencuriMovieService;
 use App\Services\StreamingService;
@@ -144,6 +145,19 @@ class WatchIndonesia extends Page
                             'embed_url' => $detail['url'],
                         ];
                     }
+                }
+            }
+        }
+        // LAYARKACA21 (LK21) RESOURCE
+        elseif ($this->providerParam === 'lk21') {
+            $detail = NobarLk21Service::getDetail($fullSlug, $this->currentEpisode);
+            if ($detail) {
+                $this->media = $detail;
+                $this->servers = $detail['servers'] ?? [];
+                $this->isSeries = !empty($detail['episodes']);
+                if ($this->isSeries) {
+                    $this->episodes = $detail['episodes'];
+                    $this->currentEpisodeTitle = "Episode {$this->currentEpisode}";
                 }
             }
         }

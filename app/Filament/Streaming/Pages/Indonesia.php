@@ -103,6 +103,19 @@ class Indonesia extends Page
         if (!$this->hasMorePages) return;
 
         $this->page++;
+
+        if ($this->provider === 'lk21') {
+            $cat = \App\Services\NobarLk21Service::getCatalog(
+                $this->category,
+                $this->page,
+                $this->search
+            );
+            $newItems = $cat['data'] ?? [];
+            $this->items = array_merge($this->items, $newItems);
+            $this->hasMorePages = $cat['pagination']['hasMore'] ?? false;
+            return;
+        }
+
         $vault = IndonesiaCatalogVaultService::getCatalog(
             $this->category,
             $this->page,
@@ -118,6 +131,31 @@ class Indonesia extends Page
 
     public function loadItems(): void
     {
+        if ($this->provider === 'lk21') {
+            $cat = \App\Services\NobarLk21Service::getCatalog(
+                $this->category,
+                $this->page,
+                $this->search
+            );
+            $this->items = $cat['data'] ?? [];
+            $this->totalPages = $cat['pagination']['totalPages'] ?? 1;
+            $this->hasMorePages = $cat['pagination']['hasMore'] ?? false;
+
+            if ($this->category === 'all' && empty($this->search)) {
+                $this->trending = array_slice($this->items, 0, 10);
+                $this->latestMovies = array_filter($this->items, fn($it) => ($it['type'] ?? 'movie') === 'movie');
+                $this->latestSeries = array_filter($this->items, fn($it) => ($it['type'] ?? '') === 'series');
+                $this->spotlightItems = array_slice($this->trending, 2, 6);
+            } else {
+                $this->trending = [];
+                $this->latestMovies = [];
+                $this->latestSeries = [];
+                $this->spotlightItems = [];
+            }
+            $this->hasMorePages = count($this->items) > 0;
+            return;
+        }
+
         $vault = IndonesiaCatalogVaultService::getCatalog(
             $this->category,
             $this->page,

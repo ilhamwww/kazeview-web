@@ -192,8 +192,13 @@
                     @if($mPoster)
                         <div class="aspect-[2/3] w-full rounded-xl overflow-hidden ring-1 ring-white/10 shadow-lg relative group">
                             <img src="{{ $mPoster }}" alt="{{ $mTitle }}" class="w-full h-full object-cover">
-                            <div class="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-600 text-white">
-                                {{ $serverLabel }}
+                            <div class="absolute top-2 left-2 flex items-center gap-1.5">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-600 text-white">
+                                    {{ $serverLabel }}
+                                </span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-black/70 backdrop-blur border border-white/20 text-zinc-200">
+                                    {{ $isSeries ? 'SERIES' : 'MOVIE' }}
+                                </span>
                             </div>
                         </div>
                     @endif
@@ -278,7 +283,11 @@
                     },
 
                     init() {
-                        // Player siap
+                        if (!this.isEmbed && this.videoSrc) {
+                            this.$nextTick(() => {
+                                this.initArtPlayer();
+                            });
+                        }
                     },
 
                     switchServer(id, embedUrl, isEmbedServer) {
