@@ -1536,12 +1536,8 @@ class StreamingService
             $streamResult = null;
 
             if (!$response->successful() && ($response->status() === 503 || $response->status() === 403 || str_contains($response->body(), 'Cloudflare') || str_contains($response->body(), 'Just a moment'))) {
-                // Try NUC Residential Resolver first
+                // Try NUC Residential Resolver first (3s connect timeout if NUC offline, 25s read timeout)
                 $streamResult = self::fetchStreamWithNucResolver('episode', $episodeId);
-                if (!$streamResult) {
-                    // Fallback to Puppeteer Stream Scraper
-                    $streamResult = self::fetchStreamWithPuppeteer($domain, $playInfoPath);
-                }
             } else {
                 $playInfo = $response->json();
                 $gateToken = $playInfo['gateToken'] ?? null;
@@ -1663,7 +1659,7 @@ class StreamingService
             $response = Http::withOptions([
                 'proxy' => 'socks5h://127.0.0.1:1055',
                 'connect_timeout' => 3,
-                'timeout' => 15,
+                'timeout' => 25,
             ])->get($url);
 
             if ($response->successful()) {
