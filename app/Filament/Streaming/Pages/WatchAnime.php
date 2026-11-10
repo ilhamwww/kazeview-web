@@ -245,7 +245,7 @@ class WatchAnime extends Page
                 $currentStreamUrl = '/api/proxy-hls?url=' . urlencode($hlsUrl);
                 $servers[] = [
                     'id' => 'server1',
-                    'name' => 'Server 1 (Mirainime Fast HLS)',
+                    'name' => 'Server 1 (Fast)',
                     'type' => 'm3u8',
                     'stream_url' => $currentStreamUrl,
                     'embed_url' => '',
@@ -259,7 +259,7 @@ class WatchAnime extends Page
                 }
                 $servers[] = [
                     'id' => 'server1',
-                    'name' => 'Server 1 (Mirainime Direct FHD)',
+                    'name' => 'Server 1 (Fast)',
                     'type' => 'mp4',
                     'stream_url' => $currentStreamUrl,
                     'embed_url' => '',
@@ -271,7 +271,7 @@ class WatchAnime extends Page
 
                 $servers[] = [
                     'id' => 'server1',
-                    'name' => 'Server 1 (Mirainime Player)',
+                    'name' => 'Server 1 (Fast)',
                     'type' => 'embed',
                     'stream_url' => '',
                     'embed_url' => $miraiProxiedEmbed,
@@ -279,7 +279,6 @@ class WatchAnime extends Page
             }
 
             $otakuStream = $downloads['stream_url'] ?? ($epDetail['direct_mp4'] ?? null);
-            $otakuIframe = $downloads['iframe_url'] ?? ($epDetail['iframe_url'] ?? null);
 
             // Sisipkan Rebahin HD jika ada
             foreach ($rebahinServers as $rs) {
@@ -307,7 +306,7 @@ class WatchAnime extends Page
                 }
             }
 
-            // 3. Tambahkan server direct/embed Otakudesu
+            // 3. Tambahkan server direct Otakudesu sebagai Alt HD
             if (!empty($otakuStream) && !str_contains($otakuStream, 'googlevideo.com')) {
                 $safeStreamUrl = (str_contains($otakuStream, 'archive.org') || str_contains($otakuStream, 'desustream'))
                     ? url('/api/proxy-stream?url=' . urlencode($otakuStream))
@@ -315,20 +314,10 @@ class WatchAnime extends Page
 
                 $servers[] = [
                     'id' => 'server_otaku_direct',
-                    'name' => 'Server ' . (count($servers) + 1) . ' (Alt HD - Otakudesu)',
+                    'name' => 'Server ' . (count($servers) + 1) . ' (Alt HD)',
                     'type' => 'mp4',
                     'stream_url' => $safeStreamUrl,
                     'embed_url' => '',
-                ];
-            }
-
-            if (!empty($otakuIframe)) {
-                $servers[] = [
-                    'id' => 'server_otaku_embed',
-                    'name' => 'Server ' . (count($servers) + 1) . ' (Otakudesu Player)',
-                    'type' => 'embed',
-                    'stream_url' => '',
-                    'embed_url' => $otakuIframe,
                 ];
             }
 
