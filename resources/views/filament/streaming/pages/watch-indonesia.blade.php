@@ -17,8 +17,244 @@
 @endphp
 
 @push('styles')
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.css">
     <style>
+        .artplayer-app {
+            width: 100% !important;
+            height: 100% !important;
+            background: #000 !important;
+        }
+
+        /* 1. Hapus total gradien hitam tebal dari art-bottom agar video jernih dan subtitle tidak tertutup */
+        /* Bar waktu gaya YouTube/Netflix + area sentuh 22px agar mudah di-drag di HP (garis visual tetap 4px) */
+        .art-video-player .art-progress { height: 22px !important; }
+        .art-video-player .art-control-progress { height: 22px !important; touch-action: none !important; }
+        .art-video-player .art-control-progress-inner {
+            height: 4px !important; background: rgba(255, 255, 255, 0.25) !important;
+            border-radius: 2px !important; transition: height 0.15s ease !important;
+        }
+        .art-video-player .art-control-progress:hover .art-control-progress-inner,
+        .art-video-player .art-control-progress:active .art-control-progress-inner { height: 6px !important; }
+        .art-video-player .art-progress-loaded { background: rgba(255, 255, 255, 0.45) !important; }
+        .art-video-player .art-progress-played { background: #E50914 !important; }
+        .art-video-player .art-progress-highlight { background: transparent !important; }
+        .art-video-player .art-progress-indicator { background-color: #E50914 !important; }
+
+        /* 1. Reset default art-bottom background saat kontrol sembunyi agar video jernih dan subtitle bebas */
+        .art-video-player .art-bottom {
+            background: none !important;
+            background-image: none !important;
+            transition: background-image 0.2s ease, opacity 0.2s ease !important;
+        }
+
+        /* Anti-spoiler: Sembunyikan mini progress bar di bagian bawah saat kontrol idle/tersembunyi */
+        .art-video-player .art-mini-progress-bar,
+        .art-video-player:not(.art-control-show):not(.art-hover) .art-bottom {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* 2. Saat kontrol aktif/hover, berikan gradien halus full-width di art-bottom */
+        .art-video-player.art-control-show .art-bottom,
+        .art-video-player.art-hover .art-bottom {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            background-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.45) 50px, transparent 85px) !important;
+            background-size: 100% 85px !important;
+            background-repeat: no-repeat !important;
+            background-position: bottom !important;
+        }
+
+        .art-video-player .art-controls {
+            background: none !important;
+            background-image: none !important;
+        }
+
+        /* 3. Subtitle styling: Z-index tinggi agar selalu di atas layer kontrol & tidak pernah tertutup */
+        .art-video-player .art-subtitle {
+            z-index: 75 !important;
+            pointer-events: none !important;
+            text-align: center !important;
+            bottom: 35px !important;
+            padding: 0 4% !important;
+            white-space: pre-line !important;
+            transition: bottom 0.2s ease !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            text-shadow: none !important;
+        }
+
+        /* Saat bar kontrol bawah muncul, naikkan sedikit subtitle agar tidak bertabrakan dengan progress bar */
+        .art-video-player.art-control-show .art-subtitle {
+            bottom: 72px !important;
+        }
+
+        /* 4. Kotak subtitle transparan ala IDLIX / Netflix yang super rapi dan kontras tinggi */
+        .art-subtitle-inner-box {
+            display: inline-block !important;
+            background: rgba(0, 0, 0, 0.75) !important;
+            padding: 4px 14px !important;
+            border-radius: 8px !important;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            font-size: 22px !important;
+            font-weight: 600 !important;
+            color: #ffffff !important;
+            line-height: 1.42 !important;
+            text-align: center !important;
+            box-decoration-break: clone !important;
+            -webkit-box-decoration-break: clone !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* Style subtitle saat dalam mode teks bersih (outline tanpa kotak) */
+        .art-subtitle-style-clean .art-subtitle-inner-box {
+            background: transparent !important;
+            box-shadow: none !important;
+            text-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.95),
+                0 0 4px rgba(0, 0, 0, 0.9),
+                1px 1px 2px rgba(0, 0, 0, 0.95),
+                -1px -1px 2px rgba(0, 0, 0, 0.95),
+                1px -1px 2px rgba(0, 0, 0, 0.95),
+                -1px 1px 2px rgba(0, 0, 0, 0.95),
+                0 0 8px rgba(0, 0, 0, 0.9) !important;
+        }
+
+        /* Style subtitle saat kotak hitam pekat */
+        .art-subtitle-style-solid .art-subtitle-inner-box {
+            background: #000000 !important;
+        }
+
+        /* 5. Menu settings popup Artplayer 100% Persis IDLIX (Pixel-Perfect) */
+        .art-video-player .art-settings {
+            height: auto !important;
+            max-height: 380px !important;
+            overflow: visible !important;
+        }
+
+        .art-video-player .art-setting-panel {
+            min-width: 255px !important;
+            width: 255px !important;
+            max-width: 92vw !important;
+            height: auto !important;
+            max-height: 380px !important;
+            overflow: visible !important;
+            border-radius: 12px !important;
+            backdrop-filter: blur(18px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+            background: rgba(18, 18, 22, 0.88) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+            padding: 6px 6px !important;
+        }
+
+        .art-video-player .art-setting-item {
+            height: 38px !important;
+            min-height: 38px !important;
+            padding: 0 10px !important;
+            border-radius: 8px !important;
+            margin: 1px 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            transition: background 0.15s ease !important;
+            cursor: pointer !important;
+        }
+
+        .art-video-player .art-setting-item:hover {
+            background: rgba(255, 255, 255, 0.09) !important;
+        }
+
+        .art-video-player .art-setting-item-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon {
+            flex-shrink: 0 !important;
+            width: 18px !important;
+            height: 18px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #ffffff !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon svg {
+            width: 18px !important;
+            height: 18px !important;
+            display: block !important;
+            fill: none !important;
+            stroke: #ffffff !important;
+            stroke-width: 2 !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon svg rect,
+        .art-video-player .art-setting-item-left-icon svg circle,
+        .art-video-player .art-setting-item-left-icon svg path,
+        .art-video-player .art-setting-item-left-icon svg line,
+        .art-video-player .art-setting-item-left-icon svg polyline {
+            fill: none !important;
+            stroke: #ffffff !important;
+        }
+
+        .art-video-player .art-setting-item-left-text {
+            font-size: 13.5px !important;
+            font-weight: 500 !important;
+            color: #ffffff !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        .art-video-player .art-setting-item-right {
+            flex-shrink: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+
+        .art-video-player .art-setting-item-right-tooltip {
+            font-size: 12.5px !important;
+            font-weight: 400 !important;
+            color: rgba(255, 255, 255, 0.78) !important;
+            white-space: nowrap !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        .art-video-player .art-setting-item-right-icon {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Pure CSS Crisp 90deg White Chevron Arrow */
+        .art-video-player .art-setting-item-right-icon svg {
+            display: none !important;
+        }
+        .art-video-player .art-setting-item-right-icon::after {
+            content: '';
+            display: block;
+            width: 5.5px;
+            height: 5.5px;
+            border-top: 1.8px solid rgba(255, 255, 255, 0.75);
+            border-right: 1.8px solid rgba(255, 255, 255, 0.75);
+            transform: rotate(45deg);
+            margin-right: 2px;
+        }
+
+        /* Hide chevron arrow on Picture-in-Picture row */
+        .art-video-player .art-setting-item[data-name="pip"] .art-setting-item-right-icon::after,
+        .art-video-player .art-setting-item:nth-child(6) .art-setting-item-right-icon::after {
+            display: none !important;
+        }
+
         .kz-noscroll::-webkit-scrollbar { display: none; }
         .kz-noscroll { -ms-overflow-style: none; scrollbar-width: none; }
         .art-video-player.art-fullscreen-web {
@@ -60,7 +296,7 @@
             {{-- LEFT COLUMN: PLAYER + SERVER SWITCHER + MOVIE INFO --}}
             <div class="min-w-0 space-y-4">
                 {{-- Video Player Container --}}
-                <div class="w-full bg-black lg:rounded-2xl overflow-hidden aspect-video relative isolate z-10 ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell">
+                <div class="w-full bg-black lg:rounded-2xl overflow-hidden aspect-video relative isolate z-10 ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
                     <div x-show="isPlaying && !isEmbed" class="w-full h-full absolute inset-0">
                         <div x-ref="artContainer" id="movieArtPlayer" class="w-full h-full absolute inset-0"></div>
                     </div>
@@ -229,8 +465,9 @@
 </div>
 
 @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
+    <script src="/js/kz-fullscreen.js?v=3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
         (function () {
             function initWatchIndonesiaComponent() {
@@ -247,6 +484,32 @@
                     subtitles: @js($media['subtitles'] ?? []),
                     episodesList: @js($episodes),
                     currentEp: {{ (int) ($currentEpisode ?? 1) }},
+                    savedProgressSeconds: {{ (float) ($savedProgressSeconds ?? 0) }},
+                    activeSubtitleLang: 'id',
+
+                    // HP/tablet: fullscreen native + kunci landscape. Desktop: tetap web fullscreen.
+                    useNativeFs() {
+                        return !!(window.KzFs && window.KzFs.isTouch() && window.KzFs.supportsElement(this.$refs.playerShell));
+                    },
+
+                    enterNativeFs() {
+                        if (window.KzFs && this.$refs.playerShell) window.KzFs.enter(this.$refs.playerShell);
+                    },
+
+                    toggleNativeFs() {
+                        if (!window.KzFs) return;
+                        if (window.KzFs.isActive(this.$refs.playerShell)) window.KzFs.exit();
+                        else this.enterNativeFs();
+                    },
+
+                    afterInitFs() {
+                        if (!this.art) return;
+                        if (this.useNativeFs()) {
+                            if (!window.KzFs.isActive(this.$refs.playerShell)) this.art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs());
+                        } else {
+                            this.art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs());
+                        }
+                    },
 
                     changeEpisode(epNum) {
                         if (this.art && this.art.video) {
@@ -276,6 +539,7 @@
                                     this.isPlaying = true;
                                     this.$nextTick(() => {
                                         this.initArtPlayer();
+                                        this.afterInitFs();
                                     });
                                 }
                             }
@@ -319,11 +583,13 @@
                             }
                             this.$nextTick(() => {
                                 this.initArtPlayer();
+                                this.afterInitFs();
                             });
                         }
                     },
 
                     playVideo() {
+                        if (this.useNativeFs()) this.enterNativeFs();
                         if (this.isEmbed) {
                             this.isPlaying = true;
                             return;
@@ -332,6 +598,7 @@
                         this.isPlaying = true;
                         this.$nextTick(() => {
                             this.initArtPlayer();
+                            this.afterInitFs();
                         });
                     },
 
@@ -345,6 +612,39 @@
                         }
 
                         const self = this;
+                        let savedSubStyle = 'art-subtitle-style-clean';
+                        try {
+                            savedSubStyle = localStorage.getItem('kz_sub_style') || 'art-subtitle-style-clean';
+                        } catch (e) {}
+
+                        const subList = Array.isArray(this.subtitles) 
+                            ? this.subtitles 
+                            : Object.values(this.subtitles || {});
+
+                        // Prefer Indonesian as default subtitle
+                        const defaultSub = subList.find(s => s && (s.lang === 'id' || s.label?.toLowerCase().includes('indo'))) || subList[0];
+                        const defaultSubPath = defaultSub ? (defaultSub.path || defaultSub.url || '') : '';
+                        const defaultSubUrl = defaultSubPath ? ('/api/streaming/subtitle?url=' + encodeURIComponent(defaultSubPath)) : '';
+
+                        // Build subtitles options for setting menu
+                        const captionOptions = [
+                            ...subList.map(s => {
+                                const label = s.label || (s.lang === 'id' ? 'Indonesia' : (s.lang === 'en' ? 'English' : s.lang));
+                                const sPath = s.path || s.url || '';
+                                const isDef = defaultSub && (s.lang === defaultSub.lang || sPath === defaultSubPath);
+                                return {
+                                    default: isDef,
+                                    html: label,
+                                    url: sPath ? ('/api/streaming/subtitle?url=' + encodeURIComponent(sPath)) : '',
+                                };
+                            }),
+                            {
+                                default: !defaultSub,
+                                html: 'Matikan Subtitle (Off)',
+                                url: '',
+                            }
+                        ];
+
                         const progressMeta = {
                             item_id: {!! json_encode($slugParam) !!},
                             item_type: {!! json_encode($isSeries ? 'indonesia_series' : 'indonesia_movie') !!},
@@ -386,19 +686,193 @@
                                 keepalive: force,
                             }).catch(() => {});
                         };
+
                         const isHlsSource = this.videoSrc && (this.videoSrc.includes('.m3u8') || this.videoSrc.includes('/master') || this.videoSrc.includes('moviebox')) && !this.videoSrc.includes('.mp4');
+
                         const artConfig = {
                             container: container,
                             url: this.videoSrc,
                             type: isHlsSource ? 'm3u8' : 'mp4',
+                            theme: '#E50914',
+                            volume: 0.8,
+                            isLive: false,
+                            muted: false,
                             autoplay: true,
                             pip: true,
-                            fullscreen: true,
-                            fullscreenWeb: true,
-                            theme: '#E50914',
-                            icons: {
-                                loading: '<div class="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>'
-                            }
+                            setting: true,
+                            loop: false,
+                            flip: false,
+                            playbackRate: false,
+                            aspectRatio: false,
+                            fullscreen: !self.useNativeFs(),
+                            fullscreenWeb: !self.useNativeFs(),
+                            subtitleOffset: false,
+                            miniProgressBar: false,
+                            playsInline: true,
+                            airplay: true,
+                            hotkey: true,
+                            subtitle: {
+                                url: defaultSubUrl,
+                                type: 'vtt',
+                                escape: false,
+                                style: {
+                                    color: '#ffffff',
+                                    fontSize: '22px',
+                                    fontWeight: '600',
+                                },
+                                encoding: 'utf-8',
+                            },
+                            controls: [
+                                {
+                                    name: 'kz-fs',
+                                    position: 'right',
+                                    index: 70,
+                                    html: '<svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="14" height="10" rx="2"/><path d="M20 4v5h-5"/><path d="M20 9a8 8 0 0 0-8-6"/></svg>',
+                                    tooltip: 'Layar penuh',
+                                    style: self.useNativeFs() ? {} : { display: 'none' },
+                                    click: () => self.toggleNativeFs(),
+                                },
+                                {
+                                    position: 'left',
+                                    index: 10,
+                                    html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>',
+                                    tooltip: 'Mundur 10 Detik',
+                                    click: function () {
+                                        if (self.art) self.art.seek = Math.max(0, self.art.currentTime - 10);
+                                    },
+                                },
+                                {
+                                    position: 'left',
+                                    index: 11,
+                                    html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg>',
+                                    tooltip: 'Maju 10 Detik',
+                                    click: function () {
+                                        if (self.art) self.art.seek = Math.min(self.art.duration || 999999, self.art.currentTime + 10);
+                                    },
+                                },
+                            ],
+                            settings: [
+                                {
+                                    html: 'Captions',
+                                    name: 'captions',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M10 9H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2"/><path d="M18 9h-2a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2"/></svg>',
+                                    tooltip: defaultSub ? (defaultSub.label || 'Indonesian') : 'Off',
+                                    selector: captionOptions,
+                                    onSelect: function (item) {
+                                        if (item.url) {
+                                            self.art.subtitle.show = true;
+                                            self.art.subtitle.switch(item.url, { name: item.html });
+                                        } else {
+                                            self.art.subtitle.show = false;
+                                        }
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Subtitle size',
+                                    name: 'subtitle-size',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M9 8h6"/><path d="M12 8v6"/></svg>',
+                                    tooltip: '100%',
+                                    selector: [
+                                        { html: '75%', size: '16px' },
+                                        { default: true, html: '100%', size: '22px' },
+                                        { html: '125%', size: '26px' },
+                                        { html: '150%', size: '30px' },
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.subtitle.style('fontSize', item.size);
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Subtitle position',
+                                    name: 'subtitle-position',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><line x1="6" y1="13" x2="18" y2="13" stroke-width="2.5"/></svg>',
+                                    tooltip: 'Default',
+                                    selector: [
+                                        { default: true, html: 'Default', bottom: '35px' },
+                                        { html: 'Top', bottom: 'auto', top: '40px' },
+                                        { html: 'Bottom', bottom: '15px' },
+                                    ],
+                                    onSelect: function (item) {
+                                        if (item.top) {
+                                            self.art.subtitle.style('bottom', 'auto');
+                                            self.art.subtitle.style('top', item.top);
+                                        } else {
+                                            self.art.subtitle.style('top', 'auto');
+                                            self.art.subtitle.style('bottom', item.bottom);
+                                        }
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Resolution',
+                                    name: 'resolution',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
+                                    tooltip: 'Auto',
+                                    selector: [
+                                        { default: true, html: 'Auto', levelIndex: -1 }
+                                    ],
+                                    onSelect: function (item) {
+                                        if (self.hls) self.hls.currentLevel = item.levelIndex;
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Playback speed',
+                                    name: 'playback-speed',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>',
+                                    tooltip: '1x',
+                                    selector: [
+                                        { html: '0.5x', speed: 0.5 },
+                                        { html: '0.75x', speed: 0.75 },
+                                        { default: true, html: '1x', speed: 1.0 },
+                                        { html: '1.25x', speed: 1.25 },
+                                        { html: '1.5x', speed: 1.5 },
+                                        { html: '2x', speed: 2.0 },
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.playbackRate = item.speed;
+                                        return item.html;
+                                    },
+                                },
+                                {
+                                    html: 'Picture-in-Picture',
+                                    name: 'pip',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="11" y="9" width="9" height="6" rx="1" stroke="currentColor" fill="none"/></svg>',
+                                    tooltip: 'Off',
+                                    selector: [
+                                        { html: 'On' },
+                                        { default: true, html: 'Off' }
+                                    ],
+                                    onSelect: function (item) {
+                                        self.art.pip = !self.art.pip;
+                                        return self.art.pip ? 'On' : 'Off';
+                                    },
+                                },
+                                {
+                                    html: 'Subtitle style',
+                                    name: 'subtitle-style',
+                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-7-7-8 8 7 7 8-8z"/><path d="m19 11 2 2-2 2-2-2z"/><line x1="2" y1="21" x2="22" y2="21"/></svg>',
+                                    tooltip: savedSubStyle === 'art-subtitle-style-solid' ? 'Solid Black' : (savedSubStyle === 'custom' ? 'Custom' : 'Clean Outline'),
+                                    selector: [
+                                        { default: savedSubStyle === 'art-subtitle-style-clean', html: 'Clean Outline', cls: 'art-subtitle-style-clean' },
+                                        { default: savedSubStyle === 'custom', html: 'Custom', cls: '' },
+                                        { default: savedSubStyle === 'art-subtitle-style-solid', html: 'Solid Black', cls: 'art-subtitle-style-solid' },
+                                    ],
+                                    onSelect: function (item) {
+                                        const subEl = self.art.template.$subtitle;
+                                        if (subEl) {
+                                            subEl.classList.remove('art-subtitle-style-clean', 'art-subtitle-style-solid');
+                                            if (item.cls) subEl.classList.add(item.cls);
+                                        }
+                                        try {
+                                            localStorage.setItem('kz_sub_style', item.cls || 'custom');
+                                        } catch (e) {}
+                                        return item.html;
+                                    },
+                                },
+                            ],
                         };
                         if (isHlsSource) {
                             artConfig.customType = {
@@ -490,6 +964,77 @@
                         }
 
                         this.art = new Artplayer(artConfig);
+
+                        // Stamp data-name on setting items for custom styling
+                        const stampSettingNames = () => {
+                            const items = document.querySelectorAll('.art-setting-item');
+                            const names = ['captions', 'subtitle-size', 'subtitle-position', 'resolution', 'playback-speed', 'pip', 'subtitle-style'];
+                            items.forEach((item, idx) => {
+                                if (names[idx]) item.setAttribute('data-name', names[idx]);
+                            });
+                        };
+                        window.art = this.art;
+                        this.art.on('setting', stampSettingNames);
+                        this.art.on('fullscreenWeb', (state) => {
+                            document.body.classList.toggle('kz-fullscreen-web-active', state);
+                            document.documentElement.classList.toggle('kz-fullscreen-web-active', state);
+                            window.dispatchEvent(new CustomEvent('artplayer:fullscreenWeb', { detail: state }));
+                        });
+
+                        // Auto-resume ke posisi menit terakhir ditonton
+                        if (this.savedProgressSeconds > 5) {
+                            this.art.once('video:loadedmetadata', () => {
+                                if (self.art && self.savedProgressSeconds > 0) {
+                                    self.art.currentTime = self.savedProgressSeconds;
+                                    const m = Math.floor(self.savedProgressSeconds / 60);
+                                    const s = Math.floor(self.savedProgressSeconds % 60);
+                                    const formatted = `${m}:${s < 10 ? '0' : ''}${s}`;
+                                    self.art.notice.show = `Melanjutkan dari ${formatted}`;
+                                }
+                            });
+                        }
+
+                        // Tampilkan animasi server loader pada initial load stream
+                        if (window.kzServerLoader) {
+                            window.kzServerLoader.applyToArtplayer(this.art, 'Memilih server terbaik', 'Mengoptimalkan stream film & resolusi HD');
+                        }
+
+                        // Subtitle box wrapper observer (IDLIX & Netflix style)
+                        const subEl = this.art.template.$subtitle;
+                        if (subEl) {
+                            subEl.classList.remove('art-subtitle-style-clean', 'art-subtitle-style-solid');
+                            if (savedSubStyle !== 'custom') {
+                                subEl.classList.add(savedSubStyle || 'art-subtitle-style-clean');
+                            }
+                            let updating = false;
+                            const subObserver = new MutationObserver(() => {
+                                if (updating) return;
+                                if (subEl.childNodes.length > 0 && !subEl.querySelector('.art-subtitle-inner-box')) {
+                                    const raw = subEl.innerHTML.trim();
+                                    if (raw) {
+                                        updating = true;
+                                        subEl.innerHTML = '<span class="art-subtitle-inner-box">' + raw + '</span>';
+                                        setTimeout(() => { updating = false; }, 20);
+                                    }
+                                }
+                            });
+                            subObserver.observe(subEl, { childList: true });
+                            this.art.on('destroy', () => subObserver.disconnect());
+                        }
+
+                        // Otomatis aktifkan Web Fullscreen (in-page theater mode) saat mulai play
+                        let hasTriggeredAutoWebFs = false;
+                        const enterWebFs = () => {
+                            if (!hasTriggeredAutoWebFs) {
+                                hasTriggeredAutoWebFs = true;
+                                if (self.useNativeFs() && window.KzFs.isActive(self.$refs.playerShell)) return;
+                                self.art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs());
+                            }
+                        };
+                        this.art.on('video:play', enterWebFs);
+                        if (this.art.video) {
+                            this.art.video.addEventListener('play', enterWebFs);
+                        }
 
                         this.art.on('ready', () => {
                             const v = self.art && self.art.video;

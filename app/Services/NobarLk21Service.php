@@ -390,6 +390,7 @@ class NobarLk21Service
                     'video_url' => $firstServer['video_url'] ?? '',
                     'servers' => $servers,
                     'episodes' => $episodes,
+                    'subtitles' => [],
                     'isEmbed' => false,
                     'quality' => '1080p Ultra HD',
                     'provider' => 'lk21',
