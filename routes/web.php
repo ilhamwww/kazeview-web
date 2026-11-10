@@ -1053,6 +1053,17 @@ Route::get('/api/proxy-stream', function (\Illuminate\Http\Request $request) {
             'referer' => 'https://mirainime.com/',
             'origin' => null,
         ];
+    } elseif (str_contains($host, 'nobarlk21.com') || str_contains($host, 'hakunaymatata.com')) {
+        $profiles[] = [
+            'name' => 'nobarlk21_canonical',
+            'referer' => "https://{$host}/",
+            'origin' => "https://{$host}",
+        ];
+        $profiles[] = [
+            'name' => 'nobarlk21_base',
+            'referer' => 'https://t4.nobarlk21.com/',
+            'origin' => 'https://t4.nobarlk21.com',
+        ];
     } elseif (str_contains($host, 'bilibili.tv')) {
         $profiles[] = [
             'name' => 'bilibili',

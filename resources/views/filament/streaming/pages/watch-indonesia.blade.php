@@ -313,6 +313,10 @@
                             this.isPlaying = true;
                         } else {
                             this.isPlaying = true;
+                            if (this.art) {
+                                try { this.art.destroy(false); } catch(e) {}
+                                this.art = null;
+                            }
                             this.$nextTick(() => {
                                 this.initArtPlayer();
                             });
@@ -382,7 +386,7 @@
                                 keepalive: force,
                             }).catch(() => {});
                         };
-                        const isHlsSource = this.videoSrc && (this.videoSrc.includes('.m3u8') || this.videoSrc.includes('/master') || this.videoSrc.includes('moviebox'));
+                        const isHlsSource = this.videoSrc && (this.videoSrc.includes('.m3u8') || this.videoSrc.includes('/master') || this.videoSrc.includes('moviebox')) && !this.videoSrc.includes('.mp4');
                         const artConfig = {
                             container: container,
                             url: this.videoSrc,

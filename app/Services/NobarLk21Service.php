@@ -321,17 +321,43 @@ class NobarLk21Service
 
                 // 6. Ekstrak streaming sources
                 $servers = [];
-                // Format: source_1:https://t4.nobarlk21.com/api/cdn-proxy?url=...|source_2:...
-                if (preg_match_all('/https?:\/\/[^\s"\'\\|]+?(?:\.mp4|\.m3u8)[^\s"\'\\|]*/', $fullPayload, $sm)) {
-                    $rawUrls = array_unique($sm[0]);
-                    $idx = 1;
-                    foreach ($rawUrls as $streamUrl) {
-                        if (str_contains($streamUrl, 'cdn-proxy') || str_contains($streamUrl, 'hakunaymatata') || str_contains($streamUrl, '.mp4')) {
+                // Prioritas 1: Ekstrak dari objek JSON "sources":[{"id":"source_1",...,"url":"https://..."}]
+                $cleanedHtml = str_replace(['\\"', '\\\\'], ['"', '\\'], $html);
+                if (preg_match('/"sources":\s*(\[\{.*?\}\])/s', $cleanedHtml, $sourceMatch)) {
+                    $sourcesJson = json_decode($sourceMatch[1], true);
+                    if (is_array($sourcesJson)) {
+                        $idx = 1;
+                        foreach ($sourcesJson as $src) {
+                            $streamUrl = $src['url'] ?? '';
+                            if (!empty($streamUrl) && (str_contains($streamUrl, 'cdn-proxy') || str_contains($streamUrl, '.mp4'))) {
+                                $proxyUrl = url('/api/proxy-stream?url=' . urlencode($streamUrl));
+                                $servers[] = [
+                                    'id' => 'server_lk_' . $idx,
+                                    'name' => 'Server ' . $idx . ' (Direct ' . ($src['label'] ?? '1080p HD') . ')',
+                                    'type' => 'mp4',
+                                    'video_url' => $proxyUrl,
+                                    'raw_video_url' => $streamUrl,
+                                    'embed_url' => '',
+                                ];
+                                $idx++;
+                            }
+                        }
+                    }
+                }
+
+                // Prioritas 2 (Fallback): Regex jika objek sources tidak ditemukan
+                if (empty($servers)) {
+                    if (preg_match_all('/https?:\/\/[^\s"\'\\|]+?(?:bcdnxw|cdn-proxy)[^\s"\'\\|]+?\.mp4%3Fsign%3D[a-f0-9]{32}%26t%3D\d+/', $fullPayload, $sm)) {
+                        $rawUrls = array_unique($sm[0]);
+                        $idx = 1;
+                        foreach ($rawUrls as $streamUrl) {
+                            $proxyUrl = url('/api/proxy-stream?url=' . urlencode($streamUrl));
                             $servers[] = [
                                 'id' => 'server_lk_' . $idx,
                                 'name' => 'Server ' . $idx . ' (Direct 1080p HD)',
                                 'type' => 'mp4',
-                                'video_url' => $streamUrl,
+                                'video_url' => $proxyUrl,
+                                'raw_video_url' => $streamUrl,
                                 'embed_url' => '',
                             ];
                             $idx++;
