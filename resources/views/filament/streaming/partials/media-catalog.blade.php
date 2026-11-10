@@ -13,7 +13,7 @@
         if (empty($it['slug'])) {
             return '#';
         }
-        $provider = $this->provider ?: 'rebahin';
+        $provider = property_exists($this, 'provider') ? ($this->provider ?: 'rebahin') : 'rebahin';
         if ($kind === 'indonesia') {
             $cleanSlug = preg_replace('/^(mb-|rb-|ix-|pm-|lk-)/', '', $it['slug']);
             return "/indonesia/{$provider}/{$cleanSlug}";
