@@ -23,47 +23,86 @@ class NobarLk21Service
 
     /**
      * Ambil katalog film / serial Indonesia dari Nobar LK21
-     * Mengambil dari:
-     * 1) https://t4.nobarlk21.com/movie?country=indonesia
-     * 2) https://t4.nobarlk21.com/series?country=indonesia
+     * Mengambil dari endpoint API internal Next.js:
+     * 1) /api/v1/contents?type=movie&country=indonesia&page={page}
+     * 2) /api/v1/contents?type=series&country=indonesia&page={page}
+     * Dengan fallback scraping HTML SSR jika API tidak merespons.
      */
     public static function getCatalog(string $category = 'all', int $page = 1, string $search = ''): array
     {
         $page = max(1, $page);
-        $cacheKey = "nobar_lk21_catalog_v2_cat_{$category}_p{$page}_s_" . md5($search);
+        $cacheKey = "nobar_lk21_catalog_v3_cat_{$category}_p{$page}_s_" . md5($search);
 
         return Cache::remember($cacheKey, 300, function () use ($category, $page, $search) {
             try {
                 $baseUrl = self::getBaseUrl();
-                
-                // Jika pencarian aktif
-                if (!empty($search)) {
-                    $url = "{$baseUrl}/search?q=" . urlencode($search) . "&page={$page}";
-                    $response = Http::withHeaders(self::getHeaders())->timeout(12)->get($url);
-                    $items = $response->successful() ? self::extractItemsFromHtml($response->body(), 'all') : [];
-                } elseif ($category === 'movie') {
-                    $url = "{$baseUrl}/movie?country=indonesia&page={$page}";
-                    $response = Http::withHeaders(self::getHeaders())->timeout(12)->get($url);
-                    $items = $response->successful() ? self::extractItemsFromHtml($response->body(), 'movie') : [];
-                } elseif ($category === 'series') {
-                    $url = "{$baseUrl}/series?country=indonesia&page={$page}";
-                    $response = Http::withHeaders(self::getHeaders())->timeout(12)->get($url);
-                    $items = $response->successful() ? self::extractItemsFromHtml($response->body(), 'series') : [];
-                } else {
-                    // Category 'all' atau filter tahun: gabungkan movie dan series
-                    $movieUrl = "{$baseUrl}/movie?country=indonesia&page={$page}";
-                    $seriesUrl = "{$baseUrl}/series?country=indonesia&page={$page}";
+                $items = [];
+                $hasMore = false;
+                $totalPages = 1;
 
+                // 1. Jika pencarian aktif
+                if (!empty($search)) {
+                    $apiUrl = "{$baseUrl}/api/v1/contents?search=" . urlencode($search) . "&page={$page}";
+                    $res = Http::withHeaders(self::getApiHeaders())->timeout(10)->get($apiUrl);
+                    if ($res->successful()) {
+                        $json = $res->json();
+                        $items = self::mapApiItems($json['data'] ?? []);
+                        $hasMore = (bool) ($json['meta']['hasNextPage'] ?? false);
+                        $totalPages = (int) ($json['meta']['totalPages'] ?? 1);
+                    }
+                }
+                // 2. Jika category spesifik 'movie'
+                elseif ($category === 'movie') {
+                    $apiUrl = "{$baseUrl}/api/v1/contents?type=movie&country=indonesia&page={$page}";
+                    $res = Http::withHeaders(self::getApiHeaders())->timeout(10)->get($apiUrl);
+                    if ($res->successful()) {
+                        $json = $res->json();
+                        $items = self::mapApiItems($json['data'] ?? [], 'movie');
+                        $hasMore = (bool) ($json['meta']['hasNextPage'] ?? false);
+                        $totalPages = (int) ($json['meta']['totalPages'] ?? 1);
+                    }
+                }
+                // 3. Jika category spesifik 'series'
+                elseif ($category === 'series') {
+                    $apiUrl = "{$baseUrl}/api/v1/contents?type=series&country=indonesia&page={$page}";
+                    $res = Http::withHeaders(self::getApiHeaders())->timeout(10)->get($apiUrl);
+                    if ($res->successful()) {
+                        $json = $res->json();
+                        $items = self::mapApiItems($json['data'] ?? [], 'series');
+                        $hasMore = (bool) ($json['meta']['hasNextPage'] ?? false);
+                        $totalPages = (int) ($json['meta']['totalPages'] ?? 1);
+                    }
+                }
+                // 4. Category 'all' atau filter tahun
+                else {
                     $responses = Http::pool(fn ($pool) => [
-                        $pool->as('movie')->withHeaders(self::getHeaders())->timeout(12)->get($movieUrl),
-                        $pool->as('series')->withHeaders(self::getHeaders())->timeout(12)->get($seriesUrl),
+                        $pool->as('movie')->withHeaders(self::getApiHeaders())->timeout(10)->get("{$baseUrl}/api/v1/contents?type=movie&country=indonesia&page={$page}"),
+                        $pool->as('series')->withHeaders(self::getApiHeaders())->timeout(10)->get("{$baseUrl}/api/v1/contents?type=series&country=indonesia&page={$page}"),
                     ]);
 
-                    $movieItems = $responses['movie']->successful() ? self::extractItemsFromHtml($responses['movie']->body(), 'movie') : [];
-                    $seriesItems = $responses['series']->successful() ? self::extractItemsFromHtml($responses['series']->body(), 'series') : [];
+                    $movieJson = $responses['movie']->successful() ? $responses['movie']->json() : null;
+                    $seriesJson = $responses['series']->successful() ? $responses['series']->json() : null;
 
-                    // Selang-seling atau gabungkan movie & series
+                    $movieItems = self::mapApiItems($movieJson['data'] ?? [], 'movie');
+                    $seriesItems = self::mapApiItems($seriesJson['data'] ?? [], 'series');
+
                     $items = array_merge($movieItems, $seriesItems);
+
+                    $hasMore = (bool) (($movieJson['meta']['hasNextPage'] ?? false) || ($seriesJson['meta']['hasNextPage'] ?? false));
+                    $totalPages = max(
+                        (int) ($movieJson['meta']['totalPages'] ?? 1),
+                        (int) ($seriesJson['meta']['totalPages'] ?? 1)
+                    );
+                }
+
+                // Fallback ke SSR HTML jika API kosong di page 1
+                if (empty($items) && $page === 1) {
+                    $ssrRes = Http::withHeaders(self::getHeaders())->timeout(12)->get("{$baseUrl}/movie?country=indonesia");
+                    if ($ssrRes->successful()) {
+                        $items = self::extractItemsFromHtml($ssrRes->body(), 'movie');
+                        $hasMore = false;
+                        $totalPages = 1;
+                    }
                 }
 
                 // Filter tahun jika spesifik
@@ -73,16 +112,13 @@ class NobarLk21Service
                     $items = array_values(array_filter($items, fn($it) => (int) ($it['year'] ?? 0) <= 2023));
                 }
 
-                $totalItems = count($items);
-                $totalPages = 25;
-
                 return [
                     'data' => $items,
                     'pagination' => [
                         'currentPage' => $page,
                         'totalPages' => $totalPages,
-                        'totalItems' => $totalItems,
-                        'hasMore' => $totalItems > 0 && $page < $totalPages,
+                        'totalItems' => count($items),
+                        'hasMore' => $hasMore,
                     ],
                 ];
             } catch (\Throwable $e) {
@@ -98,6 +134,58 @@ class NobarLk21Service
                 ];
             }
         });
+    }
+
+    protected static function getApiHeaders(): array
+    {
+        return [
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'Accept' => 'application/json',
+            'Referer' => 'https://t4.nobarlk21.com/movie?country=indonesia',
+        ];
+    }
+
+    /**
+     * Map hasil API /api/v1/contents ke format kartu KZSTRM
+     */
+    protected static function mapApiItems(array $rawItems, string $forceType = ''): array
+    {
+        $items = [];
+        foreach ($rawItems as $item) {
+            $rawSlug = $item['slug'] ?? '';
+            if (empty($rawSlug)) {
+                continue;
+            }
+
+            $year = (string) ($item['year'] ?? '');
+            $title = $item['title'] ?? 'Konten Indonesia';
+            $cleanTitle = trim(preg_replace('/\[indonesian\]/i', '', $title));
+
+            $type = !empty($forceType) ? $forceType : (($item['type'] ?? 'movie') === 'series' ? 'series' : 'movie');
+
+            $items[] = [
+                'id' => 'lk-' . $rawSlug,
+                'title' => $cleanTitle,
+                'slug' => 'lk-' . $rawSlug,
+                'raw_slug' => $rawSlug,
+                'target_slug' => $rawSlug,
+                'type' => $type,
+                'year' => $year,
+                'rating' => (float) ($item['rating'] ?? 7.5),
+                'voteAverage' => (float) ($item['rating'] ?? 7.5),
+                'quality' => $item['quality'] ?? 'HD',
+                'duration' => null,
+                'runtime' => null,
+                'poster' => $item['posterUrl'] ?? null,
+                'thumbnail' => $item['posterUrl'] ?? null,
+                'banner' => $item['posterUrl'] ?? null,
+                'isEmbed' => false,
+                'source' => 'lk21',
+                'provider_badge' => 'LK21',
+                'genres' => ['Indonesia', ucfirst($type)],
+            ];
+        }
+        return $items;
     }
 
     protected static function getHeaders(): array

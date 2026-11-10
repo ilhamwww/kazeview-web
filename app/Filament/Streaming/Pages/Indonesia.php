@@ -111,8 +111,17 @@ class Indonesia extends Page
                 $this->search
             );
             $newItems = $cat['data'] ?? [];
-            $this->items = array_merge($this->items, $newItems);
-            $this->hasMorePages = $cat['pagination']['hasMore'] ?? false;
+
+            // Cegah duplikasi berdasarkan slug
+            $existingSlugs = array_column($this->items, 'slug');
+            $filteredNew = array_values(array_filter($newItems, fn($it) => !in_array($it['slug'] ?? '', $existingSlugs, true)));
+
+            if (!empty($filteredNew)) {
+                $this->items = array_merge($this->items, $filteredNew);
+            }
+
+            // Jika tidak ada item baru yang didapat, hentikan load more
+            $this->hasMorePages = ($cat['pagination']['hasMore'] ?? false) && !empty($filteredNew);
             return;
         }
 
@@ -125,8 +134,13 @@ class Indonesia extends Page
         );
 
         $newItems = $vault['data'] ?? [];
-        $this->items = array_merge($this->items, $newItems);
-        $this->hasMorePages = $vault['pagination']['hasMore'] ?? false;
+        $existingSlugs = array_column($this->items, 'slug');
+        $filteredNew = array_values(array_filter($newItems, fn($it) => !in_array($it['slug'] ?? '', $existingSlugs, true)));
+
+        if (!empty($filteredNew)) {
+            $this->items = array_merge($this->items, $filteredNew);
+        }
+        $this->hasMorePages = ($vault['pagination']['hasMore'] ?? false) && !empty($filteredNew);
     }
 
     public function loadItems(): void
