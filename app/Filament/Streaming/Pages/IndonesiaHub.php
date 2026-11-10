@@ -20,7 +20,6 @@ class IndonesiaHub extends Page
     public function mount(): void
     {
         $rebahinCount = IndonesiaMediaItem::where('source', 'server2')->where('is_published', true)->count();
-        $lk21Count = 48; // Total film bioskop Indonesia aktif di LK21 Next.js SSR
 
         $this->networks = [
             [
@@ -44,7 +43,7 @@ class IndonesiaHub extends Page
                 'color' => '#EAB308',
                 'accent' => 'from-amber-500/20 via-zinc-900 to-zinc-950',
                 'border' => 'hover:border-amber-500/50',
-                'badge' => 'Movie & Series HD',
+                'badge' => '195+ Judul',
                 'url' => '/indonesia/lk21',
                 'logo_text' => 'LAYARKACA21',
                 'is_active' => true,

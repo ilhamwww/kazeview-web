@@ -53,7 +53,7 @@ class NobarLk21Service
                 }
                 // 2. Jika category spesifik 'movie'
                 elseif ($category === 'movie') {
-                    $apiUrl = "{$baseUrl}/api/v1/contents?type=movie&country=indonesia&page={$page}";
+                    $apiUrl = "{$baseUrl}/api/v1/contents?type=movie&country=indonesia&sort=popular&page={$page}";
                     $res = Http::withHeaders(self::getApiHeaders())->timeout(10)->get($apiUrl);
                     if ($res->successful()) {
                         $json = $res->json();
@@ -64,7 +64,7 @@ class NobarLk21Service
                 }
                 // 3. Jika category spesifik 'series'
                 elseif ($category === 'series') {
-                    $apiUrl = "{$baseUrl}/api/v1/contents?type=series&country=indonesia&page={$page}";
+                    $apiUrl = "{$baseUrl}/api/v1/contents?type=series&country=indonesia&sort=popular&page={$page}";
                     $res = Http::withHeaders(self::getApiHeaders())->timeout(10)->get($apiUrl);
                     if ($res->successful()) {
                         $json = $res->json();
@@ -76,8 +76,8 @@ class NobarLk21Service
                 // 4. Category 'all' atau filter tahun
                 else {
                     $responses = Http::pool(fn ($pool) => [
-                        $pool->as('movie')->withHeaders(self::getApiHeaders())->timeout(10)->get("{$baseUrl}/api/v1/contents?type=movie&country=indonesia&page={$page}"),
-                        $pool->as('series')->withHeaders(self::getApiHeaders())->timeout(10)->get("{$baseUrl}/api/v1/contents?type=series&country=indonesia&page={$page}"),
+                        $pool->as('movie')->withHeaders(self::getApiHeaders())->timeout(10)->get("{$baseUrl}/api/v1/contents?type=movie&country=indonesia&sort=popular&page={$page}"),
+                        $pool->as('series')->withHeaders(self::getApiHeaders())->timeout(10)->get("{$baseUrl}/api/v1/contents?type=series&country=indonesia&sort=popular&page={$page}"),
                     ]);
 
                     $movieJson = $responses['movie']->successful() ? $responses['movie']->json() : null;
