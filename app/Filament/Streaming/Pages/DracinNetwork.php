@@ -359,6 +359,7 @@ class DracinNetwork extends Page
             'raptdrama' => 'RaptDrama',
             'reelbuzz' => 'ReelBuzz',
             'melolo' => 'Melolo',
+            'netshort' => 'NetShort',
             'flextv' => 'FlexTV',
             'shortswave' => 'ShortsWave',
             'freereels' => 'FreeReels',
@@ -458,6 +459,9 @@ class DracinNetwork extends Page
         if ($this->slugVal === 'dramawave') {
             $this->lang = 'in';
             $this->tab = 'recommend';
+        }
+        if ($this->slugVal === 'netshort') {
+            $this->tab = 'all';
         }
 
         static::$title = 'Drama China - ' . $this->network['name'];
@@ -686,7 +690,7 @@ class DracinNetwork extends Page
                 $url = "https://goodshort.goodbos.online/search?lang={$apiLang}&q=" . urlencode($this->search) . "&page={$page}&size=15&code={$apiKey}";
             } else {
                 // Drama Home GET URL = https://goodshort.goodbos.online/home?lang=in&channel=-1&page=1&size=20
-                $url = "https://goodshort.goodbos.online/home?lang={$apiLang}&channel=-1&page={$page}&size=20";
+                $url = "https://goodshort.goodbos.online/home?lang={$apiLang}&channel=-1&page={$page}&size=20&code={$apiKey}";
             }
 
             try {
@@ -896,9 +900,10 @@ class DracinNetwork extends Page
 
         if ($this->slugVal === 'netshort') {
             $page = $this->offset + 1;
+            $codeParam = '&code=' . urlencode($apiKey);
 
             if ($isSearch) {
-                $searchUrl = "https://netshort.goodbos.online/api/search?lang=in&q=" . urlencode($this->search) . "&page={$page}";
+                $searchUrl = "https://netshort.goodbos.online/api/search?lang=in&q=" . urlencode($this->search) . "&page={$page}{$codeParam}";
 
                 try {
                     $response = Http::timeout(10)->get($searchUrl);
@@ -940,8 +945,8 @@ class DracinNetwork extends Page
                 return;
             }
 
-            if ($this->tab && $this->tab !== 'all') {
-                $catUrl = "https://netshort.goodbos.online/api/list?category=" . urlencode($this->tab) . "&lang=in&page={$page}";
+            if ($this->tab && !in_array($this->tab, ['all', 'popular'], true)) {
+                $catUrl = "https://netshort.goodbos.online/api/list/{$page}?category=" . urlencode($this->tab) . "&lang=in{$codeParam}";
                 try {
                     $response = Http::timeout(10)->get($catUrl);
                     if ($response->successful()) {
@@ -950,7 +955,7 @@ class DracinNetwork extends Page
                             $mapped = array_map(function ($item) {
                                 $labels = $item['labelArray'] ?? [];
                                 return [
-                                    'id' => (string) ($item['shortPlayLibraryId'] ?? $item['shortPlayId'] ?? ''),
+                                    'id' => (string) ($item['shortPlayId'] ?? $item['shortPlayLibraryId'] ?? ''),
                                     'name' => trim(strip_tags((string) ($item['shortPlayName'] ?? ''))),
                                     'cover' => $item['shortPlayCover'] ?? null,
                                     'episodes' => null,
@@ -974,7 +979,7 @@ class DracinNetwork extends Page
                 return;
             }
 
-            $url = "https://netshort.goodbos.online/api/home/{$page}?lang=in";
+            $url = "https://netshort.goodbos.online/api/home/{$page}?lang=in{$codeParam}";
 
             try {
                 $response = Http::timeout(10)->get($url);
@@ -1113,14 +1118,15 @@ class DracinNetwork extends Page
         if ($this->slugVal === 'reelshort') {
             $page = $this->offset + 1;
             $lang = $this->lang ?: 'in';
+            $codeParam = '&code=' . urlencode($apiKey);
 
             if ($isSearch) {
-                $url = "https://reelshort.goodbos.online/search?q=" . urlencode($this->search) . "&lang=" . urlencode($lang);
+                $url = "https://reelshort.goodbos.online/search?q=" . urlencode($this->search) . "&lang=" . urlencode($lang) . $codeParam;
             } elseif ($page > 1) {
-                $url = "https://reelshort.goodbos.online/shelf/2009269?page={$page}&limit=24&lang=" . urlencode($lang);
+                $url = "https://reelshort.goodbos.online/shelf/2009269?page={$page}&limit=24&lang=" . urlencode($lang) . $codeParam;
             } else {
                 $tabName = strtolower($this->tab ?: 'populer');
-                $url = "https://reelshort.goodbos.online/home?tab=" . urlencode($tabName) . "&lang=" . urlencode($lang);
+                $url = "https://reelshort.goodbos.online/home?tab=" . urlencode($tabName) . "&lang=" . urlencode($lang) . $codeParam;
             }
 
             try {
@@ -1278,7 +1284,7 @@ class DracinNetwork extends Page
         if ($this->slugVal === 'flextv') {
             $page = $this->offset + 1;
             if ($isSearch) {
-                $url = "https://flextv.goodbos.online/api/drama/search?keyword=" . urlencode($this->search) . "&page={$page}";
+                $url = "https://flextv.goodbos.online/api/drama/search?keyword=" . urlencode($this->search) . "&page={$page}&code={$apiKey}";
             } else {
                 $endpoint = match ($this->tab) {
                     'newest' => 'newest',
@@ -1379,9 +1385,9 @@ class DracinNetwork extends Page
                 $url = "https://drakula.goodbos.online/api/freereels/search?q=" . urlencode($this->search) . "&lang=in&code={$apiKey}";
             } else {
                 $endpoint = match ($this->tab) {
-                    'popular' => 'popular',
                     'new' => 'new',
-                    default => 'foryou',
+                    'foryou' => 'foryou',
+                    default => 'popular',
                 };
                 $url = "https://drakula.goodbos.online/api/freereels/{$endpoint}?page={$page}&lang=in&code={$apiKey}";
             }
@@ -1428,10 +1434,11 @@ class DracinNetwork extends Page
         // FlickReels
         if ($this->slugVal === 'flickreels') {
             $page = $this->offset + 1;
+            $codeParam = '&code=' . urlencode($apiKey);
             if ($isSearch) {
-                $url = "https://flickreels.goodbos.online/search?q=" . urlencode($this->search) . "&lang=in";
+                $url = "https://flickreels.goodbos.online/search?q=" . urlencode($this->search) . "&lang=in{$codeParam}";
             } else {
-                $url = "https://flickreels.goodbos.online/api/home?lang=in&page={$page}";
+                $url = "https://flickreels.goodbos.online/api/home?lang=in&page={$page}{$codeParam}";
             }
 
             try {
@@ -1523,10 +1530,11 @@ class DracinNetwork extends Page
         // DotDrama
         if ($this->slugVal === 'dotdrama') {
             $page = $this->offset + 1;
+            $codeParam = '&code=' . urlencode($apiKey);
             if ($isSearch) {
-                $url = "https://dotdrama.goodbos.online/api/search?q=" . urlencode($this->search) . "&lang=in";
+                $url = "https://dotdrama.goodbos.online/api/search?q=" . urlencode($this->search) . "&lang=in{$codeParam}";
             } else {
-                $url = "https://dotdrama.goodbos.online/api/drama/list?lang=in&page={$page}&limit=20";
+                $url = "https://dotdrama.goodbos.online/api/drama/list?lang=in&page={$page}&limit=20{$codeParam}";
             }
 
             try {
@@ -1571,16 +1579,17 @@ class DracinNetwork extends Page
         if ($this->slugVal === 'dramawave') {
             $page = $this->offset + 1;
             $lang = !empty($this->lang) ? $this->lang : 'in';
+            $codeParam = '&code=' . urlencode($apiKey);
 
             if ($isSearch) {
-                $url = "https://dramawave.goodbos.online/api/search?q=" . urlencode($this->search) . "&lang={$lang}&code={$apiKey}&next={$page}";
+                $url = "https://dramawave.goodbos.online/api/search?q=" . urlencode($this->search) . "&lang={$lang}{$codeParam}&next={$page}";
             } else {
                 if ($this->tab === 'anime') {
-                    $url = "https://dramawave.goodbos.online/api/anime?lang={$lang}&next={$page}";
+                    $url = "https://dramawave.goodbos.online/api/anime?lang={$lang}&next={$page}{$codeParam}";
                 } elseif ($this->tab === 'home') {
-                    $url = "https://dramawave.goodbos.online/api/home?lang={$lang}";
+                    $url = "https://dramawave.goodbos.online/api/home?lang={$lang}{$codeParam}";
                 } else {
-                    $url = "https://dramawave.goodbos.online/api/recommend?lang={$lang}&next={$page}";
+                    $url = "https://dramawave.goodbos.online/api/recommend?lang={$lang}&next={$page}{$codeParam}";
                 }
             }
 

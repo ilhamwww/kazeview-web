@@ -1248,7 +1248,7 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
     // Domain HLS yang diperbolehkan.
     $allowedDomains = [
         'flextv.cc', 'shortswave.com', 'mydramawave.com', 'majorplay.net', 'farsunpteltd.net',
-        'wolftv.online', 'shorttv.live', 'goodbos.online', 'dramabos.fun', 'netshort.com',
+        'wolftv.online', 'shorttv.live', 'goodbos.online', 'dramabos.fun', 'dramabos.cc', 'netshort.com',
         'b-cdn.net', 'ibyteimg.com', 'tiktokcdn.com', 'goodshort.com', 'goodreels.com',
         'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co',
         'stardust-tv.com', 'stardusttv.cc', 'vibeshort.live',

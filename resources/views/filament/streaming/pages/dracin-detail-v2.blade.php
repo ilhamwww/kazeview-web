@@ -588,7 +588,17 @@
                     });
                     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
                     if (navigator.sendBeacon && force) {
-                        navigator.sendBeacon('/api/watch-progress', new Blob([body], { type: 'application/json' }));
+                        const fd = new FormData();
+                        fd.append('_token', csrf);
+                        fd.append('item_id', '{{ $networkSlug }}:{{ $dramaId }}');
+                        fd.append('item_type', 'dracin');
+                        fd.append('episode', String(this.currentEpisode || 1));
+                        fd.append('title', this.drama?.title || this.drama?.name || 'Dracin');
+                        if (this.drama?.cover) fd.append('thumbnail', this.drama.cover);
+                        fd.append('url', window.location.pathname);
+                        fd.append('progress', String(ct));
+                        fd.append('duration', String(dur));
+                        navigator.sendBeacon('/api/watch-progress', fd);
                     } else {
                         fetch('/api/watch-progress', {
                             method: 'POST',

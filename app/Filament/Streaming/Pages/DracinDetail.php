@@ -546,7 +546,7 @@ class DracinDetail extends Page
             $baseUrl = 'https://pinedrama.goodbos.online';
             $detailUrl = "{$baseUrl}/detail?code={$code}&id={$id}";
         } elseif ($network_slug === 'netshort') {
-            $detailUrl = "https://netshort.goodbos.online/api/drama/{$id}?lang=in";
+            $detailUrl = "https://netshort.goodbos.online/api/drama/{$id}?lang=in&code=" . urlencode($apiKey);
         } elseif ($network_slug === 'shortmax') {
             $detailUrl = "https://shortmax.goodbos.online/api/v1/detail/{$id}?lang=id&code=" . urlencode($apiKey);
         } elseif ($network_slug === 'melolo') {
@@ -554,7 +554,7 @@ class DracinDetail extends Page
             $detailUrl = "{$baseUrl}/detail/{$id}?lang=id&code={$apiKey}";
         } elseif ($network_slug === 'reelshort') {
             $lang = request()->query('lang', 'in');
-            $detailUrl = "https://reelshort.goodbos.online/detail/{$id}?lang={$lang}";
+            $detailUrl = "https://reelshort.goodbos.online/detail/{$id}?lang={$lang}&code=" . urlencode($apiKey);
         } elseif ($network_slug === 'vibeshort') {
             $detailUrl = "https://vibeshort.goodbos.online/api/v1/detail/{$id}?lang=id";
         } elseif ($network_slug === 'storyreel') {
@@ -574,7 +574,7 @@ class DracinDetail extends Page
         } elseif ($network_slug === 'starshort') {
             $detailUrl = "https://drakula.goodbos.online/api/starshort/show/{$id}?locale=id&code={$apiKey}";
         } elseif ($network_slug === 'dotdrama') {
-            $detailUrl = "https://dotdrama.goodbos.online/api/drama/{$id}";
+            $detailUrl = "https://dotdrama.goodbos.online/api/drama/{$id}?code=" . urlencode($apiKey);
         } elseif ($network_slug === 'dramawave') {
             $detailUrl = "https://dramawave.goodbos.online/api/drama/{$id}?lang=in&code={$apiKey}";
         } else {
@@ -627,11 +627,11 @@ class DracinDetail extends Page
 
                     $videos = array_map(function (array $ep): array {
                         $episodeNumber = (int) ($ep['idx'] ?? 1);
-                        $videoUrl = $ep['src'] ?? null;
+                        $videoUrl = $ep['url'] ?? $ep['src'] ?? null;
                         return [
                             'episode' => $episodeNumber,
-                            'video_id' => (string) ($ep['cid'] ?? ''),
-                            'title' => $ep['msg'] ?? "Episode {$episodeNumber}",
+                            'video_id' => (string) ($ep['cid'] ?? $episodeNumber),
+                            'title' => $ep['title'] ?? $ep['msg'] ?? "Episode {$episodeNumber}",
                             'is_lock' => !empty($ep['fufei']),
                             'video_url' => $videoUrl,
                         ];
@@ -784,19 +784,21 @@ class DracinDetail extends Page
                     $host = $network_slug === 'vibeshort' ? 'vibeshort.goodbos.online' : 'storyreel.goodbos.online';
                     $allepsUrl = "https://{$host}/api/v1/alleps/{$id}?lang=id";
                     $rawEps = [];
+                    $allepsData = [];
                     try {
                         $allepsRes = Http::timeout(12)->withHeaders(['x-token' => $apiKey])->get($allepsUrl);
                         if ($allepsRes->successful()) {
-                            $rawEps = $allepsRes->json('data.episodes') ?: $allepsRes->json('data.chapterList') ?: [];
+                            $allepsData = $allepsRes->json('data') ?: [];
+                            $rawEps = $allepsData['episodes'] ?? ($allepsData['chapterList'] ?? []);
                         }
                     } catch (\Exception $e) {}
 
                     $this->drama = [
-                        'title' => $this->drama['name'] ?? 'Detail Drama',
-                        'name' => $this->drama['name'] ?? 'Detail Drama',
-                        'cover' => $this->drama['cover'] ?? '',
-                        'intro' => $this->drama['summary'] ?? '',
-                        'episodes' => count($rawEps) ?: (int)($this->drama['episodes'] ?? 0),
+                        'title' => $this->drama['name'] ?? ($allepsData['name'] ?? 'Detail Drama'),
+                        'name' => $this->drama['name'] ?? ($allepsData['name'] ?? 'Detail Drama'),
+                        'cover' => $this->drama['cover'] ?? ($allepsData['cover'] ?? ''),
+                        'intro' => $this->drama['summary'] ?? ($allepsData['summary'] ?? ''),
+                        'episodes' => count($rawEps) ?: (int)($this->drama['episodes'] ?? ($allepsData['totalEpisodes'] ?? 0)),
                         'videos' => array_map(function ($ch) {
                             $videoMap = $ch['video'] ?? [];
                             $videoUrls = [];
@@ -2029,15 +2031,17 @@ class DracinDetail extends Page
                 return;
             }
 
-            $qualityList = [['label' => 'HD', 'url' => $videoUrl, 'isDefault' => true]];
+            // Wrap HLS URL with proxy-hls so segments use Referer
+            $proxyHlsUrl = url('/api/proxy-hls?url=' . urlencode($videoUrl));
+            $qualityList = [['label' => 'HD', 'url' => $proxyHlsUrl, 'isDefault' => true]];
             $this->streamData = [
-                'videoUrl' => $videoUrl,
+                'videoUrl' => $proxyHlsUrl,
                 'qualityList' => $qualityList,
                 'subtitles' => [],
                 'duration' => $activeEp['duration'] ?? null,
             ];
             $this->saveWatchHistory($ep);
-            $this->dispatch('init-player', videoUrl: $videoUrl, qualityList: $qualityList, episode: $ep, nextEpisode: $this->findNextEpisode($ep), subtitles: []);
+            $this->dispatch('init-player', videoUrl: $proxyHlsUrl, qualityList: $qualityList, episode: $ep, nextEpisode: $this->findNextEpisode($ep), subtitles: []);
             return;
         }
 

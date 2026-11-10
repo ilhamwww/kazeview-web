@@ -296,6 +296,7 @@ class Dracin extends Page
             'raptdrama' => 'RaptDrama',
             'reelbuzz' => 'ReelBuzz',
             'melolo' => 'Melolo',
+            'netshort' => 'NetShort',
             'flextv' => 'FlexTV',
             'shortswave' => 'ShortsWave',
             'freereels' => 'FreeReels',
