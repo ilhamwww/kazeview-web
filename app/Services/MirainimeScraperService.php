@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\DomCrawler\Crawler;
 
 class MirainimeScraperService
@@ -894,6 +895,90 @@ class MirainimeScraperService
     }
 
     /**
+     * Fetch direct streams via /streams endpoint with fresh session cookies & stream token
+     */
+    public function fetchStreamsWithToken(string $animeSlug, string $episodeNum): ?array
+    {
+        return Cache::remember("mirai_streams_{$animeSlug}_{$episodeNum}", 7200, function () use ($animeSlug, $episodeNum) {
+            $script = <<<'PY'
+import sys, json, re
+from curl_cffi import requests
+
+anime_slug = sys.argv[1]
+ep_num = sys.argv[2]
+page_url = f"https://mirainime.com/anime/{anime_slug}/episode/{ep_num}"
+
+session = requests.Session(impersonate="chrome124")
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
+
+try:
+    res = session.get(page_url, headers=headers, timeout=12)
+    if res.status_code != 200:
+        print(json.dumps({"error": f"Page HTTP {res.status_code}"}))
+        sys.exit(0)
+
+    m = re.search(r"window\.b2PlayerOptions\s*=\s*(\{.*?\});", res.text)
+    if not m:
+        print(json.dumps({"error": "No b2PlayerOptions"}))
+        sys.exit(0)
+
+    opts = json.loads(m.group(1))
+    tokens = opts.get("streamTokens", {})
+    exp = tokens.get("exp")
+    sig = tokens.get("sigs", {}).get(str(ep_num))
+    if not exp or not sig:
+        print(json.dumps({"error": "No token sig"}))
+        sys.exit(0)
+
+    stream_token = f"{exp}.{sig}"
+    streams_headers = {
+        "User-Agent": headers["User-Agent"],
+        "Referer": page_url,
+        "X-Requested-With": "XMLHttpRequest",
+        "Accept": "application/json",
+        "X-Stream-Token": stream_token
+    }
+
+    r_stream = session.get(f"{page_url}/streams", headers=streams_headers, timeout=12)
+    if r_stream.status_code == 200:
+        print(r_stream.text)
+    else:
+        print(json.dumps({"error": f"Streams HTTP {r_stream.status_code}"}))
+except Exception as e:
+    print(json.dumps({"error": str(e)}))
+PY;
+            $tmpPy = tempnam(sys_get_temp_dir(), 'mirai_stream_') . '.py';
+            file_put_contents($tmpPy, $script);
+
+            try {
+                $process = new \Symfony\Component\Process\Process([
+                    '/usr/bin/python3.10',
+                    $tmpPy,
+                    $animeSlug,
+                    $episodeNum,
+                ]);
+                $process->setTimeout(15);
+                $process->run();
+
+                if ($process->isSuccessful()) {
+                    $out = trim($process->getOutput());
+                    $json = json_decode($out, true);
+                    if ($json && is_array($json) && empty($json['error'])) {
+                        return $json;
+                    }
+                }
+            } finally {
+                @unlink($tmpPy);
+            }
+
+            return null;
+        });
+    }
+
+    /**
      * Scrape episode video detail
      */
     public function scrapeEpisodeDetail(string $animeSlug, string $episodeNum): ?array
@@ -934,6 +1019,24 @@ class MirainimeScraperService
                 }
             } catch (\Throwable $je) {
                 \Log::warning("Mirainime JSON ep fetch failed: " . $je->getMessage());
+            }
+
+            // Fallback: Jika HLS belum didapat, ambil via endpoint /streams dengan token session Mirainime
+            if (empty($hlsUrl)) {
+                try {
+                    $streamsData = $this->fetchStreamsWithToken($animeSlug, $episodeNum);
+                    if ($streamsData && is_array($streamsData)) {
+                        if (!empty($streamsData['hlsUrl'])) {
+                            $hlsUrl = $streamsData['hlsUrl'];
+                            $videoUrl = $hlsUrl;
+                        }
+                        if (!empty($streamsData['gdriveSources'])) {
+                            $gdriveSources = array_merge($gdriveSources, $streamsData['gdriveSources']);
+                        }
+                    }
+                } catch (\Throwable $se) {
+                    \Log::warning("Mirainime fetchStreamsWithToken failed: " . $se->getMessage());
+                }
             }
 
             // 2. Fallback atau pelengkap via HTML scraping
