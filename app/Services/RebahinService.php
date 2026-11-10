@@ -623,41 +623,45 @@ class RebahinService
                 $genres = array_values(array_unique($gn[1] ?? []));
 
                 // Parse episodes & servers
-                preg_match_all("/<a[^>]*class=[\x27\x22]btn-eps[\x27\x22][^>]*>(.*?)<\/a>/s", $htmlWatch, $epsLinks);
+                preg_match_all('/<a[^>]*data-iframe=[\x27\x22]([^\x27\x22]+)[\x27\x22][^>]*>(.*?)<\/a>/si', $htmlWatch, $epsMatches);
                 $episodes = [];
-                foreach ($epsLinks[0] as $idx => $linkHtml) {
-                    preg_match("/data-iframe=[\x27\x22]([^\x27\x22]+)[\x27\x22]/", $linkHtml, $d);
-                    $epText = trim(strip_tags($epsLinks[1][$idx]));
-                    $embedUrl = !empty($d[1]) ? base64_decode($d[1]) : "";
-                    
-                    if (preg_match("/Ep(?:isode)?\s*(\d+)/i", $epText, $epNumMatch)) {
-                        $epNum = (int)$epNumMatch[1];
-                    } else {
-                        $epNum = $idx + 1;
-                    }
+                if (!empty($epsMatches[1])) {
+                    foreach ($epsMatches[1] as $idx => $b64Iframe) {
+                        $linkText = trim(strip_tags($epsMatches[2][$idx]));
+                        $embedUrl = base64_decode($b64Iframe);
 
-                    if (!isset($episodes[$epNum])) {
-                        $episodes[$epNum] = [
-                            'episodeNumber' => $epNum,
-                            'name' => "Episode {$epNum}",
-                            'overview' => $synopsis,
-                            'stillPath' => $backdrop,
-                            'runtime' => null,
-                            'servers' => [],
-                        ];
-                    }
-
-                    if ($embedUrl && str_starts_with($embedUrl, 'http')) {
-                        if (!isset($episodes[$epNum]['id'])) {
-                            $episodes[$epNum]['id'] = 'rb-' . $embedUrl;
+                        if (preg_match('/Ep(?:isode)?\s*(\d+)/i', $linkText, $epNumMatch)) {
+                            $epNum = (int) $epNumMatch[1];
+                        } else {
+                            $epNum = $idx + 1;
                         }
-                        $sNum = count($episodes[$epNum]['servers']) + 1;
-                        $label = $sNum === 1 ? 'Server 1 (HD)' : ($sNum === 2 ? 'Server 2 (Mirror)' : "Server {$sNum}");
-                        $episodes[$epNum]['servers'][] = [
-                            'id' => "server{$sNum}",
-                            'name' => $label,
-                            'embed_url' => $embedUrl,
-                        ];
+
+                        if (!isset($episodes[$epNum])) {
+                            $episodes[$epNum] = [
+                                'episode_number' => $epNum,
+                                'episodeNumber' => $epNum,
+                                'name' => "Episode {$epNum}",
+                                'title' => "Episode {$epNum}",
+                                'overview' => $synopsis,
+                                'stillPath' => $backdrop,
+                                'runtime' => null,
+                                'servers' => [],
+                            ];
+                        }
+
+                        if ($embedUrl && str_starts_with($embedUrl, 'http')) {
+                            if (!isset($episodes[$epNum]['id'])) {
+                                $episodes[$epNum]['id'] = 'rb-' . $embedUrl;
+                            }
+                            $sNum = count($episodes[$epNum]['servers']) + 1;
+                            $label = $sNum === 1 ? 'Server 1 (HD)' : ($sNum === 2 ? 'Server 2 (Mirror)' : "Server {$sNum}");
+                            $episodes[$epNum]['servers'][] = [
+                                'id' => "server{$sNum}",
+                                'name' => $label,
+                                'type' => 'embed',
+                                'embed_url' => $embedUrl,
+                            ];
+                        }
                     }
                 }
 
@@ -686,6 +690,7 @@ class RebahinService
                             'posterPath' => $poster,
                         ]
                     ],
+                    'episodes' => $episodesList,
                     'defaultSeason' => [
                         'seasonNumber' => 1,
                         'name' => 'Season 1',
