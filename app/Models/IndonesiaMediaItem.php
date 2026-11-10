@@ -47,9 +47,11 @@ class IndonesiaMediaItem extends Model
      */
     public function toCard(): array
     {
+        $cleanTitle = html_entity_decode((string)$this->title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
         return [
             'id' => $this->slug,
-            'title' => $this->title,
+            'title' => $cleanTitle,
             'slug' => $this->slug,
             'raw_slug' => $this->raw_slug,
             'target_slug' => $this->target_slug,

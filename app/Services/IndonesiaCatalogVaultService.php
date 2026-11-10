@@ -19,11 +19,19 @@ class IndonesiaCatalogVaultService
         int $page = 1,
         int $perPage = 24,
         string $search = '',
-        string $provider = 'all'
+        string $provider = 'rebahin'
     ): array {
+        $sourceMap = [
+            'rebahin' => 'server2',
+            'lk21' => 'lk21',
+            'moviebox' => 'moviebox',
+        ];
+
+        $sourceKey = $sourceMap[strtolower($provider)] ?? 'server2';
+
         $query = IndonesiaMediaItem::query()
             ->where('is_published', true)
-            ->where('source', 'server2'); // Murni Rebahin saja
+            ->where('source', $sourceKey);
 
         // Filter Pencarian
         if (!empty($search)) {
@@ -68,12 +76,19 @@ class IndonesiaCatalogVaultService
     }
 
     /**
-     * Ambil konten trending Rebahin
+     * Ambil konten trending berdasarkan provider
      */
-    public static function getTrending(int $limit = 10, ?string $provider = 'all'): array
+    public static function getTrending(int $limit = 10, ?string $provider = 'rebahin'): array
     {
+        $sourceMap = [
+            'rebahin' => 'server2',
+            'lk21' => 'lk21',
+            'moviebox' => 'moviebox',
+        ];
+        $sourceKey = $sourceMap[strtolower($provider ?? 'rebahin')] ?? 'server2';
+
         return IndonesiaMediaItem::where('is_published', true)
-            ->where('source', 'server2')
+            ->where('source', $sourceKey)
             ->orderByRaw("COALESCE(year, '2000') DESC")
             ->orderBy('id', 'DESC')
             ->take($limit)
@@ -83,12 +98,19 @@ class IndonesiaCatalogVaultService
     }
 
     /**
-     * Ambil film terbaru Rebahin
+     * Ambil film terbaru berdasarkan provider
      */
-    public static function getLatestMovies(int $limit = 15, ?string $provider = 'all'): array
+    public static function getLatestMovies(int $limit = 15, ?string $provider = 'rebahin'): array
     {
+        $sourceMap = [
+            'rebahin' => 'server2',
+            'lk21' => 'lk21',
+            'moviebox' => 'moviebox',
+        ];
+        $sourceKey = $sourceMap[strtolower($provider ?? 'rebahin')] ?? 'server2';
+
         return IndonesiaMediaItem::where('is_published', true)
-            ->where('source', 'server2')
+            ->where('source', $sourceKey)
             ->where('type', 'movie')
             ->orderByRaw("COALESCE(year, '2000') DESC")
             ->orderBy('id', 'DESC')
@@ -99,12 +121,19 @@ class IndonesiaCatalogVaultService
     }
 
     /**
-     * Ambil serial terbaru Rebahin
+     * Ambil serial terbaru berdasarkan provider
      */
-    public static function getLatestSeries(int $limit = 15, ?string $provider = 'all'): array
+    public static function getLatestSeries(int $limit = 15, ?string $provider = 'rebahin'): array
     {
+        $sourceMap = [
+            'rebahin' => 'server2',
+            'lk21' => 'lk21',
+            'moviebox' => 'moviebox',
+        ];
+        $sourceKey = $sourceMap[strtolower($provider ?? 'rebahin')] ?? 'server2';
+
         return IndonesiaMediaItem::where('is_published', true)
-            ->where('source', 'server2')
+            ->where('source', $sourceKey)
             ->where('type', 'series')
             ->orderByRaw("COALESCE(year, '2000') DESC")
             ->orderBy('id', 'DESC')

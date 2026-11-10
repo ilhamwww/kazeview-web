@@ -7,6 +7,13 @@
     $mRating = $media['voteAverage'] ?? ($media['rating'] ?? 8.0);
     $mRuntime = $media['duration'] ?? null;
     $genres = $media['genres'] ?? ['Indonesia'];
+    $isSeries = $isSeries ?? false;
+    $serverLabel = $serverLabel ?? 'Rebahin';
+    $providerParam = $providerParam ?? 'rebahin';
+    $servers = $servers ?? [];
+    $episodes = $episodes ?? [];
+    $currentEpisode = $currentEpisode ?? 1;
+    $slugParam = $slugParam ?? '';
 @endphp
 
 @push('styles')
@@ -29,15 +36,18 @@
 
     {{-- Top bar Breadcrumb --}}
     <div class="relative w-full max-w-[1400px] mx-auto px-4 lg:px-8 pt-20 md:pt-24 pb-2 flex items-center justify-between">
-        <a href="/indonesia"
+        <a href="/indonesia/{{ $providerParam ?? 'rebahin' }}"
            class="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-            Kembali ke Indonesia
+            Kembali ke Katalog {{ $serverLabel }}
         </a>
         <div class="flex items-center gap-2">
+            <a href="/indonesia" class="hidden sm:inline-flex text-xs font-semibold text-zinc-400 hover:text-white transition">
+                Semua Network
+            </a>
             <span class="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-red-600/20 text-red-400 border border-red-500/30">
                 <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                Film & Series Indonesia
+                {{ $serverLabel }}
             </span>
         </div>
     </div>
@@ -51,22 +61,23 @@
             <div class="min-w-0 space-y-4">
                 {{-- Video Player Container --}}
                 <div class="w-full bg-black lg:rounded-2xl overflow-hidden aspect-video relative isolate z-10 ring-1 ring-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]" x-ref="playerShell">
-                    <div x-show="isPlaying && !isEmbed" class="w-full h-full relative" style="display: none;">
-                        <div x-ref="artContainer" id="movieArtPlayer" class="w-full h-full"></div>
+                    <div x-show="isPlaying && !isEmbed" class="w-full h-full absolute inset-0">
+                        <div x-ref="artContainer" id="movieArtPlayer" class="w-full h-full absolute inset-0"></div>
                     </div>
 
-                    <div x-show="isPlaying && isEmbed" class="w-full h-full relative bg-black" style="display: none;">
-                        <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+                    <div x-show="isPlaying && isEmbed" class="w-full h-full absolute inset-0 bg-black">
+                        <iframe :src="currentEmbedUrl" class="w-full h-full border-0 absolute inset-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
                     </div>
 
                     <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
                         @include('filament.streaming.partials.server-loading-indicator', [
-                            'title' => 'Memuat stream ' . $serverLabel,
+                            'title' => 'Memuat stream film',
                             'subtitle' => 'Mengambil jalur streaming tercepat & bebas gangguan',
                         ])
                     </div>
 
-                    <div x-show="!isPlaying && !isLoadingStream" class="absolute inset-0 z-20">
+                    {{-- Layer Cover & Tombol Putar Awal --}}
+                    <div x-show="!isPlaying && !isLoadingStream" x-cloak class="absolute inset-0 z-20">
                         @if($mBanner)
                             <img src="{{ $mBanner }}" alt="" class="absolute inset-0 w-full h-full object-cover">
                         @endif
@@ -221,7 +232,7 @@
                 const componentDefinition = () => ({
                     art: null,
                     hls: null,
-                    isPlaying: false,
+                    isPlaying: true,
                     isLoadingStream: false,
                     isEmbed: {{ !empty($servers[0]['type']) && $servers[0]['type'] === 'embed' ? 'true' : 'false' }},
                     serversList: @js($servers),
@@ -322,8 +333,8 @@
 
                         const self = this;
                         const progressMeta = {
-                            item_id: '{{ $slugParam }}',
-                            item_type: {{ $isSeries ? '"indonesia_series"' : '"indonesia_movie"' }},
+                            item_id: {!! json_encode($slugParam) !!},
+                            item_type: {!! json_encode($isSeries ? 'indonesia_series' : 'indonesia_movie') !!},
                             episode: String(this.currentEp || 1),
                             title: {!! json_encode($mTitle ?? '') !!},
                             thumbnail: {!! json_encode($mPoster ?? '') !!},

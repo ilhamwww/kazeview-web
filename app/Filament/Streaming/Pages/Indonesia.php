@@ -10,7 +10,7 @@ class Indonesia extends Page
     protected static ?string $navigationIcon = 'heroicon-o-globe-asia-australia';
     protected static ?string $navigationLabel = 'Indonesia';
     protected static ?string $title = 'Film & Series Indonesia - KZSTRM';
-    protected static ?string $slug = 'indonesia';
+    protected static ?string $slug = 'indonesia/{provider}';
     protected static string $view = 'filament.streaming.pages.indonesia';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
@@ -44,12 +44,15 @@ class Indonesia extends Page
         ['id' => 'classic', 'label' => '2023 & Sebelumnya'],
     ];
 
-    public array $providers = [];
+    public array $providers = [
+        ['id' => 'rebahin', 'label' => 'Rebahin'],
+        ['id' => 'lk21', 'label' => 'Layarkaca21'],
+    ];
 
-    public function mount(?string $server = null): void
+    public function mount(?string $provider = null): void
     {
-        $this->server = 'rebahin';
-        $this->provider = 'rebahin';
+        $this->provider = strtolower($provider ?: 'rebahin');
+        $this->server = $this->provider;
 
         $this->page = 1;
         $this->category = request()->query('category', 'all');
@@ -67,7 +70,7 @@ class Indonesia extends Page
 
     public function setProvider(string $prov): mixed
     {
-        return redirect()->to('/indonesia');
+        return redirect()->to('/indonesia/' . strtolower($prov));
     }
 
     public function updatedSearch(): void

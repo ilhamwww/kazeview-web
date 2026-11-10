@@ -14,13 +14,15 @@ class RebahinService
     {
         return new Client([
             'timeout' => 15,
+            'proxy' => 'socks5h://127.0.0.1:1055',
             'headers' => [
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
                 'Referer' => self::$baseUrl . '/',
                 'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 'Accept-Language' => 'id-ID,id;q=0.9,en-US;q=0.8',
             ],
             'verify' => false,
+            'allow_redirects' => true,
         ]);
     }
 
@@ -483,11 +485,10 @@ class RebahinService
                     if ($embedUrl && str_starts_with($embedUrl, 'http')) {
                         $sNum = count($servers) + 1;
                         $label = $sNum === 1 ? 'Server 1 (HD)' : ($sNum === 2 ? 'Server 2 (Mirror)' : "Server {$sNum}");
-                        $wrappedUrl = url('/api/streaming/embed?url=' . urlencode($embedUrl));
                         $servers[] = [
                             'id' => "server{$sNum}",
                             'name' => $label,
-                            'embed_url' => $wrappedUrl,
+                            'embed_url' => $embedUrl,
                         ];
                     }
                 }
@@ -651,12 +652,11 @@ class RebahinService
                             $episodes[$epNum]['id'] = 'rb-' . $embedUrl;
                         }
                         $sNum = count($episodes[$epNum]['servers']) + 1;
-                        $label = $sNum === 1 ? 'Server 2 (HD)' : ($sNum === 2 ? 'Server 2 (Mirror)' : "Server 2 (Mirror " . ($sNum - 1) . ")");
-                        $wrappedUrl = url('/api/streaming/embed?url=' . urlencode($embedUrl));
+                        $label = $sNum === 1 ? 'Server 1 (HD)' : ($sNum === 2 ? 'Server 2 (Mirror)' : "Server {$sNum}");
                         $episodes[$epNum]['servers'][] = [
                             'id' => "server{$sNum}",
                             'name' => $label,
-                            'embed_url' => $wrappedUrl,
+                            'embed_url' => $embedUrl,
                         ];
                     }
                 }

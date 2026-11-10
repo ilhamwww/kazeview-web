@@ -14,12 +14,13 @@ class WatchIndonesia extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';
     protected static ?string $navigationLabel = 'Watch Indonesia';
-    protected static ?string $title = 'Nonton Film & Series Indonesia - KZSTRM';
-    protected static ?string $slug = 'indonesia/{slug}';
+    protected static ?string $title = 'Film & Series Indonesia - KZSTRM';
+    protected static ?string $slug = 'indonesia/{provider}/{slug}';
     protected static string $view = 'filament.streaming.pages.watch-indonesia';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
+    public string $providerParam = 'rebahin';
     public string $server = 'rebahin';
     public string $slugParam = '';
     public string $serverLabel = 'Rebahin';
@@ -32,100 +33,166 @@ class WatchIndonesia extends Page
     public bool $isFavorited = false;
     public float $savedProgressSeconds = 0;
 
-    public function mount(string $slug, ?string $server = null): void
+    public function mount(string $provider, string $slug): void
     {
-        // Kompatibilitas bila route diakses /indonesia/{server}/{slug}
-        if ($server !== null && in_array(strtolower($slug), ['server-1', 'server-2', 'server-3', 'server-4'])) {
-            $slug = $server;
-        }
-
-        $this->server = 'rebahin';
-        $this->serverLabel = 'Rebahin';
+        $this->providerParam = strtolower($provider);
         $this->slugParam = $slug;
 
-        // Normalisasi slug ke Rebahin (rb-)
-        $fullSlug = str_starts_with($slug, 'rb-') ? $slug : 'rb-' . $slug;
-        $rawSlug = preg_replace('/^rb-/', '', $fullSlug);
+        $providerLabelMap = [
+            'rebahin' => 'Rebahin',
+            'lk21' => 'Layarkaca21',
+            'moviebox' => 'MovieBox HD',
+        ];
+
+        $this->server = $this->providerParam;
+        $this->serverLabel = $providerLabelMap[$this->providerParam] ?? ucfirst($this->providerParam);
+
+        // Tentukan prefix slug berdasarkan provider
+        $prefixMap = [
+            'rebahin' => 'rb-',
+            'lk21' => 'lk-',
+            'moviebox' => 'mb-',
+        ];
+        $prefix = $prefixMap[$this->providerParam] ?? '';
+
+        $fullSlug = $prefix && !str_starts_with($slug, $prefix) ? $prefix . $slug : $slug;
+        $rawSlug = $prefix ? preg_replace('/^' . preg_quote($prefix, '/') . '/', '', $fullSlug) : $fullSlug;
 
         // Cari di database vault lokal dulu untuk mengecek metadata & tipe
         $vaultItem = IndonesiaMediaItem::where('slug', $fullSlug)
             ->orWhere(function ($q) use ($rawSlug) {
-                $q->where('source', 'server2')
-                  ->where('raw_slug', $rawSlug);
+                $q->where('raw_slug', $rawSlug);
             })
             ->first();
 
         $this->isSeries = $vaultItem && $vaultItem->type === 'series';
 
         // REBAHIN RESOURCE
-        if ($this->isSeries || str_contains($fullSlug, 'series') || str_contains($fullSlug, 'season')) {
-            $detail = RebahinService::getSeriesDetail($fullSlug);
-            if ($detail) {
-                $this->isSeries = true;
-                $this->media = $detail;
-                $rawEps = $detail['episodes'] ?? ($detail['defaultSeason']['episodes'] ?? []);
-                $this->episodes = [];
-                foreach ($rawEps as $re) {
-                    $num = (int) ($re['episodeNumber'] ?? ($re['number'] ?? 1));
-                    $name = $re['name'] ?? ($re['title'] ?? ('Episode ' . $num));
-                    $epServers = [];
-                    foreach ($re['servers'] ?? [] as $idx => $s) {
-                        $epServers[] = [
-                            'id' => 'server_rb_' . ($idx + 1),
-                            'name' => 'Server (' . ($idx === 0 ? 'HD' : 'Mirror ' . $idx) . ')',
+        if ($this->providerParam === 'rebahin') {
+            if ($this->isSeries || str_contains($fullSlug, 'series') || str_contains($fullSlug, 'season')) {
+                $detail = RebahinService::getSeriesDetail($fullSlug);
+                if ($detail) {
+                    $this->isSeries = true;
+                    $this->media = $detail;
+                    $rawEps = $detail['episodes'] ?? ($detail['defaultSeason']['episodes'] ?? []);
+                    $this->episodes = [];
+                    foreach ($rawEps as $re) {
+                        $num = (int) ($re['episodeNumber'] ?? ($re['number'] ?? 1));
+                        $name = $re['name'] ?? ($re['title'] ?? ('Episode ' . $num));
+                        $epServers = [];
+                        foreach ($re['servers'] ?? [] as $idx => $s) {
+                            $epServers[] = [
+                                'id' => 'server_rb_' . ($idx + 1),
+                                'name' => 'Server (' . ($idx === 0 ? 'HD' : 'Mirror ' . $idx) . ')',
+                                'type' => 'embed',
+                                'embed_url' => $s['embed_url'] ?? '',
+                            ];
+                        }
+                        if (empty($epServers) && !empty($s['embed_url'])) {
+                            $epServers[] = [
+                                'id' => 'server_rb_1',
+                                'name' => 'Server (HD)',
+                                'type' => 'embed',
+                                'embed_url' => $s['embed_url'],
+                            ];
+                        }
+                        $firstServer = $epServers[0] ?? null;
+                        $this->episodes[] = [
+                            'episode_number' => $num,
+                            'episodeNumber' => $num,
+                            'title' => $name,
+                            'name' => $name,
+                            'servers' => $epServers,
+                            'embed_url' => $firstServer['embed_url'] ?? '',
+                            'stillPath' => $re['stillPath'] ?? ($detail['poster'] ?? ''),
+                        ];
+                    }
+
+                    $firstEp = $this->episodes[0] ?? null;
+                    if ($firstEp) {
+                        $this->servers = $firstEp['servers'] ?? [];
+                        $this->currentEpisode = $firstEp['episode_number'] ?? 1;
+                        $this->currentEpisodeTitle = $firstEp['title'] ?? 'Episode 1';
+                    }
+                }
+            }
+
+            if (!$this->media) {
+                $detail = RebahinService::getMovieDetail($fullSlug);
+                if ($detail) {
+                    $this->media = $detail;
+                    $rawServers = $detail['servers'] ?? [];
+                    $this->servers = [];
+                    foreach ($rawServers as $s) {
+                        $this->servers[] = [
+                            'id' => $s['id'] ?? 'server1',
+                            'name' => $s['name'] ?? 'Server (HD)',
                             'type' => 'embed',
                             'embed_url' => $s['embed_url'] ?? '',
                         ];
                     }
-                    if (empty($epServers)) {
-                        $epServers[] = [
-                            'id' => 'server_rb_1',
+                    if (empty($this->servers) && !empty($detail['url'])) {
+                        $this->servers[] = [
+                            'id' => 'server_rb_default',
                             'name' => 'Server (HD)',
                             'type' => 'embed',
-                            'embed_url' => url('/api/streaming/embed?url=' . urlencode('https://178.211.139.171/embed/' . $rawSlug)),
+                            'embed_url' => $detail['url'],
                         ];
                     }
-                    $firstServer = $epServers[0] ?? null;
-                    $this->episodes[] = [
-                        'episode_number' => $num,
-                        'episodeNumber' => $num,
-                        'title' => $name,
-                        'name' => $name,
-                        'servers' => $epServers,
-                        'embed_url' => $firstServer['embed_url'] ?? '',
-                        'stillPath' => $re['stillPath'] ?? ($detail['poster'] ?? ''),
-                    ];
-                }
-
-                $firstEp = $this->episodes[0] ?? null;
-                if ($firstEp) {
-                    $this->servers = $firstEp['servers'] ?? [];
-                    $this->currentEpisode = $firstEp['episode_number'] ?? 1;
-                    $this->currentEpisodeTitle = $firstEp['title'] ?? 'Episode 1';
                 }
             }
         }
-
-        if (!$this->media) {
-            $detail = RebahinService::getMovieDetail($fullSlug);
-            if ($detail) {
-                $this->media = $detail;
-                $rawServers = $detail['servers'] ?? [];
-                $this->servers = [];
-                foreach ($rawServers as $s) {
-                    $this->servers[] = [
-                        'id' => $s['id'] ?? 'server1',
-                        'name' => $s['name'] ?? 'Server (HD)',
-                        'type' => 'embed',
-                        'embed_url' => $s['embed_url'] ?? '',
+        // MOVIEBOX RESOURCE
+        elseif ($this->providerParam === 'moviebox') {
+            if ($this->isSeries || str_contains($fullSlug, 'series') || str_contains($fullSlug, 'season')) {
+                $detail = NartoMovieBoxService::getSeriesDetail($fullSlug);
+                if ($detail) {
+                    $this->isSeries = true;
+                    $this->media = $detail;
+                    $rawEps = $detail['episodes'] ?? ($detail['defaultSeason']['episodes'] ?? []);
+                    $this->episodes = [];
+                    foreach ($rawEps as $re) {
+                        $num = (int) ($re['episodeNumber'] ?? ($re['number'] ?? 1));
+                        $name = $re['name'] ?? ($re['title'] ?? ('Episode ' . $num));
+                        $this->episodes[] = [
+                            'episode_number' => $num,
+                            'episodeNumber' => $num,
+                            'title' => $name,
+                            'name' => $name,
+                            'stream_url' => $re['stream_url'] ?? ($re['play_url'] ?? ''),
+                            'subtitles' => $re['subtitles'] ?? [],
+                            'stillPath' => $re['stillPath'] ?? ($detail['poster'] ?? ''),
+                        ];
+                    }
+                    $firstEp = $this->episodes[0] ?? null;
+                    if ($firstEp) {
+                        $this->media['video_url'] = $firstEp['stream_url'] ?? '';
+                        $this->currentEpisode = $firstEp['episode_number'] ?? 1;
+                        $this->currentEpisodeTitle = $firstEp['title'] ?? 'Episode 1';
+                    }
+                    $this->servers = [
+                        [
+                            'id' => 'server_mb_hls',
+                            'name' => 'Server 1 (1080p Ultra HD)',
+                            'type' => 'hls',
+                            'video_url' => $this->media['video_url'] ?? '',
+                            'embed_url' => '',
+                        ]
                     ];
                 }
-                if (empty($this->servers)) {
-                    $this->servers[] = [
-                        'id' => 'server_rb_default',
-                        'name' => 'Server (HD)',
-                        'type' => 'embed',
-                        'embed_url' => $detail['url'] ?? '',
+            }
+            if (!$this->media) {
+                $detail = NartoMovieBoxService::getMovieDetail($fullSlug);
+                if ($detail) {
+                    $this->media = $detail;
+                    $this->servers = [
+                        [
+                            'id' => 'server_mb_hls',
+                            'name' => 'Server 1 (1080p Ultra HD)',
+                            'type' => 'hls',
+                            'video_url' => $detail['video_url'] ?? '',
+                            'embed_url' => '',
+                        ]
                     ];
                 }
             }

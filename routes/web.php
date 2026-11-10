@@ -16,16 +16,16 @@ Route::get(
 // Legacy redirects from /streaming to clean root URLs
 Route::redirect('/streaming', '/');
 Route::redirect('/drakor', '/korean-drama');
-Route::redirect('/indonesia/server-1', '/indonesia');
-Route::redirect('/indonesia/server-2', '/indonesia');
-Route::redirect('/indonesia/server-3', '/indonesia');
-Route::redirect('/indonesia/server-4', '/indonesia');
-Route::redirect('/indonesia/server-1/{slug}', '/indonesia/{slug}');
-Route::redirect('/indonesia/server-2/{slug}', '/indonesia/{slug}');
-Route::redirect('/indonesia/server-3/{slug}', '/indonesia/{slug}');
-Route::redirect('/indonesia/server-4/{slug}', '/indonesia/{slug}');
+Route::redirect('/indonesia/server-1', '/indonesia/moviebox');
+Route::redirect('/indonesia/server-2', '/indonesia/rebahin');
+Route::redirect('/indonesia/server-3', '/indonesia/rebahin');
+Route::redirect('/indonesia/server-4', '/indonesia/rebahin');
+Route::redirect('/indonesia/server-1/{slug}', '/indonesia/moviebox/{slug}');
+Route::redirect('/indonesia/server-2/{slug}', '/indonesia/rebahin/{slug}');
+Route::redirect('/indonesia/server-3/{slug}', '/indonesia/rebahin/{slug}');
+Route::redirect('/indonesia/server-4/{slug}', '/indonesia/rebahin/{slug}');
 Route::get('/indonesia/indonesia/{server}/{slug?}', function ($server, $slug = null) {
-    return redirect('/indonesia' . ($slug ? '/' . $slug : ''));
+    return redirect('/indonesia/' . $server . ($slug ? '/' . $slug : ''));
 });
 Route::get('/streaming/{any}', function ($any) {
     return redirect('/' . $any);
@@ -656,6 +656,9 @@ Route::get('/api/streaming/embed', function (\Illuminate\Http\Request $request) 
             curl_setopt($ch, CURLOPT_TIMEOUT, 15);
             curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
             curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
+            if (str_contains($url, '178.211.139.171') || str_contains($url, 'rebahinxxi')) {
+                curl_setopt($ch, CURLOPT_PROXY, 'socks5h://127.0.0.1:1055');
+            }
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'User-Agent: ' . $ua,
                 'Referer: ' . (str_contains($url, 'minochinos') || str_contains($url, 'callistanise') || str_contains($url, 'hglink') || str_contains($url, 'vibuxer') ? 'https://indoxxi.tech/' : 'https://rebahinxxi3.mom/'),
@@ -720,35 +723,6 @@ document.addEventListener('click', function(e) {
         }
     }
 }, true);
-
-(function() {
-    const PROXY_BASE = 'https://streaming.kazeview.com/api/streaming/embed-proxy?url=';
-    function wrapUrl(u) {
-        if (!u) return u;
-        if (typeof u === 'string') {
-            if (u.includes('178.211.139.171') || u.includes('199.87.210.226') || u.includes('/api/videos/')) {
-                if (u.startsWith('/')) {
-                    u = 'https://178.211.139.171' + u;
-                }
-                return PROXY_BASE + encodeURIComponent(u);
-            }
-        }
-        return u;
-    }
-    const origOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-        return origOpen.call(this, method, wrapUrl(url), ...rest);
-    };
-    const origFetch = window.fetch;
-    window.fetch = function(input, init) {
-        if (typeof input === 'string') {
-            input = wrapUrl(input);
-        } else if (input && input.url) {
-            input = new Request(wrapUrl(input.url), input);
-        }
-        return origFetch.call(this, input, init);
-    };
-})();
 </script>
 HTML;
             if (str_contains($content, '</head>')) {
@@ -796,6 +770,13 @@ Route::match(['GET', 'POST', 'OPTIONS'], '/api/streaming/embed-proxy', function 
         'Origin: https://178.211.139.171',
     ];
 
+    if ($auth = $request->header('Authorization')) {
+        $forwardHeaders[] = 'Authorization: ' . $auth;
+    }
+    if ($cookie = $request->header('Cookie')) {
+        $forwardHeaders[] = 'Cookie: ' . $cookie;
+    }
+
     if ($range = $request->header('Range')) {
         $forwardHeaders[] = 'Range: ' . $range;
     }
@@ -814,6 +795,9 @@ Route::match(['GET', 'POST', 'OPTIONS'], '/api/streaming/embed-proxy', function 
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    if (str_contains($targetUrl, '178.211.139.171') || str_contains($targetUrl, 'rebahinxxi')) {
+        curl_setopt($ch, CURLOPT_PROXY, 'socks5h://127.0.0.1:1055');
+    }
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
     curl_setopt($ch, CURLOPT_HEADER, false);
     curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);

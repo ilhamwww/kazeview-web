@@ -13,9 +13,10 @@
         if (empty($it['slug'])) {
             return '#';
         }
+        $provider = $this->provider ?: 'rebahin';
         if ($kind === 'indonesia') {
-            $cleanSlug = preg_replace('/^(mb-|rb-|ix-|pm-)/', '', $it['slug']);
-            return "/indonesia/{$cleanSlug}";
+            $cleanSlug = preg_replace('/^(mb-|rb-|ix-|pm-|lk-)/', '', $it['slug']);
+            return "/indonesia/{$provider}/{$cleanSlug}";
         }
         $series = $isSeries || in_array($it['type'] ?? '', ['tv_series', 'tv', 'series'], true);
         return $series
@@ -195,7 +196,7 @@
                 </div>
             </div>
 
-            {{-- Provider Selector Pills: HANYA REBAHIN (Dihilangkan karena murni Rebahin saja) --}}
+            {{-- Provider Selector Pills (Khusus Halaman Combo Indonesia) --}}
             @if(!empty($providers) && count($providers) > 1)
                 <div class="flex items-center gap-2 overflow-x-auto kz-noscroll py-2.5">
                     <span class="text-xs font-bold text-zinc-400 mr-1 shrink-0 flex items-center gap-1.5">
@@ -203,8 +204,8 @@
                         Sumber Server:
                     </span>
                     @foreach($providers as $pv)
-                        @php $isPvActive = ($server ?? 'server-1') === $pv['id']; @endphp
-                        <a href="{{ $pv['url'] ?? ('/indonesia/' . $pv['id']) }}"
+                        @php $isPvActive = ($provider ?? 'rebahin') === $pv['id']; @endphp
+                        <a href="{{ '/indonesia/' . $pv['id'] }}"
                            class="px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition shrink-0 border flex items-center gap-1.5
                                 {{ $isPvActive
                                     ? 'bg-red-600 text-white border-red-500 shadow-md shadow-red-600/30'
@@ -213,6 +214,11 @@
                             {{ $pv['label'] }}
                         </a>
                     @endforeach
+                    <a href="/indonesia"
+                       class="ml-auto shrink-0 text-xs font-bold text-zinc-400 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition flex items-center gap-1">
+                        <span>Semua Network</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                    </a>
                 </div>
             @endif
         </section>
