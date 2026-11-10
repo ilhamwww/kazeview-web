@@ -320,7 +320,7 @@ class WatchIndonesia extends Page
             }
         }
         if ($this->server === 'server-1') {
-            $stream = NartoMovieBoxService::getEpisodeStream($this->media['slug'] ?? '', 1, $epNum);
+            $stream = NartoMovieBoxService::resolveEpisodeStream($this->media['slug'] ?? '', $epNum);
             if ($stream && !empty($stream['video_url'])) {
                 $this->media['video_url'] = $stream['video_url'];
                 $this->media['subtitles'] = $stream['subtitles'] ?? [];

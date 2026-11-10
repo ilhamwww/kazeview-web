@@ -198,7 +198,7 @@ class NartoMovieBoxService
                 }
 
                 return [
-                    'data' => $allItems,
+                    'data' => MediaContentSanitizerService::filterList($allItems),
                 ];
             } catch (\Exception $e) {
                 Log::warning('NartoMovieBoxService::getIndonesiaCatalog error: ' . $e->getMessage());
@@ -402,12 +402,20 @@ class NartoMovieBoxService
             try {
                 $client = self::getClient();
 
-                $watchUrl = self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home";
+                $watchUrls = [
+                    self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home",
+                    self::$baseUrl . "/series/{$rawSlug}",
+                ];
                 $res = null;
-                try {
-                    $res = $client->get($watchUrl);
-                } catch (\Throwable $e) {
-                    $res = null;
+                foreach ($watchUrls as $wUrl) {
+                    try {
+                        $res = $client->get($wUrl);
+                        if ($res && $res->getStatusCode() === 200) {
+                            break;
+                        }
+                    } catch (\Throwable $e) {
+                        $res = null;
+                    }
                 }
 
                 // Jika gagal/404, coba cari slug asli via API search Narto
@@ -415,11 +423,19 @@ class NartoMovieBoxService
                     $realSlug = self::searchRealSlug($rawSlug);
                     if ($realSlug && $realSlug !== $rawSlug) {
                         $rawSlug = $realSlug;
-                        $watchUrl = self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home";
-                        try {
-                            $res = $client->get($watchUrl);
-                        } catch (\Throwable $e) {
-                            $res = null;
+                        $watchUrls = [
+                            self::$baseUrl . "/detail/watch/{$rawSlug}/1?lang=id-ID&from=home",
+                            self::$baseUrl . "/series/{$rawSlug}",
+                        ];
+                        foreach ($watchUrls as $wUrl) {
+                            try {
+                                $res = $client->get($wUrl);
+                                if ($res && $res->getStatusCode() === 200) {
+                                    break;
+                                }
+                            } catch (\Throwable $e) {
+                                $res = null;
+                            }
                         }
                     }
                 }

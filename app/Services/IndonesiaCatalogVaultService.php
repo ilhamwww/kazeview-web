@@ -168,10 +168,17 @@ class IndonesiaCatalogVaultService
             $q->where('source', 'pencurimovie');
         }
 
-        return $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
-            ->orderByRaw("COALESCE(year, '2000') DESC")
-            ->orderBy('id', 'DESC')
-            ->take($limit)
+        if ($provider === 'indoxxi' || $provider === 'server-3') {
+            $q->orderByRaw("COALESCE(year, '2000') DESC")
+              ->orderByRaw("CAST(COALESCE(NULLIF(external_id, ''), '0') AS BIGINT) DESC")
+              ->orderBy('id', 'DESC');
+        } else {
+            $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
+                ->orderByRaw("COALESCE(year, '2000') DESC")
+                ->orderBy('id', 'DESC');
+        }
+
+        return $q->take($limit)
             ->get()
             ->map(fn($item) => $item->toCard())
             ->all();

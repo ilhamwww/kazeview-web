@@ -374,6 +374,32 @@ class IndoxxiTechService
 
                 $servers = $externalId ? self::resolveAllServers($externalId, $html) : [];
 
+                // Fallback: cari tautan HGLink / Minochinos dari tombol download jika ajax server kosong/dead
+                if (empty($servers)) {
+                    if (preg_match_all('/https?:\/\/(?:hglink\.to\/[ef]|vibuxer\.com\/[ef])\/([a-zA-Z0-9_\-]+)/i', $html, $hm)) {
+                        $code = $hm[1][0];
+                        $servers[] = [
+                            'id' => 'server_ix_primary_hg',
+                            'name' => 'Server 3 (HD Utama)',
+                            'type' => 'embed',
+                            'embed_url' => "https://hglink.to/e/{$code}",
+                            'provider' => 'hgcloud',
+                            'is_down' => false,
+                        ];
+                    }
+                    if (preg_match_all('/https?:\/\/(?:minochinos\.com\/(?:download|embed)|callistanise\.com\/embed)\/([a-zA-Z0-9_\-]+)/i', $html, $mm)) {
+                        $code = $mm[1][0];
+                        $servers[] = [
+                            'id' => 'server_ix_secondary_abyss',
+                            'name' => 'Server 3 (Mirror HD)',
+                            'type' => 'embed',
+                            'embed_url' => "https://minochinos.com/embed/{$code}",
+                            'provider' => 'abyss',
+                            'is_down' => false,
+                        ];
+                    }
+                }
+
                 if (empty($servers)) {
                     $servers[] = [
                         'id' => 'server_indoxxi_embed',

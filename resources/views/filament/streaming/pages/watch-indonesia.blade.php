@@ -430,6 +430,14 @@
                                             }
                                         });
 
+                                        // Pasang subtitle default (VTT) jika tersedia pada metadata episode
+                                        const subList = Array.isArray(self.subtitles) ? self.subtitles : [];
+                                        const defaultSub = subList.find(s => s && (s.lang === 'id' || s.lang === 'id-ID' || (s.label || '').toLowerCase().includes('indo'))) || subList[0];
+                                        if (defaultSub && defaultSub.url && artInstance.subtitle) {
+                                            artInstance.subtitle.switch('/api/streaming/subtitle?url=' + encodeURIComponent(defaultSub.url), { type: 'vtt' });
+                                            artInstance.subtitle.show = true;
+                                        }
+
                                         hls.on(window.Hls.Events.ERROR, function (event, data) {
                                             console.error('[HLS_ERROR_DETAIL]', data.details, 'mimeType:', data.mimeType, 'err:', data.error ? data.error.message : null);
                                             if (data.details === 'bufferAddCodecError' || (data.error && /unsupported/i.test(data.error.message || ''))) {
