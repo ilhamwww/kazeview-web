@@ -1659,7 +1659,7 @@ class StreamingService
             $response = Http::withOptions([
                 'proxy' => 'socks5h://127.0.0.1:1055',
                 'connect_timeout' => 3,
-                'timeout' => 25,
+                'timeout' => 35,
             ])->get($url);
 
             if ($response->successful()) {
