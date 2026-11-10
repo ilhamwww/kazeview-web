@@ -16,9 +16,16 @@ Route::get(
 // Legacy redirects from /streaming to clean root URLs
 Route::redirect('/streaming', '/');
 Route::redirect('/drakor', '/korean-drama');
-Route::redirect('/indonesia', '/indonesia/server-1');
+Route::redirect('/indonesia/server-1', '/indonesia');
+Route::redirect('/indonesia/server-2', '/indonesia');
+Route::redirect('/indonesia/server-3', '/indonesia');
+Route::redirect('/indonesia/server-4', '/indonesia');
+Route::redirect('/indonesia/server-1/{slug}', '/indonesia/{slug}');
+Route::redirect('/indonesia/server-2/{slug}', '/indonesia/{slug}');
+Route::redirect('/indonesia/server-3/{slug}', '/indonesia/{slug}');
+Route::redirect('/indonesia/server-4/{slug}', '/indonesia/{slug}');
 Route::get('/indonesia/indonesia/{server}/{slug?}', function ($server, $slug = null) {
-    return redirect('/indonesia/' . $server . ($slug ? '/' . $slug : ''));
+    return redirect('/indonesia' . ($slug ? '/' . $slug : ''));
 });
 Route::get('/streaming/{any}', function ($any) {
     return redirect('/' . $any);

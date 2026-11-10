@@ -10,15 +10,15 @@ class Indonesia extends Page
     protected static ?string $navigationIcon = 'heroicon-o-globe-asia-australia';
     protected static ?string $navigationLabel = 'Indonesia';
     protected static ?string $title = 'Film & Series Indonesia - KZSTRM';
-    protected static ?string $slug = 'indonesia/{server?}';
+    protected static ?string $slug = 'indonesia';
     protected static string $view = 'filament.streaming.pages.indonesia';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
-    public string $server = 'server-1';
+    public string $server = 'rebahin';
     public int $page = 1;
     public string $category = 'all';
-    public string $provider = 'moviebox'; // 'moviebox', 'rebahin', 'indoxxi'
+    public string $provider = 'rebahin';
     public string $search = '';
 
     public array $trending = [];
@@ -44,29 +44,12 @@ class Indonesia extends Page
         ['id' => 'classic', 'label' => '2023 & Sebelumnya'],
     ];
 
-    public array $providers = [
-        ['id' => 'server-1', 'provider' => 'moviebox', 'label' => 'Server 1 (1080p Ultra HD)', 'badge' => 'Server 1', 'url' => '/indonesia/server-1'],
-        ['id' => 'server-2', 'provider' => 'rebahin', 'label' => 'Server 2 (Arsip Lengkap)', 'badge' => 'Server 2', 'url' => '/indonesia/server-2'],
-        ['id' => 'server-3', 'provider' => 'indoxxi', 'label' => 'Server 3 (Mirror)', 'badge' => 'Server 3', 'url' => '/indonesia/server-3'],
-        ['id' => 'server-4', 'provider' => 'pencurimovie', 'label' => 'Server 4 (Arsip Bioskop)', 'badge' => 'Server 4', 'url' => '/indonesia/server-4'],
-    ];
+    public array $providers = [];
 
     public function mount(?string $server = null): void
     {
-        $serverParam = strtolower(trim((string) $server));
-        if (empty($serverParam) || $serverParam === 'indonesia') {
-            $this->server = 'server-1';
-        } else {
-            $this->server = in_array($serverParam, ['server-1', 'server-2', 'server-3', 'server-4']) ? $serverParam : 'server-1';
-        }
-
-        $serverMap = [
-            'server-1' => 'moviebox',
-            'server-2' => 'rebahin',
-            'server-3' => 'indoxxi',
-            'server-4' => 'pencurimovie',
-        ];
-        $this->provider = $serverMap[$this->server] ?? 'moviebox';
+        $this->server = 'rebahin';
+        $this->provider = 'rebahin';
 
         $this->page = 1;
         $this->category = request()->query('category', 'all');
@@ -84,13 +67,7 @@ class Indonesia extends Page
 
     public function setProvider(string $prov): mixed
     {
-        $srv = $prov;
-        if ($prov === 'moviebox') $srv = 'server-1';
-        elseif ($prov === 'rebahin') $srv = 'server-2';
-        elseif ($prov === 'indoxxi') $srv = 'server-3';
-        elseif ($prov === 'pencurimovie') $srv = 'server-4';
-
-        return redirect()->to('/indonesia/' . $srv);
+        return redirect()->to('/indonesia');
     }
 
     public function updatedSearch(): void

@@ -14,8 +14,8 @@
             return '#';
         }
         if ($kind === 'indonesia') {
-            $cleanSlug = preg_replace('/^(mb-|rb-|ix-)/', '', $it['slug']);
-            return "/indonesia/{$currentServer}/{$cleanSlug}";
+            $cleanSlug = preg_replace('/^(mb-|rb-|ix-|pm-)/', '', $it['slug']);
+            return "/indonesia/{$cleanSlug}";
         }
         $series = $isSeries || in_array($it['type'] ?? '', ['tv_series', 'tv', 'series'], true);
         return $series
@@ -195,8 +195,8 @@
                 </div>
             </div>
 
-            {{-- Provider Selector Pills (Khusus Halaman Combo Indonesia) --}}
-            @if(!empty($providers))
+            {{-- Provider Selector Pills: HANYA REBAHIN (Dihilangkan karena murni Rebahin saja) --}}
+            @if(!empty($providers) && count($providers) > 1)
                 <div class="flex items-center gap-2 overflow-x-auto kz-noscroll py-2.5">
                     <span class="text-xs font-bold text-zinc-400 mr-1 shrink-0 flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
@@ -248,7 +248,7 @@
     @endif
 
     {{-- ================= SECTIONS ALA HOME (KHUSUS INDONESIA KETIKA SEMUA & TANPA PENCARIAN) ================= --}}
-    @if($kind === 'indonesia' && empty($search) && ($category ?? 'all') === 'all' && ($provider ?? 'all') === 'all')
+    @if($kind === 'indonesia' && empty($search) && ($category ?? 'all') === 'all')
         <div class="relative z-10 space-y-10 md:space-y-12 pt-8">
 
             {{-- 1. Film Bioskop Indonesia Terbaru --}}
@@ -271,9 +271,7 @@
                                     <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/60 to-transparent"></div>
                                     <div class="absolute inset-x-0 top-0 flex justify-between p-2">
                                         <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">Film</span>
-                                        @if(!empty($movie['provider_badge']))
-                                            <span class="rounded {{ str_contains(strtolower($movie['provider_badge']), 'server 2') ? 'bg-blue-600/90' : 'bg-emerald-600/90' }} text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $movie['provider_badge'] }}</span>
-                                        @elseif(!empty($movie['quality']))
+                                        @if(!empty($movie['quality']))
                                             <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $movie['quality'] }}</span>
                                         @endif
                                     </div>
@@ -311,9 +309,7 @@
                                     <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/60 to-transparent"></div>
                                     <div class="absolute inset-x-0 top-0 flex justify-between p-2">
                                         <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">Series</span>
-                                        @if(!empty($sItem['provider_badge']))
-                                            <span class="rounded {{ str_contains(strtolower($sItem['provider_badge']), 'server 2') ? 'bg-blue-600/90' : 'bg-emerald-600/90' }} text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider">{{ $sItem['provider_badge'] }}</span>
-                                        @elseif(!empty($sItem['quality']))
+                                        @if(!empty($sItem['quality']))
                                             <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-400">{{ $sItem['quality'] }}</span>
                                         @endif
                                     </div>

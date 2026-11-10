@@ -29,19 +29,15 @@
 
     {{-- Top bar Breadcrumb --}}
     <div class="relative w-full max-w-[1400px] mx-auto px-4 lg:px-8 pt-20 md:pt-24 pb-2 flex items-center justify-between">
-        <a href="/indonesia/{{ $server }}"
+        <a href="/indonesia"
            class="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-            Kembali ke {{ $serverLabel }}
+            Kembali ke Indonesia
         </a>
         <div class="flex items-center gap-2">
             <span class="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-red-600/20 text-red-400 border border-red-500/30">
                 <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                {{ $serverLabel }}
-            </span>
-            <span class="hidden sm:inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400">
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                Resource Terisolasi
+                Film & Series Indonesia
             </span>
         </div>
     </div>

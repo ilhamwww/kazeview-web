@@ -8,19 +8,13 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('kz:sync-indonesia-vault', function () {
-    $this->info('Starting Indonesia Media Vault sync...');
-    $mb = \App\Services\IndonesiaCatalogVaultService::syncFromMovieBox();
-    $this->info("Synced MovieBox: {$mb} items");
+    $this->info('Starting Indonesia Media Vault sync (Rebahin Only)...');
     $rb = \App\Services\IndonesiaCatalogVaultService::syncFromRebahin(5);
     $this->info("Synced Rebahin: {$rb} items");
-    $ix = \App\Services\IndonesiaCatalogVaultService::syncFromIndoxxi(5);
-    $this->info("Synced IndoXXI (filtered clean): {$ix} items");
-    $pm = \App\Services\IndonesiaCatalogVaultService::syncFromPencuriMovie(5);
-    $this->info("Synced PencuriMovie (filtered clean): {$pm} items");
     $purged = \App\Services\IndonesiaCatalogVaultService::purgeAdultContent();
     $this->info("Purged adult items: {$purged}");
-    $total = \App\Models\IndonesiaMediaItem::count();
-    $this->info("Total Vault Items in DB: {$total}");
-})->purpose('Sync and archive Indonesian movies & series into local database vault');
+    $total = \App\Models\IndonesiaMediaItem::where('source', 'server2')->count();
+    $this->info("Total Vault Items in DB (Rebahin): {$total}");
+})->purpose('Sync and archive Indonesian movies & series from Rebahin into local database vault');
 
 \Illuminate\Support\Facades\Schedule::command('kz:sync-indonesia-vault')->twiceDaily(6, 18);

@@ -21,7 +21,9 @@ class IndonesiaCatalogVaultService
         string $search = '',
         string $provider = 'all'
     ): array {
-        $query = IndonesiaMediaItem::query()->where('is_published', true);
+        $query = IndonesiaMediaItem::query()
+            ->where('is_published', true)
+            ->where('source', 'server2'); // Murni Rebahin saja
 
         // Filter Pencarian
         if (!empty($search)) {
@@ -42,29 +44,8 @@ class IndonesiaCatalogVaultService
             });
         }
 
-        // Filter Sumber Server
-        if ($provider === 'moviebox' || $provider === 'server-1') {
-            $query->where('source', 'moviebox');
-        } elseif ($provider === 'rebahin' || $provider === 'server-2') {
-            $query->where('source', 'server2');
-        } elseif ($provider === 'indoxxi' || $provider === 'server-3') {
-            $query->where('source', 'indoxxi');
-        } elseif ($provider === 'pencurimovie' || $provider === 'server-4') {
-            $query->where('source', 'pencurimovie');
-        }
-
-        // Urutan Sorting:
-        // Khusus Server 3 (IndoXXI): Fokuskan film rilisan terbaru (2026, 2025...) dan yang baru di-upload/post ID tertinggi
-        if ($provider === 'indoxxi' || $provider === 'server-3') {
-            $query->orderByRaw("COALESCE(year, '2000') DESC")
-                  ->orderByRaw("CAST(COALESCE(NULLIF(external_id, ''), '0') AS BIGINT) DESC")
-                  ->orderBy('id', 'DESC');
-        } else {
-            // Urutan umum: Server 1 (MovieBox HD) diutamakan di baris atas jika combo, lalu tahun terbaru, lalu id terbaru
-            $query->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
-                  ->orderByRaw("COALESCE(year, '2000') DESC")
-                  ->orderBy('id', 'DESC');
-        }
+        $query->orderByRaw("COALESCE(year, '2000') DESC")
+              ->orderBy('id', 'DESC');
 
         $total = $query->count();
         $totalPages = max(1, (int) ceil($total / $perPage));
@@ -87,98 +68,47 @@ class IndonesiaCatalogVaultService
     }
 
     /**
-     * Ambil konten trending berdasarkan server
+     * Ambil konten trending Rebahin
      */
     public static function getTrending(int $limit = 10, ?string $provider = 'all'): array
     {
-        $q = IndonesiaMediaItem::where('is_published', true);
-        if ($provider === 'moviebox' || $provider === 'server-1') {
-            $q->where('source', 'moviebox');
-        } elseif ($provider === 'rebahin' || $provider === 'server-2') {
-            $q->where('source', 'server2');
-        } elseif ($provider === 'indoxxi' || $provider === 'server-3') {
-            $q->where('source', 'indoxxi');
-        } elseif ($provider === 'pencurimovie' || $provider === 'server-4') {
-            $q->where('source', 'pencurimovie');
-        }
-
-        if ($provider === 'indoxxi' || $provider === 'server-3') {
-            $q->orderByRaw("COALESCE(year, '2000') DESC")
-              ->orderByRaw("CAST(COALESCE(NULLIF(external_id, ''), '0') AS BIGINT) DESC")
-              ->orderBy('id', 'DESC');
-        } else {
-            $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
-              ->orderByRaw("COALESCE(year, '2000') DESC")
-              ->orderBy('id', 'DESC');
-        }
-
-        return $q->take($limit)
+        return IndonesiaMediaItem::where('is_published', true)
+            ->where('source', 'server2')
+            ->orderByRaw("COALESCE(year, '2000') DESC")
+            ->orderBy('id', 'DESC')
+            ->take($limit)
             ->get()
             ->map(fn($item) => $item->toCard())
             ->all();
     }
 
     /**
-     * Ambil film terbaru berdasarkan server
+     * Ambil film terbaru Rebahin
      */
     public static function getLatestMovies(int $limit = 15, ?string $provider = 'all'): array
     {
-        $q = IndonesiaMediaItem::where('is_published', true)
-            ->where('type', 'movie');
-        if ($provider === 'moviebox' || $provider === 'server-1') {
-            $q->where('source', 'moviebox');
-        } elseif ($provider === 'rebahin' || $provider === 'server-2') {
-            $q->where('source', 'server2');
-        } elseif ($provider === 'indoxxi' || $provider === 'server-3') {
-            $q->where('source', 'indoxxi');
-        } elseif ($provider === 'pencurimovie' || $provider === 'server-4') {
-            $q->where('source', 'pencurimovie');
-        }
-
-        if ($provider === 'indoxxi' || $provider === 'server-3') {
-            $q->orderByRaw("COALESCE(year, '2000') DESC")
-              ->orderByRaw("CAST(COALESCE(NULLIF(external_id, ''), '0') AS BIGINT) DESC")
-              ->orderBy('id', 'DESC');
-        } else {
-            $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
-              ->orderByRaw("COALESCE(year, '2000') DESC")
-              ->orderBy('id', 'DESC');
-        }
-
-        return $q->take($limit)
+        return IndonesiaMediaItem::where('is_published', true)
+            ->where('source', 'server2')
+            ->where('type', 'movie')
+            ->orderByRaw("COALESCE(year, '2000') DESC")
+            ->orderBy('id', 'DESC')
+            ->take($limit)
             ->get()
             ->map(fn($item) => $item->toCard())
             ->all();
     }
 
     /**
-     * Ambil serial terbaru berdasarkan server
+     * Ambil serial terbaru Rebahin
      */
     public static function getLatestSeries(int $limit = 15, ?string $provider = 'all'): array
     {
-        $q = IndonesiaMediaItem::where('is_published', true)
-            ->where('type', 'series');
-        if ($provider === 'moviebox' || $provider === 'server-1') {
-            $q->where('source', 'moviebox');
-        } elseif ($provider === 'rebahin' || $provider === 'server-2') {
-            $q->where('source', 'server2');
-        } elseif ($provider === 'indoxxi' || $provider === 'server-3') {
-            $q->where('source', 'indoxxi');
-        } elseif ($provider === 'pencurimovie' || $provider === 'server-4') {
-            $q->where('source', 'pencurimovie');
-        }
-
-        if ($provider === 'indoxxi' || $provider === 'server-3') {
-            $q->orderByRaw("COALESCE(year, '2000') DESC")
-              ->orderByRaw("CAST(COALESCE(NULLIF(external_id, ''), '0') AS BIGINT) DESC")
-              ->orderBy('id', 'DESC');
-        } else {
-            $q->orderByRaw("CASE WHEN source = 'moviebox' THEN 0 ELSE 1 END")
-                ->orderByRaw("COALESCE(year, '2000') DESC")
-                ->orderBy('id', 'DESC');
-        }
-
-        return $q->take($limit)
+        return IndonesiaMediaItem::where('is_published', true)
+            ->where('source', 'server2')
+            ->where('type', 'series')
+            ->orderByRaw("COALESCE(year, '2000') DESC")
+            ->orderBy('id', 'DESC')
+            ->take($limit)
             ->get()
             ->map(fn($item) => $item->toCard())
             ->all();
