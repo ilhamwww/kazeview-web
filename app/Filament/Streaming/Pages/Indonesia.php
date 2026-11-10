@@ -15,7 +15,11 @@ class Indonesia extends Page
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
-    public string $server = 'rebahin';
+    public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = 'streaming', ?\Illuminate\Database\Eloquent\Model $tenant = null): string
+    {
+        $provider = $parameters['provider'] ?? 'rebahin';
+        return "/indonesia/{$provider}";
+    }
     public int $page = 1;
     public string $category = 'all';
     public string $provider = 'rebahin';

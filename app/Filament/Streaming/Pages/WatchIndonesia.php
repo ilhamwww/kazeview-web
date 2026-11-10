@@ -20,7 +20,12 @@ class WatchIndonesia extends Page
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
-    public string $providerParam = 'rebahin';
+    public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = 'streaming', ?\Illuminate\Database\Eloquent\Model $tenant = null): string
+    {
+        $provider = $parameters['provider'] ?? 'rebahin';
+        $slug = $parameters['slug'] ?? '';
+        return "/indonesia/{$provider}/{$slug}";
+    }
     public string $server = 'rebahin';
     public string $slugParam = '';
     public string $serverLabel = 'Rebahin';
