@@ -5,6 +5,7 @@ namespace App\Filament\Streaming\Pages;
 use App\Services\AnimeDownloadResolverService;
 use App\Services\AnimeMetadataService;
 use App\Services\MirainimeScraperService;
+use App\Services\RebahinService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
 
@@ -65,7 +66,7 @@ class WatchAnime extends Page
         $this->saveWatchHistory($this->episodeSlug);
     }
 
-    protected function loadSeriesDetail(): void
+    public function loadSeriesDetail(): void
     {
         $scraper = new MirainimeScraperService();
         $seriesCacheKey = 'v1_detail_' . md5($this->animeSlug);
@@ -134,6 +135,46 @@ class WatchAnime extends Page
                 return $data;
             });
 
+            // 1.5. Seamless Failover ke Rebahin jika series anime tersedia di Rebahin
+            $rebahinServers = [];
+            try {
+                $rawAnimeName = preg_replace('/-sub-indo$/i', '', $this->animeSlug);
+                $possibleCandidates = [
+                    'rb-nonton-film-' . $rawAnimeName . '-2026',
+                    'rb-nonton-film-' . $this->animeSlug . '-2026',
+                    'rb-' . $this->animeSlug,
+                    'rb-' . $rawAnimeName,
+                    'rb-nonton-' . $this->animeSlug,
+                ];
+                $rbSeries = null;
+                foreach ($possibleCandidates as $pc) {
+                    $rbSeries = RebahinService::getSeriesDetail($pc);
+                    if ($rbSeries && !empty($rbSeries['episodes'])) {
+                        break;
+                    }
+                }
+
+                if ($rbSeries && !empty($rbSeries['episodes'])) {
+                    $epNumInt = (int)$epSlug;
+                    $matchedRbEp = collect($rbSeries['episodes'])->first(function ($e) use ($epNumInt) {
+                        return (int)($e['episodeNumber'] ?? ($e['episode_number'] ?? 0)) === $epNumInt;
+                    });
+
+                    if ($matchedRbEp && !empty($matchedRbEp['servers'])) {
+                        foreach ($matchedRbEp['servers'] as $s) {
+                            $rebahinServers[] = [
+                                'id' => 'server_rb_' . ($s['id'] ?? count($rebahinServers) + 1),
+                                'name' => $s['name'] ?? 'Server (HD Rebahin)',
+                                'type' => $s['type'] ?? 'embed',
+                                'stream_url' => $s['stream_url'] ?? ($s['video_url'] ?? ''),
+                                'video_url' => $s['video_url'] ?? ($s['stream_url'] ?? ''),
+                                'embed_url' => $s['embed_url'] ?? '',
+                            ];
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {}
+
             // 2. Jika tidak ditemukan atau 404, coba cari lewat Otakudesu & mapping judul Mirainime
             if (!$epDetail || empty($epDetail['video_url']) || ($epDetail['title'] ?? '') === '404') {
                 $otakuScraper = new \App\Services\OtakudesuScraperService();
@@ -189,6 +230,7 @@ class WatchAnime extends Page
             }
 
             $animeTitle = $this->seriesDetail['title'] ?? ($epDetail['title'] ?? '');
+            // Ambil data stream & download dari Otakudesu (dengan cache 12 jam, cepat & otomatis)
             $downloads = AnimeDownloadResolverService::getDownloads($animeTitle, $epSlug);
 
             $rawStream = $epDetail['video_url'] ?? '';
@@ -198,12 +240,12 @@ class WatchAnime extends Page
             $currentStreamUrl = '';
             $servers = [];
 
-            // 1. Prioritaskan Fast HLS dari Mirainime / Suzune
+            // 1. Prioritaskan Mirainime (Fast HLS, Direct MP4, atau Mirainime Player Embed)
             if (!empty($hlsUrl)) {
                 $currentStreamUrl = '/api/proxy-hls?url=' . urlencode($hlsUrl);
                 $servers[] = [
                     'id' => 'server1',
-                    'name' => 'Server 1 (Fast HLS)',
+                    'name' => 'Server 1 (Mirainime Fast HLS)',
                     'type' => 'm3u8',
                     'stream_url' => $currentStreamUrl,
                     'embed_url' => '',
@@ -217,43 +259,76 @@ class WatchAnime extends Page
                 }
                 $servers[] = [
                     'id' => 'server1',
-                    'name' => 'Server 1 (Direct FHD)',
+                    'name' => 'Server 1 (Mirainime Direct FHD)',
                     'type' => 'mp4',
                     'stream_url' => $currentStreamUrl,
                     'embed_url' => '',
                 ];
+            } elseif (!empty($embedUrl)) {
+                $miraiProxiedEmbed = (str_contains($embedUrl, 'mirainime.com') || str_contains($embedUrl, '178.211.139.171') || str_contains($embedUrl, 'rebahin'))
+                    ? url('/api/streaming/embed?url=' . urlencode($embedUrl))
+                    : $embedUrl;
+
+                $servers[] = [
+                    'id' => 'server1',
+                    'name' => 'Server 1 (Mirainime Player)',
+                    'type' => 'embed',
+                    'stream_url' => '',
+                    'embed_url' => $miraiProxiedEmbed,
+                ];
             }
 
-            // 2. Server Otakudesu (Alt HD - Fast / DesuStream / Embed)
             $otakuStream = $downloads['stream_url'] ?? ($epDetail['direct_mp4'] ?? null);
             $otakuIframe = $downloads['iframe_url'] ?? ($epDetail['iframe_url'] ?? null);
 
-            if (!empty($otakuStream)) {
+            // Sisipkan Rebahin HD jika ada
+            foreach ($rebahinServers as $rs) {
+                if (($rs['type'] ?? '') === 'hls' || !empty($rs['stream_url'])) {
+                    $servers[] = [
+                        'id' => $rs['id'],
+                        'name' => 'Server ' . (count($servers) + 1) . ' (Rebahin Native HD)',
+                        'type' => 'm3u8',
+                        'stream_url' => $rs['stream_url'] ?? $rs['video_url'],
+                        'embed_url' => '',
+                    ];
+                } else {
+                    $rawEmbed = $rs['embed_url'];
+                    $proxiedEmbed = (str_contains($rawEmbed, '178.211.139.171') || str_contains($rawEmbed, '199.87.210.226') || str_contains($rawEmbed, 'rebahin'))
+                        ? url('/api/streaming/embed?url=' . urlencode($rawEmbed))
+                        : $rawEmbed;
+
+                    $servers[] = [
+                        'id' => $rs['id'],
+                        'name' => 'Server ' . (count($servers) + 1) . ' (Rebahin HD)',
+                        'type' => 'embed',
+                        'stream_url' => '',
+                        'embed_url' => $proxiedEmbed,
+                    ];
+                }
+            }
+
+            // 3. Tambahkan server direct/embed Otakudesu
+            if (!empty($otakuStream) && !str_contains($otakuStream, 'googlevideo.com')) {
+                $safeStreamUrl = (str_contains($otakuStream, 'archive.org') || str_contains($otakuStream, 'desustream'))
+                    ? url('/api/proxy-stream?url=' . urlencode($otakuStream))
+                    : $otakuStream;
+
                 $servers[] = [
                     'id' => 'server_otaku_direct',
-                    'name' => 'Server ' . (count($servers) + 1) . ' (Alt HD - Fast)',
+                    'name' => 'Server ' . (count($servers) + 1) . ' (Alt HD - Otakudesu)',
                     'type' => 'mp4',
-                    'stream_url' => $otakuStream,
+                    'stream_url' => $safeStreamUrl,
                     'embed_url' => '',
-                ];
-            } elseif (!empty($otakuIframe)) {
-                $servers[] = [
-                    'id' => 'server_otaku_embed',
-                    'name' => 'Server ' . (count($servers) + 1) . ' (DesuStream)',
-                    'type' => 'embed',
-                    'stream_url' => '',
-                    'embed_url' => $otakuIframe,
                 ];
             }
 
-            // 3. Fallback Mirainime Embed Player jika diperlukan
-            if (!empty($embedUrl)) {
+            if (!empty($otakuIframe)) {
                 $servers[] = [
-                    'id' => 'server_mirai_embed',
-                    'name' => 'Server ' . (count($servers) + 1) . ' (Mirainime Player)',
+                    'id' => 'server_otaku_embed',
+                    'name' => 'Server ' . (count($servers) + 1) . ' (Otakudesu Player)',
                     'type' => 'embed',
                     'stream_url' => '',
-                    'embed_url' => $embedUrl,
+                    'embed_url' => $otakuIframe,
                 ];
             }
 
@@ -300,6 +375,7 @@ class WatchAnime extends Page
         $this->isEmbed = false;
         $this->currentEmbedUrl = '';
         if (!empty($this->servers)) {
+            // Prioritaskan stream yang valid (jika server pertama direct/HLS, atau embed)
             $active = collect($this->servers)->firstWhere('id', 'server1') ?? $this->servers[0];
             $this->activeServer = $active['id'];
             $this->isEmbed = ($active['type'] === 'embed');

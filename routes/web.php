@@ -632,6 +632,98 @@ Route::get('/api/continue-watching', function () {
     return response()->json($items);
 })->middleware('auth')->name('api.continue-watching');
 
+Route::get('/api/anime/downloads', function (\Illuminate\Http\Request $request) {
+    $title = $request->query('title');
+    $ep = $request->query('ep');
+    if (empty($title)) {
+        return response()->json(['episode' => [], 'batch' => []]);
+    }
+    return response()->json(\App\Services\AnimeDownloadResolverService::getDownloads($title, $ep));
+});
+
+Route::get('/api/streaming/mirai-json', function (\Illuminate\Http\Request $request) {
+    $url = $request->query('url');
+    if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL) || !str_contains($url, 'mirainime.com')) {
+        return response()->json(['error' => 'Invalid URL'], 400);
+    }
+
+    // Parse slug & episode from url
+    $animeSlug = '';
+    $episodeNum = '1';
+    if (preg_match('/anime\/([^\/]+)\/episode\/([^\/]+)/', $url, $m)) {
+        $animeSlug = $m[1];
+        $episodeNum = $m[2];
+    }
+
+    $cleanAnimeSlug = preg_replace('/-sub-indo$/i', '', $animeSlug);
+    $animeTitle = ucwords(str_replace('-', ' ', $cleanAnimeSlug));
+    $streamUrls = [];
+
+    // Sambungkan Rebahin HD HLS sebagai direct source cadangan di dalam player
+    try {
+        $rbSeries = \App\Services\RebahinService::getSeriesDetail('rb-nonton-film-' . $animeSlug . '-2026')
+            ?? \App\Services\RebahinService::getSeriesDetail('rb-' . $animeSlug)
+            ?? \App\Services\RebahinService::getSeriesDetail('rb-nonton-' . $animeSlug);
+
+        if ($rbSeries && !empty($rbSeries['episodes'])) {
+            $epNumInt = (int)$episodeNum;
+            $matchedRbEp = collect($rbSeries['episodes'])->first(function ($e) use ($epNumInt) {
+                return (int)($e['episodeNumber'] ?? ($e['episode_number'] ?? 0)) === $epNumInt;
+            });
+
+            if ($matchedRbEp && !empty($matchedRbEp['servers'])) {
+                foreach ($matchedRbEp['servers'] as $idx => $s) {
+                    if (!empty($s['stream_url'])) {
+                        $streamUrls[] = [
+                            'name' => 'Rebahin HD ' . ($idx + 1),
+                            'url' => $s['stream_url'],
+                            'type' => 'm3u8',
+                        ];
+                    }
+                }
+            }
+        }
+    } catch (\Throwable $e) {}
+
+    // Sambungkan direct stream Otakudesu / Archive.org jika Rebahin tidak punya
+    if (empty($streamUrls)) {
+        try {
+            $downloads = \App\Services\AnimeDownloadResolverService::getDownloads($animeTitle, (string)$episodeNum);
+            $otakuStream = $downloads['stream_url'] ?? null;
+            if (!empty($otakuStream) && !str_contains($otakuStream, 'googlevideo.com')) {
+                $safeStream = (str_contains($otakuStream, 'archive.org') || str_contains($otakuStream, 'desustream'))
+                    ? url('/api/proxy-stream?url=' . urlencode($otakuStream))
+                    : $otakuStream;
+
+                $streamUrls[] = [
+                    'name' => 'Direct HD (Otakudesu)',
+                    'url' => $safeStream,
+                    'type' => 'mp4',
+                ];
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    $firstHls = $streamUrls[0]['url'] ?? '';
+
+    $responsePayload = [
+        'anime_title' => $animeTitle,
+        'episode' => (int)$episodeNum,
+        'hls_url' => $firstHls,
+        'stream_url' => $firstHls,
+        'video_url' => $firstHls,
+        'url' => $firstHls,
+        'stream_urls' => $streamUrls,
+        'gdrive_sources' => [],
+        'subtitles' => [],
+    ];
+
+    return response()->json($responsePayload, 200, [
+        'Access-Control-Allow-Origin' => '*',
+        'Content-Type' => 'application/json',
+    ]);
+});
+
 Route::get('/api/streaming/embed', function (\Illuminate\Http\Request $request) {
     $url = $request->query('url');
     if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
@@ -644,29 +736,52 @@ Route::get('/api/streaming/embed', function (\Illuminate\Http\Request $request) 
     $origin = "{$scheme}://{$host}";
 
     $ua = $request->userAgent() ?: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-    $cacheKey = 'embed_html_' . md5($url . $ua);
+    $cacheKey = 'embed_html_v2_' . md5($url);
     $cookieFile = '/tmp/juicy_cookie_' . md5($request->ip()) . '.txt';
     $html = \Illuminate\Support\Facades\Cache::remember($cacheKey, 10, function () use ($url, $origin, $ua, $cookieFile) {
         try {
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-            curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-            if (str_contains($url, '178.211.139.171') || str_contains($url, 'rebahinxxi')) {
-                curl_setopt($ch, CURLOPT_PROXY, 'socks5h://127.0.0.1:1055');
+            $content = '';
+            $status = 0;
+
+            if (str_contains($url, 'mirainime.com')) {
+                $helperPath = app_path('Services/fetch_cf.py');
+                if (file_exists($helperPath)) {
+                    $pyRes = shell_exec('/usr/bin/python3.10 ' . escapeshellarg($helperPath) . ' ' . escapeshellarg($url));
+                    if (!empty($pyRes) && !str_contains($pyRes, 'Just a moment...') && !str_contains($pyRes, 'Attention Required!')) {
+                        $content = (string) $pyRes;
+                        $status = 200;
+                    }
+                }
             }
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'User-Agent: ' . $ua,
-                'Referer: ' . (str_contains($url, 'minochinos') || str_contains($url, 'callistanise') || str_contains($url, 'hglink') || str_contains($url, 'vibuxer') ? 'https://indoxxi.tech/' : 'https://rebahinxxi3.mom/'),
-                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            ]);
-            $content = curl_exec($ch);
-            $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+
+            if ($status !== 200 || empty($content)) {
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
+                curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
+                if (str_contains($url, '178.211.139.171') || str_contains($url, '199.87.210.226') || str_contains($url, 'rebahinxxi')) {
+                    curl_setopt($ch, CURLOPT_PROXY, 'socks5h://127.0.0.1:1055');
+                }
+                $referer = 'https://rebahinxxi3.mom/';
+                if (str_contains($url, 'minochinos') || str_contains($url, 'callistanise') || str_contains($url, 'hglink') || str_contains($url, 'vibuxer')) {
+                    $referer = 'https://indoxxi.tech/';
+                } elseif (str_contains($url, 'mirainime.com')) {
+                    $referer = 'https://mirainime.com/';
+                }
+
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'User-Agent: ' . $ua,
+                    'Referer: ' . $referer,
+                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                ]);
+                $content = curl_exec($ch);
+                $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+            }
 
             if ($status !== 200 || empty($content)) {
                 return null;
@@ -712,6 +827,15 @@ window.alert = function() {};
 window.confirm = function() { return true; };
 window.prompt = function() { return null; };
 
+// Intercept fetch untuk JSON Mirainime jika script memanggil URL direct https://mirainime.com/.../json
+const _origFetch = window.fetch;
+window.fetch = function(resource, init) {
+    if (typeof resource === 'string' && resource.includes('mirainime.com') && resource.endsWith('/json')) {
+        resource = '/api/streaming/mirai-json?url=' + encodeURIComponent(resource);
+    }
+    return _origFetch.call(this, resource, init);
+};
+
 // Netralkan listener click nakal yang membajak body untuk redirect tab baru
 document.addEventListener('click', function(e) {
     if (e.target && e.target.tagName === 'A') {
@@ -725,6 +849,20 @@ document.addEventListener('click', function(e) {
 }, true);
 </script>
 HTML;
+            // Rewriter khusus Mirainime embed: arahkan jsonUrl ke proxy lokal agar tidak terhalang 403
+            if (str_contains($url, 'mirainime.com/embed/')) {
+                $content = preg_replace_callback(
+                    '/jsonUrl:\s*["\'](https?:[^\'"]+)["\']/i',
+                    function ($m) {
+                        $rawTarget = stripcslashes($m[1]);
+                        return 'jsonUrl: "/api/streaming/mirai-json?url=' . urlencode($rawTarget) . '"';
+                    },
+                    $content
+                );
+                // Matikan deteksi auth loginRequired
+                $content = preg_replace('/loginRequired:\s*true/i', 'loginRequired: false', $content);
+            }
+
             if (str_contains($content, '</head>')) {
                 $content = str_replace('</head>', "{$cleanEmbedCss}\n{$antiPopScript}</head>", $content);
             } else {
@@ -763,6 +901,9 @@ Route::match(['GET', 'POST', 'OPTIONS'], '/api/streaming/embed-proxy', function 
 
     $cookieFile = '/tmp/juicy_cookie_' . md5($request->ip()) . '.txt';
     $ch = curl_init($targetUrl);
+    if (str_contains($targetUrl, '178.211.139.171') || str_contains($targetUrl, '199.87.210.226') || str_contains($targetUrl, 'rebahinxxi')) {
+        curl_setopt($ch, CURLOPT_PROXY, 'socks5h://127.0.0.1:1055');
+    }
     $ua = $request->userAgent() ?: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
     $forwardHeaders = [
         'User-Agent: ' . $ua,
@@ -1063,6 +1204,12 @@ Route::get('/api/proxy-stream', function (\Illuminate\Http\Request $request) {
             'name' => 'nobarlk21_base',
             'referer' => 'https://t4.nobarlk21.com/',
             'origin' => 'https://t4.nobarlk21.com',
+        ];
+    } elseif (str_contains($host, 'archive.org')) {
+        $profiles[] = [
+            'name' => 'archive_canonical',
+            'referer' => 'https://archive.org/',
+            'origin' => 'https://archive.org',
         ];
     } elseif (str_contains($host, 'bilibili.tv')) {
         $profiles[] = [

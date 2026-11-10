@@ -336,13 +336,19 @@
 
                     <!-- Embed Player -->
                     <template x-if="isEmbed && currentEmbedUrl">
-                        <iframe :src="currentEmbedUrl" class="w-full h-full border-0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>
+                        <iframe :src="currentEmbedUrl"
+                                class="w-full h-full border-0 absolute inset-0 bg-black"
+                                allowfullscreen
+                                webkitallowfullscreen
+                                mozallowfullscreen
+                                allow="autoplay; fullscreen; picture-in-picture"
+                                referrerpolicy="no-referrer"></iframe>
                     </template>
 
                     <!-- Native Artplayer Player -->
                     <template x-if="!isEmbed">
                         <div class="w-full h-full bg-black relative flex items-center justify-center">
-                            <div x-ref="artContainer" class="w-full h-full" x-show="videoSrc"></div>
+                            <div x-ref="artContainer" class="w-full h-full"></div>
                             <div x-show="!videoSrc" class="flex flex-col items-center justify-center p-6 text-center">
                                 @include('filament.streaming.partials.server-loading-indicator', [
                                     'title' => 'Memilih server terbaik',
@@ -451,40 +457,33 @@
                     </div>
 
                     {{-- Downloads for this Episode --}}
-                    @if(!empty($downloads['episode']))
-                        <div id="episode-downloads" class="pt-4">
-                            <div class="p-4 md:p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/80">
-                                <div class="flex items-center gap-2 mb-3">
-                                    <span class="p-1.5 rounded-lg bg-red-500/20 text-red-400">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-                                    </span>
-                                    <h3 class="text-sm font-black text-white">Download Episode {{ $epNo }}</h3>
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                                    @foreach($downloads['episode'] as $dl)
-                                        <div class="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800">
-                                            <div class="flex items-center justify-between mb-2">
-                                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-red-950/80 text-red-400 border border-red-500/30">
-                                                    {{ $dl['format'] ?? 'MP4' }}
-                                                </span>
-                                                @if(!empty($dl['size']))
-                                                    <span class="text-[11px] font-mono font-bold text-zinc-400">{{ $dl['size'] }}</span>
-                                                @endif
-                                            </div>
-                                            <div class="flex flex-wrap gap-1.5">
-                                                @foreach($dl['links'] ?? [] as $lk)
-                                                    <a href="{{ $lk['url'] }}" target="_blank" rel="noopener noreferrer"
-                                                       class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-red-600 text-zinc-300 hover:text-white text-[10px] font-bold border border-zinc-800 transition">
-                                                        <span>{{ $lk['host'] }}</span>
-                                                    </a>
-                                                @endforeach
-                                            </div>
+                    <div x-show="downloads && downloads.episode && downloads.episode.length > 0" id="episode-downloads" class="pt-4" x-cloak>
+                        <div class="p-4 md:p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/80">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="p-1.5 rounded-lg bg-red-500/20 text-red-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                                </span>
+                                <h3 class="text-sm font-black text-white">Download Episode Ini</h3>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                                <template x-for="(dl, dIdx) in (downloads?.episode || [])" :key="dIdx">
+                                    <div class="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-red-950/80 text-red-400 border border-red-500/30" x-text="dl.format || 'MP4'"></span>
+                                            <span class="text-[11px] font-mono font-bold text-zinc-400" x-text="dl.size || ''"></span>
                                         </div>
-                                    @endforeach
-                                </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <template x-for="(lk, lIdx) in (dl.links || [])" :key="lIdx">
+                                                <a :href="lk.url" target="_blank" rel="noopener noreferrer"
+                                                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-red-600 text-zinc-300 hover:text-white text-[10px] font-bold border border-zinc-800 transition"
+                                                   x-text="lk.host"></a>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
                         </div>
-                    @endif
+                    </div>
                 </div>
             </div>
 
@@ -617,6 +616,17 @@
                                 this.initPlayer();
                             }
                         });
+
+                        // Muat link download Otakudesu secara async jika belum ada di cache
+                        if (!this.downloads || !this.downloads.episode || this.downloads.episode.length === 0) {
+                            fetch('/api/anime/downloads?title=' + encodeURIComponent(this.episodeTitle || '{{ $metadata['title'] ?? '' }}') + '&ep=' + encodeURIComponent(this.currentEp))
+                                .then(r => r.json())
+                                .then(d => {
+                                    if (d && d.episode && d.episode.length > 0) {
+                                        this.downloads = d;
+                                    }
+                                }).catch(() => {});
+                        }
 
                         // Background prefetch episode tetangga (prev & next) ala Dracin setelah video mulai
                         setTimeout(() => {
@@ -776,9 +786,9 @@
                                 _art = null;
                             }
                         } else {
-                            this.$nextTick(() => {
+                            setTimeout(() => {
                                 this.initPlayer();
-                            });
+                            }, 50);
                         }
                     },
 
@@ -798,7 +808,7 @@
 
                     initPlayer() {
                         if (this.isEmbed || !this.videoSrc) return;
-                        const artContainer = this.$refs.artContainer;
+                        const artContainer = this.$refs.artContainer || document.querySelector('[x-ref="artContainer"]');
                         if (!artContainer) return;
 
                         if (_art) {
