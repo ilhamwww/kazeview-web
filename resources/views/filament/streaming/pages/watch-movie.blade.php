@@ -671,6 +671,11 @@
                             if (!this.videoSrc) await this.fetchStreamAsync(false);
                             this.isLoadingStream = false;
                             if (!this.videoSrc) {
+                                const fallbackEmbed = Array.isArray(this.serversList) ? this.serversList.find(s => s.type === 'embed' && s.embed_url) : null;
+                                if (fallbackEmbed) {
+                                    this.switchServer(fallbackEmbed.id, fallbackEmbed.embed_url, true);
+                                    return;
+                                }
                                 this.isPlaying = false;
                                 this.streamError = 'Stream belum tersedia. Coba tekan putar lagi sebentar lagi.';
                                 this.report('no-stream');

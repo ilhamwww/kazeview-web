@@ -1320,55 +1320,24 @@ class StreamingService
                 $domain = ScraperSetting::getInstance()->idlix_domain;
                 $url = rtrim($domain, '/') . '/api/series/' . $slug;
 
-                $response = Http::withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept' => 'application/json',
-                ])->timeout(15)->get($url);
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    
-                    // Format images
-                    if (isset($data['posterPath'])) {
-                        $data['posterPath'] = 'https://image.tmdb.org/t/p/w500' . $data['posterPath'];
-                    }
-                    if (isset($data['backdropPath'])) {
-                        $data['backdropPath'] = 'https://image.tmdb.org/t/p/w1280' . $data['backdropPath'];
-                    }
-                    
-                    // Format episode thumbnails
-                    if (isset($data['defaultSeason']['episodes'])) {
-                        foreach ($data['defaultSeason']['episodes'] as &$ep) {
-                            if (isset($ep['stillPath'])) {
-                                $ep['stillPath'] = 'https://image.tmdb.org/t/p/w500' . $ep['stillPath'];
-                            }
+                $jsonContent = self::fetchJsonWithPuppeteer($url);
+                if ($jsonContent) {
+                    $data = json_decode($jsonContent, true);
+                    if ($data && is_array($data)) {
+                        if (isset($data['posterPath'])) {
+                            $data['posterPath'] = 'https://image.tmdb.org/t/p/w500' . $data['posterPath'];
                         }
-                    }
-
-                    return $data;
-                }
-
-                // Cloudflare fallback for series
-                if ($response->status() === 503 || str_contains($response->body(), 'Cloudflare') || str_contains($response->body(), 'Just a moment')) {
-                    $jsonContent = self::fetchJsonWithPuppeteer($url);
-                    if ($jsonContent) {
-                        $data = json_decode($jsonContent, true);
-                        if ($data && is_array($data)) {
-                            if (isset($data['posterPath'])) {
-                                $data['posterPath'] = 'https://image.tmdb.org/t/p/w500' . $data['posterPath'];
-                            }
-                            if (isset($data['backdropPath'])) {
-                                $data['backdropPath'] = 'https://image.tmdb.org/t/p/w1280' . $data['backdropPath'];
-                            }
-                            if (isset($data['defaultSeason']['episodes'])) {
-                                foreach ($data['defaultSeason']['episodes'] as &$ep) {
-                                    if (isset($ep['stillPath'])) {
-                                        $ep['stillPath'] = 'https://image.tmdb.org/t/p/w500' . $ep['stillPath'];
-                                    }
+                        if (isset($data['backdropPath'])) {
+                            $data['backdropPath'] = 'https://image.tmdb.org/t/p/w1280' . $data['backdropPath'];
+                        }
+                        if (isset($data['defaultSeason']['episodes'])) {
+                            foreach ($data['defaultSeason']['episodes'] as &$ep) {
+                                if (isset($ep['stillPath'])) {
+                                    $ep['stillPath'] = 'https://image.tmdb.org/t/p/w500' . $ep['stillPath'];
                                 }
                             }
-                            return $data;
                         }
+                        return $data;
                     }
                 }
 
@@ -1404,41 +1373,18 @@ class StreamingService
                 $domain = ScraperSetting::getInstance()->idlix_domain;
                 $url = rtrim($domain, '/') . '/api/series/' . $slug . '/season/' . $seasonNumber;
 
-                $response = Http::withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept' => 'application/json',
-                ])->timeout(15)->get($url);
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    
-                    // Format episode thumbnails
-                    if (isset($data['season']['episodes'])) {
-                        foreach ($data['season']['episodes'] as &$ep) {
-                            if (isset($ep['stillPath'])) {
-                                $ep['stillPath'] = 'https://image.tmdb.org/t/p/w500' . $ep['stillPath'];
-                            }
-                        }
-                    }
-
-                    return $data;
-                }
-
-                // Cloudflare fallback
-                if ($response->status() === 503 || $response->status() === 403 || str_contains($response->body(), 'Cloudflare') || str_contains($response->body(), 'Just a moment')) {
-                    $jsonContent = self::fetchJsonWithPuppeteer($url);
-                    if ($jsonContent) {
-                        $data = json_decode($jsonContent, true);
-                        if ($data && is_array($data)) {
-                            if (isset($data['season']['episodes'])) {
-                                foreach ($data['season']['episodes'] as &$ep) {
-                                    if (isset($ep['stillPath'])) {
-                                        $ep['stillPath'] = 'https://image.tmdb.org/t/p/w500' . $ep['stillPath'];
-                                    }
+                $jsonContent = self::fetchJsonWithPuppeteer($url);
+                if ($jsonContent) {
+                    $data = json_decode($jsonContent, true);
+                    if ($data && is_array($data)) {
+                        if (isset($data['season']['episodes'])) {
+                            foreach ($data['season']['episodes'] as &$ep) {
+                                if (isset($ep['stillPath'])) {
+                                    $ep['stillPath'] = 'https://image.tmdb.org/t/p/w500' . $ep['stillPath'];
                                 }
                             }
-                            return $data;
                         }
+                        return $data;
                     }
                 }
 
@@ -1760,25 +1706,12 @@ class StreamingService
                 $domain = ScraperSetting::getInstance()->idlix_domain;
                 $url = rtrim($domain, '/') . '/api/movies/' . $slug;
 
-                $response = Http::withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept' => 'application/json',
-                ])->timeout(15)->get($url);
-
                 $formatted = null;
-                if ($response->successful()) {
-                    $data = $response->json();
-                    $formatted = self::formatMovieData($data);
-                }
-
-                // Cloudflare fallback for movies
-                if (!$formatted && ($response->status() === 503 || $response->status() === 403 || str_contains($response->body(), 'Cloudflare') || str_contains($response->body(), 'Just a moment'))) {
-                    $jsonContent = self::fetchJsonWithPuppeteer($url);
-                    if ($jsonContent) {
-                        $data = json_decode($jsonContent, true);
-                        if ($data && is_array($data)) {
-                            $formatted = self::formatMovieData($data);
-                        }
+                $jsonContent = self::fetchJsonWithPuppeteer($url);
+                if ($jsonContent) {
+                    $data = json_decode($jsonContent, true);
+                    if ($data && is_array($data)) {
+                        $formatted = self::formatMovieData($data);
                     }
                 }
 
@@ -1790,12 +1723,6 @@ class StreamingService
                             'tmdbId' => $formatted['tmdb_id'] ?? null,
                         ], 86400);
                     }
-                    try {
-                        $mirror = RebahinService::findMovieMirror($formatted['title'] ?? '', $formatted['year'] ?? null);
-                        if ($mirror && !empty($mirror['servers'])) {
-                            $formatted['mirror_servers'] = $mirror['servers'];
-                        }
-                    } catch (\Exception $e) {}
                     return $formatted;
                 }
 

@@ -70,9 +70,10 @@ class WatchSeries extends Page
                 return;
             }
 
-            // 1. Fetch stream (Native IDLIX via NUC Resolver / Rebahin)
+            // 1. Fetch cached stream only during mount so page renders in <0.3s!
+            // If not cached yet, the browser's init() will resolve it asynchronously in background via /api/streaming/stream.
             $cachedStream = !empty($this->activeEpisode['id']) ? StreamingService::getValidCachedEpisodeStream($this->activeEpisode['id']) : null;
-            if (!$cachedStream && !empty($this->activeEpisode['id'])) {
+            if (!$cachedStream && !empty($this->activeEpisode['id']) && (str_starts_with($this->activeEpisode['id'], 'mb-') || str_starts_with($this->activeEpisode['id'], 'rb-'))) {
                 $cachedStream = StreamingService::getEpisodeStream($this->activeEpisode['id']);
             }
 
@@ -91,7 +92,7 @@ class WatchSeries extends Page
             $hasNativeStream = !empty($this->streamData['video_url']);
             $isEmbedEpisode = !empty($this->activeEpisode['servers']);
 
-            if ($hasNativeStream) {
+            if (!$isEmbedEpisode || $hasNativeStream) {
                 $servers[] = [
                     'id' => 'server_direct',
                     'name' => 'Server 1 (Native HD - Bebas Iklan)',

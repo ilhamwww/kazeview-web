@@ -42,17 +42,12 @@ class WatchMovie extends Page
             return;
         }
 
-        // Fetch direct stream first if available (IDLIX via NUC Relay / Rebahin / LK21)
+        // Fetch cached stream only during mount so page renders in <0.3s!
+        // If not cached yet, the browser's init() will resolve it asynchronously in background via /api/streaming/stream.
         if (!empty($this->media['source']) && in_array($this->media['source'], ['moviebox', 'indoxxi'])) {
             // MovieBox & IndoXXI sudah membawa jalur streaming masing-masing
         } else {
             $stream = !empty($this->media['id']) ? StreamingService::getValidCachedMovieStream($this->media['id']) : null;
-            if (!$stream && !empty($this->media['id'])) {
-                $stream = StreamingService::getMovieStream($this->media['id']);
-            }
-            if (!$stream && !empty($this->media['title'])) {
-                $stream = DirectStreamResolverService::resolveMovieStream($this->media['title'], $this->media['year'] ?? null);
-            }
             if ($stream && !empty($stream['video_url'])) {
                 $this->media['video_url'] = $stream['video_url'];
                 $this->media['subtitles'] = $stream['subtitles'] ?? [];
@@ -85,16 +80,13 @@ class WatchMovie extends Page
                 ];
             }
         } else {
-            // Jika ada Direct Stream HLS/Relay yang berhasil di-resolve, jadikan Server 1 Native Artplayer
-            $hasDirectRelay = !empty($this->media['video_url']);
-            if ($hasDirectRelay) {
-                $servers[] = [
-                    'id' => 'server_direct',
-                    'name' => 'Server 1 (Native HD - Bebas Iklan)',
-                    'type' => 'hls',
-                    'embed_url' => '',
-                ];
-            }
+            // Selalu tampilkan Server 1 (Native HD - Bebas Iklan) sebagai default agar otomatis di-prefetch di background bila belum ter-cache
+            $servers[] = [
+                'id' => 'server_direct',
+                'name' => 'Server 1 (Native HD - Bebas Iklan)',
+                'type' => 'hls',
+                'embed_url' => '',
+            ];
 
             // Universal TMDB Embed Engine for Global Movies (Sebagai Server Cadangan)
             $tmdbId = $this->media['tmdb_id'] ?? ($this->media['raw_detail']['tmdbId'] ?? null);
@@ -102,7 +94,7 @@ class WatchMovie extends Page
                 $tmdbId = $this->media['id'];
             }
 
-            $offset = $hasDirectRelay ? 1 : 0;
+            $offset = 1;
 
             if ($tmdbId) {
                 $servers[] = [
@@ -128,13 +120,6 @@ class WatchMovie extends Page
                     'name' => 'Server ' . (4 + $offset) . ' (VidSrc)',
                     'type' => 'embed',
                     'embed_url' => 'https://vidsrc.sh/embed/movie/' . $tmdbId,
-                ];
-            } elseif (!$hasDirectRelay) {
-                $servers[] = [
-                    'id' => 'server1',
-                    'name' => 'Server 1 (HD)',
-                    'type' => 'hls',
-                    'embed_url' => '',
                 ];
             }
 
