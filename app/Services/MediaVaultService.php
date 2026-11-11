@@ -28,39 +28,22 @@ class MediaVaultService
                 $query->orderByDesc('upstream_created_at')->orderByDesc('id');
             }
 
+            $total = (clone $query)->count();
             $items = $query->skip(($page - 1) * $limit)
                 ->take($limit)
                 ->get()
                 ->map(fn($m) => self::mapToMediaFormat($m))
                 ->all();
 
-            // Jika di database lokal belum ada (misal page lebih tinggi belum ter-scrape), ambil on-demand dari IDLIX & auto-save ke vault!
-            if (empty($items)) {
-                try {
-                    $live = StreamingService::getMovies($page, $limit, $sort);
-                    if (!empty($live['data'])) {
-                        // Background simpan ke vault agar kunjungan berikutnya instan
-                        foreach ($live['data'] as $item) {
-                            self::upsertIdlixItem($item, 'movie');
-                        }
-                        return $live;
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning("On-demand fetch movies page {$page} failed: " . $e->getMessage());
-                }
-            }
-
-            // Total pages dihitung berdasarkan estimasi IDLIX (~3.850 halaman) atau minimal page saat ini
-            $totalEst = max(7700, ($page + 5) * $limit);
-            $totalPages = (int)ceil($totalEst / $limit);
+            $totalPages = $limit > 0 ? (int)ceil($total / $limit) : 1;
 
             return [
                 'data' => $items,
                 'pagination' => [
                     'page' => $page,
                     'limit' => $limit,
-                    'total' => $totalEst,
-                    'totalPages' => $totalPages,
+                    'total' => $total,
+                    'totalPages' => max(1, $totalPages),
                 ],
             ];
         });
@@ -85,37 +68,22 @@ class MediaVaultService
                 $query->orderByDesc('upstream_created_at')->orderByDesc('id');
             }
 
+            $total = (clone $query)->count();
             $items = $query->skip(($page - 1) * $limit)
                 ->take($limit)
                 ->get()
                 ->map(fn($s) => self::mapToMediaFormat($s))
                 ->all();
 
-            // Jika di database lokal belum ada (misal page lebih tinggi belum ter-scrape), ambil on-demand dari IDLIX & auto-save ke vault!
-            if (empty($items)) {
-                try {
-                    $live = StreamingService::getSeries($page, $limit, $sort);
-                    if (!empty($live['data'])) {
-                        foreach ($live['data'] as $item) {
-                            self::upsertIdlixItem($item, 'series');
-                        }
-                        return $live;
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning("On-demand fetch series page {$page} failed: " . $e->getMessage());
-                }
-            }
-
-            $totalEst = max(5000, ($page + 5) * $limit);
-            $totalPages = (int)ceil($totalEst / $limit);
+            $totalPages = $limit > 0 ? (int)ceil($total / $limit) : 1;
 
             return [
                 'data' => $items,
                 'pagination' => [
                     'page' => $page,
                     'limit' => $limit,
-                    'total' => $totalEst,
-                    'totalPages' => $totalPages,
+                    'total' => $total,
+                    'totalPages' => max(1, $totalPages),
                 ],
             ];
         });

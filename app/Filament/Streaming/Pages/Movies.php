@@ -45,6 +45,12 @@ class Movies extends Page
         $response = \App\Services\MediaVaultService::getMovies($this->page, $limit, 'createdAt');
         $newMovies = $response['data'] ?? [];
 
+        if (empty($newMovies)) {
+            // Fallback ke StreamingService jika vault kosong
+            $response = StreamingService::getMovies($this->page, $limit, 'createdAt');
+            $newMovies = $response['data'] ?? [];
+        }
+
         $this->movies = array_merge($this->movies, $newMovies);
         $pagination = $response['pagination'] ?? [];
         $this->totalPages = $pagination['totalPages'] ?? 1;
