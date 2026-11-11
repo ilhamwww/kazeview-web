@@ -106,6 +106,8 @@ Route::post('/api/sync-anime-vault', function (\Illuminate\Http\Request $request
     $payload = $request->input('anime_items');
     $updates = $request->input('anime_updates');
 
+    // Feed RSS dari NUC tidak membawa poster/rating/flag. Hanya isi field yang benar-benar dikirim,
+    // supaya data yang sudah ada (poster dari scrape homepage, rating, trending) tidak tertimpa kosong.
     $saved = 0;
     if (is_array($payload)) {
         foreach ($payload as $it) {
@@ -113,25 +115,30 @@ Route::post('/api/sync-anime-vault', function (\Illuminate\Http\Request $request
             $title = $it['title'] ?? ($it['series'] ?? '');
             if (empty($slug) || empty($title)) continue;
 
-            \App\Models\AnimeVaultItem::updateOrCreate(
-                ['slug' => $slug],
-                [
-                    'title' => $title,
-                    'alt_title' => $it['alt_title'] ?? null,
-                    'poster' => $it['poster'] ?? ($it['thumbnail'] ?? null),
-                    'banner' => $it['banner'] ?? null,
-                    'rating' => !empty($it['rating']) ? (float)$it['rating'] : null,
-                    'type' => $it['type'] ?? 'TV',
-                    'status' => $it['status'] ?? 'Ongoing',
-                    'latest_episode' => $it['latest_episode'] ?? ($it['episode'] ?? null),
-                    'latest_episode_at' => !empty($it['latest_episode']) ? now() : null,
-                    'release_day' => $it['release_day'] ?? null,
-                    'is_featured' => !empty($it['is_featured']),
-                    'is_trending' => !empty($it['is_trending']),
-                    'source' => $it['source'] ?? 'mirainime',
-                    'last_synced_at' => now(),
-                ]
-            );
+            $item = \App\Models\AnimeVaultItem::firstOrNew(['slug' => $slug]);
+            $item->title = $title;
+            $poster = $it['poster'] ?? ($it['thumbnail'] ?? null);
+            if (!empty($poster)) $item->poster = $poster;
+            if (!empty($it['alt_title'])) $item->alt_title = $it['alt_title'];
+            if (!empty($it['banner'])) $item->banner = $it['banner'];
+            if (!empty($it['rating'])) $item->rating = (float) $it['rating'];
+            if (!empty($it['type'])) $item->type = $it['type'];
+            if (!empty($it['status'])) $item->status = $it['status'];
+            if (!empty($it['release_day'])) $item->release_day = $it['release_day'];
+            if (array_key_exists('is_featured', $it)) $item->is_featured = !empty($it['is_featured']);
+            if (array_key_exists('is_trending', $it)) $item->is_trending = !empty($it['is_trending']);
+            $latestEp = $it['latest_episode'] ?? ($it['episode'] ?? null);
+            if (!empty($latestEp)) {
+                $item->latest_episode = $latestEp;
+                $item->latest_episode_at = now();
+            }
+            if (!$item->exists) {
+                $item->type = $item->type ?: 'TV';
+                $item->status = $item->status ?: 'Ongoing';
+            }
+            $item->source = $it['source'] ?? ($item->source ?: 'mirainime');
+            $item->last_synced_at = now();
+            $item->save();
             $saved++;
         }
     }
@@ -143,22 +150,34 @@ Route::post('/api/sync-anime-vault', function (\Illuminate\Http\Request $request
             $title = $u['title'] ?? '';
             if (empty($slug) || empty($ep) || empty($title)) continue;
 
-            \App\Models\AnimeVaultUpdate::updateOrCreate(
-                ['slug' => $slug, 'episode' => $ep, 'source' => $u['source'] ?? 'mirainime'],
-                [
-                    'title' => $title,
-                    'poster' => $u['poster'] ?? null,
-                    'type' => $u['type'] ?? 'TV',
-                    'ago' => $u['ago'] ?? '',
-                    'released_timestamp' => $u['released_timestamp'] ?? time(),
-                ]
+            $upd = \App\Models\AnimeVaultUpdate::firstOrNew(
+                ['slug' => $slug, 'episode' => $ep, 'source' => $u['source'] ?? 'mirainime']
             );
+            $upd->title = $title;
+            // Poster: dari payload, kalau kosong pakai poster yang sudah dikenal untuk slug ini
+            $poster = $u['poster'] ?? null;
+            if (empty($poster)) {
+                $poster = \App\Models\AnimeVaultItem::where('slug', $slug)->value('poster');
+            }
+            if (!empty($poster)) $upd->poster = $poster;
+            $upd->type = $u['type'] ?? ($upd->type ?: 'TV');
+            if (!$upd->exists || !empty($u['released_timestamp'])) {
+                $upd->released_timestamp = $u['released_timestamp'] ?? time();
+            }
+            $upd->ago = $u['ago'] ?? ($upd->ago ?? '');
+            $upd->save();
         }
     }
 
     \Illuminate\Support\Facades\Cache::forget('anime_vault_home_v1');
     \Illuminate\Support\Facades\Cache::forget('anime_vault_recent_updates_v1_24');
     \Illuminate\Support\Facades\Cache::forget('anime_vault_weekly_schedule_v1');
+
+    // Isi poster yang masih kosong (og:image halaman anime, cache 7 hari) setelah respons dikirim,
+    // supaya request NUC tidak timeout.
+    dispatch(function () {
+        \App\Services\AnimeVaultService::backfillMissingPosters(15);
+    })->afterResponse();
 
     return response()->json(['success' => true, 'saved_items' => $saved]);
 });

@@ -348,6 +348,54 @@ class AnimeVaultService
     /**
      * Upsert helper
      */
+    /**
+     * Isi poster yang masih kosong di anime_vault_items & anime_vault_updates.
+     * Sumber: og:image halaman anime Mirainime (fetchPosters, cache 7 hari per slug).
+     * Dibatasi $limit slug per panggilan supaya tidak membebani upstream.
+     */
+    public static function backfillMissingPosters(int $limit = 15): int
+    {
+        $isEmpty = fn ($q) => $q->whereNull('poster')->orWhere('poster', '');
+
+        $slugs = AnimeVaultUpdate::where($isEmpty)->distinct()->pluck('slug')
+            ->merge(AnimeVaultItem::where($isEmpty)->pluck('slug'))
+            ->filter()->unique()->values();
+
+        if ($slugs->isEmpty()) {
+            return 0;
+        }
+
+        // Pakai poster yang sudah dikenal dulu (tanpa request ke upstream)
+        $known = AnimeVaultItem::whereIn('slug', $slugs)
+            ->whereNotNull('poster')->where('poster', '!=', '')
+            ->pluck('poster', 'slug')->all();
+
+        $missing = $slugs->reject(fn ($s) => isset($known[$s]))->take($limit)->all();
+        $fetched = [];
+        if (!empty($missing)) {
+            try {
+                $fetched = (new MirainimeScraperService())->fetchPosters($missing);
+            } catch (\Throwable $e) {
+                Log::warning('Anime poster backfill failed: ' . $e->getMessage());
+            }
+        }
+
+        $filled = 0;
+        foreach (array_merge($known, $fetched) as $slug => $poster) {
+            if (empty($poster)) continue;
+            $filled += AnimeVaultUpdate::where('slug', $slug)->where($isEmpty)->update(['poster' => $poster]);
+            AnimeVaultItem::where('slug', $slug)->where($isEmpty)->update(['poster' => $poster]);
+        }
+
+        if ($filled > 0 || !empty($fetched)) {
+            Cache::forget('anime_vault_home_v1');
+            Cache::forget('anime_vault_recent_updates_v1_24');
+            Cache::forget('anime_vault_weekly_schedule_v1');
+        }
+
+        return $filled;
+    }
+
     protected static function upsertItem(string $slug, array $attributes): AnimeVaultItem
     {
         $item = AnimeVaultItem::firstOrNew(['slug' => $slug]);
