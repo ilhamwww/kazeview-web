@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/v1/public/preview/*/ai-photo-search',
             'api/streaming/embed-proxy',
             'api/watch-progress',
+            'api/comic-progress',
             'api/sync-native-comic',
             'api/upload-native-cover',
             'api/komik/client-sync/*',

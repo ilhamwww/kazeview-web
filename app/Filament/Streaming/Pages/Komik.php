@@ -29,6 +29,7 @@ class Komik extends Page
     public array $items = [];
     public int $totalPage = 1;
     public bool $hasMore = false;
+    public array $serverRecentReads = [];
 
     protected $queryString = [
         'format' => ['except' => 'all'],
@@ -85,6 +86,31 @@ class Komik extends Page
         $this->tab = request()->query('tab', 'latest');
         $this->search = request()->query('q', '');
         $this->page = max(1, (int) request()->query('page', 1));
+
+        if (auth()->check()) {
+            try {
+                $this->serverRecentReads = \App\Models\ComicReadHistory::where('user_id', auth()->id())
+                    ->whereNotNull('last_chapter_id')
+                    ->orderByDesc('updated_at')
+                    ->take(15)
+                    ->get()
+                    ->map(function ($h) {
+                        return [
+                            'comicId'       => $h->comic_id,
+                            'comicTitle'    => $h->title,
+                            'comicCover'    => $h->cover,
+                            'comicFormat'   => $h->format ?: 'Manhwa',
+                            'chapterId'     => $h->last_chapter_id,
+                            'chapterLabel'  => $h->last_chapter_label,
+                            'chapterNumber' => (float) ($h->last_chapter_number ?? 0),
+                            'progress'      => (int) ($h->last_progress ?? 0),
+                            'panelIndex'    => (int) ($h->last_panel_index ?? 1),
+                            'updatedAt'     => $h->updated_at ? $h->updated_at->getTimestampMs() : 0,
+                        ];
+                    })
+                    ->toArray();
+            } catch (\Throwable $e) {}
+        }
 
         $this->loadData();
     }

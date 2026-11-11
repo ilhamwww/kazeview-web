@@ -25,6 +25,7 @@ protected static ?string $slug = 'komik/detail/{id}';
     public string $searchChapter = '';
     public string $sortOrder = 'desc'; // desc = terbaru, asc = awal
     public bool $isFavorited = false;
+    public ?array $serverHistory = null;
 
     public function mount(string $id): void
     {
@@ -55,6 +56,23 @@ protected static ?string $slug = 'komik/detail/{id}';
                 ->where('item_id', 'comic:' . $this->mangaId)
                 ->where('item_type', 'komik')
                 ->exists();
+
+            try {
+                $hist = \App\Models\ComicReadHistory::where('user_id', auth()->id())
+                    ->where('comic_id', $this->mangaId)
+                    ->first();
+                if ($hist && $hist->last_chapter_id) {
+                    $this->serverHistory = [
+                        'chapterId' => $hist->last_chapter_id,
+                        'label' => $hist->last_chapter_label,
+                        'number' => (float) ($hist->last_chapter_number ?? 0),
+                        'progress' => (int) ($hist->last_progress ?? 0),
+                        'panelIndex' => (int) ($hist->last_panel_index ?? 1),
+                        'scrollY' => (int) ($hist->last_scroll_y ?? 0),
+                        'updatedAt' => $hist->updated_at ? $hist->updated_at->getTimestampMs() : 0,
+                    ];
+                }
+            } catch (\Throwable $e) {}
         }
     }
 

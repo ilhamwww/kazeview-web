@@ -26,6 +26,7 @@ class KomikReader extends Page
     public ?array $nextChapter = null;
     public array $allChapters = [];
     public array $pages = [];
+    public ?array $serverHistory = null;
 
     public function mount(string $id, string $chapter_id): void
     {
@@ -77,10 +78,21 @@ class KomikReader extends Page
 
         static::$title = ($this->comic['title'] ?? 'Webtoon') . ' - ' . $this->currentChapter['label'] . ' - KZSTRM';
 
-        // Riwayat baca di server (untuk statistik /traffic). Gagal simpan tidak boleh mengganggu reader.
+        // Riwayat baca di server (untuk statistik /traffic & cloud sync). Gagal simpan tidak boleh mengganggu reader.
         if (auth()->check()) {
             try {
-                \App\Models\ComicReadHistory::record(auth()->id(), $id, $this->comic, $this->currentChapter);
+                $hist = \App\Models\ComicReadHistory::record(auth()->id(), $id, $this->comic, $this->currentChapter);
+                if ($hist) {
+                    $this->serverHistory = [
+                        'chapterId' => $hist->last_chapter_id,
+                        'label' => $hist->last_chapter_label,
+                        'number' => (float) ($hist->last_chapter_number ?? ($this->currentChapter['number'] ?? 0)),
+                        'progress' => (int) ($hist->last_progress ?? 0),
+                        'panelIndex' => (int) ($hist->last_panel_index ?? 1),
+                        'scrollY' => (int) ($hist->last_scroll_y ?? 0),
+                        'updatedAt' => $hist->updated_at ? $hist->updated_at->getTimestampMs() : 0,
+                    ];
+                }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('Comic history skipped', ['error' => $e->getMessage()]);
             }

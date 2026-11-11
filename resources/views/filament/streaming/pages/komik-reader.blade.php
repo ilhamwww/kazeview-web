@@ -12,38 +12,98 @@
         expSent: false,
         clientPages: [],
         clientLoading: {{ empty($pages) && !empty($currentChapter['upstream_chapter_id']) ? 'true' : 'false' }},
+        serverHistory: @js($serverHistory),
+        lastServerSync: 0,
         init() {
             this.fetchChapterFromClientIfEmpty();
-            // Cek apakah ada riwayat tersimpan untuk chapter ini
+            // Cek apakah ada riwayat tersimpan untuk chapter ini (sinkronisasi cloud vs local)
             try {
+                let h = null;
                 const raw = localStorage.getItem('kz_comic_{{ $mangaId }}');
-                if (raw) {
-                    const h = JSON.parse(raw);
-                    if (h.chapterId === '{{ $chapterId }}' && (h.panelIndex > 1 || h.progress > 5)) {
-                        this.currentProgress = h.progress || 0;
-                        this.currentPanel = h.panelIndex || 1;
-                        this.toastMsg = 'Melanjutkan dari panel ' + this.currentPanel + ' (' + this.currentProgress + '%)';
-                        this.showToast = true;
-                        setTimeout(() => { this.showToast = false; }, 3500);
+                const localHist = raw ? JSON.parse(raw) : null;
 
-                        // Pulihkan posisi scroll secara bertahap saat gambar dimuat
-                        const restoreScroll = (retry = 0) => {
-                            const el = document.getElementById('panel-' + h.panelIndex);
-                            if (el) {
-                                el.scrollIntoView({ behavior: 'auto', block: 'start' });
-                            } else if (h.scrollY > 0) {
-                                window.scrollTo({ top: h.scrollY, behavior: 'auto' });
-                            }
-                            if (retry < 5) {
-                                setTimeout(() => restoreScroll(retry + 1), 300);
-                            }
-                        };
-                        this.$nextTick(() => {
-                            setTimeout(() => restoreScroll(0), 100);
-                        });
+                if (this.serverHistory && this.serverHistory.chapterId === '{{ $chapterId }}') {
+                    if (!localHist || (this.serverHistory.updatedAt || 0) >= (localHist.updatedAt || 0)) {
+                        h = this.serverHistory;
+                        localStorage.setItem('kz_comic_{{ $mangaId }}', JSON.stringify(this.serverHistory));
+                    } else {
+                        h = localHist;
                     }
+                } else if (localHist && localHist.chapterId === '{{ $chapterId }}') {
+                    h = localHist;
+                }
+
+                if (h && (h.panelIndex > 1 || h.progress > 5)) {
+                    this.currentProgress = h.progress || 0;
+                    this.currentPanel = h.panelIndex || 1;
+                    this.toastMsg = 'Melanjutkan dari panel ' + this.currentPanel + ' (' + this.currentProgress + '%)';
+                    this.showToast = true;
+                    setTimeout(() => { this.showToast = false; }, 3500);
+
+                    // Pulihkan posisi scroll secara bertahap saat gambar dimuat
+                    const restoreScroll = (retry = 0) => {
+                        const el = document.getElementById('panel-' + h.panelIndex);
+                        if (el) {
+                            el.scrollIntoView({ behavior: 'auto', block: 'start' });
+                        } else if (h.scrollY > 0) {
+                            window.scrollTo({ top: h.scrollY, behavior: 'auto' });
+                        }
+                        if (retry < 5) {
+                            setTimeout(() => restoreScroll(retry + 1), 300);
+                        }
+                    };
+                    this.$nextTick(() => {
+                        setTimeout(() => restoreScroll(0), 100);
+                    });
                 }
             } catch(e) {}
+
+            // Event listener cloud sync saat tab ditutup atau diminimize
+            window.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') this.syncProgressToServer(true);
+            });
+            window.addEventListener('pagehide', () => this.syncProgressToServer(true));
+            window.addEventListener('beforeunload', () => this.syncProgressToServer(true));
+        },
+        syncProgressToServer(force = false) {
+            if (!{{ auth()->check() ? 'true' : 'false' }}) return;
+            const now = Date.now();
+            if (!force && now - this.lastServerSync < 3500) return;
+            this.lastServerSync = now;
+
+            const payload = {
+                comic_id: '{{ $mangaId }}',
+                comic_title: '{{ addslashes($comic['title'] ?? '') }}',
+                comic_cover: '{{ $comic['cover'] ?? '' }}',
+                comic_format: '{{ $comic['format'] ?? 'Manhwa' }}',
+                chapter_id: '{{ $chapterId }}',
+                chapter_label: '{{ addslashes($currentChapter['label'] ?? '') }}',
+                chapter_number: {{ (float) ($currentChapter['number'] ?? 0) }},
+                progress: this.currentProgress,
+                panel_index: this.currentPanel,
+                scroll_y: Math.round(window.scrollY),
+                _token: '{{ csrf_token() }}'
+            };
+
+            if (force && navigator.sendBeacon) {
+                const formData = new FormData();
+                for (const [k, v] of Object.entries(payload)) {
+                    formData.append(k, String(v));
+                }
+                navigator.sendBeacon('/api/comic-progress', formData);
+                return;
+            }
+
+            fetch('/api/comic-progress', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(payload),
+                keepalive: force
+            }).catch(() => {});
         },
         onScroll() {
             const y = window.scrollY;
@@ -107,6 +167,7 @@
                         updatedAt: Date.now()
                     });
                     localStorage.setItem('kz_comic_recent_reads', JSON.stringify(list.slice(0, 10)));
+                    this.syncProgressToServer(false);
                 } catch(e) {}
             }, 200);
 

@@ -1,10 +1,19 @@
 <div class="min-h-screen bg-[#050505] text-zinc-100 pb-28 selection:bg-red-600 selection:text-white"
      x-data="{
         history: null,
+        serverHistory: @js($serverHistory),
         init() {
             try {
+                let localHist = null;
                 const raw = localStorage.getItem('kz_comic_{{ $comic['id'] }}');
-                if (raw) this.history = JSON.parse(raw);
+                if (raw) localHist = JSON.parse(raw);
+
+                if (this.serverHistory && (!localHist || (this.serverHistory.updatedAt || 0) >= (localHist.updatedAt || 0))) {
+                    this.history = this.serverHistory;
+                    localStorage.setItem('kz_comic_{{ $comic['id'] }}', JSON.stringify(this.serverHistory));
+                } else if (localHist) {
+                    this.history = localHist;
+                }
             } catch(e) {}
             this.syncChaptersFromClient();
         },

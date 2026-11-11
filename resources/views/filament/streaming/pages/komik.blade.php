@@ -18,10 +18,33 @@
      @scroll-to-catalog.window="document.getElementById('katalog-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
      x-data="{
         recentReads: [],
+        serverRecentReads: @js($serverRecentReads),
         init() {
             try {
+                let local = [];
                 const raw = localStorage.getItem('kz_comic_recent_reads');
-                if (raw) this.recentReads = JSON.parse(raw);
+                if (raw) local = JSON.parse(raw);
+
+                if (Array.isArray(this.serverRecentReads) && this.serverRecentReads.length > 0) {
+                    const mergedMap = new Map();
+                    local.forEach(item => {
+                        if (item && item.comicId) mergedMap.set(item.comicId, item);
+                    });
+                    this.serverRecentReads.forEach(serverItem => {
+                        if (!serverItem || !serverItem.comicId) return;
+                        const localItem = mergedMap.get(serverItem.comicId);
+                        if (!localItem || (serverItem.updatedAt || 0) >= (localItem.updatedAt || 0)) {
+                            mergedMap.set(serverItem.comicId, serverItem);
+                        }
+                    });
+                    const merged = Array.from(mergedMap.values())
+                        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+                        .slice(0, 15);
+                    this.recentReads = merged;
+                    localStorage.setItem('kz_comic_recent_reads', JSON.stringify(merged));
+                } else {
+                    this.recentReads = local;
+                }
             } catch(e) {}
             this.runClientCatalogSync();
         },

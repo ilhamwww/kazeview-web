@@ -598,6 +598,65 @@ Route::post('/api/comic-exp', function (\Illuminate\Http\Request $request) {
     return response()->json(['ok' => true, 'exp' => $exp]);
 })->middleware(['auth', 'throttle:30,1'])->name('api.comic-exp');
 
+// ============ COMIC READING PROGRESS CLOUD SYNC ============
+// Dipanggil berkala saat membaca komik untuk sinkronisasi progress realtime antar-perangkat (PC & HP).
+Route::post('/api/comic-progress', function (\Illuminate\Http\Request $request) {
+    if (!auth()->check()) {
+        return response()->json(['ok' => false, 'error' => 'Unauthenticated'], 401);
+    }
+
+    $data = $request->validate([
+        'comic_id'        => ['required', 'string', 'max:255'],
+        'comic_title'     => ['nullable', 'string', 'max:500'],
+        'comic_cover'     => ['nullable', 'string', 'max:1000'],
+        'comic_format'    => ['nullable', 'string', 'max:50'],
+        'chapter_id'      => ['required', 'string', 'max:100'],
+        'chapter_label'   => ['nullable', 'string', 'max:100'],
+        'chapter_number'  => ['nullable', 'numeric'],
+        'progress'        => ['nullable', 'numeric', 'min:0', 'max:100'],
+        'panel_index'     => ['nullable', 'integer', 'min:1'],
+        'scroll_y'        => ['nullable', 'integer', 'min:0'],
+    ]);
+
+    $row = \App\Models\ComicReadHistory::recordProgress(auth()->id(), $data['comic_id'], $data);
+
+    return response()->json([
+        'ok' => true,
+        'updated_at' => $row->updated_at ? $row->updated_at->getTimestampMs() : 0,
+    ]);
+})->middleware(['auth', 'throttle:60,1'])->name('api.comic-progress');
+
+// Mengambil riwayat membaca komik yang tersinkron di cloud
+Route::get('/api/comic-recent-reads', function () {
+    if (!auth()->check()) {
+        return response()->json([]);
+    }
+
+    $histories = \App\Models\ComicReadHistory::where('user_id', auth()->id())
+        ->whereNotNull('last_chapter_id')
+        ->orderByDesc('updated_at')
+        ->take(15)
+        ->get();
+
+    $items = $histories->map(function ($h) {
+        return [
+            'comicId'       => $h->comic_id,
+            'comicTitle'    => $h->title,
+            'comicCover'    => $h->cover,
+            'comicFormat'   => $h->format ?: 'Manhwa',
+            'chapterId'     => $h->last_chapter_id,
+            'chapterLabel'  => $h->last_chapter_label,
+            'chapterNumber' => (float) ($h->last_chapter_number ?? 0),
+            'progress'      => (int) ($h->last_progress ?? 0),
+            'panelIndex'    => (int) ($h->last_panel_index ?? 1),
+            'scrollY'       => (int) ($h->last_scroll_y ?? 0),
+            'updatedAt'     => $h->updated_at ? $h->updated_at->getTimestampMs() : 0,
+        ];
+    });
+
+    return response()->json($items);
+})->middleware('auth')->name('api.comic-recent-reads');
+
 // ============ GET CONTINUE WATCHING DATA ============
 // Dipanggil oleh beranda untuk menampilkan kartu "Lanjutkan Menonton"
 Route::get('/api/continue-watching', function () {
