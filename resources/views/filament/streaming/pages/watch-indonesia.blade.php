@@ -269,219 +269,263 @@
 @endpush
 
 @php
-    // Label server yang bersih untuk penonton: "Server 1 (Direct 720p)" -> ["Server 1", "720p"]
-    $cleanServer = function (array $s, int $i) {
-        $name = $s['name'] ?? ('Server ' . ($i + 1));
-        $quality = '';
-        if (preg_match('/\(([^)]+)\)/', $name, $m)) {
-            $quality = trim(preg_replace('/\b(direct|native)\b/i', '', $m[1]));
-        }
-        return ['label' => 'Server ' . ($i + 1), 'quality' => $quality ?: 'HD'];
-    };
     $epCount = count($episodes);
+    $mRatingF = is_numeric($mRating) ? (float) $mRating : 0;
+    $mGenresClean = collect($genres)->map(fn ($g) => is_array($g) ? ($g['name'] ?? '') : $g)->filter()->values()->all();
+    $catalogUrl = '/indonesia/' . $providerParam;
 @endphp
 
-<div class="min-h-screen bg-[#050505] text-white pb-44 lg:pb-24 select-none">
+<div class="min-h-screen bg-[#050505] text-white pb-44 lg:pb-16 relative">
 
-    {{-- Spacer agar konten tidak tertutup header melayang --}}
-    <div class="h-[76px] md:h-[92px]"></div>
+    {{-- Ambient backdrop (sama seperti Movie / Series) --}}
+    @if($mBanner)
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-[70vh] overflow-hidden" aria-hidden="true">
+            <img src="{{ $mBanner }}" alt="" class="w-full h-full object-cover opacity-20 blur-3xl scale-125">
+            <div class="absolute inset-0 bg-gradient-to-b from-[#050505]/30 via-[#050505]/80 to-[#050505]"></div>
+        </div>
+    @endif
 
-    <div class="relative w-full max-w-[1400px] mx-auto lg:px-8" x-data="watchPlayerInit()">
+    <div class="relative w-full max-w-[1400px] mx-auto lg:px-8 pt-20 lg:pt-24" x-data="watchPlayerInit()">
 
-        {{-- Breadcrumb ringkas --}}
-        <nav aria-label="Breadcrumb" class="px-4 lg:px-0 pb-3 flex items-center gap-2 text-xs text-zinc-400">
-            <a href="/indonesia" class="hover:text-white transition">Indonesia</a>
-            <svg class="w-3 h-3 text-zinc-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            <a href="/indonesia/{{ $providerParam }}" class="hover:text-white transition">{{ $serverLabel }}</a>
-            <svg class="w-3 h-3 text-zinc-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            <span class="text-zinc-200 font-semibold truncate" aria-current="page">{{ $mTitle }}</span>
-        </nav>
+        {{-- Top bar (gaya Series) --}}
+        <div class="flex items-center gap-3 px-4 lg:px-0 h-14 lg:h-12 lg:mb-3">
+            <a href="{{ $catalogUrl }}" aria-label="Kembali ke katalog {{ $serverLabel }}"
+               class="w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10 active:bg-white/10 hover:bg-white/10 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            </a>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold leading-tight truncate">{{ $mTitle }}</p>
+                <p class="text-[11px] text-zinc-400 leading-tight truncate">
+                    @if($isSeries)
+                        <span x-text="'Episode ' + currentEp">Episode {{ $currentEpisode }}</span> · {{ $serverLabel }}
+                    @else
+                        Film Indonesia · {{ $serverLabel }}
+                    @endif
+                </p>
+            </div>
+            @if($isSeries)
+                <span class="shrink-0 text-[10px] font-black tracking-wider text-red-300 bg-red-600/15 ring-1 ring-red-500/30 px-2 py-1 rounded-md tabular-nums"
+                      x-text="'EP' + String(currentEp).padStart(2, '0')">EP{{ str_pad($currentEpisode, 2, '0', STR_PAD_LEFT) }}</span>
+            @else
+                <span class="shrink-0 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400">
+                    <span class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                    <span class="hidden sm:inline">Sedang Menonton</span>
+                </span>
+            @endif
+        </div>
 
-        <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10">
+        <div class="lg:grid {{ $isSeries ? 'lg:grid-cols-[minmax(0,1fr)_380px]' : 'lg:grid-cols-[minmax(0,1fr)_360px]' }} lg:gap-8">
 
-            {{-- ================= KOLOM UTAMA ================= --}}
+            {{-- ============ LEFT: player + info ============ --}}
             <div class="min-w-0">
-
                 {{-- Player --}}
-                <div class="w-full bg-black lg:rounded-xl overflow-hidden aspect-video relative isolate z-10 shadow-[0_40px_100px_-30px_rgba(0,0,0,1)]" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
-                    <div x-show="isPlaying && !isEmbed" class="w-full h-full absolute inset-0">
+                <div class="relative isolate z-10 w-full aspect-video bg-black lg:rounded-2xl overflow-hidden lg:ring-1 lg:ring-white/10 shadow-2xl" x-ref="playerShell" data-kz-fs @kz-fs-failed="art && (art.fullscreenWeb = (!window.KzFs || KzFs.allowWebFs()))">
+                    <div x-show="isPlaying && !isEmbed" class="absolute inset-0">
                         <div x-ref="artContainer" id="movieArtPlayer" class="w-full h-full absolute inset-0"></div>
                     </div>
 
-                    <div x-show="isPlaying && isEmbed" class="w-full h-full absolute inset-0 bg-black">
-                        <iframe :src="currentEmbedUrl" title="Pemutar {{ $mTitle }}" class="w-full h-full border-0 absolute inset-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+                    <div x-show="isPlaying && isEmbed" class="absolute inset-0 bg-black">
+                        <iframe :src="currentEmbedUrl" title="Pemutar {{ $mTitle }}" class="w-full h-full border-0" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer"></iframe>
                     </div>
 
                     <div x-show="isLoadingStream" x-cloak class="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
                         @include('filament.streaming.partials.server-loading-indicator', [
-                            'title' => 'Memuat stream',
-                            'subtitle' => 'Mengambil jalur streaming tercepat',
+                            'title' => 'Memilih server terbaik',
+                            'subtitle' => 'Mengambil jalur stream tercepat',
                         ])
                     </div>
 
-                    {{-- Cover sebelum diputar --}}
-                    <div x-show="!isPlaying && !isLoadingStream" x-cloak class="absolute inset-0 z-20">
+                    <button type="button" x-show="!isPlaying && !isLoadingStream" x-cloak @click="playVideo()"
+                            aria-label="Putar {{ $mTitle }}"
+                            class="group absolute inset-0 z-20 w-full h-full text-left">
                         @if($mBanner)
-                            <img src="{{ $mBanner }}" alt="" class="absolute inset-0 w-full h-full object-cover">
+                            <img src="{{ $mBanner }}" alt="" class="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-[1.02] transition duration-700">
                         @endif
-                        <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent"></div>
-                        <button type="button" @click="playVideo()" aria-label="Putar {{ $mTitle }}"
-                                class="absolute inset-0 m-auto w-16 h-16 md:w-20 md:h-20 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transition hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/50 cursor-pointer">
-                            <svg class="w-8 h-8 md:w-10 md:h-10 fill-current ml-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-                        </button>
-                    </div>
+                        <span class="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-black/10"></span>
+                        <span class="absolute inset-0 flex items-center justify-center">
+                            <span class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-red-600 shadow-[0_0_0_8px_rgba(229,9,20,0.18)] flex items-center justify-center group-hover:scale-110 group-active:scale-95 transition">
+                                <svg class="w-7 h-7 md:w-9 md:h-9 fill-white ml-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                            </span>
+                        </span>
+                    </button>
                 </div>
 
-                {{-- Judul & metadata (Netflix-style) --}}
-                <section class="px-4 lg:px-0 pt-5 md:pt-6">
-                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-zinc-300">
-                        <span class="inline-flex items-center gap-1.5 font-bold tracking-[0.18em] text-[11px] text-red-500 uppercase">
-                            <span class="w-1 h-3.5 bg-red-600 rounded-sm"></span>{{ $isSeries ? 'Series' : 'Film' }}
+                {{-- Server Switcher (sama dengan Movie / Series) --}}
+                @if(!empty($servers) && count($servers) > 1)
+                    <div class="px-4 lg:px-0 pt-3 flex items-center gap-2 overflow-x-auto kz-noscroll pb-1 scroll-pr-4 after:content-[''] after:shrink-0 after:w-2">
+                        <span class="text-xs font-bold text-zinc-400 mr-1 flex items-center gap-1.5 shrink-0">
+                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
+                            Pilihan Server:
                         </span>
-                        @if($mRating)
-                            <span class="text-emerald-400 font-semibold">★ {{ number_format((float) $mRating, 1) }}</span>
-                        @endif
-                        @if($mYear)<span>{{ $mYear }}</span>@endif
-                        @if($isSeries && $epCount)<span>{{ $epCount }} episode</span>@endif
-                        @if($mRuntime)<span>{{ $mRuntime }}</span>@endif
-                        <span class="px-1.5 py-px text-[10px] font-bold border border-zinc-500 text-zinc-300 rounded-sm">HD</span>
+                        @foreach($servers as $s)
+                            <button type="button"
+                                    @click="switchServer('{{ $s['id'] }}', '{{ $s['embed_url'] ?? '' }}', {{ ($s['type'] ?? '') === 'embed' ? 'true' : 'false' }})"
+                                    :class="activeServer === '{{ $s['id'] }}' ? 'bg-red-600 text-white ring-red-500 shadow-lg shadow-red-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white'"
+                                    class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition flex items-center gap-1.5 cursor-pointer">
+                                <span class="w-1.5 h-1.5 rounded-full" :class="activeServer === '{{ $s['id'] }}' ? 'bg-white' : 'bg-zinc-500'"></span>
+                                {{ $s['name'] }}
+                            </button>
+                        @endforeach
                     </div>
+                @endif
+                <div x-show="isEmbed" x-cloak class="mx-4 lg:mx-0 flex items-center gap-2 text-[11px] text-zinc-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2 mt-2">
+                    <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                    <span><strong>Tips Bebas Iklan</strong>: Server mirror memakai pemutar luar. Gunakan browser <strong>Brave</strong> atau pasang <strong>AdGuard / uBlock</strong> agar bebas iklan.</span>
+                </div>
 
-                    <h1 class="mt-2 text-[26px] leading-tight md:text-4xl font-extrabold tracking-tight">{{ $mTitle }}</h1>
-
-                    @if($isSeries)
-                        <p class="mt-1 text-sm text-zinc-400">
-                            Sedang diputar: <span class="text-white font-semibold" x-text="'Episode ' + currentEp">Episode {{ $currentEpisode }}</span>
-                        </p>
-                    @endif
-
-                    {{-- Pilihan server: segmented control --}}
-                    @if(count($servers) > 0)
-                        <div class="mt-5">
-                            <p id="server-label" class="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500 mb-2">Kualitas &amp; Server</p>
-                            <div role="radiogroup" aria-labelledby="server-label" class="inline-flex flex-wrap gap-1 p-1 rounded-lg bg-zinc-900 ring-1 ring-white/[0.06]">
-                                @foreach($servers as $i => $s)
-                                    @php $sv = $cleanServer($s, $i); @endphp
-                                    <button type="button" role="radio"
-                                            :aria-checked="activeServer === '{{ $s['id'] }}' ? 'true' : 'false'"
-                                            @click="switchServer('{{ $s['id'] }}', '{{ $s['embed_url'] ?? '' }}', {{ ($s['type'] ?? '') === 'embed' ? 'true' : 'false' }})"
-                                            :class="activeServer === '{{ $s['id'] }}' ? 'bg-white text-black shadow' : 'text-zinc-300 hover:text-white hover:bg-white/5'"
-                                            class="min-h-[40px] px-4 rounded-md text-sm font-semibold transition flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500">
-                                        <span>{{ $sv['label'] }}</span>
-                                        <span class="text-[11px] font-bold opacity-60">{{ $sv['quality'] }}</span>
-                                    </button>
+                {{-- Info --}}
+                <div class="px-4 lg:px-0 pt-4 space-y-4">
+                    <div>
+                        <p class="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-red-500 mb-1">{{ $isSeries ? 'Series Indonesia' : 'Film Indonesia' }}</p>
+                        <h1 class="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight">{{ $mTitle }}</h1>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mt-2 text-sm font-semibold text-zinc-300">
+                            @if($mRatingF > 0)
+                                <span class="inline-flex items-center gap-1 text-yellow-400">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                    {{ number_format($mRatingF, 1) }}
+                                </span>
+                            @endif
+                            @if($mYear)<span class="text-zinc-600">•</span><span>{{ $mYear }}</span>@endif
+                            @if($isSeries && $epCount)<span class="text-zinc-600">•</span><span>{{ $epCount }} episode</span>@endif
+                            @if($mRuntime)<span class="text-zinc-600">•</span><span>{{ $mRuntime }}</span>@endif
+                            <span class="px-1.5 py-0.5 text-[10px] font-black border border-emerald-500/50 text-emerald-400 rounded">HD</span>
+                        </div>
+                        @if(count($mGenresClean))
+                            <div class="flex flex-wrap gap-1.5 mt-3">
+                                @foreach($mGenresClean as $g)
+                                    <span class="px-2.5 py-0.5 text-xs font-semibold text-zinc-200 bg-white/5 border border-white/10 rounded-full">{{ $g }}</span>
                                 @endforeach
                             </div>
+                        @endif
+                    </div>
+
+                    {{-- Prev / Next / Share (gaya Series) --}}
+                    @if($isSeries && $epCount > 1)
+                        <div class="grid grid-cols-[1fr_1fr_auto] gap-2">
+                            <button type="button" x-show="currentEp > {{ (int) ($episodes[0]['episode_number'] ?? 1) }}"
+                                    @click="changeEpisode(currentEp - 1)"
+                                    class="inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-zinc-900 ring-1 ring-white/10 text-sm font-bold active:bg-zinc-800 hover:bg-zinc-800 transition cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+                                <span x-text="'Ep ' + (currentEp - 1)"></span>
+                            </button>
+                            <span x-show="currentEp <= {{ (int) ($episodes[0]['episode_number'] ?? 1) }}" class="inline-flex items-center justify-center h-11 rounded-xl bg-zinc-950 ring-1 ring-white/5 text-sm font-bold text-zinc-500">Episode pertama</span>
+
+                            <button type="button" x-show="currentEp < {{ (int) (end($episodes)['episode_number'] ?? $epCount) }}"
+                                    @click="changeEpisode(currentEp + 1)"
+                                    class="inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-600 text-sm font-bold shadow-lg shadow-red-600/25 active:bg-red-700 hover:bg-red-700 transition cursor-pointer">
+                                <span x-text="'Ep ' + (currentEp + 1)"></span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                            </button>
+                            <span x-show="currentEp >= {{ (int) (end($episodes)['episode_number'] ?? $epCount) }}" class="inline-flex items-center justify-center h-11 rounded-xl bg-zinc-950 ring-1 ring-white/5 text-sm font-bold text-zinc-500">Episode terakhir</span>
+
+                            <button type="button" x-data="{ copied: false }" aria-label="Bagikan"
+                                    @click="if (navigator.share) { navigator.share({ title: document.title, url: location.href }).catch(() => {}) } else { navigator.clipboard.writeText(location.href); copied = true; setTimeout(() => copied = false, 1800) }"
+                                    class="relative w-11 h-11 inline-flex items-center justify-center rounded-xl bg-zinc-900 ring-1 ring-white/10 active:bg-zinc-800 hover:bg-zinc-800 transition cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/></svg>
+                                <span x-show="copied" x-cloak class="absolute -top-8 right-0 whitespace-nowrap text-[10px] font-bold bg-white text-black px-2 py-1 rounded-md">Link disalin</span>
+                            </button>
                         </div>
                     @endif
 
-                    <div x-show="isEmbed" x-cloak class="mt-3 text-xs text-zinc-400 flex items-start gap-2">
-                        <svg class="w-4 h-4 text-amber-400 shrink-0 mt-px" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
-                        <span>Server ini memakai pemutar luar. Gunakan Brave atau uBlock Origin agar bebas iklan.</span>
-                    </div>
-                </section>
+                    @if($mOverview)
+                        <div x-data="{ more: false }" class="rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] p-4">
+                            <h2 class="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Sinopsis</h2>
+                            <p class="mt-1.5 text-sm md:text-base text-zinc-300 leading-relaxed" :class="more ? '' : 'line-clamp-3'">{{ $mOverview }}</p>
+                            @if(mb_strlen($mOverview) > 160)
+                                <button type="button" @click="more = !more" class="mt-1 text-xs font-bold text-red-400 cursor-pointer" x-text="more ? 'Tutup' : 'Selengkapnya'">Selengkapnya</button>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+            </div>
 
-                {{-- Sinopsis --}}
-                @if($mOverview)
-                    <section class="px-4 lg:px-0 mt-6" x-data="{ open: false }">
-                        <p class="text-[15px] leading-relaxed text-zinc-300 max-w-3xl" :class="open ? '' : 'line-clamp-3'">{{ $mOverview }}</p>
-                        @if(mb_strlen($mOverview) > 180)
-                            <button type="button" @click="open = !open" class="mt-1.5 text-sm font-semibold text-white hover:underline cursor-pointer" x-text="open ? 'Sembunyikan' : 'Selengkapnya'">Selengkapnya</button>
-                        @endif
-                    </section>
-                @endif
-
-                {{-- Daftar episode ala Netflix --}}
-                @if($isSeries && $epCount)
-                    <section class="px-4 lg:px-0 mt-10" aria-labelledby="ep-heading">
-                        <div class="flex items-baseline justify-between border-b border-white/10 pb-3 mb-2">
-                            <h2 id="ep-heading" class="text-xl md:text-2xl font-bold tracking-tight">Episode</h2>
-                            <span class="text-sm text-zinc-400">{{ $epCount }} episode</span>
+            {{-- ============ RIGHT ============ --}}
+            @if($isSeries && $epCount)
+                {{-- Sidebar episode (sama dengan Series) --}}
+                <aside class="px-4 lg:px-0 pt-6 lg:pt-0 min-w-0" aria-label="Daftar episode">
+                    <div class="lg:sticky lg:top-24 lg:rounded-2xl lg:bg-zinc-900/50 lg:ring-1 lg:ring-white/[0.06] lg:p-4">
+                        <div class="flex items-baseline justify-between gap-2">
+                            <h2 class="text-base font-black tracking-tight">Episode</h2>
+                            <span class="text-[11px] text-zinc-500">{{ $epCount }} episode</span>
                         </div>
 
-                        <ol class="divide-y divide-white/[0.06]">
+                        <ol class="mt-3 space-y-2 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto lg:pr-1 kz-thin">
                             @foreach($episodes as $ep)
                                 @php
-                                    $epNumber = $ep['episode_number'] ?? $loop->iteration;
-                                    $epTitle = $ep['title'] ?? ('Episode ' . $epNumber);
-                                    $epThumb = $ep['stillPath'] ?? $mBanner;
-                                    $hasCustomTitle = !preg_match('/^episode\s*\d+$/i', trim($epTitle));
+                                    $n = (int) ($ep['episode_number'] ?? $loop->iteration);
+                                    $epName = $ep['title'] ?? ('Episode ' . $n);
+                                    $still = $ep['stillPath'] ?? $mBanner;
                                 @endphp
                                 <li>
-                                    <button type="button" @click="changeEpisode({{ $epNumber }}); window.scrollTo({ top: 0, behavior: 'smooth' })"
-                                            :class="currentEp === {{ $epNumber }} ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'"
-                                            :aria-current="currentEp === {{ $epNumber }} ? 'true' : 'false'"
-                                            class="w-full flex items-center gap-4 py-3 md:py-4 px-2 md:px-3 rounded-lg text-left transition cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500">
-                                        <span class="hidden sm:block w-6 shrink-0 text-center text-xl font-bold tabular-nums" :class="currentEp === {{ $epNumber }} ? 'text-white' : 'text-zinc-500'">{{ $epNumber }}</span>
-
-                                        <span class="relative shrink-0 w-32 md:w-40 aspect-video rounded-md overflow-hidden bg-zinc-800">
-                                            @if($epThumb)
-                                                <img src="{{ $epThumb }}" alt="" loading="lazy" class="w-full h-full object-cover object-top">
+                                    <button type="button" @click="changeEpisode({{ $n }}); window.scrollTo({ top: 0, behavior: 'smooth' })"
+                                            :aria-current="currentEp === {{ $n }} ? 'true' : 'false'"
+                                            :class="currentEp === {{ $n }} ? 'bg-red-600/10 ring-1 ring-red-500/40' : 'hover:bg-white/[0.04] active:bg-white/[0.06]'"
+                                            class="group w-full text-left flex gap-3 p-2 -mx-2 lg:mx-0 rounded-xl transition cursor-pointer">
+                                        <span class="relative block w-32 sm:w-36 aspect-video shrink-0 self-start rounded-lg overflow-hidden bg-zinc-800">
+                                            @if($still)
+                                                <img src="{{ $still }}" alt="" class="w-full h-full object-cover object-top" loading="lazy">
                                             @endif
-                                            <span class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition" :class="currentEp === {{ $epNumber }} && '!opacity-100'">
-                                                <span class="w-9 h-9 rounded-full border-2 border-white flex items-center justify-center">
-                                                    <svg class="w-4 h-4 fill-white ml-0.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                                            <span x-show="currentEp === {{ $n }}" class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                <span class="flex items-end gap-0.5 h-4" aria-hidden="true">
+                                                    <span class="w-1 bg-red-500 rounded-sm animate-[kzbar_0.9s_ease-in-out_infinite]" style="height:60%"></span>
+                                                    <span class="w-1 bg-red-500 rounded-sm animate-[kzbar_0.9s_ease-in-out_0.2s_infinite]" style="height:100%"></span>
+                                                    <span class="w-1 bg-red-500 rounded-sm animate-[kzbar_0.9s_ease-in-out_0.4s_infinite]" style="height:40%"></span>
                                                 </span>
                                             </span>
-                                            <span x-show="currentEp === {{ $epNumber }}" class="absolute left-0 right-0 bottom-0 h-1 bg-red-600"></span>
                                         </span>
-
-                                        <span class="min-w-0 flex-1">
-                                            <span class="flex items-center gap-2">
-                                                <span class="text-[15px] font-semibold text-white truncate">
-                                                    <span class="sm:hidden">{{ $epNumber }}. </span>{{ $hasCustomTitle ? $epTitle : 'Episode ' . $epNumber }}
-                                                </span>
-                                                <span x-show="currentEp === {{ $epNumber }}" x-cloak class="shrink-0 text-[10px] font-bold uppercase tracking-wider text-red-500">Diputar</span>
-                                            </span>
-                                            
+                                        <span class="block min-w-0 flex-1 py-0.5">
+                                            <span class="block text-[10px] font-black uppercase tracking-wider"
+                                                  :class="currentEp === {{ $n }} ? 'text-red-400' : 'text-zinc-500'"
+                                                  x-text="currentEp === {{ $n }} ? 'Sedang diputar' : 'Episode {{ $n }}'">Episode {{ $n }}</span>
+                                            <span class="block mt-0.5 text-sm font-bold leading-snug line-clamp-2"
+                                                  :class="currentEp === {{ $n }} ? 'text-white' : 'text-zinc-200'">{{ $epName }}</span>
                                         </span>
                                     </button>
                                 </li>
                             @endforeach
                         </ol>
-                    </section>
-                @endif
-            </div>
-
-            {{-- ================= SIDEBAR ================= --}}
-            <aside class="px-4 lg:px-0 mt-10 lg:mt-0">
-                <div class="lg:sticky lg:top-24 space-y-6">
-                    @if($mPoster)
-                        <div class="hidden lg:block aspect-[2/3] w-full rounded-xl overflow-hidden ring-1 ring-white/10 shadow-2xl bg-zinc-900">
-                            <img src="{{ $mPoster }}" alt="Poster {{ $mTitle }}" class="w-full h-full object-cover">
-                        </div>
-                    @endif
-
-                    <dl class="text-sm space-y-3">
-                        @if(!empty($genres))
-                            <div>
-                                <dt class="text-zinc-400">Kategori</dt>
-                                <dd class="mt-0.5 text-zinc-200">{{ collect($genres)->map(fn ($g) => is_array($g) ? ($g['name'] ?? '') : $g)->filter()->implode(', ') }}</dd>
+                    </div>
+                </aside>
+            @else
+                {{-- Sidebar poster + aksi (sama dengan Movie) --}}
+                <aside class="px-4 lg:px-0 pt-6 lg:pt-0 min-w-0" aria-label="Informasi & Kontrol">
+                    <div class="lg:sticky lg:top-24 bg-zinc-900/50 backdrop-blur rounded-2xl ring-1 ring-white/5 p-5 space-y-5">
+                        @if($mPoster)
+                            <div class="w-full aspect-[2/3] max-h-[280px] overflow-hidden rounded-xl ring-1 ring-white/10 shadow-xl hidden lg:block bg-zinc-950">
+                                <img src="{{ $mPoster }}" alt="{{ $mTitle }}" class="w-full h-full object-cover object-top">
                             </div>
                         @endif
-                        @if($mYear)
-                            <div>
-                                <dt class="text-zinc-400">Tahun rilis</dt>
-                                <dd class="mt-0.5 text-zinc-200">{{ $mYear }}</dd>
-                            </div>
-                        @endif
-                        <div>
-                            <dt class="text-zinc-400">Tersedia di</dt>
-                            <dd class="mt-0.5"><a href="/indonesia/{{ $providerParam }}" class="text-zinc-200 hover:text-white underline-offset-4 hover:underline">{{ $serverLabel }}</a></dd>
+
+                        <button type="button" @click="playVideo()" x-show="!isPlaying"
+                                class="w-full inline-flex items-center justify-center gap-2 py-3 bg-white text-black hover:bg-zinc-200 active:scale-[0.98] rounded-xl font-bold text-sm transition shadow-lg shadow-white/10 cursor-pointer">
+                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                            Putar Film
+                        </button>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <a href="{{ $catalogUrl }}"
+                               class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-zinc-950 border border-zinc-800 text-zinc-200 hover:border-zinc-600 transition">
+                                Katalog {{ $serverLabel }}
+                            </a>
+                            <button type="button" x-data="{ ok: false }"
+                                    @click="navigator.clipboard.writeText(window.location.href); ok = true; setTimeout(() => ok = false, 1800)"
+                                    class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-zinc-950 border border-zinc-800 text-zinc-200 hover:border-zinc-600 transition cursor-pointer">
+                                <span x-text="ok ? 'Link disalin' : 'Bagikan'">Bagikan</span>
+                            </button>
                         </div>
-                    </dl>
-
-                    <a href="/indonesia/{{ $providerParam }}"
-                       class="flex items-center justify-center gap-2 w-full min-h-[44px] rounded-md bg-white/10 hover:bg-white/15 text-sm font-semibold transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                        Jelajahi {{ $serverLabel }}
-                    </a>
-                </div>
-            </aside>
-
+                    </div>
+                </aside>
+            @endif
         </div>
     </div>
 </div>
+
+@push('styles')
+    <style>
+        .kz-thin { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
+        @keyframes kzbar { 0%,100% { transform: scaleY(.4) } 50% { transform: scaleY(1) } }
+    </style>
+@endpush
 
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
