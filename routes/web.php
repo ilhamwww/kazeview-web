@@ -96,6 +96,32 @@ Route::post('/api/sync-native-comic', function (\Illuminate\Http\Request $reques
     return response()->json(['success' => true, 'id' => $comic->id, 'slug' => $comic->slug]);
 });
 
+// API Sync Media Vault (Movies & TV Series) dari NUC Crawler Bot
+Route::post('/api/sync-media-vault', function (\Illuminate\Http\Request $request) {
+    $secret = $request->header('X-Sync-Secret');
+    if ($secret !== 'kz_native_sync_secret_2026_x7') {
+        abort(403, 'Unauthorized');
+    }
+
+    $items = $request->input('media_items');
+    $saved = 0;
+
+    if (is_array($items)) {
+        foreach ($items as $it) {
+            if (\App\Services\MediaVaultService::upsertIdlixItem($it, $it['contentType'] ?? 'movie')) {
+                $saved++;
+            }
+        }
+    }
+
+    \Illuminate\Support\Facades\Cache::forget('media_vault_movies_p1_l36_screatedAt');
+    \Illuminate\Support\Facades\Cache::forget('media_vault_series_p1_l36_screatedAt');
+    \Illuminate\Support\Facades\Cache::forget('media_vault_trending_movie_10');
+    \Illuminate\Support\Facades\Cache::forget('media_vault_trending_series_10');
+
+    return response()->json(['success' => true, 'saved_items' => $saved]);
+});
+
 // API Sync Anime Vault dari NUC Crawler Bot
 Route::post('/api/sync-anime-vault', function (\Illuminate\Http\Request $request) {
     $secret = $request->header('X-Sync-Secret');

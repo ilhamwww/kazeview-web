@@ -25,7 +25,14 @@ class TVSeries extends Page
     public function mount(): void
     {
         $this->page = 1;
-        $this->trending = StreamingService::getTrendingSeries(10, '7d'); // Get trending tv series for the hero slider
+        // Prioritas ambil dari MediaVault (Database Lokal Super Cepat)
+        $vaultTrending = \App\Services\MediaVaultService::getTrending('series', 10);
+        if (!empty($vaultTrending)) {
+            $this->trending = $vaultTrending;
+        } else {
+            $this->trending = StreamingService::getTrendingSeries(10, '7d');
+        }
+
         $this->loadSeries();
     }
 
@@ -35,14 +42,19 @@ class TVSeries extends Page
 
         $this->page++;
         $limit = 36;
-        $response = StreamingService::getSeries($this->page, $limit, 'createdAt');
-        
+        $response = \App\Services\MediaVaultService::getSeries($this->page, $limit, 'createdAt');
         $newSeries = $response['data'] ?? [];
+
+        if (empty($newSeries)) {
+            // Fallback ke StreamingService jika vault kosong
+            $response = StreamingService::getSeries($this->page, $limit, 'createdAt');
+            $newSeries = $response['data'] ?? [];
+        }
+
         $this->series = array_merge($this->series, $newSeries);
-        
         $pagination = $response['pagination'] ?? [];
         $this->totalPages = $pagination['totalPages'] ?? 1;
-        
+
         if ($this->page >= $this->totalPages || empty($newSeries)) {
             $this->hasMorePages = false;
         }
@@ -51,12 +63,17 @@ class TVSeries extends Page
     public function loadSeries(): void
     {
         $limit = 36;
-        $response = StreamingService::getSeries($this->page, $limit, 'createdAt');
-        
+        $response = \App\Services\MediaVaultService::getSeries($this->page, $limit, 'createdAt');
         $this->series = $response['data'] ?? [];
+
+        if (empty($this->series)) {
+            // Fallback ke StreamingService jika vault belum terisi
+            $response = StreamingService::getSeries($this->page, $limit, 'createdAt');
+            $this->series = $response['data'] ?? [];
+        }
+
         $pagination = $response['pagination'] ?? [];
         $this->totalPages = $pagination['totalPages'] ?? 1;
-        
         $this->hasMorePages = ($this->page < $this->totalPages);
     }
 }

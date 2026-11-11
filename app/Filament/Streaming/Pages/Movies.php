@@ -25,7 +25,14 @@ class Movies extends Page
     public function mount(): void
     {
         $this->page = 1;
-        $this->trending = StreamingService::getTrendingMovies(10, '7d'); // Get some trending movies for the hero slider
+        // Prioritas ambil dari MediaVault (Database Lokal Super Cepat)
+        $vaultTrending = \App\Services\MediaVaultService::getTrending('movie', 10);
+        if (!empty($vaultTrending)) {
+            $this->trending = $vaultTrending;
+        } else {
+            $this->trending = StreamingService::getTrendingMovies(10, '7d');
+        }
+
         $this->loadMovies();
     }
 
@@ -35,14 +42,19 @@ class Movies extends Page
 
         $this->page++;
         $limit = 36;
-        $response = StreamingService::getMovies($this->page, $limit, 'createdAt');
-        
+        $response = \App\Services\MediaVaultService::getMovies($this->page, $limit, 'createdAt');
         $newMovies = $response['data'] ?? [];
+
+        if (empty($newMovies)) {
+            // Fallback ke StreamingService jika vault kosong
+            $response = StreamingService::getMovies($this->page, $limit, 'createdAt');
+            $newMovies = $response['data'] ?? [];
+        }
+
         $this->movies = array_merge($this->movies, $newMovies);
-        
         $pagination = $response['pagination'] ?? [];
         $this->totalPages = $pagination['totalPages'] ?? 1;
-        
+
         if ($this->page >= $this->totalPages || empty($newMovies)) {
             $this->hasMorePages = false;
         }
@@ -51,12 +63,17 @@ class Movies extends Page
     public function loadMovies(): void
     {
         $limit = 36;
-        $response = StreamingService::getMovies($this->page, $limit, 'createdAt');
-        
+        $response = \App\Services\MediaVaultService::getMovies($this->page, $limit, 'createdAt');
         $this->movies = $response['data'] ?? [];
+
+        if (empty($this->movies)) {
+            // Fallback ke StreamingService jika vault belum terisi
+            $response = StreamingService::getMovies($this->page, $limit, 'createdAt');
+            $this->movies = $response['data'] ?? [];
+        }
+
         $pagination = $response['pagination'] ?? [];
         $this->totalPages = $pagination['totalPages'] ?? 1;
-        
         $this->hasMorePages = ($this->page < $this->totalPages);
     }
 }

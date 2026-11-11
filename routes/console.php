@@ -27,5 +27,16 @@ Artisan::command('kz:sync-anime-vault', function () {
     $this->info("Total Anime Items in DB: {$total}");
 })->purpose('Sync and archive anime titles, updates, and schedule from upstream into local database vault');
 
+Artisan::command('kz:sync-media-vault', function () {
+    $this->info('Starting Media Vault (IDLIX Movies & Series) sync into Database Vault...');
+    $res = \App\Services\MediaVaultService::syncFromUpstream(3, 3);
+    $this->info("Synced Movies: " . ($res['movies_saved'] ?? 0));
+    $this->info("Synced Series: " . ($res['series_saved'] ?? 0));
+    $totalMovies = \App\Models\MediaVaultItem::where('type', 'movie')->count();
+    $totalSeries = \App\Models\MediaVaultItem::where('type', 'series')->count();
+    $this->info("Total Movies in DB: {$totalMovies} | Total Series in DB: {$totalSeries}");
+})->purpose('Sync and archive IDLIX movies and series into local database vault');
+
 \Illuminate\Support\Facades\Schedule::command('kz:sync-indonesia-vault')->twiceDaily(6, 18);
 \Illuminate\Support\Facades\Schedule::command('kz:sync-anime-vault')->everyFifteenMinutes();
+\Illuminate\Support\Facades\Schedule::command('kz:sync-media-vault')->hourly();
