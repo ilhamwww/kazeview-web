@@ -28,6 +28,7 @@ class WatchIndonesia extends Page
         return "/indonesia/{$provider}/{$slug}";
     }
     public string $server = 'rebahin';
+    public string $providerParam = 'rebahin';
     public string $slugParam = '';
     public string $serverLabel = 'Rebahin';
     public ?array $media = null;
