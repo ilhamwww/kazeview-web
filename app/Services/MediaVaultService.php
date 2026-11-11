@@ -21,11 +21,11 @@ class MediaVaultService
                 ->where('is_published', true);
 
             if ($sort === 'rating') {
-                $query->orderByDesc('rating')->orderByDesc('id');
+                $query->orderByDesc('rating')->orderByDesc('upstream_created_at');
             } elseif ($sort === 'year') {
-                $query->orderByDesc('year')->orderByDesc('id');
+                $query->orderByDesc('year')->orderByDesc('upstream_created_at');
             } else {
-                $query->orderByDesc('created_at')->orderByDesc('id');
+                $query->orderByDesc('upstream_created_at')->orderByDesc('id');
             }
 
             $total = (clone $query)->count();
@@ -61,11 +61,11 @@ class MediaVaultService
                 ->where('is_published', true);
 
             if ($sort === 'rating') {
-                $query->orderByDesc('rating')->orderByDesc('id');
+                $query->orderByDesc('rating')->orderByDesc('upstream_created_at');
             } elseif ($sort === 'year') {
-                $query->orderByDesc('year')->orderByDesc('id');
+                $query->orderByDesc('year')->orderByDesc('upstream_created_at');
             } else {
-                $query->orderByDesc('created_at')->orderByDesc('id');
+                $query->orderByDesc('upstream_created_at')->orderByDesc('id');
             }
 
             $total = (clone $query)->count();
@@ -97,25 +97,32 @@ class MediaVaultService
         $cacheKey = "media_vault_trending_{$type}_{$limit}";
 
         return Cache::remember($cacheKey, 300, function () use ($type, $limit) {
+            // Ambil trending resmi jika ada flag is_trending
             $items = MediaVaultItem::where('type', $type)
                 ->where('is_published', true)
-                ->where(function ($q) {
-                    $q->where('is_trending', true)
-                      ->orWhere('rating', '>=', 7.0);
-                })
+                ->where('is_trending', true)
                 ->orderByDesc('rating')
-                ->orderByDesc('id')
                 ->take($limit)
                 ->get()
                 ->map(fn($m) => self::mapToMediaFormat($m))
                 ->all();
 
-            // Jika kurang dari limit, ambil yang terbaru
+            // Jika kurang dari limit, panggil StreamingService::getTrendingMovies/Series sebagai fallback
             if (count($items) < $limit) {
+                try {
+                    $liveTrending = $type === 'series'
+                        ? StreamingService::getTrendingSeries($limit, '7d')
+                        : StreamingService::getTrendingMovies($limit, '7d');
+
+                    if (!empty($liveTrending)) {
+                        return $liveTrending;
+                    }
+                } catch (\Throwable $e) {}
+
                 $more = MediaVaultItem::where('type', $type)
                     ->where('is_published', true)
                     ->whereNotIn('id', collect($items)->pluck('id'))
-                    ->orderByDesc('id')
+                    ->orderByDesc('upstream_created_at')
                     ->take($limit - count($items))
                     ->get()
                     ->map(fn($m) => self::mapToMediaFormat($m))
@@ -238,6 +245,13 @@ class MediaVaultService
             }
         }
 
+        $upstreamCreatedAt = null;
+        if (!empty($content['createdAt'])) {
+            try {
+                $upstreamCreatedAt = \Carbon\Carbon::parse($content['createdAt']);
+            } catch (\Throwable $e) {}
+        }
+
         MediaVaultItem::updateOrCreate(
             ['slug' => $slug],
             [
@@ -259,6 +273,7 @@ class MediaVaultService
                 'is_trending' => ($rating !== null && $rating >= 7.0),
                 'is_published' => true,
                 'source' => 'idlix',
+                'upstream_created_at' => $upstreamCreatedAt,
                 'last_synced_at' => now(),
             ]
         );

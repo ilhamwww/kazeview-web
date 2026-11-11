@@ -16,6 +16,7 @@ class MediaVaultItem extends Model
         'is_featured' => 'boolean',
         'is_trending' => 'boolean',
         'is_published' => 'boolean',
+        'upstream_created_at' => 'datetime',
         'last_synced_at' => 'datetime',
         'comments' => 'integer',
     ];
