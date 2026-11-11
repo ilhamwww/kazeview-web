@@ -194,7 +194,10 @@
                 @if(!empty($activeDayAnime))
                     <div data-drag-scroll class="flex gap-3 overflow-x-auto kz-noscroll pb-2 snap-x snap-mandatory scroll-px-4 -mx-4 px-4 md:mx-0 md:px-0 md:scroll-px-0">
                         @foreach($activeDayAnime as $item)
-                            <a href="{{ $item['detail_url'] }}" class="snap-start shrink-0 w-[112px] sm:w-[128px] md:w-[144px]">
+                            @php
+                                $itemUrl = $item['detail_url'] ?? ($item['url'] ?? ($item['slug'] ? $detailUrl($item['slug']) : '#'));
+                            @endphp
+                            <a href="{{ $itemUrl }}" class="snap-start shrink-0 w-[112px] sm:w-[128px] md:w-[144px]">
                                 <div class="relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-white/10">
                                     <img src="{{ $item['poster'] }}" alt="" loading="lazy" class="w-full h-full object-cover">
                                     <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent"></div>
@@ -256,8 +259,8 @@
                     <h2 class="text-xl md:text-2xl font-extrabold tracking-tight">Trending Minggu Ini</h2>
                 </div>
                 <div data-drag-scroll class="flex gap-2 md:gap-3 overflow-x-auto overflow-y-hidden kz-noscroll pb-2 scroll-px-4 -mx-4 px-4 md:mx-0 md:px-0 md:scroll-px-0 snap-x snap-mandatory">
-                    @foreach($trending as $t)
-                        @php $rankNum = ltrim($t['rank'], '#'); @endphp
+                    @foreach($trending as $idx => $t)
+                        @php $rankNum = ltrim($t['rank'] ?? ($idx + 1), '#'); @endphp
                         <a href="{{ $detailUrl($t['slug']) }}" aria-label="#{{ $rankNum }} {{ $t['title'] }}"
                            class="group relative block w-[140px] sm:w-[160px] md:w-[180px] shrink-0 snap-start">
                             <div class="relative flex items-end">
@@ -285,14 +288,14 @@
                         <span class="text-[11px] font-bold text-red-400 bg-red-950/60 ring-1 ring-red-500/30 px-2.5 py-1 rounded-full">{{ $seasonTitle }}</span>
                     @endif
                 </div>
-                <div data-drag-scroll class="flex gap-3 overflow-x-auto overflow-y-hidden kz-noscroll pb-2 snap-x snap-mandatory scroll-px-4 -mx-4 px-4 md:mx-0 md:px-0 md:scroll-px-0">
+                <div data-drag-scroll class="flex gap-2 md:gap-3 overflow-x-auto kz-noscroll pb-2 snap-x snap-mandatory scroll-px-4 -mx-4 px-4 md:mx-0 md:px-0 md:scroll-px-0">
                     @foreach($season as $s)
                         <a href="{{ $detailUrl($s['slug']) }}" class="snap-start shrink-0 w-[112px] sm:w-[128px] md:w-[144px]">
                             <div class="relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-white/10">
                                 <img src="{{ $s['poster'] }}" alt="" loading="lazy" class="w-full h-full object-cover">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                                @if($s['episodes'])<span class="absolute top-1.5 right-1.5 bg-black/75 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">{{ $s['episodes'] }}</span>@endif
-                                @if($s['type'])<span class="absolute bottom-1.5 left-1.5 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">{{ $s['type'] }}</span>@endif
+                                @if(!empty($s['episodes']))<span class="absolute top-1.5 right-1.5 bg-black/75 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">{{ $s['episodes'] }}</span>@endif
+                                @if(!empty($s['type']))<span class="absolute bottom-1.5 left-1.5 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">{{ $s['type'] }}</span>@endif
                             </div>
                             <p class="mt-2 text-xs font-semibold text-zinc-200 line-clamp-2 leading-snug">{{ $s['title'] }}</p>
                         </a>
@@ -309,13 +312,16 @@
                     <span class="text-[11px] font-bold text-amber-400 bg-amber-950/60 ring-1 ring-amber-500/30 px-2.5 py-1 rounded-full">★ Paling Populer</span>
                 </div>
                 <div data-drag-scroll class="flex gap-3 overflow-x-auto overflow-y-hidden kz-noscroll pb-2 snap-x snap-mandatory scroll-px-4 -mx-4 px-4 md:mx-0 md:px-0 md:scroll-px-0">
-                    @foreach($top as $t)
+                    @foreach($top as $idx => $t)
+                        @php
+                            $tRank = $t['rank'] ?? ($idx + 1);
+                        @endphp
                         <a href="{{ $detailUrl($t['slug']) }}" class="snap-start shrink-0 w-[112px] sm:w-[128px] md:w-[144px]">
                             <div class="relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-white/10 group-active:scale-[0.98] transition">
                                 <img src="{{ $t['poster'] }}" alt="" loading="lazy" class="w-full h-full object-cover">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                                <span class="absolute top-1.5 left-1.5 bg-black/80 text-white text-[10px] font-black px-1.5 py-0.5 rounded {{ (int)$t['rank'] <= 3 ? 'text-red-400 ring-1 ring-red-500/40' : '' }}">#{{ $t['rank'] }}</span>
-                                @if($t['rating'])<span class="absolute top-1.5 right-1.5 bg-black/80 text-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded">★ {{ $t['rating'] }}</span>@endif
+                                <span class="absolute top-1.5 left-1.5 bg-black/80 text-white text-[10px] font-black px-1.5 py-0.5 rounded {{ (int)$tRank <= 3 ? 'text-red-400 ring-1 ring-red-500/40' : '' }}">#{{ $tRank }}</span>
+                                @if(!empty($t['rating']))<span class="absolute top-1.5 right-1.5 bg-black/80 text-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded">★ {{ $t['rating'] }}</span>@endif
                             </div>
                             <p class="mt-2 text-xs font-semibold text-zinc-200 line-clamp-2 leading-snug">{{ $t['title'] }}</p>
                         </a>

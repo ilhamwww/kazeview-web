@@ -96,6 +96,73 @@ Route::post('/api/sync-native-comic', function (\Illuminate\Http\Request $reques
     return response()->json(['success' => true, 'id' => $comic->id, 'slug' => $comic->slug]);
 });
 
+// API Sync Anime Vault dari NUC Crawler Bot
+Route::post('/api/sync-anime-vault', function (\Illuminate\Http\Request $request) {
+    $secret = $request->header('X-Sync-Secret');
+    if ($secret !== 'kz_native_sync_secret_2026_x7') {
+        abort(403, 'Unauthorized');
+    }
+
+    $payload = $request->input('anime_items');
+    $updates = $request->input('anime_updates');
+
+    $saved = 0;
+    if (is_array($payload)) {
+        foreach ($payload as $it) {
+            $slug = $it['slug'] ?? '';
+            $title = $it['title'] ?? ($it['series'] ?? '');
+            if (empty($slug) || empty($title)) continue;
+
+            \App\Models\AnimeVaultItem::updateOrCreate(
+                ['slug' => $slug],
+                [
+                    'title' => $title,
+                    'alt_title' => $it['alt_title'] ?? null,
+                    'poster' => $it['poster'] ?? ($it['thumbnail'] ?? null),
+                    'banner' => $it['banner'] ?? null,
+                    'rating' => !empty($it['rating']) ? (float)$it['rating'] : null,
+                    'type' => $it['type'] ?? 'TV',
+                    'status' => $it['status'] ?? 'Ongoing',
+                    'latest_episode' => $it['latest_episode'] ?? ($it['episode'] ?? null),
+                    'latest_episode_at' => !empty($it['latest_episode']) ? now() : null,
+                    'release_day' => $it['release_day'] ?? null,
+                    'is_featured' => !empty($it['is_featured']),
+                    'is_trending' => !empty($it['is_trending']),
+                    'source' => $it['source'] ?? 'mirainime',
+                    'last_synced_at' => now(),
+                ]
+            );
+            $saved++;
+        }
+    }
+
+    if (is_array($updates)) {
+        foreach ($updates as $u) {
+            $slug = $u['slug'] ?? '';
+            $ep = (string)($u['episode'] ?? '');
+            $title = $u['title'] ?? '';
+            if (empty($slug) || empty($ep) || empty($title)) continue;
+
+            \App\Models\AnimeVaultUpdate::updateOrCreate(
+                ['slug' => $slug, 'episode' => $ep, 'source' => $u['source'] ?? 'mirainime'],
+                [
+                    'title' => $title,
+                    'poster' => $u['poster'] ?? null,
+                    'type' => $u['type'] ?? 'TV',
+                    'ago' => $u['ago'] ?? '',
+                    'released_timestamp' => $u['released_timestamp'] ?? time(),
+                ]
+            );
+        }
+    }
+
+    \Illuminate\Support\Facades\Cache::forget('anime_vault_home_v1');
+    \Illuminate\Support\Facades\Cache::forget('anime_vault_recent_updates_v1_24');
+    \Illuminate\Support\Facades\Cache::forget('anime_vault_weekly_schedule_v1');
+
+    return response()->json(['success' => true, 'saved_items' => $saved]);
+});
+
 // API Upload Poster Cover WebP ke VPS
 Route::post('/api/upload-native-cover', function (\Illuminate\Http\Request $request) {
     $secret = $request->header('X-Sync-Secret');

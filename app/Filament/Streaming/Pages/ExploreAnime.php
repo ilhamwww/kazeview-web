@@ -54,33 +54,49 @@ class ExploreAnime extends Page
             return $scraper->scrapeGenres();
         });
 
-        // Beranda V1: episode terbaru, tren, musim ini (cache singkat supaya tetap fresh)
-        $this->home = $this->rememberCache('v1_home', 600, function () {
-            $data = (new MirainimeScraperService())->scrapeHomepage();
-            return empty($data['latest']) && empty($data['hero']) ? [] : $data;
-        }) ?? [];
+        // 1. Ambil data Beranda dari Database Vault Lokal (Instan < 0.01s)
+        $vaultHome = \App\Services\AnimeVaultService::getHomeData();
+        if (!empty($vaultHome['hero']) || !empty($vaultHome['trending'])) {
+            $this->home = $vaultHome;
+        } else {
+            // Fallback scraping langsung jika database vault kosong
+            $this->home = $this->rememberCache('v1_home', 600, function () {
+                $data = (new MirainimeScraperService())->scrapeHomepage();
+                return empty($data['latest']) && empty($data['hero']) ? [] : $data;
+            }) ?? [];
+        }
 
-        $this->recent = $this->rememberCache('v1_recent_feed', 600, function () {
-            return (new MirainimeScraperService())->scrapeRecentFeed(24);
-        }) ?? [];
+        // 2. Ambil feed update episode terbaru dari Database Vault
+        $vaultUpdates = \App\Services\AnimeVaultService::getRecentUpdates(24);
+        if (!empty($vaultUpdates)) {
+            $this->updates = $vaultUpdates;
+        } else {
+            $this->recent = $this->rememberCache('v1_recent_feed', 600, function () {
+                return (new MirainimeScraperService())->scrapeRecentFeed(24);
+            }) ?? [];
 
-        // Feed "Baru Update" berposter (prioritas utama halaman /anime)
-        $this->updates = Cache::get('v1_updates_feed') ?? [];
-        if (empty($this->updates)) {
-            $this->updates = $this->buildUpdates();
-            // Kalau ada poster yang gagal diambil (timeout upstream), cache singkat supaya cepat dicoba ulang
-            $complete = !collect($this->updates)->contains(fn ($u) => empty($u['poster']));
-            if (!empty($this->updates)) {
-                Cache::put('v1_updates_feed', $this->updates, $complete ? 600 : 60);
+            $this->updates = Cache::get('v1_updates_feed') ?? [];
+            if (empty($this->updates)) {
+                $this->updates = $this->buildUpdates();
+                $complete = !collect($this->updates)->contains(fn ($u) => empty($u['poster']));
+                if (!empty($this->updates)) {
+                    Cache::put('v1_updates_feed', $this->updates, $complete ? 600 : 60);
+                }
             }
         }
 
-        // Jadwal Tayang Mingguan dari Mirainime (Senin - Minggu)
+        // 3. Jadwal Tayang Mingguan (Hari ini & Senin-Minggu) dari Database Vault
         $dayMap = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
         $nowDay = (int) (new \DateTime('now', new \DateTimeZone('Asia/Jakarta')))->format('N');
         $this->currentDayName = $dayMap[$nowDay] ?? 'Senin';
         $this->selectedScheduleDay = $this->currentDayName;
-        $this->weeklySchedule = (new MirainimeScraperService())->scrapeWeeklySchedule();
+
+        $vaultSchedule = \App\Services\AnimeVaultService::getWeeklySchedule();
+        if (!empty($vaultSchedule[$this->currentDayName])) {
+            $this->weeklySchedule = $vaultSchedule;
+        } else {
+            $this->weeklySchedule = (new MirainimeScraperService())->scrapeWeeklySchedule();
+        }
 
         $this->loadAnimes();
     }
@@ -177,6 +193,11 @@ class ExploreAnime extends Page
     {
         $scraper = new MirainimeScraperService();
         if (filled($this->search)) {
+            $vaultRes = \App\Services\AnimeVaultService::getAnimeList(1, '', $this->search);
+            if (!empty($vaultRes['items'])) {
+                $this->animes = $vaultRes['items'];
+                return;
+            }
             $cacheKey = 'v1_search_' . md5($this->search);
             $this->animes = $this->rememberCache($cacheKey, 3600, function () use ($scraper) {
                 return $scraper->searchAnime($this->search);
@@ -187,6 +208,12 @@ class ExploreAnime extends Page
                 return $scraper->scrapeAnimeByGenre($this->genre, $this->pageNumber);
             });
         } else {
+            // Ambil dari database lokal terlebih dahulu
+            $vaultRes = \App\Services\AnimeVaultService::getAnimeList($this->pageNumber, $this->status, '', '', 24);
+            if (!empty($vaultRes['items'])) {
+                $this->animes = $vaultRes['items'];
+                return;
+            }
             $cacheKey = "v1_list_{$this->status}_{$this->pageNumber}";
             $this->animes = $this->rememberCache($cacheKey, 43200, function () use ($scraper) {
                 return $scraper->scrapeAnimeList($this->pageNumber, $this->status);
