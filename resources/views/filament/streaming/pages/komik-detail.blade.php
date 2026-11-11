@@ -2,6 +2,11 @@
      x-data="{
         history: null,
         serverHistory: @js($serverHistory),
+        viewMode: 'list', // 'list' (default daftar chapter) | 'kotatsu' (continuous thumbnail grid)
+        kotatsuLoadedChapters: [],
+        kotatsuLoading: false,
+        kotatsuHasMore: true,
+        kotatsuBatchIndex: 0,
         previewModalOpen: false,
         previewLoading: false,
         previewChapter: null,
@@ -21,6 +26,78 @@
                 }
             } catch(e) {}
             this.syncChaptersFromClient();
+        },
+        setViewMode(mode) {
+            this.viewMode = mode;
+            if (mode === 'kotatsu' && this.kotatsuLoadedChapters.length === 0) {
+                this.loadMoreKotatsuChapters();
+            }
+        },
+        async loadMoreKotatsuChapters() {
+            if (this.kotatsuLoading || !this.kotatsuHasMore) return;
+            this.kotatsuLoading = true;
+
+            const allChs = @js($chapters);
+            if (!Array.isArray(allChs) || allChs.length === 0) {
+                this.kotatsuLoading = false;
+                this.kotatsuHasMore = false;
+                return;
+            }
+
+            // Ambil batch 3 chapter berikutnya
+            const batchSize = 3;
+            const start = this.kotatsuBatchIndex;
+            const end = Math.min(allChs.length, start + batchSize);
+
+            if (start >= allChs.length) {
+                this.kotatsuHasMore = false;
+                this.kotatsuLoading = false;
+                return;
+            }
+
+            const targetBatch = allChs.slice(start, end);
+            this.kotatsuBatchIndex = end;
+            if (end >= allChs.length) {
+                this.kotatsuHasMore = false;
+            }
+
+            const comicId = '{{ $comic['id'] }}';
+
+            for (const ch of targetBatch) {
+                let pages = [];
+                const upstreamChId = ch.upstream_chapter_id || '';
+
+                try {
+                    const url = '/api/comic/chapter-preview?comic_id=' + encodeURIComponent(comicId) + '&chapter_id=' + encodeURIComponent(ch.id) + '&upstream_chapter_id=' + encodeURIComponent(upstreamChId);
+                    const res = await fetch(url).then(r => r.ok ? r.json() : null).catch(() => null);
+
+                    if (res && res.ok && Array.isArray(res.pages) && res.pages.length > 0) {
+                        pages = res.pages;
+                    } else if (upstreamChId) {
+                        // Fallback client shinigami
+                        const shRes = await fetch('https://api.shngm.io/v1/chapter/detail/' + upstreamChId).then(r => r.ok ? r.json() : null).catch(() => null);
+                        if (shRes && shRes.retcode === 0 && shRes.data && shRes.data.chapter && Array.isArray(shRes.data.chapter.data)) {
+                            const baseUrl = (shRes.data.base_url || 'https://assets.shngm.id').replace(/\/+$/, '');
+                            const path = '/' + String(shRes.data.chapter.path || '').replace(/^\/+|\/+$/g, '') + '/';
+                            pages = shRes.data.chapter.data.map((f, idx) => {
+                                const rawUrl = baseUrl + path + f;
+                                return {
+                                    index: idx + 1,
+                                    raw_url: rawUrl,
+                                    url: '/api/proxy-image?url=' + encodeURIComponent(rawUrl)
+                                };
+                            });
+                        }
+                    }
+                } catch(e) {}
+
+                this.kotatsuLoadedChapters.push({
+                    chapter: ch,
+                    pages: pages
+                });
+            }
+
+            this.kotatsuLoading = false;
         },
         async openChapterPreview(ch) {
             this.previewChapter = ch;
@@ -312,9 +389,33 @@
                 <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-zinc-800 text-zinc-400">
                     {{ count($chapters) }} Chapter
                 </span>
+
+                {{-- Mode Switcher Pill (Kiri: List Chapter, Kanan: Kotatsu View) --}}
+                <div class="inline-flex p-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold shrink-0 ml-auto sm:ml-2">
+                    <button type="button"
+                            @click="setViewMode('list')"
+                            :class="viewMode === 'list' ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'text-zinc-400 hover:text-white'"
+                            class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12"/></svg>
+                        <span>List Chapter</span>
+                    </button>
+                    <button type="button"
+                            @click="setViewMode('kotatsu')"
+                            data-tab-kotatsu="true"
+                            :class="viewMode === 'kotatsu' ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'text-zinc-400 hover:text-white'"
+                            class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                        </svg>
+                        <span>Kotatsu View</span>
+                    </button>
+                </div>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2" x-show="viewMode === 'list'">
                 {{-- Search Chapter Input --}}
                 <div class="relative flex-1 sm:w-56">
                     <input type="text"
@@ -333,63 +434,140 @@
             </div>
         </div>
 
-        {{-- Chapter Grid Cards --}}
-        @php
-            $displayChapters = $this->filteredChapters;
-        @endphp
+        {{-- ================= MODE 1: LIST CHAPTER (DEFAULT) ================= --}}
+        <div x-show="viewMode === 'list'">
+            @php
+                $displayChapters = $this->filteredChapters;
+            @endphp
 
-        @if(empty($displayChapters))
-            <div class="py-12 text-center text-sm font-semibold text-zinc-500 bg-zinc-900/40 rounded-2xl border border-zinc-800/80">
-                Tidak ada chapter yang cocok dengan pencarian "<span class="text-white">{{ $searchChapter }}</span>".
-            </div>
-        @else
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                @foreach($displayChapters as $ch)
-                    <div class="group relative p-3.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800/90 border border-zinc-800/80 hover:border-red-500/50 flex items-center justify-between gap-3 transition shadow-sm"
-                         :class="history && history.chapterId === '{{ $ch['id'] }}' ? 'border-red-500 ring-1 ring-red-500/40 bg-red-950/20' : ''">
-                        <a href="/komik/{{ $comic['id'] }}/read/{{ $ch['id'] }}" class="min-w-0 flex-1 block">
-                            <p class="font-bold text-sm text-zinc-200 group-hover:text-red-400 transition truncate">
-                                {{ $ch['label'] }}
-                            </p>
-                            <div class="flex items-center gap-2 mt-0.5">
-                                @if(!empty($ch['release_date']))
-                                    <span class="text-[11px] text-zinc-500 font-medium">
-                                        {{ date('d M Y', strtotime($ch['release_date'])) }}
-                                    </span>
-                                @endif
-                                <template x-if="history && history.chapterId === '{{ $ch['id'] }}' && history.progress">
-                                    <span class="text-[10px] font-extrabold text-red-400 bg-red-950/60 px-2 py-0.5 rounded-full ring-1 ring-red-500/40"
-                                          x-text="'Terakhir: ' + history.progress + '%'"></span>
-                                </template>
+            @if(empty($displayChapters))
+                <div class="py-12 text-center text-sm font-semibold text-zinc-500 bg-zinc-900/40 rounded-2xl border border-zinc-800/80">
+                    Tidak ada chapter yang cocok dengan pencarian "<span class="text-white">{{ $searchChapter }}</span>".
+                </div>
+            @else
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    @foreach($displayChapters as $ch)
+                        <div class="group relative p-3.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800/90 border border-zinc-800/80 hover:border-red-500/50 flex items-center justify-between gap-3 transition shadow-sm"
+                             :class="history && history.chapterId === '{{ $ch['id'] }}' ? 'border-red-500 ring-1 ring-red-500/40 bg-red-950/20' : ''">
+                            <a href="/komik/{{ $comic['id'] }}/read/{{ $ch['id'] }}" class="min-w-0 flex-1 block">
+                                <p class="font-bold text-sm text-zinc-200 group-hover:text-red-400 transition truncate">
+                                    {{ $ch['label'] }}
+                                </p>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    @if(!empty($ch['release_date']))
+                                        <span class="text-[11px] text-zinc-500 font-medium">
+                                            {{ date('d M Y', strtotime($ch['release_date'])) }}
+                                        </span>
+                                    @endif
+                                    <template x-if="history && history.chapterId === '{{ $ch['id'] }}' && history.progress">
+                                        <span class="text-[10px] font-extrabold text-red-400 bg-red-950/60 px-2 py-0.5 rounded-full ring-1 ring-red-500/40"
+                                              x-text="'Terakhir: ' + history.progress + '%'"></span>
+                                    </template>
+                                </div>
+                            </a>
+
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                {{-- Tombol Quick Preview Kotatsu Modal --}}
+                                <button type="button"
+                                        data-kotatsu-btn="true"
+                                        @click="openChapterPreview({{ json_encode($ch) }})"
+                                        title="Pratinjau Lembaran Panel"
+                                        class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white flex items-center justify-center transition border border-white/5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                                    </svg>
+                                </button>
+
+                                {{-- Tombol Masuk Baca Chapter --}}
+                                <a href="/komik/{{ $comic['id'] }}/read/{{ $ch['id'] }}"
+                                   title="Buka Chapter"
+                                   class="w-7 h-7 rounded-lg bg-white/5 hover:bg-red-600 hover:text-white flex items-center justify-center text-zinc-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                                </a>
                             </div>
-                        </a>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
 
-                        <div class="flex items-center gap-1.5 shrink-0">
-                            {{-- Tombol Quick Preview Kotatsu (Pratinjau Lembaran Tanpa Masuk) --}}
-                            <button type="button"
-                                    data-kotatsu-btn="true"
-                                    @click="openChapterPreview({{ json_encode($ch) }})"
-                                    title="Pratinjau Lembaran Panel (Kotatsu View)"
-                                    class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white flex items-center justify-center transition border border-white/5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                                </svg>
-                            </button>
-
-                            {{-- Tombol Masuk Baca Chapter --}}
-                            <a href="/komik/{{ $comic['id'] }}/read/{{ $ch['id'] }}"
-                               title="Buka Chapter"
-                               class="w-7 h-7 rounded-lg bg-white/5 hover:bg-red-600 hover:text-white flex items-center justify-center text-zinc-400 transition">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+        {{-- ================= MODE 2: KOTATSU CONTINUOUS CHAPTER GRID ================= --}}
+        <div x-show="viewMode === 'kotatsu'" style="display: none;">
+            <div class="space-y-8">
+                <template x-for="(chData, chIdx) in kotatsuLoadedChapters" :key="chData.chapter.id">
+                    <div class="border-b border-zinc-900 pb-8 last:border-b-0">
+                        {{-- Bab Divider Header persis di Kotatsu --}}
+                        <div class="flex items-center justify-between gap-3 py-2.5 mb-3.5 border-y border-zinc-800/60 bg-zinc-900/40 px-3 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-red-600"></span>
+                                <h3 class="text-sm md:text-base font-extrabold text-white uppercase tracking-wider" x-text="chData.chapter.label"></h3>
+                            </div>
+                            <a :href="'/komik/{{ $comic['id'] }}/read/' + chData.chapter.id"
+                               class="text-xs font-bold text-red-500 hover:text-red-400 transition flex items-center gap-1">
+                                <span>Baca Chapter</span>
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                             </a>
                         </div>
+
+                        {{-- Kotatsu 3-Column Grid per Bab (Sisa baris kosong tidak dipaksa nyambung ke bab berikutnya) --}}
+                        <template x-if="chData.pages && chData.pages.length > 0">
+                            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 sm:gap-3.5">
+                                <template x-for="p in chData.pages" :key="p.index">
+                                    <a :href="'/komik/{{ $comic['id'] }}/read/' + chData.chapter.id + '#panel-' + p.index"
+                                       class="group relative aspect-[3/4] sm:aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 border border-white/5 hover:border-red-500 hover:ring-2 hover:ring-red-500/40 transition-all duration-200 block shadow-md">
+                                        <img :src="p.raw_url || p.url"
+                                             :data-fallback="p.url"
+                                             x-on:error="if ($el.getAttribute('data-fallback') && $el.src !== $el.getAttribute('data-fallback')) { $el.src = $el.getAttribute('data-fallback'); }"
+                                             alt=""
+                                             loading="lazy"
+                                             decoding="async"
+                                             referrerpolicy="no-referrer"
+                                             class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300" />
+                                        
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/10 opacity-60 group-hover:opacity-40 transition-opacity"></div>
+
+                                        {{-- Kotatsu-Style Number Badge di Pojok Kanan Bawah (Reset ke 1 tiap ganti bab) --}}
+                                        <div class="absolute bottom-2 right-2 min-w-[24px] h-6 px-1.5 rounded-full bg-black/85 backdrop-blur-md text-white border border-white/10 flex items-center justify-center text-[11px] font-black shadow-lg">
+                                            <span x-text="p.index"></span>
+                                        </div>
+                                    </a>
+                                </template>
+                            </div>
+                        </template>
+
+                        <template x-if="!chData.pages || chData.pages.length === 0">
+                            <div class="py-8 text-center text-xs font-semibold text-zinc-500 bg-zinc-950/60 rounded-xl border border-dashed border-zinc-800">
+                                Lembaran panel untuk chapter ini belum termuat.
+                            </div>
+                        </template>
                     </div>
-                @endforeach
+                </template>
+
+                {{-- Loading Indicator / Load More Button Kotatsu --}}
+                <div class="pt-4 pb-12 flex flex-col items-center justify-center gap-3">
+                    <div x-show="kotatsuLoading" class="flex items-center gap-2 text-xs font-bold text-zinc-400">
+                        <div class="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Memuat chapter berikutnya ke Kotatsu Grid...</span>
+                    </div>
+
+                    <div x-show="!kotatsuLoading && kotatsuHasMore">
+                        <button type="button"
+                                @click="loadMoreKotatsuChapters()"
+                                class="px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-bold text-white transition flex items-center gap-2 shadow-lg">
+                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+                            <span>Muat Chapter Selanjutnya</span>
+                        </button>
+                    </div>
+
+                    <div x-show="!kotatsuHasMore && kotatsuLoadedChapters.length > 0" class="text-xs font-bold text-zinc-600">
+                        🎉 Semua chapter telah selesai dimuat ke Kotatsu View!
+                    </div>
+                </div>
             </div>
-        @endif
+        </div>
     </div>
 
     {{-- ================= KOTATSU-STYLE CHAPTER THUMBNAIL MODAL / BOTTOM SHEET ================= --}}
