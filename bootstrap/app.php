@@ -21,7 +21,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/comic-progress',
             'api/sync-native-comic',
             'api/sync-anime-vault',
-            'api/sync-media-vault',
             'api/upload-native-cover',
             'api/komik/client-sync/*',
         ]);
