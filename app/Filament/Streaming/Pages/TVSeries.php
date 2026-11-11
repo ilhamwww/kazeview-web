@@ -45,12 +45,6 @@ class TVSeries extends Page
         $response = \App\Services\MediaVaultService::getSeries($this->page, $limit, 'createdAt');
         $newSeries = $response['data'] ?? [];
 
-        if (empty($newSeries)) {
-            // Fallback ke StreamingService jika vault kosong
-            $response = StreamingService::getSeries($this->page, $limit, 'createdAt');
-            $newSeries = $response['data'] ?? [];
-        }
-
         $this->series = array_merge($this->series, $newSeries);
         $pagination = $response['pagination'] ?? [];
         $this->totalPages = $pagination['totalPages'] ?? 1;
