@@ -42,10 +42,13 @@
 
                     // Pulihkan posisi scroll secara bertahap saat gambar dimuat
                     const restoreScroll = (retry = 0) => {
-                        const el = document.getElementById('panel-' + h.panelIndex);
+                        const hashMatch = window.location.hash ? window.location.hash.match(/panel-(\d+)/) : null;
+                        const targetPanel = hashMatch ? parseInt(hashMatch[1]) : (h ? h.panelIndex : 1);
+
+                        const el = document.getElementById('panel-' + targetPanel);
                         if (el) {
                             el.scrollIntoView({ behavior: 'auto', block: 'start' });
-                        } else if (h.scrollY > 0) {
+                        } else if (h && h.scrollY > 0 && !hashMatch) {
                             window.scrollTo({ top: h.scrollY, behavior: 'auto' });
                         }
                         if (retry < 5) {

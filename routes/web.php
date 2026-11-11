@@ -724,6 +724,49 @@ Route::get('/api/comic-recent-reads', function () {
     return response()->json($items);
 })->middleware('auth')->name('api.comic-recent-reads');
 
+// Endpoint API untuk Quick Preview Chapter Pages (Kotatsu Style Modal di Detail Komik)
+Route::get('/api/comic/chapter-preview', function (\Illuminate\Http\Request $request) {
+    $comicId = (string) $request->query('comic_id', '');
+    $chapterId = (string) $request->query('chapter_id', '');
+    $upstreamChId = (string) $request->query('upstream_chapter_id', '');
+
+    if (empty($comicId) || empty($chapterId)) {
+        return response()->json(['ok' => false, 'error' => 'Missing parameters'], 400);
+    }
+
+    $cacheKey = "comic_ch_preview_{$comicId}_{$chapterId}";
+    $pages = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($comicId, $chapterId, $upstreamChId) {
+        if (str_starts_with($comicId, 'native__')) {
+            $service = app(\App\Services\NativeComicService::class);
+            return $service->getChapterPages($comicId, $chapterId);
+        } elseif (str_starts_with($comicId, 'kiryuu__')) {
+            $service = app(\App\Services\KiryuuScraperService::class);
+            $res = $service->getChapterPages($chapterId, $comicId);
+            return $res['pages'] ?? [];
+        } elseif (str_starts_with($comicId, 'wurmz__')) {
+            $service = app(\App\Services\WurmzScraperService::class);
+            return $service->getChapterPages($comicId, $chapterId);
+        } elseif (str_starts_with($comicId, 'izanami__')) {
+            $service = app(\App\Services\IzanamiScansService::class);
+            $res = $service->getChapterPages($chapterId);
+            return $res['pages'] ?? [];
+        } else {
+            // Shinigami Service
+            $service = app(\App\Services\ShinigamiService::class);
+            $res = $service->getChapterPages($chapterId);
+            return $res['pages'] ?? [];
+        }
+    });
+
+    return response()->json([
+        'ok' => true,
+        'comic_id' => $comicId,
+        'chapter_id' => $chapterId,
+        'total' => count($pages),
+        'pages' => $pages,
+    ]);
+});
+
 // ============ GET CONTINUE WATCHING DATA ============
 // Dipanggil oleh beranda untuk menampilkan kartu "Lanjutkan Menonton"
 Route::get('/api/continue-watching', function () {
