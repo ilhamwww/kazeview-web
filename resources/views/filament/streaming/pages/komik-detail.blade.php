@@ -420,7 +420,7 @@
                             <rect x="14" y="14" width="7" height="7" rx="1.5" />
                             <rect x="3" y="14" width="7" height="7" rx="1.5" />
                         </svg>
-                        <span>Kotatsu View</span>
+                        <span>Grid View</span>
                     </button>
                 </div>
 
@@ -557,7 +557,7 @@
                 <div class="pt-4 pb-12 flex flex-col items-center justify-center gap-3">
                     <div x-show="kotatsuLoading" class="flex items-center gap-2 text-xs font-bold text-zinc-400">
                         <div class="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                        <span>Memuat chapter berikutnya ke Kotatsu Grid...</span>
+                        <span>Memuat chapter berikutnya ke Grid View...</span>
                     </div>
 
                     <div x-show="!kotatsuLoading && kotatsuHasMore">
@@ -570,7 +570,7 @@
                     </div>
 
                     <div x-show="!kotatsuHasMore && kotatsuLoadedChapters.length > 0" class="text-xs font-bold text-zinc-600">
-                        🎉 Semua chapter telah selesai dimuat ke Kotatsu View!
+                        🎉 Semua chapter telah selesai dimuat ke Grid View!
                     </div>
                 </div>
             </div>
@@ -601,7 +601,7 @@
             <div class="px-5 py-3.5 border-b border-zinc-800/80 flex items-center justify-between gap-3 bg-zinc-900/60 shrink-0">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-600 text-white">Kotatsu View</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-600 text-white">Grid View</span>
                         <h3 class="font-extrabold text-sm md:text-base text-white truncate" x-text="previewChapter ? previewChapter.label : 'Pratinjau Lembaran'"></h3>
                     </div>
                     <p class="text-[11px] text-zinc-400 mt-0.5" x-show="previewPages.length > 0">
