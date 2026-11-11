@@ -206,16 +206,17 @@
      }">
 
     {{-- ================= BACKDROP BLUR HEADER ================= --}}
-    <div class="relative w-full min-h-[360px] md:min-h-[420px] overflow-hidden border-b border-white/5 bg-zinc-950">
-        {{-- Background Image with Blur --}}
+    <div class="relative w-full overflow-hidden bg-[#050505]">
+        {{-- Background Image with Blur (fade halus ke background halaman, tanpa garis seam) --}}
         <img src="{{ ($comic['banner'] ?? null) ?: ($comic['cover'] ?? '') }}"
-             alt="{{ $comic['title'] ?? '' }}"
-             class="absolute inset-0 w-full h-full object-cover object-top opacity-30 filter blur-xl scale-110" />
+             alt=""
+             aria-hidden="true"
+             class="absolute inset-0 w-full h-full object-cover object-top opacity-35 blur-2xl scale-110 pointer-events-none" />
 
-        <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/75 to-transparent"></div>
-        <div class="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-[#050505]"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-[#050505]/70 to-[#050505]"></div>
+        <div class="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#050505] to-transparent"></div>
 
-        <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 md:pt-28 lg:pt-32 pb-8">
+        <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 md:pt-28 lg:pt-32 pb-6 md:pb-10">
             {{-- Tombol Kembali ke Katalog / Provider Terkait --}}
             @php
                 $backUrl = '/komik';
@@ -237,15 +238,15 @@
                 </a>
             </div>
 
-            <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-start">
+            <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-end">
             {{-- Poster Card --}}
-            <div class="shrink-0 w-36 sm:w-44 md:w-56 aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/15 shadow-2xl shadow-black/90 bg-zinc-900 mx-auto md:mx-0">
+            <div class="shrink-0 w-40 sm:w-48 md:w-60 aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/15 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.9)] bg-zinc-900">
                 <img src="{{ $comic['cover'] }}" alt="{{ $comic['title'] }}" class="w-full h-full object-cover" />
             </div>
 
             {{-- Metadata --}}
-            <div class="flex-1 min-w-0 flex flex-col justify-end">
-                <div class="flex items-center gap-2 mb-2.5 flex-wrap">
+            <div class="flex-1 min-w-0 w-full flex flex-col text-center md:text-left">
+                <div class="flex items-center justify-center md:justify-start gap-2 mb-3 flex-wrap">
                     <span class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-600 text-white shadow-md shadow-red-900/40">
                         {{ $comic['format'] }}
                     </span>
@@ -264,40 +265,45 @@
                     @endif
                 </div>
 
-                <h1 class="text-2xl sm:text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
+                <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.05]">
                     {{ $comic['title'] }}
                 </h1>
 
                 @if(!empty($comic['alternative_title']) || !empty($comic['alt_title']))
-                    <p class="text-xs sm:text-sm text-zinc-400 mt-1.5 font-medium line-clamp-1">
+                    <p class="text-xs sm:text-sm text-zinc-400 mt-2 font-medium line-clamp-1" dir="auto" style="unicode-bidi: plaintext;"
+                       title="{{ $comic['alternative_title'] ?? $comic['alt_title'] }}">
                         {{ $comic['alternative_title'] ?? $comic['alt_title'] }}
                     </p>
                 @endif
 
-                {{-- Author & Artist Badges --}}
+                {{-- Penulis & Ilustrator: satu baris teks, bukan chip (biar tidak bersaing dengan genre) --}}
                 @if(!empty($comic['author']) || !empty($comic['artist']))
-                    <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    <dl class="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-x-5 gap-y-1 text-xs sm:text-sm">
                         @if(!empty($comic['author']))
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300">
-                                <span class="text-zinc-500">Author:</span> <strong class="text-white">{{ $comic['author'] }}</strong>
-                            </span>
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <dt class="text-zinc-500">Penulis</dt>
+                                <dd class="text-zinc-200 font-semibold truncate max-w-[16rem]">{{ $comic['author'] }}</dd>
+                            </div>
                         @endif
                         @if(!empty($comic['artist']))
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300">
-                                <span class="text-zinc-500">Artist:</span> <strong class="text-white">{{ $comic['artist'] }}</strong>
-                            </span>
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <dt class="text-zinc-500">Ilustrator</dt>
+                                <dd class="text-zinc-200 font-semibold truncate max-w-[16rem]">{{ $comic['artist'] }}</dd>
+                            </div>
                         @endif
-                    </div>
+                    </dl>
                 @endif
 
-                {{-- Authors & Genres --}}
-                <div class="mt-4 flex flex-wrap items-center gap-2">
-                    @foreach($comic['genres'] ?? [] as $g)
-                        <span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/5 text-zinc-300">
-                            {{ $g }}
-                        </span>
-                    @endforeach
-                </div>
+                {{-- Genres --}}
+                @if(!empty($comic['genres']))
+                    <div class="mt-4 flex flex-wrap items-center justify-center md:justify-start gap-1.5">
+                        @foreach($comic['genres'] as $g)
+                            <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-white/[0.06] border border-white/10 text-zinc-300">
+                                {{ $g }}
+                            </span>
+                        @endforeach
+                    </div>
+                @endif
 
                 @if(!empty($comic['authors']) || !empty($comic['artists']))
                     <div class="mt-3 text-xs text-zinc-400 flex items-center gap-4 flex-wrap">
@@ -311,7 +317,7 @@
                 @endif
 
                 {{-- Action CTA Buttons --}}
-                <div class="mt-6 flex items-center gap-3 flex-wrap">
+                <div class="mt-6 flex items-center justify-center md:justify-start gap-2.5 flex-wrap">
                     @php
                         // First chapter (angka terendah)
                         $firstChapter = !empty($chapters) ? end($chapters) : null;
@@ -339,16 +345,19 @@
                         </template>
                     @endif
 
+                    {{-- Disembunyikan kalau tombol Lanjutkan sudah menuju chapter terbaru (hindari dua tombol ke tujuan sama) --}}
                     @if($latestChapter && $latestChapter['id'] !== ($firstChapter['id'] ?? null))
                         <a href="/komik/{{ $comic['id'] }}/read/{{ $latestChapter['id'] }}"
-                           class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-bold text-sm border border-zinc-700 transition">
-                            <span>Chapter Terbaru (Ch. {{ $latestChapter['number'] }})</span>
+                           x-show="!history || String(history.chapterId) !== @js((string) $latestChapter['id'])"
+                           class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/[0.06] hover:bg-white/10 text-zinc-100 font-bold text-sm border border-white/10 transition">
+                            <span>Terbaru · Ch. {{ $latestChapter['number'] }}</span>
                         </a>
                     @endif
 
                     {{-- Tombol Tambah ke Favorit --}}
                     <button type="button" wire:click="toggleFavorite"
-                            class="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm border transition active:scale-95 {{ $isFavorited ? 'bg-red-600/20 border-red-500 text-red-400 hover:bg-red-600/30' : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white' }}">
+                            aria-pressed="{{ $isFavorited ? 'true' : 'false' }}"
+                            class="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm border transition active:scale-95 {{ $isFavorited ? 'bg-red-600/15 border-red-500/60 text-red-400 hover:bg-red-600/25' : 'bg-white/[0.06] hover:bg-white/10 border-white/10 text-zinc-200 hover:text-white' }}">
                         <svg class="w-4 h-4 {{ $isFavorited ? 'fill-current text-red-500' : 'text-zinc-400' }}" fill="{{ $isFavorited ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                         </svg>
@@ -361,14 +370,11 @@
     </div>
 
     {{-- ================= SYNOPSIS & CHAPTER LIST ================= --}}
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-2 md:mt-4">
         {{-- Sinopsis Card --}}
-        <div class="p-5 md:p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 mb-10"
+        <div class="p-5 md:p-6 rounded-2xl bg-white/[0.03] border border-white/[0.07] mb-10"
              x-data="{ expanded: false }">
-            <h2 class="text-base font-black text-white tracking-wide uppercase mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12"/></svg>
-                <span>Sinopsis Cerita</span>
-            </h2>
+            <h2 class="text-lg font-black text-white tracking-tight mb-2.5">Sinopsis</h2>
             <div class="text-sm md:text-base text-zinc-300 leading-relaxed font-normal"
                  :class="expanded ? '' : 'line-clamp-3'">
                 {{ $comic['description'] ?: 'Belum ada sinopsis untuk webtoon ini.' }}
@@ -383,28 +389,32 @@
         </div>
 
         {{-- Chapter Header & Controls --}}
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800/80 mb-6">
-            <div class="flex items-center gap-3">
-                <h2 class="text-xl md:text-2xl font-black text-white tracking-tight">Daftar Chapter</h2>
-                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-zinc-800 text-zinc-400">
-                    {{ count($chapters) }} Chapter
-                </span>
+        <div class="mb-5 space-y-3">
+            {{-- Baris 1: judul + jumlah chapter --}}
+            <div class="flex items-baseline gap-2.5">
+                <h2 class="text-xl md:text-2xl font-black text-white tracking-tight whitespace-nowrap">Daftar Chapter</h2>
+                <span class="text-sm font-semibold text-zinc-500 whitespace-nowrap">{{ count($chapters) }} chapter</span>
+            </div>
 
-                {{-- Mode Switcher Pill (Kiri: List Chapter, Kanan: Kotatsu View) --}}
-                <div class="inline-flex p-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold shrink-0 ml-auto sm:ml-2">
-                    <button type="button"
+            {{-- Baris 2: toggle tampilan (kiri) + cari & urutkan (kanan). Di HP toggle full width, toolbar di bawahnya --}}
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                <div class="grid grid-cols-2 p-1 rounded-xl bg-white/[0.04] border border-white/10 text-sm font-bold w-full sm:w-auto sm:min-w-[300px]"
+                     role="tablist" aria-label="Mode tampilan chapter">
+                    <button type="button" role="tab"
                             @click="setViewMode('list')"
+                            :aria-selected="viewMode === 'list'"
                             :class="viewMode === 'list' ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'text-zinc-400 hover:text-white'"
-                            class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12"/></svg>
-                        <span>List Chapter</span>
+                            class="h-9 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-nowrap">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+                        <span>Daftar</span>
                     </button>
-                    <button type="button"
+                    <button type="button" role="tab"
                             @click="setViewMode('kotatsu')"
                             data-tab-kotatsu="true"
+                            :aria-selected="viewMode === 'kotatsu'"
                             :class="viewMode === 'kotatsu' ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'text-zinc-400 hover:text-white'"
-                            class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            class="h-9 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-nowrap">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <rect x="3" y="3" width="7" height="7" rx="1.5" />
                             <rect x="14" y="3" width="7" height="7" rx="1.5" />
                             <rect x="14" y="14" width="7" height="7" rx="1.5" />
@@ -413,24 +423,25 @@
                         <span>Kotatsu View</span>
                     </button>
                 </div>
-            </div>
 
-            <div class="flex items-center gap-2" x-show="viewMode === 'list'">
-                {{-- Search Chapter Input --}}
-                <div class="relative flex-1 sm:w-56">
-                    <input type="text"
-                           wire:model.live.debounce.250ms="searchChapter"
-                           placeholder="Cari chapter..."
-                           class="w-full pl-9 pr-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500" />
-                    <svg class="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                <div class="flex items-center gap-2 sm:ml-auto" x-show="viewMode === 'list'">
+                    {{-- Search Chapter Input --}}
+                    <label class="relative flex-1 sm:w-64">
+                        <span class="sr-only">Cari chapter</span>
+                        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                        <input type="text"
+                               wire:model.live.debounce.250ms="searchChapter"
+                               placeholder="Cari nomor chapter…"
+                               class="w-full h-11 sm:h-10 pl-9 pr-3 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500" />
+                    </label>
+
+                    {{-- Toggle Sort Order Button --}}
+                    <button type="button" wire:click="toggleSort"
+                            class="shrink-0 h-11 sm:h-10 px-3.5 rounded-xl bg-white/[0.04] hover:bg-white/10 border border-white/10 text-sm font-bold text-zinc-200 flex items-center gap-1.5 transition whitespace-nowrap">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5"/></svg>
+                        <span>{{ $sortOrder === 'desc' ? 'Terbaru' : 'Terlama' }}</span>
+                    </button>
                 </div>
-
-                {{-- Toggle Sort Order Button --}}
-                <button type="button" wire:click="toggleSort"
-                        class="shrink-0 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-300 flex items-center gap-1.5 transition">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5"/></svg>
-                    <span>{{ $sortOrder === 'desc' ? 'Terbaru' : 'Terlama' }}</span>
-                </button>
             </div>
         </div>
 
@@ -445,49 +456,45 @@
                     Tidak ada chapter yang cocok dengan pencarian "<span class="text-white">{{ $searchChapter }}</span>".
                 </div>
             @else
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     @foreach($displayChapters as $ch)
-                        <div class="group relative p-3.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800/90 border border-zinc-800/80 hover:border-red-500/50 flex items-center justify-between gap-3 transition shadow-sm"
-                             :class="history && history.chapterId === '{{ $ch['id'] }}' ? 'border-red-500 ring-1 ring-red-500/40 bg-red-950/20' : ''">
-                            <a href="/komik/{{ $comic['id'] }}/read/{{ $ch['id'] }}" class="min-w-0 flex-1 block">
-                                <p class="font-bold text-sm text-zinc-200 group-hover:text-red-400 transition truncate">
-                                    {{ $ch['label'] }}
-                                </p>
-                                <div class="flex items-center gap-2 mt-0.5">
-                                    @if(!empty($ch['release_date']))
-                                        <span class="text-[11px] text-zinc-500 font-medium">
-                                            {{ date('d M Y', strtotime($ch['release_date'])) }}
-                                        </span>
-                                    @endif
-                                    <template x-if="history && history.chapterId === '{{ $ch['id'] }}' && history.progress">
-                                        <span class="text-[10px] font-extrabold text-red-400 bg-red-950/60 px-2 py-0.5 rounded-full ring-1 ring-red-500/40"
-                                              x-text="'Terakhir: ' + history.progress + '%'"></span>
-                                    </template>
+                        @php
+                            $chDate = $ch['release_date'] ?? ($ch['released_at'] ?? null);
+                            $chDateText = $chDate ? (strtotime($chDate) ? date('d M Y', strtotime($chDate)) : $chDate) : null;
+                        @endphp
+                        {{-- Seluruh kartu = link baca; tombol pratinjau di kanan berdiri sendiri (bukan nested di dalam <a>) --}}
+                        <div class="group relative flex items-center rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.07] hover:border-red-500/40 transition"
+                             :class="history && String(history.chapterId) === @js((string) $ch['id']) ? '!border-red-500/70 !bg-red-950/25' : ''">
+                            <a href="/komik/{{ $comic['id'] }}/read/{{ $ch['id'] }}"
+                               class="min-w-0 flex-1 flex items-center gap-3 pl-4 pr-2 py-3 min-h-[56px]">
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-bold text-sm text-zinc-100 group-hover:text-white truncate">{{ $ch['label'] }}</p>
+                                    <div class="flex items-center gap-2 mt-0.5 min-h-[16px]">
+                                        @if($chDateText)
+                                            <span class="text-[11px] text-zinc-400 font-medium">{{ $chDateText }}</span>
+                                        @endif
+                                        <template x-if="history && String(history.chapterId) === @js((string) $ch['id'])">
+                                            <span class="text-[10px] font-extrabold text-red-400 uppercase tracking-wide"
+                                                  x-text="history.progress ? 'Terakhir dibaca · ' + history.progress + '%' : 'Terakhir dibaca'"></span>
+                                        </template>
+                                    </div>
                                 </div>
                             </a>
 
-                            <div class="flex items-center gap-1.5 shrink-0">
-                                {{-- Tombol Quick Preview Kotatsu Modal --}}
-                                <button type="button"
-                                        data-kotatsu-btn="true"
-                                        @click="openChapterPreview({{ json_encode($ch) }})"
-                                        title="Pratinjau Lembaran Panel"
-                                        class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white flex items-center justify-center transition border border-white/5">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                                    </svg>
-                                </button>
-
-                                {{-- Tombol Masuk Baca Chapter --}}
-                                <a href="/komik/{{ $comic['id'] }}/read/{{ $ch['id'] }}"
-                                   title="Buka Chapter"
-                                   class="w-7 h-7 rounded-lg bg-white/5 hover:bg-red-600 hover:text-white flex items-center justify-center text-zinc-400 transition">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-                                </a>
-                            </div>
+                            {{-- Tombol pratinjau lembaran (Kotatsu) per chapter, target tap 40px --}}
+                            <button type="button"
+                                    data-kotatsu-btn="true"
+                                    @click="openChapterPreview({{ json_encode($ch) }})"
+                                    title="Pratinjau lembaran chapter ini"
+                                    aria-label="Pratinjau lembaran {{ $ch['label'] }}"
+                                    class="shrink-0 mr-2 w-10 h-10 rounded-lg text-zinc-500 hover:text-white hover:bg-white/10 flex items-center justify-center transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                                </svg>
+                            </button>
                         </div>
                     @endforeach
                 </div>
