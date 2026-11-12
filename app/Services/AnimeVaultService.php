@@ -104,7 +104,7 @@ class AnimeVaultService
                     ->where('status', 'Ongoing')
                     ->where('release_day', $day)
                     ->orderByDesc('rating')
-                    ->take(15)
+                    ->take(30)
                     ->get()
                     ->map(fn($item) => self::mapItem($item))
                     ->all();
