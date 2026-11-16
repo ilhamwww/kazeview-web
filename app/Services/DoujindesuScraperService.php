@@ -205,9 +205,10 @@ class DoujindesuScraperService
         string $search = '',
         int $limit = 24
     ): array {
+        $offset = max(0, ($page - 1) * $limit);
         $params = [
-            'page' => $page,
             'limit' => $limit,
+            'offset' => $offset,
             'sort' => $sort,
         ];
 

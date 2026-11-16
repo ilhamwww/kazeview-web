@@ -160,7 +160,7 @@
         @endif
 
         {{-- ================= MANGA CATALOG GRID ================= --}}
-        <div class="mt-8">
+        <div class="mt-8" id="doujin-catalog-top">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-red-600"></span>
@@ -221,8 +221,14 @@
                 </div>
 
                 {{-- Pagination Buttons --}}
-                <div class="mt-10 flex items-center justify-center gap-3">
-                    <button type="button" wire:click="prevPage" {{ $page <= 1 ? 'disabled' : '' }}
+                <div class="mt-10 flex items-center justify-center gap-3"
+                     x-data="{
+                         scrollToCatalog() {
+                             const el = document.getElementById('doujin-catalog-top');
+                             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                         }
+                     }">
+                    <button type="button" wire:click="prevPage" @click="setTimeout(scrollToCatalog, 300)" {{ $page <= 1 ? 'disabled' : '' }}
                             class="px-5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-white hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
                         Sebelumnya
@@ -230,7 +236,7 @@
                     <span class="px-4 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-black text-red-400">
                         Halaman {{ $page }}
                     </span>
-                    <button type="button" wire:click="nextPage" {{ !$hasNext ? 'disabled' : '' }}
+                    <button type="button" wire:click="nextPage" @click="setTimeout(scrollToCatalog, 300)" {{ !$hasNext ? 'disabled' : '' }}
                             class="px-5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-white hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2">
                         Berikutnya
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>

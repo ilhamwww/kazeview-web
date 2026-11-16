@@ -21,6 +21,13 @@ class Doujin extends Page
     public array $selectedGenres = [];
     public string $search = '';
 
+    protected $queryString = [
+        'page' => ['except' => 1],
+        'type' => ['except' => 'all'],
+        'sort' => ['except' => 'latest_chapter'],
+        'search' => ['except' => ''],
+    ];
+
     public array $banners = [];
     public array $genresList = [];
     public array $mangaList = [];
