@@ -179,7 +179,8 @@
                                 @if(!empty($item['cover']))
                                     <img src="{{ $item['cover'] }}" alt="{{ $item['title'] }}"
                                          class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                                         loading="lazy" referrerpolicy="no-referrer" />
+                                         loading="lazy"
+                                         @if(!empty($item['raw_cover'])) onerror="if(this.src!=='{{ $item['raw_cover'] }}'){this.src='{{ $item['raw_cover'] }}';}" @endif />
                                 @endif
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition"></div>
 

@@ -17,7 +17,8 @@
             {{-- Cover Card --}}
             <div class="w-40 sm:w-52 md:w-60 aspect-[3/4] shrink-0 rounded-2xl overflow-hidden bg-zinc-900 border border-white/10 shadow-2xl relative mx-auto md:mx-0">
                 <img src="{{ $detail['cover'] }}" alt="{{ $detail['title'] }}"
-                     class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+                     class="w-full h-full object-cover"
+                     @if(!empty($detail['raw_cover'])) onerror="if(this.src!=='{{ $detail['raw_cover'] }}'){this.src='{{ $detail['raw_cover'] }}';}" @endif />
                 <span class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-red-600 text-white text-[10px] font-black uppercase tracking-wider shadow">
                     {{ $detail['type'] }}
                 </span>

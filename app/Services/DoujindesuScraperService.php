@@ -248,11 +248,15 @@ class DoujindesuScraperService
                     $latestChapter = (string)$m['chapters'][0]['chapter_number'];
                 }
 
+                $rawCover = $m['cover_url'] ?? '';
+                $coverUrl = !empty($rawCover) ? url('/api/proxy-image?url=' . urlencode($rawCover)) : '';
+
                 $items[] = [
                     'id' => $m['id'] ?? '',
                     'title' => $m['title'] ?? 'Untitled',
                     'slug' => $slug,
-                    'cover' => $m['cover_url'] ?? '',
+                    'cover' => $coverUrl,
+                    'raw_cover' => $rawCover,
                     'type' => $m['type'] ?? 'doujinshi',
                     'status' => $m['status'] ?? 'ongoing',
                     'rating' => $m['rating'] ?? '0.0',
@@ -323,13 +327,19 @@ class DoujindesuScraperService
                 }
             }
 
+            $rawCover = $data['cover_url'] ?? '';
+            $rawBanner = $data['banner_url'] ?? ($data['cover_url'] ?? '');
+            $coverUrl = !empty($rawCover) ? url('/api/proxy-image?url=' . urlencode($rawCover)) : '';
+            $bannerUrl = !empty($rawBanner) ? url('/api/proxy-image?url=' . urlencode($rawBanner)) : '';
+
             return [
                 'id' => $data['id'],
                 'title' => $data['title'] ?? '',
                 'alternative_titles' => $data['alternative_titles'] ?? '',
                 'slug' => $data['slug'] ?? $slug,
-                'cover' => $data['cover_url'] ?? '',
-                'banner' => $data['banner_url'] ?? ($data['cover_url'] ?? ''),
+                'cover' => $coverUrl,
+                'banner' => $bannerUrl,
+                'raw_cover' => $rawCover,
                 'type' => $data['type'] ?? 'manhwa',
                 'status' => $data['status'] ?? 'ongoing',
                 'rating' => $data['rating'] ?? '8.5',
