@@ -301,7 +301,7 @@
         $isSeries = (str_contains($currentUrl, '/series') || str_contains($currentUrl, '/tv-series')) && !$isDracin && !$isDrakor;
         $isMovie = (str_contains($currentUrl, '/movies') || str_contains($currentUrl, '/movie/')) && !$isDracin && !$isCollection && !$isServerLk;
         $isTv = (request()->is('tv') || request()->is('tv/*') || request()->is('live-tv*')) && !str_contains($currentUrl, '/tv-series');
-        $isHome = !$isSeries && !$isMovie && !$isDracin && !$isAnime && !$isKomik && !$isCollection && !$isNetwork && !$isIndonesia && !$isDrakor && !$isTv && !$isServerLk && !str_contains($currentUrl, '/dmca') && !str_contains($currentUrl, '/traffic');
+        $isHome = !$isSeries && !$isMovie && !$isDracin && !$isAnime && !$isKomik && !$isDoujin && !$isCollection && !$isNetwork && !$isIndonesia && !$isDrakor && !$isTv && !$isServerLk && !str_contains($currentUrl, '/dmca') && !str_contains($currentUrl, '/traffic');
 
         $activeClass = "flex items-center gap-1.5 text-white bg-red-600/80 border border-red-500/25 px-3 py-1 rounded-full text-xs font-bold tracking-wide transition";
         $inactiveClass = "flex items-center gap-1.5 text-gray-300 hover:text-white text-xs font-semibold tracking-wide transition";
