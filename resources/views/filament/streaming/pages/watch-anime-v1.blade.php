@@ -387,6 +387,11 @@
                 {{-- Info Block --}}
                 <div class="px-4 lg:px-0 pt-4 space-y-4">
                     <div>
+                        <div class="mb-2 flex items-center gap-2 text-[11px]">
+                            <span class="font-bold text-zinc-500">Progres tontonan</span>
+                            <span class="font-black text-emerald-400" x-text="watchedEpisodes.length + ' episode dilihat'"></span>
+                            <span x-show="lastWatchedEpisode" class="text-zinc-500">· terakhir EP <span class="font-bold text-zinc-300" x-text="lastWatchedEpisode"></span></span>
+                        </div>
                         <p class="text-[11px] font-black uppercase tracking-[0.2em] text-red-400 mb-1">{{ $seriesDetail['title'] ?? 'Anime' }}</p>
                         <h1 class="text-xl md:text-2xl lg:text-3xl font-black tracking-tight leading-tight" x-text="episodeTitle || ('{{ $seriesDetail['title'] ?? 'Anime' }} Episode ' + currentEp)">
                             {{ $episodeDetail['title'] ?? ($seriesDetail['title'] . ' Episode ' . $epNo) }}
@@ -534,6 +539,8 @@
                                             </span>
                                         </template>
                                         <span class="absolute bottom-1 right-1 text-[9px] font-bold bg-black/75 text-white px-1 py-0.5 rounded">EP {{ $epItemNum }}</span>
+                                        <span x-show="watchedEpisodes.includes('{{ $epItemNum }}') && String(currentEp) !== '{{ $epItemNum }}'" x-cloak class="absolute top-1 right-1 rounded-md bg-emerald-600/90 px-1.5 py-0.5 text-[9px] font-black text-white">Dilihat ✓</span>
+                                        <span x-show="String(currentEp) === '{{ $epItemNum }}'" x-cloak class="absolute top-1 left-1 rounded-md bg-red-600/90 px-1.5 py-0.5 text-[9px] font-black text-white">Sekarang</span>
                                     </div>
                                     <div class="min-w-0 flex-1 py-0.5">
                                         <p class="text-[10px] font-black uppercase tracking-wider"
@@ -582,6 +589,8 @@
                 return {
                     hls: null,
                     sidebarQuery: '',
+                    watchedEpisodes: @js(auth()->check() ? (auth()->user()->watchHistories()->where('item_type', 'anime')->whereIn('item_id', ['anime_v1:' . $animeSlug, 'v1:' . $animeSlug, 'anime:' . $animeSlug])->value('watched_episodes') ?? []) : []),
+                    lastWatchedEpisode: @js(auth()->check() ? auth()->user()->watchHistories()->where('item_type', 'anime')->whereIn('item_id', ['anime_v1:' . $animeSlug, 'v1:' . $animeSlug, 'anime:' . $animeSlug])->value('last_episode') : null),
                     animeSlug: '{{ $animeSlug }}',
                     currentEp: '{{ $episodeSlug }}',
                     prevEp: @js($prevEpisodeSlug),

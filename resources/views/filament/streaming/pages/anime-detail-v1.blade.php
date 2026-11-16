@@ -199,6 +199,8 @@
               epBatch: 'all',
               sortOrder: 'asc',
               allEpisodes: @js($detail['episodes'] ?? []),
+              watchedEpisodes: @js($watchedEpisodes ?? []),
+              lastWatchedEpisode: @js($lastWatchedEpisode ?? null),
               get filteredEpisodes() {
                   let list = this.allEpisodes || [];
                   if (this.epQuery.trim()) {
@@ -282,11 +284,21 @@
         {{-- TAB 1: DAFTAR EPISODE --}}
         <div x-show="activeTab === 'episodes'">
             @if(!empty($detail['episodes']))
+                @if(!empty($watchedEpisodes))
+                    <div class="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-red-500/20 bg-red-600/5 px-3.5 py-3">
+                        <span class="text-xs font-bold text-zinc-300">Terakhir dilihat:</span>
+                        <a href="{{ \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $lastWatchedEpisode], panel: 'streaming') }}" class="text-xs font-black text-red-400 hover:text-red-300">Episode {{ $lastWatchedEpisode }} <span aria-hidden="true">→ Lanjutkan</span></a>
+                        <span class="ml-auto text-[11px] text-zinc-500">{{ count($watchedEpisodes) }} episode sudah dilihat</span>
+                    </div>
+                @endif
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
                     <template x-for="ep in filteredEpisodes" :key="ep.episode">
                         <a :href="'/anime/{{ $animeSlug }}/episode/' + ep.episode"
-                           class="group flex flex-col p-3.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/90 border border-zinc-800 hover:border-red-500/40 transition active:scale-95 shadow-lg">
-                            <div class="flex items-center justify-between mb-2">
+                           class="group relative flex flex-col p-3.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/90 border border-zinc-800 hover:border-red-500/40 transition active:scale-95 shadow-lg"
+                           :class="watchedEpisodes.includes(String(ep.episode)) ? 'border-emerald-500/30 bg-emerald-500/[0.04]' : ''">
+                            <span x-show="String(ep.episode) === String(lastWatchedEpisode)" x-cloak class="absolute top-2 right-2 rounded-md bg-red-600 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white">Terakhir</span>
+                            <span x-show="watchedEpisodes.includes(String(ep.episode)) && String(ep.episode) !== String(lastWatchedEpisode)" x-cloak class="absolute top-2 right-2 rounded-md bg-emerald-600/20 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">Dilihat ✓</span>
+                            <div class="flex items-center justify-between mb-2 pr-1">
                                 <span class="text-[10px] font-black uppercase text-red-400 tracking-wider" x-text="'EPS ' + ep.episode"></span>
                                 <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:text-red-400 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />

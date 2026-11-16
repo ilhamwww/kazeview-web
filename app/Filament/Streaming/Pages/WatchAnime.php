@@ -38,6 +38,8 @@ class WatchAnime extends Page
     public ?string $nextEpisodeSlug = null;
 
     public bool $isFavorited = false;
+    public array $watchedEpisodes = [];
+    public ?string $lastWatchedEpisode = null;
 
     public function mount(string $anime_slug, string $episode_slug): void
     {

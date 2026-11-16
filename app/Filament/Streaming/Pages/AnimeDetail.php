@@ -25,6 +25,8 @@ class AnimeDetail extends Page
     public ?array $downloads = null;
     public string $selectedDownloadEp = '1';
     public bool $isFavorited = false;
+    public array $watchedEpisodes = [];
+    public ?string $lastWatchedEpisode = null;
 
     public function mount($slug): void
     {
