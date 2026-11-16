@@ -33,6 +33,7 @@ class ComicReadHistory extends Model
             str_starts_with($comicId, 'wurmz__') => 'wurmz',
             str_starts_with($comicId, 'izanami__') => 'izanami',
             str_starts_with($comicId, 'kiryuu__') => 'kiryuu',
+            str_starts_with($comicId, 'doujin__') => 'doujin',
             default => 'shinigami',
         };
 
@@ -67,6 +68,7 @@ class ComicReadHistory extends Model
             str_starts_with($comicId, 'wurmz__') => 'wurmz',
             str_starts_with($comicId, 'izanami__') => 'izanami',
             str_starts_with($comicId, 'kiryuu__') => 'kiryuu',
+            str_starts_with($comicId, 'doujin__') => 'doujin',
             default => 'shinigami',
         };
 

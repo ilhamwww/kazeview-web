@@ -2,13 +2,145 @@
      x-data="{
          currentPage: 1,
          totalPages: {{ count($chapter['images'] ?? []) }},
-         zoomMode: 'fit-width', // fit-width, original
+         zoomMode: 'fit-width',
          navVisible: true,
+         currentProgress: 0,
+         saveTimer: null,
+         serverHistory: @js($serverHistory),
+         comicId: 'doujin__{{ $mangaSlug }}',
+         chapterId: '{{ $chapterId }}',
+         chapterNumber: {{ (float) ($chapter['chapter_number'] ?? 0) }},
+         chapterLabel: 'Chapter {{ $chapter['chapter_number'] ?? '' }}',
+         comicTitle: '{{ addslashes($manga['title'] ?? 'Doujin') }}',
+         comicCover: '{{ addslashes($manga['cover'] ?? '') }}',
+
          toggleNav() {
              this.navVisible = !this.navVisible;
+         },
+
+         init() {
+             // 1. Pulihkan posisi scroll dari query param (?p= / ?y=) atau riwayat server / localStorage
+             const urlParams = new URLSearchParams(window.location.search);
+             const pParam = parseInt(urlParams.get('p') || '0', 10);
+             const yParam = parseInt(urlParams.get('y') || '0', 10);
+
+             let targetProgress = 0;
+             let targetY = 0;
+
+             if (pParam > 0) {
+                 targetProgress = pParam;
+             } else if (yParam > 0) {
+                 targetY = yParam;
+             } else if (this.serverHistory && this.serverHistory.chapterId === this.chapterId) {
+                 targetProgress = this.serverHistory.progress || 0;
+                 targetY = this.serverHistory.scrollY || 0;
+             } else {
+                 try {
+                     const localRaw = localStorage.getItem('doujin_progress_' + this.comicId);
+                     if (localRaw) {
+                         const localData = JSON.parse(localRaw);
+                         if (localData && localData.chapterId === this.chapterId) {
+                             targetProgress = localData.progress || 0;
+                             targetY = localData.scrollY || 0;
+                         }
+                     }
+                 } catch (e) {}
+             }
+
+             if (targetProgress > 0 || targetY > 0) {
+                 this.restoreScroll(targetProgress, targetY);
+             }
+
+             // 2. Pasang scroll listener dengan throttling untuk catat progress
+             window.addEventListener('scroll', () => {
+                 this.handleScroll();
+             }, { passive: true });
+         },
+
+         restoreScroll(progress, targetY) {
+             const tryRestore = (attemptsLeft) => {
+                 const docH = document.documentElement.scrollHeight - window.innerHeight;
+                 if (docH > 400 || attemptsLeft <= 0) {
+                     if (targetY > 0 && targetY <= document.documentElement.scrollHeight) {
+                         window.scrollTo({ top: targetY, behavior: 'instant' });
+                     } else if (progress > 0) {
+                         const calcY = Math.round((progress / 100) * docH);
+                         window.scrollTo({ top: calcY, behavior: 'instant' });
+                     }
+                 } else {
+                     setTimeout(() => tryRestore(attemptsLeft - 1), 250);
+                 }
+             };
+             setTimeout(() => tryRestore(12), 150);
+         },
+
+         handleScroll() {
+             const docH = document.documentElement.scrollHeight - window.innerHeight;
+             if (docH <= 0) return;
+
+             const scrollY = window.scrollY || window.pageYOffset;
+             let percent = Math.min(100, Math.max(0, Math.round((scrollY / docH) * 100)));
+             this.currentProgress = percent;
+
+             // Hitung halaman aktif saat ini
+             const imgs = document.querySelectorAll('[id^=page-]');
+             for (let i = 0; i < imgs.length; i++) {
+                 const rect = imgs[i].getBoundingClientRect();
+                 if (rect.top <= window.innerHeight / 2 && rect.bottom >= window.innerHeight / 2) {
+                     this.currentPage = i + 1;
+                     break;
+                 }
+             }
+
+             // Debounce save ke server dan local
+             clearTimeout(this.saveTimer);
+             this.saveTimer = setTimeout(() => {
+                 this.saveProgress(percent, scrollY);
+             }, 800);
+         },
+
+         saveProgress(percent, scrollY) {
+             const payload = {
+                 comic_id: this.comicId,
+                 comic_title: this.comicTitle,
+                 comic_cover: this.comicCover,
+                 chapter_id: this.chapterId,
+                 chapter_label: this.chapterLabel,
+                 chapter_number: this.chapterNumber,
+                 progress: percent,
+                 panel_index: this.currentPage,
+                 scroll_y: Math.round(scrollY),
+                 _token: '{{ csrf_token() }}'
+             };
+
+             // Simpan ke localStorage untuk akses instan offline
+             try {
+                 localStorage.setItem('doujin_progress_' + this.comicId, JSON.stringify({
+                     chapterId: this.chapterId,
+                     progress: percent,
+                     scrollY: Math.round(scrollY),
+                     timestamp: Date.now()
+                 }));
+             } catch (e) {}
+
+             // Sync ke server backend via api/comic-progress
+             fetch('/api/comic-progress', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                 },
+                 body: JSON.stringify(payload)
+             }).catch(() => {});
          }
      }"
      @keydown.window.escape="window.location.href='/doujin/detail/{{ $mangaSlug }}'">
+
+    {{-- ================= PROGRESS BAR AT VERY TOP ================= --}}
+    <div class="fixed top-0 inset-x-0 h-1 bg-zinc-800 z-[60] pointer-events-none">
+        <div class="h-full bg-gradient-to-r from-red-600 to-rose-400 transition-all duration-150"
+             :style="`width: ${currentProgress}%`"></div>
+    </div>
 
     {{-- ================= STICKY TOPBAR CONTROLS ================= --}}
     <header x-show="navVisible"
@@ -27,8 +159,12 @@
                 <h1 class="text-xs sm:text-sm font-bold text-white truncate leading-tight">
                     {{ $manga['title'] ?? 'Doujin' }}
                 </h1>
-                <p class="text-[10px] text-red-400 font-black mt-0.5 uppercase tracking-wider">
-                    Chapter {{ $chapter['chapter_number'] }} • {{ count($chapter['images'] ?? []) }} Halaman
+                <p class="text-[10px] text-red-400 font-black mt-0.5 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Chapter {{ $chapter['chapter_number'] }}</span>
+                    <span>•</span>
+                    <span x-text="`${currentPage} / ${totalPages} Hlm`"></span>
+                    <span>•</span>
+                    <span class="text-zinc-400" x-text="`${currentProgress}%`"></span>
                 </p>
             </div>
         </div>

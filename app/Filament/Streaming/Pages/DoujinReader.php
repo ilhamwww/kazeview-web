@@ -20,6 +20,7 @@ class DoujinReader extends Page
     public ?array $chapter = null;
     public ?string $prevChapterId = null;
     public ?string $nextChapterId = null;
+    public ?array $serverHistory = null;
 
     public function mount(string $mangaSlug, string $chapterId): void
     {
@@ -50,6 +51,25 @@ class DoujinReader extends Page
                     break;
                 }
             }
+        }
+
+        if (Auth::check()) {
+            try {
+                $hist = \App\Models\ComicReadHistory::where('user_id', Auth::id())
+                    ->where('comic_id', 'doujin__' . $this->mangaSlug)
+                    ->first();
+                if ($hist && $hist->last_chapter_id) {
+                    $this->serverHistory = [
+                        'chapterId' => $hist->last_chapter_id,
+                        'label' => $hist->last_chapter_label,
+                        'number' => (float) ($hist->last_chapter_number ?? 0),
+                        'progress' => (int) ($hist->last_progress ?? 0),
+                        'panelIndex' => (int) ($hist->last_panel_index ?? 1),
+                        'scrollY' => (int) ($hist->last_scroll_y ?? 0),
+                        'updatedAt' => $hist->updated_at ? $hist->updated_at->getTimestampMs() : 0,
+                    ];
+                }
+            } catch (\Throwable $e) {}
         }
 
         static::$title = ($this->manga['title'] ?? 'Doujin') . ' - Chapter ' . ($this->chapter['chapter_number'] ?? '') . ' - KZSTRM';

@@ -17,6 +17,8 @@ class DoujinDetail extends Page
     public string $mangaSlug = '';
     public ?array $detail = null;
     public string $viewMode = 'list'; // list, kotatsu
+    public ?array $serverHistory = null;
+    public array $readChapters = [];
 
     public function mount(string $mangaSlug): void
     {
@@ -32,6 +34,28 @@ class DoujinDetail extends Page
 
         if (!$this->detail) {
             abort(404, 'Manga tidak ditemukan.');
+        }
+
+        if (Auth::check()) {
+            try {
+                $hist = \App\Models\ComicReadHistory::where('user_id', Auth::id())
+                    ->where('comic_id', 'doujin__' . $this->mangaSlug)
+                    ->first();
+                if ($hist) {
+                    $this->readChapters = is_array($hist->read_chapters) ? $hist->read_chapters : [];
+                    if ($hist->last_chapter_id) {
+                        $this->serverHistory = [
+                            'chapterId' => $hist->last_chapter_id,
+                            'label' => $hist->last_chapter_label,
+                            'number' => (float) ($hist->last_chapter_number ?? 0),
+                            'progress' => (int) ($hist->last_progress ?? 0),
+                            'panelIndex' => (int) ($hist->last_panel_index ?? 1),
+                            'scrollY' => (int) ($hist->last_scroll_y ?? 0),
+                            'updatedAt' => $hist->updated_at ? $hist->updated_at->getTimestampMs() : 0,
+                        ];
+                    }
+                }
+            } catch (\Throwable $e) {}
         }
 
         static::$title = ($this->detail['title'] ?? 'Detail Doujin') . ' - KZSTRM';
