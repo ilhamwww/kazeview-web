@@ -57,7 +57,7 @@
      }">
 
     {{-- ================= HERO DETAIL BANNER ================= --}}
-    <section class="relative w-full overflow-hidden bg-zinc-950 border-b border-zinc-800 pt-16 sm:pt-20 lg:pt-24">
+    <section class="relative w-full overflow-hidden bg-zinc-950 border-b border-zinc-800 pt-20 sm:pt-24 lg:pt-32">
         {{-- Background Backdrop Blur --}}
         <div class="absolute inset-0 opacity-20 filter blur-3xl scale-110 pointer-events-none">
             <img src="{{ $detail['cover'] }}" alt="" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
