@@ -1782,7 +1782,7 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
 
     $parsedUrl = parse_url($url);
     $host = $parsedUrl['host'] ?? '';
-    $allowedDomains = ['flextv.cc', 'shortswave.com', 'mydramawave.com', 'farsunpteltd.com', 'farsunpteltd.net', 'wolftv.online', 'cubetv.cc', 'vividshort.com', '198.252.99.106', 'dramabuzz.sbs', 'goodbos.online', 'dramabos.fun', 'wsrv.nl', 'lh3.googleusercontent.com', 'googleusercontent.com', 'tiktokcdn.com', 'ibyteimg.com', 'netshort.com', 'shorttv.live', 'raptdrama.com', 'goodreels.com', 'goodshort.com', 'dramaboxdb.com', 'dramabox.com', 'shortolol.com', 'kintoto.xyz', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'assets.stardusttv.cc', 'stardusttv.cc', 'stardust-tv.com', 'vibeshort.live', 'rebahinxxi3.mom', 'rebahinxxi.mom', 'rebahinxxi3.pics', 'rebahinxxi3.casa', 'serealshort.com', 'serealplus.com', 'nontonanimeid.my.id', 'nontonanimeid.boats', 'wp.com', 'rumble.cloud', 'kotakanimeid.link', 'tmdb.org', 'themoviedb.org', 'shngm.id', 'shngm.io', 'assets.shngm.id', 'mangadex.org', 'mangadex.network', 'uqni.net', '88cdn.cloud', 'kiryuu.to', 'kiryuu.io', 'izanamiscans.my.id'];
+    $allowedDomains = ['flextv.cc', 'shortswave.com', 'mydramawave.com', 'farsunpteltd.com', 'farsunpteltd.net', 'wolftv.online', 'cubetv.cc', 'vividshort.com', '198.252.99.106', 'dramabuzz.sbs', 'goodbos.online', 'dramabos.fun', 'wsrv.nl', 'lh3.googleusercontent.com', 'googleusercontent.com', 'tiktokcdn.com', 'ibyteimg.com', 'netshort.com', 'shorttv.live', 'raptdrama.com', 'goodreels.com', 'goodshort.com', 'dramaboxdb.com', 'dramabox.com', 'shortolol.com', 'kintoto.xyz', 'crazymaplestudios.com', 'storyreel.life', 'cdreader.com', 'stardust-tv.co', 'assets.stardusttv.cc', 'stardusttv.cc', 'stardust-tv.com', 'vibeshort.live', 'rebahinxxi3.mom', 'rebahinxxi.mom', 'rebahinxxi3.pics', 'rebahinxxi3.casa', 'serealshort.com', 'serealplus.com', 'nontonanimeid.my.id', 'nontonanimeid.boats', 'wp.com', 'rumble.cloud', 'kotakanimeid.link', 'tmdb.org', 'themoviedb.org', 'shngm.id', 'shngm.io', 'assets.shngm.id', 'mangadex.org', 'mangadex.network', 'uqni.net', '88cdn.cloud', 'kiryuu.to', 'kiryuu.io', 'izanamiscans.my.id', 'desu.xxx', 'desu.pics', 'amz-ch.desu.pics'];
     $allowed = false;
     foreach ($allowedDomains as $domain) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {
@@ -1816,12 +1816,18 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
                 } catch (\Throwable $ne) {}
             }
 
+            $headers = [
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept' => 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+                'Referer' => 'https://11.shinigami.asia/',
+            ];
+            if (str_contains($host, 'desu.xxx') || str_contains($host, 'desu.pics')) {
+                $headers['Referer'] = 'https://doujin.desu.xxx/';
+                $headers['Origin'] = 'https://doujin.desu.xxx';
+            }
+
             $response = \Illuminate\Support\Facades\Http::withoutVerifying()
-                ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept' => 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-                    'Referer' => 'https://11.shinigami.asia/',
-                ])
+                ->withHeaders($headers)
                 ->get($url);
             $ct = $response->header('Content-Type') ?: '';
             if ($response->successful() && str_starts_with($ct, 'image/')) {
