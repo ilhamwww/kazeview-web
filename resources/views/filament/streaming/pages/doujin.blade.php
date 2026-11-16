@@ -15,7 +15,7 @@
 
     {{-- ================= HERO BANNER SLIDER ================= --}}
     @if(!empty($banners))
-        <section class="relative w-full max-w-[1800px] mx-auto px-4 sm:px-6 pt-4 lg:pt-8">
+        <section class="relative w-full max-w-[1800px] mx-auto px-4 sm:px-6 pt-20 sm:pt-24 lg:pt-28">
             <div class="relative w-full h-[320px] sm:h-[400px] md:h-[460px] rounded-3xl overflow-hidden bg-zinc-950 border border-white/10 shadow-2xl group">
                 @foreach($banners as $idx => $b)
                     <div x-show="currentSlide === {{ $idx }}"
