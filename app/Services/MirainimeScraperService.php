@@ -1021,14 +1021,16 @@ PY;
                 \Log::warning("Mirainime JSON ep fetch failed: " . $je->getMessage());
             }
 
-            // Fallback: Jika HLS belum didapat, ambil via endpoint /streams dengan token session Mirainime
-            if (empty($hlsUrl)) {
+            // Fallback: Jika HLS atau Direct Video belum didapat, ambil via endpoint /streams dengan token session Mirainime
+            if (empty($hlsUrl) || empty($videoUrl) || str_contains($videoUrl, '/embed/')) {
                 try {
                     $streamsData = $this->fetchStreamsWithToken($animeSlug, $episodeNum);
                     if ($streamsData && is_array($streamsData)) {
                         if (!empty($streamsData['hlsUrl'])) {
                             $hlsUrl = $streamsData['hlsUrl'];
                             $videoUrl = $hlsUrl;
+                        } elseif (!empty($streamsData['gdriveSources'][0]['url']) && (empty($videoUrl) || str_contains($videoUrl, '/embed/'))) {
+                            $videoUrl = $streamsData['gdriveSources'][0]['url'];
                         }
                         if (!empty($streamsData['gdriveSources'])) {
                             $gdriveSources = array_merge($gdriveSources, $streamsData['gdriveSources']);
