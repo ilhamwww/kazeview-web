@@ -192,7 +192,33 @@
     </section>
 
     <!-- Main Content Tabs: Daftar Episode | Anime Terkait -->
-    <main class="w-full max-w-[1800px] mx-auto px-6 pt-10 pb-6" x-data="{ activeTab: 'episodes' }">
+    <main class="w-full max-w-[1800px] mx-auto px-6 pt-10 pb-6"
+          x-data="{
+              activeTab: 'episodes',
+              epQuery: '',
+              epBatch: 'all',
+              sortOrder: 'asc',
+              allEpisodes: @js($detail['episodes'] ?? []),
+              get filteredEpisodes() {
+                  let list = this.allEpisodes || [];
+                  if (this.epQuery.trim()) {
+                      const q = this.epQuery.trim().toLowerCase();
+                      list = list.filter(e => String(e.episode).toLowerCase().includes(q) || (e.title && e.title.toLowerCase().includes(q)));
+                  } else if (this.epBatch !== 'all') {
+                      const parts = this.epBatch.split('-');
+                      const min = parseInt(parts[0], 10);
+                      const max = parseInt(parts[1], 10);
+                      list = list.filter(e => {
+                          const n = parseInt(e.episode, 10);
+                          return !isNaN(n) && n >= min && n <= max;
+                      });
+                  }
+                  if (this.sortOrder === 'desc') {
+                      return [...list].sort((a, b) => parseInt(b.episode, 10) - parseInt(a.episode, 10));
+                  }
+                  return [...list].sort((a, b) => parseInt(a.episode, 10) - parseInt(b.episode, 10));
+              }
+          }">
         {{-- Tabs Navigation Header --}}
         <div class="mb-6 border-b border-zinc-800 pb-3 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-2">
@@ -211,38 +237,67 @@
                 @endif
             </div>
 
-            <p class="text-xs text-zinc-500 hidden sm:block" x-show="activeTab === 'episodes'">
-                Pilih episode untuk langsung memutar
-            </p>
-            <p class="text-xs text-zinc-500 hidden sm:block" x-show="activeTab === 'relations'" x-cloak>
-                Sequel, prequel, dan cerita terkait dalam franchise ini
-            </p>
+            {{-- Episode Range / Filter Pills (Khusus jika episode banyak > 50) --}}
+            <div class="flex items-center gap-2.5 flex-wrap" x-show="activeTab === 'episodes'">
+                @php
+                    $totalEpCount = count($detail['episodes'] ?? []);
+                @endphp
+                @if($totalEpCount > 60)
+                    <div class="flex items-center gap-1.5 overflow-x-auto kz-noscroll max-w-full py-1">
+                        <button type="button" @click="epBatch = 'all'; epQuery = ''"
+                                :class="epBatch === 'all' && !epQuery ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'"
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap">
+                            Semua ({{ $totalEpCount }})
+                        </button>
+                        @for($i = 1; $i <= $totalEpCount; $i += 100)
+                            @php
+                                $bEnd = min($totalEpCount, $i + 99);
+                                $bKey = "{$i}-{$bEnd}";
+                            @endphp
+                            <button type="button" @click="epBatch = '{{ $bKey }}'; epQuery = ''"
+                                    :class="epBatch === '{{ $bKey }}' && !epQuery ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'"
+                                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap">
+                                {{ $i }}–{{ $bEnd }}
+                            </button>
+                        @endfor
+                    </div>
+                @endif
+
+                {{-- Search Episode Input --}}
+                <div class="relative w-40 sm:w-48">
+                    <input type="text" x-model.debounce.200ms="epQuery" placeholder="Cari episode..."
+                           class="w-full pl-8 pr-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500" />
+                    <svg class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                </div>
+
+                {{-- Sort Order Toggle --}}
+                <button type="button" @click="sortOrder = (sortOrder === 'asc' ? 'desc' : 'asc')"
+                        class="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-300 flex items-center gap-1.5 transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5"/></svg>
+                    <span x-text="sortOrder === 'asc' ? 'Urut: Awal' : 'Urut: Akhir'"></span>
+                </button>
+            </div>
         </div>
 
         {{-- TAB 1: DAFTAR EPISODE --}}
         <div x-show="activeTab === 'episodes'">
             @if(!empty($detail['episodes']))
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                    @foreach($detail['episodes'] as $ep)
-                        @php
-                            $epNum = $ep['episode'] ?? '1';
-                            $epWatchUrl = \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $epNum], panel: 'streaming');
-                        @endphp
-                        <a href="{{ $epWatchUrl }}"
+                    <template x-for="ep in filteredEpisodes" :key="ep.episode">
+                        <a :href="'/anime/{{ $animeSlug }}/episode/' + ep.episode"
                            class="group flex flex-col p-3.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/90 border border-zinc-800 hover:border-red-500/40 transition active:scale-95 shadow-lg">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-[10px] font-black uppercase text-red-400 tracking-wider">
-                                    EPS {{ $ep['episode'] }}
-                                </span>
+                                <span class="text-[10px] font-black uppercase text-red-400 tracking-wider" x-text="'EPS ' + ep.episode"></span>
                                 <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:text-red-400 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                 </svg>
                             </div>
-                            <p class="text-xs font-semibold text-zinc-300 group-hover:text-white line-clamp-2 leading-tight">
-                                {{ $ep['title'] }}
-                            </p>
+                            <p class="text-xs font-semibold text-zinc-300 group-hover:text-white line-clamp-2 leading-tight" x-text="ep.title || ('Episode ' + ep.episode)"></p>
                         </a>
-                    @endforeach
+                    </template>
+                </div>
+                <div x-show="filteredEpisodes.length === 0" class="py-12 text-center text-zinc-500 bg-zinc-900/40 rounded-xl border border-dashed border-zinc-800">
+                    <p class="text-sm font-medium">Tidak ada episode yang cocok dengan pencarian.</p>
                 </div>
             @else
                 <div class="py-12 text-center text-zinc-500 bg-zinc-900/40 rounded-xl border border-dashed border-zinc-800">

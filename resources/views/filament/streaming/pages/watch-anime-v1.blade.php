@@ -495,6 +495,14 @@
                         <span class="text-[11px] text-zinc-500">{{ $totalEps }} episode</span>
                     </div>
 
+                    {{-- Episode Filter / Search Bar jika episode > 40 --}}
+                    @if($totalEps > 40)
+                        <div class="mt-2.5">
+                            <input type="text" x-model.debounce.150ms="sidebarQuery" placeholder="Cari episode..."
+                                   class="w-full px-3 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500" />
+                        </div>
+                    @endif
+
                     <ol class="mt-3 space-y-2 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto lg:pr-1 kz-thin lg:kz-fade-y"
                         x-init="$nextTick(() => { const a = $el.querySelector('[data-active]'); if (a && window.innerWidth >= 1024) a.scrollIntoView({ block: 'center' }) })">
                         @foreach($episodes as $ep)
@@ -506,7 +514,7 @@
                                     : '#';
                                 $thumb = $seriesDetail['thumbnail'] ?? ($metadata['poster'] ?? '');
                             @endphp
-                            <li>
+                            <li x-show="!sidebarQuery || '{{ $epItemNum }}'.includes(sidebarQuery.trim()) || '{{ strtolower(addslashes($ep['title'] ?? '')) }}'.includes(sidebarQuery.trim().toLowerCase())">
                                 <a href="{{ $epUrl }}"
                                    @click.prevent="selectEpisode('{{ $epItemNum }}')"
                                    :class="String(currentEp) === '{{ $epItemNum }}' ? 'bg-red-600/10 ring-1 ring-red-500/40' : 'hover:bg-white/[0.04] active:bg-white/[0.06]'"
@@ -573,6 +581,7 @@
             window.initWatchAnimeComponent = function() {
                 return {
                     hls: null,
+                    sidebarQuery: '',
                     animeSlug: '{{ $animeSlug }}',
                     currentEp: '{{ $episodeSlug }}',
                     prevEp: @js($prevEpisodeSlug),

@@ -788,6 +788,7 @@ class MirainimeScraperService
             $episodes = [];
             $seenEp = [];
 
+            // A. Ekstrak dari HTML awal halaman detail (halaman 1)
             $crawler->filter('a[href*="/episode/"]')->each(function (Crawler $a) use (&$episodes, &$seenEp, $slug) {
                 $href = $a->attr('href') ?? '';
                 if (empty($href) || !str_contains($href, $slug)) {
@@ -807,6 +808,38 @@ class MirainimeScraperService
                     'url' => $href,
                 ];
             });
+
+            // B. Khusus serial panjang (seperti Conan, One Piece, Naruto, Bleach, dll.)
+            // Di halaman detail Mirainime memakai lazy load-more atau paginasi sehingga HTML awal hanya memuat batch pertama.
+            // Namun di halaman player episode manapun (misal episode pertama yang kita temukan), Mirainime menyertakan
+            // seluruh katalog ribuan episode secara lengkap di window.b2PlayerOptions.episodes!
+            if (!empty($episodes[0]['episode'])) {
+                try {
+                    $firstEpNum = $episodes[0]['episode'];
+                    $epHtml = $this->fetchHtml("anime/{$slug}/episode/{$firstEpNum}");
+                    if (!empty($epHtml) && preg_match('/window\.b2PlayerOptions\s*=\\s*(\\{.*?\\});/s', $epHtml, $m)) {
+                        $opts = json_decode($m[1], true);
+                        $fullEps = $opts['episodes'] ?? [];
+                        if (is_array($fullEps) && count($fullEps) > count($episodes)) {
+                            $episodes = [];
+                            $seenEp = [];
+                            foreach ($fullEps as $e) {
+                                $num = (string)($e['episode_number'] ?? '');
+                                if ($num !== '' && !isset($seenEp[$num])) {
+                                    $seenEp[$num] = true;
+                                    $episodes[] = [
+                                        'episode' => $num,
+                                        'title' => !empty($e['title']) ? $e['title'] : "Episode {$num}",
+                                        'url' => rtrim($this->baseUrl, '/') . "/anime/{$slug}/episode/{$num}",
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                } catch (\Throwable $fe) {
+                    \Log::warning("Full episode list extraction from player options failed: " . $fe->getMessage());
+                }
+            }
 
             // Sort episodes ascending (Episode 1 first)
             usort($episodes, function ($a, $b) {
