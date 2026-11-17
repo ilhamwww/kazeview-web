@@ -108,6 +108,14 @@
                         {{ $this->counts['komik'] }}
                     </span>
                 </button>
+
+                <button wire:click="setFilter('doujin')"
+                        class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 flex-shrink-0 {{ $this->activeFilter === 'doujin' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800' }}">
+                    <span>Doujin 18+</span>
+                    <span class="px-1.5 py-0.5 rounded-md text-[10px] {{ $this->activeFilter === 'doujin' ? 'bg-red-700 text-white' : 'bg-zinc-800 text-zinc-400' }}">
+                        {{ $this->counts['doujin'] }}
+                    </span>
+                </button>
             </div>
 
             <!-- Content Grid / Empty State -->
@@ -165,6 +173,9 @@
                                 } elseif (in_array($fav->item_type, ['komik', 'comic', 'webtoon', 'manga'], true)) {
                                     $comicId = preg_replace('/^comic:/', '', (string) $fav->item_id);
                                     $detailUrl = !empty($fav->url) ? $fav->url : '/komik/detail/' . $comicId;
+                                } elseif ($fav->item_type === 'doujin') {
+                                    $doujinSlug = preg_replace('/^doujin:/', '', (string) $fav->item_id);
+                                    $detailUrl = !empty($fav->url) ? $fav->url : '/doujin/detail/' . $doujinSlug;
                                 } elseif (!empty($fav->url)) {
                                     $detailUrl = $fav->url;
                                 }
@@ -173,12 +184,14 @@
                             }
 
                             $isComicFav = in_array($fav->item_type, ['komik', 'comic', 'webtoon', 'manga'], true);
+                            $isDoujinFav = $fav->item_type === 'doujin';
                             $badgeType = match($fav->item_type) {
                                 'movie' => ['label' => 'Movie', 'bg' => 'bg-red-600/80 text-white'],
                                 'tv_series' => ['label' => 'Series', 'bg' => 'bg-blue-600/80 text-white'],
                                 'dracin' => ['label' => 'Dracin', 'bg' => 'bg-amber-600/80 text-white'],
                                 'anime', 'bstation' => ['label' => 'Anime', 'bg' => 'bg-purple-600/80 text-white'],
                                 'komik', 'comic', 'webtoon', 'manga' => ['label' => 'Komik', 'bg' => 'bg-emerald-600/80 text-white'],
+                                'doujin' => ['label' => 'Doujin 18+', 'bg' => 'bg-rose-700/90 text-white'],
                                 default => ['label' => 'Video', 'bg' => 'bg-zinc-700 text-white'],
                             };
 
@@ -221,7 +234,7 @@
 
                                 <!-- Play / Read Hover Overlay -->
                                 <a href="{{ $detailUrl }}" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
-                                    @if(!$isComicFav)
+                                    @if(!$isComicFav && !$isDoujinFav)
                                         <div class="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl transform scale-75 group-hover:scale-100 transition duration-300">
                                             <svg class="w-5 h-5 fill-current translate-x-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                                         </div>
@@ -246,8 +259,8 @@
 
                                 <div class="pt-1">
                                     <a href="{{ $detailUrl }}" class="w-full py-2 px-3 rounded-xl bg-zinc-800/80 hover:bg-red-600 active:scale-95 text-zinc-300 hover:text-white text-xs font-bold transition duration-200 flex items-center justify-center gap-1.5 shadow-sm">
-                                        @if($isComicFav)
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                                        @if($isComicFav || $isDoujinFav)
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
                                             <span>Baca</span>
                                         @else
                                             <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>

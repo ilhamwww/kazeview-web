@@ -122,6 +122,12 @@
 
                 {{-- Action Quick Read & Lanjutkan Membaca --}}
                 <div class="mt-6 flex flex-wrap items-center gap-3">
+                    <button type="button" wire:click="toggleFavorite"
+                            aria-label="{{ $isFavorited ? 'Hapus dari favorit' : 'Tambahkan ke favorit' }}"
+                            class="px-4 py-2.5 rounded-xl border text-xs font-bold transition flex items-center gap-2 {{ $isFavorited ? 'bg-red-600/15 border-red-500/50 text-red-300' : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:border-red-500/40' }}">
+                        <svg class="w-4 h-4" fill="{{ $isFavorited ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5.75A1.75 1.75 0 016.75 4h10.5A1.75 1.75 0 0119 5.75V21l-7-4-7 4V5.75z"/></svg>
+                        {{ $isFavorited ? 'Favorit Tersimpan' : 'Tambah Favorit' }}
+                    </button>
                     @if(!empty($detail['chapters']))
                         @php
                             $firstCh = end($detail['chapters']);

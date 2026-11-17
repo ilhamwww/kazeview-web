@@ -15,7 +15,7 @@ class Watchlist extends Page
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
-    public string $activeFilter = 'all'; // all, movie, tv_series, dracin, anime, komik
+    public string $activeFilter = 'all'; // all, movie, tv_series, dracin, anime, komik, doujin
 
     public function setFilter(string $filter): void
     {
@@ -69,6 +69,8 @@ class Watchlist extends Page
             $query->whereIn('item_type', ['anime', 'bstation']);
         } elseif ($this->activeFilter === 'komik') {
             $query->whereIn('item_type', ['komik', 'comic', 'webtoon', 'manga']);
+        } elseif ($this->activeFilter === 'doujin') {
+            $query->where('item_type', 'doujin');
         }
 
         return $query->get();
@@ -84,6 +86,7 @@ class Watchlist extends Page
                 'dracin' => 0,
                 'anime' => 0,
                 'komik' => 0,
+                'doujin' => 0,
             ];
         }
 
@@ -96,6 +99,7 @@ class Watchlist extends Page
             'dracin' => $favs->where('item_type', 'dracin')->count(),
             'anime' => $favs->whereIn('item_type', ['anime', 'bstation'])->count(),
             'komik' => $favs->whereIn('item_type', ['komik', 'comic', 'webtoon', 'manga'])->count(),
+            'doujin' => $favs->where('item_type', 'doujin')->count(),
         ];
     }
 }

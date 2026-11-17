@@ -19,6 +19,7 @@ class DoujinDetail extends Page
     public string $viewMode = 'list'; // list, kotatsu
     public ?array $serverHistory = null;
     public array $readChapters = [];
+    public bool $isFavorited = false;
 
     public function mount(string $mangaSlug): void
     {
@@ -37,6 +38,11 @@ class DoujinDetail extends Page
         }
 
         if (Auth::check()) {
+            $this->isFavorited = Auth::user()->favorites()
+                ->where('item_type', 'doujin')
+                ->where('item_id', 'doujin:' . $this->mangaSlug)
+                ->exists();
+
             try {
                 $hist = \App\Models\ComicReadHistory::where('user_id', Auth::id())
                     ->where('comic_id', 'doujin__' . $this->mangaSlug)
@@ -59,5 +65,39 @@ class DoujinDetail extends Page
         }
 
         static::$title = ($this->detail['title'] ?? 'Detail Doujin') . ' - KZSTRM';
+    }
+
+    public function toggleFavorite(): void
+    {
+        if (!Auth::check()) {
+            \Filament\Notifications\Notification::make()
+                ->title('Silakan login terlebih dahulu untuk menyimpan ke Favorit')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $user = Auth::user();
+        $favorite = $user->favorites()
+            ->where('item_type', 'doujin')
+            ->where('item_id', 'doujin:' . $this->mangaSlug)
+            ->first();
+
+        if ($favorite) {
+            $favorite->delete();
+            $this->isFavorited = false;
+            \Filament\Notifications\Notification::make()->title('Dihapus dari Favorit')->success()->send();
+            return;
+        }
+
+        $user->favorites()->create([
+            'item_id' => 'doujin:' . $this->mangaSlug,
+            'item_type' => 'doujin',
+            'title' => $this->detail['title'] ?? 'Doujin',
+            'thumbnail' => $this->detail['cover'] ?? null,
+            'url' => '/doujin/detail/' . $this->mangaSlug,
+        ]);
+        $this->isFavorited = true;
+        \Filament\Notifications\Notification::make()->title('Ditambahkan ke Favorit')->success()->send();
     }
 }
