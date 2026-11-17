@@ -406,15 +406,15 @@
                     ['Dracin', \App\Filament\Streaming\Pages\Dracin::getUrl(panel: 'streaming'), $isDracin, 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3'],
                     ['Komik', \App\Filament\Streaming\Pages\Komik::getUrl(panel: 'streaming'), $isKomik, 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25'],
                 ];
-                if (auth()->check() && !empty(auth()->user()->nsfw_enabled)) {
-                    $primaryNav[] = ['Doujin 18+', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
-                }
                 $exploreNav = [
                     ['Live TV', 'Siaran TV nasional', '/tv', $isTv, 'M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z'],
                     ['Drakor', 'Drama Korea terbaru', \App\Filament\Streaming\Pages\KoreanDrama::getUrl(panel: 'streaming'), $isDrakor, 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'],
                     ['Collections', 'Koleksi pilihan', \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming'), $isCollection, 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
                     ['Network', 'Original dari network', \App\Filament\Streaming\Pages\Network::getUrl(panel: 'streaming'), $isNetwork, 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
                 ];
+                if (auth()->check() && !empty(auth()->user()->nsfw_enabled)) {
+                    $exploreNav[] = ['Doujin 18+', 'Manhwa & doujin dewasa', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
+                }
                 $activeExplore = collect($exploreNav)->first(fn ($i) => $i[3]);
             @endphp
             <nav class="hidden lg:flex items-center gap-1 xl:gap-2" aria-label="Navigasi desktop">
