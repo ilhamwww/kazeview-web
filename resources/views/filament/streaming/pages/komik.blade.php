@@ -28,10 +28,10 @@
                 if (Array.isArray(this.serverRecentReads) && this.serverRecentReads.length > 0) {
                     const mergedMap = new Map();
                     local.forEach(item => {
-                        if (item && item.comicId) mergedMap.set(item.comicId, item);
+                        if (item && item.comicId && !String(item.comicId).startsWith('doujin__')) mergedMap.set(item.comicId, item);
                     });
                     this.serverRecentReads.forEach(serverItem => {
-                        if (!serverItem || !serverItem.comicId) return;
+                        if (!serverItem || !serverItem.comicId || String(serverItem.comicId).startsWith('doujin__')) return;
                         const localItem = mergedMap.get(serverItem.comicId);
                         if (!localItem || (serverItem.updatedAt || 0) >= (localItem.updatedAt || 0)) {
                             mergedMap.set(serverItem.comicId, serverItem);

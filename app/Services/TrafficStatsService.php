@@ -187,6 +187,10 @@ class TrafficStatsService
         $comicSummary = ['readers' => 0, 'titles' => 0, 'chapters' => 0];
         try {
             $crows = DB::table('comic_read_histories')
+                ->where(function ($query) {
+                    $query->whereNull('provider')->orWhere('provider', '!=', 'doujin');
+                })
+                ->where('comic_id', 'not like', 'doujin__%')
                 ->select('user_id', 'comic_id', 'title', 'cover', 'format', 'last_chapter_label', 'read_chapters', 'updated_at')
                 ->get();
 

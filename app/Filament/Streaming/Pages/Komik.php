@@ -90,6 +90,7 @@ class Komik extends Page
         if (auth()->check()) {
             try {
                 $this->serverRecentReads = \App\Models\ComicReadHistory::where('user_id', auth()->id())
+                    ->where('provider', '!=', 'doujin')
                     ->whereNotNull('last_chapter_id')
                     ->orderByDesc('updated_at')
                     ->take(15)
