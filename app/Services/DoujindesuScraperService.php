@@ -14,6 +14,29 @@ class DoujindesuScraperService
     protected int $mo = 3600000;
     protected string $appSecret = 'dfdf72051dbfdc7d76889ebd31324e74';
 
+    /** Normalize upstream synopsis HTML/entities into readable plain text. */
+    protected function cleanDescription(mixed $description): string
+    {
+        if (!is_string($description) || trim($description) === '') {
+            return '';
+        }
+
+        // Decode repeatedly because the provider sometimes double-encodes entities.
+        $text = $description;
+        for ($i = 0; $i < 3; $i++) {
+            $decoded = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($decoded === $text) {
+                break;
+            }
+            $text = $decoded;
+        }
+
+        $text = preg_replace('~<\s*br\s*/?\s*>|</\s*(p|div|li|h[1-6])\s*>~i', "\n", $text);
+        $text = strip_tags($text);
+        $text = preg_replace('/[\x{00a0}\s]+/u', ' ', $text);
+        return trim($text);
+    }
+
     /**
      * Generate dynamic rolling key from timestamp
      */
@@ -345,7 +368,7 @@ class DoujindesuScraperService
                 'status' => $data['status'] ?? 'ongoing',
                 'rating' => $data['rating'] ?? '8.5',
                 'views' => $data['views'] ?? 0,
-                'description' => $data['description'] ?? '',
+                'description' => $this->cleanDescription($data['description'] ?? ''),
                 'authors' => $authors,
                 'genres' => $genres,
                 'chapters' => $chapters,

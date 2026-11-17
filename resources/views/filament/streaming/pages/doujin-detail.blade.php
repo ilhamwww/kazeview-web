@@ -115,7 +115,7 @@
 
                 {{-- Synopsis --}}
                 @if(!empty($detail['description']))
-                    <div class="mt-4 p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-4xl">
+                    <div class="mt-4 w-full min-w-0 max-w-4xl p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-xs sm:text-sm text-zinc-300 leading-relaxed whitespace-normal break-words [overflow-wrap:anywhere]">
                         {{ $detail['description'] }}
                     </div>
                 @endif
