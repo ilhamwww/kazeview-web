@@ -47,6 +47,9 @@
                                 <span class="flex items-center gap-1 font-semibold text-yellow-400">★ {{ number_format($m['rating'], 1) }}</span>
                             @endif
                             @if(!empty($m['year']))<span>{{ $m['year'] }}</span>@endif
+                            @if(!empty($current['duration']))
+                                <span>{{ intdiv((int) $current['duration'], 60) }} menit</span>
+                            @endif
                             @if(!empty($m['region']))<span>{{ $m['region'] }}</span>@endif
                             @if(!empty($m['genres']))
                                 <span>{{ implode(' • ', array_slice($m['genres'], 0, 3)) }}</span>
@@ -55,7 +58,12 @@
                         </div>
 
                         @if(!empty($m['description']))
-                            <p class="mt-4 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-zinc-300">{{ $m['description'] }}</p>
+                            <div class="mt-5 max-w-3xl" x-data="{ more: false }">
+                                <h2 class="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Sinopsis</h2>
+                                <p @click="more = !more"
+                                   :class="more ? '' : 'line-clamp-3'"
+                                   class="mt-2 cursor-pointer whitespace-pre-line text-sm leading-relaxed text-zinc-300">{{ $m['description'] }}</p>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -72,8 +80,8 @@
                                 <a href="/drama-asia/{{ $m['cid'] }}/{{ $ep['vid'] }}"
                                    class="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition {{ $ep['vid'] === $currentVid ? 'bg-red-600/90 font-semibold text-white' : 'bg-white/[0.04] text-zinc-300 hover:bg-white/10' }}">
                                     <span class="truncate">{{ $ep['title'] ?: 'Episode ' . $ep['number'] }}</span>
-                                    @if(!empty($ep['free']))
-                                        <span class="shrink-0 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">Gratis</span>
+                                    @if(!empty($ep['duration']))
+                                        <span class="shrink-0 text-[11px] tabular-nums text-zinc-500">{{ intdiv((int) $ep['duration'], 60) }} mnt</span>
                                     @endif
                                 </a>
                             @endforeach
