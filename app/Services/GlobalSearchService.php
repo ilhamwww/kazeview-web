@@ -72,7 +72,7 @@ class GlobalSearchService
                             'thumbnail' => $item['thumbnail'] ?? $item['poster'] ?? null,
                             'url' => $url,
                             'slug' => $slug,
-                            'source_name' => str_starts_with($slug, 'rb-') ? 'Server 2' : 'Server 1',
+                            'source_name' => null, // label sumber tidak ditampilkan lagi
                         ];
 
                         if ($isSeries) {
@@ -187,7 +187,7 @@ class GlobalSearchService
                                     'thumbnail' => $poster,
                                     'url' => url('/anime/' . $slug),
                                     'slug' => $slug,
-                                    'source_name' => 'Server 1',
+                                    'source_name' => null, // label sumber tidak ditampilkan lagi
                                 ];
                             });
                         } catch (\Throwable $e) {}
@@ -235,7 +235,7 @@ class GlobalSearchService
                                     'thumbnail' => $poster,
                                     'url' => url('/anime/' . $slug),
                                     'slug' => $slug,
-                                    'source_name' => 'Server 2',
+                                    'source_name' => null, // label sumber tidak ditampilkan lagi
                                 ];
                             });
                         } catch (\Throwable $e) {}
