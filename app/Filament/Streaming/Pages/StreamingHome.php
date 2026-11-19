@@ -189,8 +189,39 @@ class StreamingHome extends BaseDashboard
 
         $labels = ['dracin' => 'Dracin', 'anime' => 'Anime', 'bstation' => 'Bstation', 'movie' => 'Film', 'series' => 'Series'];
         $result = [];
+        $animeV5Rows = $rows->filter(fn ($row) => $row->item_type === 'anime' && str_starts_with((string) $row->item_id, 'anime_v5:'));
+        foreach ($animeV5Rows as $row) {
+            $slug = preg_replace('/^anime_v5:/', '', (string) $row->item_id);
+            $episode = (string) ($row->last_episode ?: '1');
+            $result[] = [
+                'title' => $row->title ?: $slug,
+                'thumbnail' => $row->thumbnail,
+                'episode' => $episode,
+                'label' => 'Anime',
+                'url' => WatchAnimeV5::getUrl(['anime_slug' => $slug, 'episode_slug' => $episode], panel: 'streaming'),
+                'ago' => $row->updated_at ? $row->updated_at->locale('id')->diffForHumans() : null,
+                'progress_seconds' => round($row->progress_seconds),
+                'duration_seconds' => round($row->duration_seconds),
+                'progress_percent' => round($row->progress_percent, 1),
+                'progress_display' => $row->formatted_progress,
+                'duration_display' => $row->formatted_duration,
+                'has_progress' => $row->progress_seconds > 0 && $row->duration_seconds > 0,
+            ];
+        }
+        $rows = $rows->reject(fn ($row) => $row->item_type === 'anime' && str_starts_with((string) $row->item_id, 'anime_v5:'));
 
         foreach ($rows as $row) {
+            // Riwayat lama yang slug-nya tidak ada di provider aktif (mis. sisa IDLIX)
+            // dilewati supaya "Lanjutkan Menonton" tidak pernah mengarah ke halaman mati.
+            if (in_array($row->item_type, ['movie', 'series'], true)) {
+                $slug = (string) $row->item_id;
+                $otherProvider = (bool) preg_match('/^(rb-|mb-|ix-)/', $slug);
+
+                if (!$otherProvider && !\App\Services\ChitogenxService::hasSlug($slug)) {
+                    continue;
+                }
+            }
+
             $url = null;
             try {
                 if (!empty($row->url) && !str_contains($row->url, '/livewire/')) {
@@ -212,7 +243,11 @@ class StreamingHome extends BaseDashboard
                 } elseif ($row->item_type === 'anime') {
                     $cleanSlug = preg_replace('/^(?:anime_v\d+:|v\d+:|anime:)/', '', $row->item_id);
                     $ep = $row->last_episode ?: '1';
-                    $url = url('/anime/' . $cleanSlug . '/episode/' . $ep);
+                    if (str_starts_with($row->item_id, 'anime_v5:')) {
+                        $url = WatchAnimeV5::getUrl(['anime_slug' => $cleanSlug, 'episode_slug' => (string) $ep], panel: 'streaming');
+                    } else {
+                        $url = url('/anime/' . $cleanSlug . '/episode/' . $ep);
+                    }
                 }
             } catch (\Throwable $e) {
                 $url = null;

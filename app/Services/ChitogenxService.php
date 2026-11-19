@@ -652,6 +652,43 @@ class ChitogenxService
     }
 
     /**
+     * Daftar slug yang benar-benar ada di Chitogenx (cache 30 menit).
+     */
+    public static function slugSet(): array
+    {
+        return Cache::remember('chito_slug_set', 1800, function () {
+            $set = [];
+
+            foreach (['movie', 'series'] as $type) {
+                foreach (self::pool($type) as $item) {
+                    $set[$item['slug']] = true;
+                }
+            }
+
+            return $set;
+        });
+    }
+
+    public static function hasSlug(string $slug): bool
+    {
+        $slug = trim($slug);
+
+        if ($slug === '') {
+            return false;
+        }
+
+        if (isset(self::slugSet()[$slug])) {
+            return true;
+        }
+
+        // Pool katalog tidak memuat seluruh judul (mis. hasil pencarian saja),
+        // jadi verifikasi sekali lewat endpoint detail dan simpan hasilnya.
+        return Cache::remember('chito_slug_exists_' . md5($slug), 3600, function () use ($slug) {
+            return self::detail($slug) !== null;
+        });
+    }
+
+    /**
      * Drakor: serial dengan negara Korea.
      */
     public static function koreanDrama(int $page = 1, int $limit = 36): array
