@@ -19,6 +19,9 @@ class AnimekWatch extends Page
     public ?array $media = null;
     public array $episodes = [];
     public string $currentId = '';
+    public ?array $current = null;
+    public ?array $prev = null;
+    public ?array $next = null;
     public ?array $stream = null;
 
     public function mount(string $path, ?string $episode = null): void
@@ -30,22 +33,30 @@ class AnimekWatch extends Page
             abort(404);
         }
 
-        $this->episodes = array_reverse($this->media['episodes'] ?? []);
+        // Urut naik (episode 1 dulu) dari service.
+        $this->episodes = $this->media['episodes'] ?? [];
         $ids = array_column($this->episodes, 'id');
+        $pos = $episode !== null ? array_search($episode, $ids, true) : false;
 
-        $chosen = $episode !== null && in_array($episode, $ids, true)
-            ? $episode
-            : ($ids[0] ?? '');
-
-        $this->currentId = $chosen;
-
-        if ($chosen !== '') {
-            $this->stream = AnimekompiService::play($chosen);
+        if ($pos === false) {
+            $pos = count($ids) - 1; // episode terbaru
         }
+
+        if ($pos < 0) {
+            return;
+        }
+
+        $this->current = $this->episodes[$pos];
+        $this->currentId = $this->current['id'];
+        $this->prev = $this->episodes[$pos - 1] ?? null;
+        $this->next = $this->episodes[$pos + 1] ?? null;
+        $this->stream = AnimekompiService::play($this->currentId);
     }
 
     public function getTitle(): string
     {
-        return ($this->media['title'] ?? 'Anime') . ' - KZSTRM';
+        $ep = $this->current['number'] ?? '';
+
+        return ($this->media['title'] ?? 'Anime') . ($ep !== '' ? ' Episode ' . $ep : '') . ' - KZSTRM';
     }
 }

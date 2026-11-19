@@ -2,18 +2,42 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 /**
  * Provider anime Animekompi (Indocast).
  *
  * Stream yang dikembalikan sudah berupa MP4 lewat proxy Indocast, mendukung
  * Range dan mengirim CORS, jadi bisa diputar langsung tanpa relay tambahan.
+ *
+ * Endpoint: /home, /list (indeks A-Z), /genres, /genre-detail?genre=&page=,
+ * /schedule, /detail?path=, /play?episode_id=.
  */
 class AnimekompiService
 {
     protected const BASE = 'https://indocast.site/api/animekompi';
+
+    /** Genre yang tidak ditampilkan sama sekali (konten dewasa). */
+    public const BLOCKED_GENRES = ['hentai', 'erotica', 'adult', 'yaoi', 'yuri'];
+
+    public const KINDS = ['TV', 'Movie', 'ONA', 'OVA', 'Special'];
+
+    public const STATUSES = [
+        'ongoing' => 'Sedang Tayang',
+        'completed' => 'Tamat',
+        'upcoming' => 'Segera',
+        'hiatus' => 'Hiatus',
+    ];
+
+    public const SORTS = [
+        'terbaru' => 'Terbaru',
+        'rating' => 'Rating Tertinggi',
+        'az' => 'Judul A-Z',
+        'terlama' => 'Terlama',
+    ];
 
     public static function enabled(): bool
     {
@@ -60,20 +84,91 @@ class AnimekompiService
         return $result;
     }
 
+    public static function detailUrl(string $path): string
+    {
+        return '/animek/' . rawurlencode($path);
+    }
+
+    public static function watchUrl(string $path, string $episodeId): string
+    {
+        return '/animek/' . rawurlencode($path) . '/' . rawurlencode($episodeId);
+    }
+
+    /**
+     * API kadang mengirim list sebagai string repr Python: "['Action', 'Drama']".
+     */
+    protected static function parseList(mixed $value): array
+    {
+        if (is_array($value)) {
+            $out = [];
+
+            foreach ($value as $v) {
+                $out[] = is_array($v) ? (string) ($v['name'] ?? '') : (string) $v;
+            }
+
+            return array_values(array_filter(array_map('trim', $out)));
+        }
+
+        if (!is_string($value) || trim($value) === '' || trim($value) === '[]') {
+            return [];
+        }
+
+        preg_match_all("/'([^']+)'|\"([^\"]+)\"/u", $value, $m);
+
+        return array_values(array_filter(array_map(
+            fn ($a, $b) => trim($a !== '' ? $a : $b),
+            $m[1],
+            $m[2]
+        )));
+    }
+
+    /**
+     * Sebagian cover dikirim rusak: "https://host-a.comhttps://host-b.com/x.jpg".
+     * Ambil URL terakhir yang utuh.
+     */
+    protected static function coverUrl(string $url): string
+    {
+        $url = trim($url);
+        $pos = strrpos($url, 'http');
+
+        return $pos > 0 ? substr($url, $pos) : $url;
+    }
+
+    protected static function cleanText(string $text): string
+    {
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+
+        return trim($text);
+    }
+
+    protected static function rating(mixed $value): ?float
+    {
+        return is_numeric($value) && (float) $value > 0 && (float) $value <= 10
+            ? round((float) $value, 2)
+            : null;
+    }
+
+    protected static function episodeLabel(string $raw): string
+    {
+        $raw = trim($raw);
+
+        if ($raw === '') {
+            return '';
+        }
+
+        return ctype_digit($raw) ? (string) (int) $raw : $raw;
+    }
+
     /**
      * Item Animekompi -> bentuk katalog KZSTRM.
      */
     public static function mapItem(array $item): ?array
     {
         $path = trim((string) ($item['path'] ?? ''));
-
-        if ($path === '') {
-            return null;
-        }
-
         $title = trim((string) ($item['title'] ?? ''));
 
-        if ($title === '') {
+        if ($path === '' || $title === '' || !preg_match('/^[A-Za-z0-9-]+$/', $path)) {
             return null;
         }
 
@@ -82,74 +177,257 @@ class AnimekompiService
             return null;
         }
 
-        $rating = $item['rating'] ?? null;
+        $genres = self::parseList($item['genres'] ?? []);
+
+        foreach ($genres as $g) {
+            if (in_array(Str::slug($g), self::BLOCKED_GENRES, true)) {
+                return null;
+            }
+        }
+
+        $episodeId = trim((string) ($item['episode_id'] ?? ''));
+        $status = strtolower(trim((string) ($item['status'] ?? '')));
+        $cover = ImageProxyService::wrap(self::coverUrl((string) ($item['cover_url'] ?? '')));
 
         return [
             'path' => $path,
             'slug' => $path,
             'title' => $title,
-            'thumbnail' => ImageProxyService::wrap((string) ($item['cover_url'] ?? '')),
-            'banner' => ImageProxyService::wrap((string) ($item['cover_url'] ?? '')),
-            'rating' => is_numeric($rating) && (float) $rating > 0 ? (float) $rating : null,
-            'year' => (string) ($item['release_year'] ?? ''),
+            'thumbnail' => $cover,
+            'banner' => $cover,
+            'rating' => self::rating($item['rating'] ?? null),
+            'year' => substr(trim((string) ($item['release_year'] ?? '')), 0, 4),
             'episodes' => (string) ($item['jumlah_episode'] ?? ''),
+            'episode' => self::episodeLabel((string) ($item['episode'] ?? '')),
+            'episode_id' => $episodeId,
+            'episode_url' => $episodeId !== '' && preg_match('/^[A-Za-z0-9-]+$/', $episodeId)
+                ? self::watchUrl($path, $episodeId)
+                : null,
+            'kind' => trim((string) ($item['type'] ?? $item['sub_type'] ?? '')),
+            'status' => isset(self::STATUSES[$status]) ? $status : '',
+            'genres' => $genres,
+            'desc' => Str::limit(self::cleanText((string) ($item['deskripsi'] ?? '')), 260),
             'type' => 'anime',
             'provider_badge' => '',
-            'url' => '/animek/' . $path,
+            'url' => self::detailUrl($path),
         ];
     }
 
+    protected static function mapList(array $list): array
+    {
+        $out = [];
+
+        foreach ($list as $item) {
+            $mapped = is_array($item) ? self::mapItem($item) : null;
+
+            if ($mapped && !isset($out[$mapped['path']])) {
+                $out[$mapped['path']] = $mapped;
+            }
+        }
+
+        return array_values($out);
+    }
+
     /**
-     * Rak beranda: trending hari ini + update terbaru.
+     * Rak beranda: slider, trending hari ini, update terbaru.
      */
     public static function home(): array
     {
-        return Cache::remember('ak_home_v1', 1800, function () {
+        return Cache::remember('ak_home_v2', 1800, function () {
             $json = self::api('/home', [], 1800);
             $data = (array) ($json['data'] ?? []);
 
-            $build = function (array $list): array {
-                $out = [];
-
-                foreach ($list as $item) {
-                    $mapped = self::mapItem((array) $item);
-
-                    if ($mapped && !isset($out[$mapped['path']])) {
-                        $out[$mapped['path']] = $mapped;
-                    }
-                }
-
-                return array_values($out);
-            };
-
             return [
-                'trending' => $build((array) ($data['trending_today'] ?? [])),
-                'latest' => $build((array) ($data['latest_updates'] ?? [])),
-                'sliders' => $build((array) ($data['sliders'] ?? [])),
+                'sliders' => self::mapList((array) ($data['sliders'] ?? [])),
+                'trending' => self::mapList((array) ($data['trending_today'] ?? [])),
+                'latest' => self::mapList((array) ($data['latest_updates'] ?? [])),
             ];
         });
     }
 
     /**
-     * Seluruh judul dari rak + halaman daftar.
+     * Daftar genre, urut dari yang paling banyak judulnya.
+     */
+    public static function genres(): array
+    {
+        return Cache::remember('ak_genres_v1', 21600, function () {
+            $json = self::api('/genres', [], 21600);
+            $out = [];
+
+            foreach ((array) ($json['data']['genres_list'] ?? []) as $g) {
+                $id = strtolower(trim((string) ($g['genre_id'] ?? '')));
+
+                if ($id === '' || !preg_match('/^[a-z0-9-]+$/', $id) || in_array($id, self::BLOCKED_GENRES, true)) {
+                    continue;
+                }
+
+                $out[] = [
+                    'id' => $id,
+                    'name' => trim((string) ($g['name'] ?? $id)),
+                    'count' => (int) ($g['count'] ?? 0),
+                ];
+            }
+
+            usort($out, fn ($a, $b) => $b['count'] <=> $a['count']);
+
+            return $out;
+        });
+    }
+
+    public static function genreName(string $id): ?string
+    {
+        foreach (self::genres() as $g) {
+            if ($g['id'] === $id) {
+                return $g['name'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Nama genre (dari detail) -> [name, id] supaya bisa ditautkan.
+     */
+    public static function genreLinks(array $names): array
+    {
+        $byName = [];
+
+        foreach (self::genres() as $g) {
+            $byName[strtolower($g['name'])] = $g['id'];
+        }
+
+        $out = [];
+
+        foreach ($names as $name) {
+            $id = $byName[strtolower($name)] ?? Str::slug($name);
+
+            if ($id !== '' && !in_array($id, self::BLOCKED_GENRES, true)) {
+                $out[] = ['name' => $name, 'id' => $id];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Satu halaman judul untuk sebuah genre (24 per halaman dari API).
+     */
+    public static function genreItems(string $genre, int $page = 1): array
+    {
+        $empty = ['name' => null, 'page' => $page, 'has_next' => false, 'items' => []];
+
+        if (!preg_match('/^[a-z0-9-]+$/', $genre) || in_array($genre, self::BLOCKED_GENRES, true)) {
+            return $empty;
+        }
+
+        $json = self::api('/genre-detail', ['genre' => $genre, 'page' => max(1, $page)], 3600);
+        $data = (array) ($json['data'] ?? []);
+
+        if (empty($data)) {
+            return $empty;
+        }
+
+        $hasNext = $data['has_next_page'] ?? false;
+
+        return [
+            'name' => (string) ($data['genre_name'] ?? self::genreName($genre) ?? $genre),
+            'page' => (int) ($data['current_page'] ?? $page),
+            'has_next' => $hasNext === true || strtolower((string) $hasNext) === 'true',
+            'items' => self::mapList((array) ($data['animes'] ?? [])),
+        ];
+    }
+
+    /**
+     * Jadwal tayang Senin-Minggu.
+     */
+    public static function schedule(): array
+    {
+        return Cache::remember('ak_schedule_v1', 1800, function () {
+            $json = self::api('/schedule', [], 1800);
+            $days = is_array($json) ? ($json['data'] ?? (isset($json[0]) ? $json : [])) : [];
+            $out = [];
+
+            foreach ((array) $days as $day) {
+                $items = [];
+
+                foreach ((array) ($day['animes'] ?? []) as $raw) {
+                    $mapped = self::mapItem((array) $raw);
+
+                    if (!$mapped) {
+                        continue;
+                    }
+
+                    $ts = (int) ($raw['release_timestamp'] ?? 0);
+                    $mapped['time'] = $ts > 0
+                        ? Carbon::createFromTimestamp($ts, 'Asia/Jakarta')->format('H.i')
+                        : '';
+                    $items[] = $mapped;
+                }
+
+                usort($items, fn ($a, $b) => strcmp($a['time'], $b['time']));
+
+                $out[] = [
+                    'day' => (string) ($day['day'] ?? ''),
+                    'items' => $items,
+                ];
+            }
+
+            return $out;
+        });
+    }
+
+    public static function todayName(): string
+    {
+        return ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][now('Asia/Jakarta')->dayOfWeek];
+    }
+
+    /**
+     * Judul dari genre yang diblokir, untuk disaring dari katalog A-Z
+     * (item /list tidak membawa genre).
+     */
+    protected static function blockedPaths(): array
+    {
+        return Cache::remember('ak_blocked_paths_v1', 21600, function () {
+            $paths = [];
+
+            foreach (self::BLOCKED_GENRES as $genre) {
+                for ($page = 1; $page <= 5; $page++) {
+                    $json = self::api('/genre-detail', ['genre' => $genre, 'page' => $page], 21600);
+                    $data = (array) ($json['data'] ?? []);
+
+                    foreach ((array) ($data['animes'] ?? []) as $a) {
+                        if (!empty($a['path'])) {
+                            $paths[(string) $a['path']] = true;
+                        }
+                    }
+
+                    $next = $data['has_next_page'] ?? false;
+
+                    if (!($next === true || strtolower((string) $next) === 'true')) {
+                        break;
+                    }
+                }
+            }
+
+            return $paths;
+        });
+    }
+
+    /**
+     * Seluruh judul: rak beranda + indeks A-Z.
      */
     public static function catalog(): array
     {
-        return Cache::remember('ak_catalog_v1', 1800, function () {
-            $home = self::home();
+        return Cache::remember('ak_catalog_v2', 1800, function () {
             $all = [];
-
-            foreach (array_merge($home['trending'], $home['latest'], $home['sliders']) as $item) {
-                $all[$item['path']] = $item;
-            }
 
             // /list mengembalikan indeks A-Z: tiap baris berisi grup huruf
             // dengan daftar 'animes'. Parameter page tidak memengaruhi hasil.
             $list = self::api('/list', [], 1800);
             $groups = is_array($list) ? ($list['data'] ?? (isset($list[0]) ? $list : [])) : [];
 
-            foreach ($groups as $group) {
-                foreach ((array) (($group['animes'] ?? [])) as $item) {
+            foreach ((array) $groups as $group) {
+                foreach ((array) ($group['animes'] ?? []) as $item) {
                     $mapped = self::mapItem((array) $item);
 
                     if ($mapped) {
@@ -158,13 +436,32 @@ class AnimekompiService
                 }
             }
 
-            return array_values($all);
+            // Rak beranda punya data episode terbaru; jangan timpa data A-Z
+            // yang lebih lengkap, cukup lengkapi field yang kosong.
+            $home = self::home();
+
+            foreach (array_merge($home['sliders'], $home['trending'], $home['latest']) as $item) {
+                if (!isset($all[$item['path']])) {
+                    $all[$item['path']] = $item;
+                    continue;
+                }
+
+                foreach ($item as $k => $v) {
+                    if (($all[$item['path']][$k] ?? null) === '' || ($all[$item['path']][$k] ?? null) === null || ($all[$item['path']][$k] ?? null) === []) {
+                        $all[$item['path']][$k] = $v;
+                    }
+                }
+            }
+
+            $blocked = self::blockedPaths();
+
+            return array_values(array_filter($all, fn ($item) => !isset($blocked[$item['path']])));
         });
     }
 
     public static function search(string $query): array
     {
-        $needle = strtolower(trim($query));
+        $needle = mb_strtolower(trim($query));
 
         if ($needle === '') {
             return [];
@@ -172,18 +469,106 @@ class AnimekompiService
 
         return array_values(array_filter(
             self::catalog(),
-            fn ($item) => str_contains(strtolower($item['title']), $needle)
+            fn ($item) => str_contains(mb_strtolower($item['title']), $needle)
         ));
     }
 
     /**
-     * Detail anime + daftar episode.
+     * Filter + urut + paginasi katalog A-Z.
+     *
+     * @param  array{q?:string,kind?:string,status?:string,year?:string,sort?:string}  $f
+     */
+    public static function browse(array $f, int $page = 1, int $perPage = 36): array
+    {
+        $items = self::catalog();
+        $q = mb_strtolower(trim((string) ($f['q'] ?? '')));
+        $kind = (string) ($f['kind'] ?? '');
+        $status = (string) ($f['status'] ?? '');
+        $year = (string) ($f['year'] ?? '');
+        $sort = (string) ($f['sort'] ?? 'terbaru');
+
+        $items = array_filter($items, function ($i) use ($q, $kind, $status, $year) {
+            if ($q !== '' && !str_contains(mb_strtolower($i['title']), $q)) {
+                return false;
+            }
+            if ($kind !== '' && strcasecmp($i['kind'], $kind) !== 0) {
+                return false;
+            }
+            if ($status !== '' && $i['status'] !== $status) {
+                return false;
+            }
+            if ($year !== '' && $i['year'] !== $year) {
+                return false;
+            }
+
+            return true;
+        });
+
+        $items = array_values($items);
+
+        usort($items, match ($sort) {
+            'rating' => fn ($a, $b) => [$b['rating'] ?? 0, $b['year']] <=> [$a['rating'] ?? 0, $a['year']],
+            'az' => fn ($a, $b) => strnatcasecmp($a['title'], $b['title']),
+            'terlama' => fn ($a, $b) => [$a['year'] ?: '9999', $a['title']] <=> [$b['year'] ?: '9999', $b['title']],
+            default => fn ($a, $b) => [$b['year'], $b['rating'] ?? 0] <=> [$a['year'], $a['rating'] ?? 0],
+        });
+
+        $total = count($items);
+        $pages = max(1, (int) ceil($total / $perPage));
+        $page = min(max(1, $page), $pages);
+
+        return [
+            'items' => array_slice($items, ($page - 1) * $perPage, $perPage),
+            'total' => $total,
+            'page' => $page,
+            'pages' => $pages,
+        ];
+    }
+
+    /**
+     * Tahun rilis yang tersedia, terbaru dulu.
+     */
+    public static function years(): array
+    {
+        return Cache::remember('ak_years_v1', 21600, function () {
+            $years = [];
+
+            foreach (self::catalog() as $i) {
+                if (preg_match('/^(19|20)\d{2}$/', $i['year'])) {
+                    $years[$i['year']] = true;
+                }
+            }
+
+            $years = array_keys($years);
+            rsort($years);
+
+            return array_map('strval', $years);
+        });
+    }
+
+    /**
+     * Rak turunan katalog untuk beranda anime.
+     */
+    public static function rails(): array
+    {
+        return Cache::remember('ak_rails_v1', 1800, function () {
+            return [
+                'ongoing' => self::browse(['status' => 'ongoing', 'sort' => 'rating'], 1, 18)['items'],
+                'top' => self::browse(['sort' => 'rating'], 1, 18)['items'],
+                'movies' => self::browse(['kind' => 'Movie', 'sort' => 'rating'], 1, 18)['items'],
+                'total' => count(self::catalog()),
+            ];
+        });
+    }
+
+    /**
+     * Detail anime + daftar episode (urut naik: episode 1 dulu).
      */
     public static function detail(string $path, int $ttl = 1800): ?array
     {
         $path = trim($path);
 
-        if ($path === '') {
+        if ($path === '' || !preg_match('/^[A-Za-z0-9-]+$/', $path)) {
             return null;
         }
 
@@ -199,52 +584,92 @@ class AnimekompiService
             return null;
         }
 
+        $genres = self::parseList($data['genres'] ?? []);
+
+        foreach ($genres as $g) {
+            if (in_array(Str::slug($g), self::BLOCKED_GENRES, true)) {
+                return null;
+            }
+        }
+
         $episodes = [];
+
         foreach ((array) ($data['episode_list'] ?? []) as $ep) {
             $id = trim((string) ($ep['episode_id'] ?? ''));
 
-            if ($id === '') {
+            if ($id === '' || !preg_match('/^[A-Za-z0-9-]+$/', $id)) {
                 continue;
             }
 
+            $number = self::episodeLabel((string) ($ep['episode_number'] ?? ''));
+
             $episodes[] = [
                 'id' => $id,
-                'number' => (string) ($ep['episode_number'] ?? ''),
+                'number' => $number,
                 'title' => (string) ($ep['title'] ?? ''),
                 'date' => (string) ($ep['release_date'] ?? ''),
+                'url' => self::watchUrl($path, $id),
             ];
         }
 
-        $genres = [];
-        foreach ((array) ($data['genres'] ?? []) as $g) {
-            $genres[] = is_array($g) ? (string) ($g['name'] ?? '') : (string) $g;
-        }
+        // Pastikan urut naik walau API berubah urutan.
+        usort($episodes, function ($a, $b) {
+            if (is_numeric($a['number']) && is_numeric($b['number'])) {
+                return (float) $a['number'] <=> (float) $b['number'];
+            }
+
+            return strnatcasecmp($a['number'], $b['number']);
+        });
+
+        $status = strtolower(trim((string) ($data['status'] ?? '')));
+        $duration = trim((string) ($data['duration'] ?? ''));
+        $season = trim((string) ($data['season'] ?? ''));
+        $studio = trim((string) ($data['studio'] ?? ''));
 
         return [
             'path' => $path,
+            'url' => self::detailUrl($path),
             'title' => (string) $data['title'],
-            'synopsis' => self::cleanSynopsis((string) ($data['synopsis'] ?? '')),
-            'poster' => ImageProxyService::wrap((string) ($data['cover_url'] ?? '')),
-            'rating' => is_numeric($data['rating'] ?? null) && (float) $data['rating'] > 0 ? (float) $data['rating'] : null,
-            'status' => (string) ($data['status'] ?? ''),
-            'type' => (string) ($data['type'] ?? ''),
-            'season' => (string) ($data['season'] ?? ''),
-            'duration' => (string) ($data['duration'] ?? ''),
-            'studio' => (string) ($data['studio'] ?? ''),
+            'synopsis' => self::cleanText((string) ($data['synopsis'] ?? '')),
+            'poster' => ImageProxyService::wrap(self::coverUrl((string) ($data['cover_url'] ?? ''))),
+            'rating' => self::rating($data['rating'] ?? null),
+            'views' => (int) ($data['view'] ?? 0),
+            'status' => $status,
+            'status_label' => self::STATUSES[$status] ?? ucfirst($status),
+            'kind' => trim((string) ($data['type'] ?? '')),
+            'season' => strcasecmp($season, 'unknown') === 0 ? '' : $season,
+            'duration' => strcasecmp($duration, 'unknown') === 0 ? '' : $duration,
+            'studio' => strcasecmp($studio, 'unknown') === 0 ? '' : $studio,
             'release_date' => (string) ($data['release_date'] ?? ''),
             'year' => substr((string) ($data['release_date'] ?? ''), 0, 4),
-            'genres' => array_values(array_filter($genres)),
-            'total_episodes' => (int) ($data['total_episodes'] ?? count($episodes)),
+            'genres' => $genres,
+            'genre_links' => self::genreLinks($genres),
+            'total_episodes' => (int) ($data['total_episodes'] ?? 0) ?: count($episodes),
             'episodes' => $episodes,
         ];
     }
 
-    protected static function cleanSynopsis(string $text): string
+    /**
+     * Rekomendasi: API mengirim 'recommendations' kosong, jadi ambil dari
+     * genre utama judul ini.
+     */
+    public static function similar(array $media, int $limit = 12): array
     {
-        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+        $out = [];
 
-        return trim($text);
+        foreach (array_slice($media['genre_links'] ?? [], 0, 2) as $g) {
+            foreach (self::genreItems($g['id'], 1)['items'] as $item) {
+                if ($item['path'] !== $media['path'] && !isset($out[$item['path']])) {
+                    $out[$item['path']] = $item;
+                }
+            }
+
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return array_slice(array_values($out), 0, $limit);
     }
 
     /**
@@ -276,7 +701,9 @@ class AnimekompiService
 
             $servers[] = [
                 'name' => (string) ($server['name'] ?? 'Server'),
-                'url' => $url,
+                'url' => str_starts_with($url, 'https://indocast.site/api/animekompi/proxy')
+                    ? url('/api/av?u=' . ImageProxyService::encode($url))
+                    : $url,
             ];
         }
 
@@ -289,6 +716,30 @@ class AnimekompiService
             'video_url' => $servers[0]['url'],
             'servers' => $servers,
             'subtitles' => [],
+        ];
+    }
+
+    /**
+     * Dipanggil scheduler: bangun ulang semua cache yang dipakai halaman anime.
+     */
+    public static function warm(): array
+    {
+        foreach (['ak_home_v2', 'ak_catalog_v2', 'ak_schedule_v1', 'ak_rails_v1', 'ak_years_v1'] as $key) {
+            Cache::forget($key);
+        }
+
+        $home = self::home();
+        $genres = self::genres();
+        $schedule = self::schedule();
+        $catalog = self::catalog();
+        self::years();
+        self::rails();
+
+        return [
+            'catalog' => count($catalog),
+            'trending' => count($home['trending']),
+            'genres' => count($genres),
+            'schedule' => array_sum(array_map(fn ($d) => count($d['items']), $schedule)),
         ];
     }
 }

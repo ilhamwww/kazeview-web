@@ -79,3 +79,15 @@ Route::get('/api/img', function (\Illuminate\Http\Request $request) {
 
     return \App\Services\ImageProxyService::fetch($url);
 })->middleware('throttle:600,1')->name('img.proxy');
+
+// Video anime: redirect 302 ke sumber, supaya HTML tidak memuat host provider
+// tapi bandwidth tetap langsung dari sumber (tidak lewat server kita).
+Route::get('/api/av', function (\Illuminate\Http\Request $request) {
+    $url = \App\Services\ImageProxyService::decode((string) $request->query('u', ''));
+
+    if (!$url || !str_starts_with($url, 'https://indocast.site/api/animekompi/proxy')) {
+        abort(404);
+    }
+
+    return redirect()->away($url, 302)->header('Cache-Control', 'no-store');
+})->name('api.anime-video');

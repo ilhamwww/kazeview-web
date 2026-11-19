@@ -57,15 +57,10 @@ Artisan::command('kz:warm-filmbox', function () {
 
 Artisan::command('kz:warm-animek', function () {
     $t = microtime(true);
-
-    \Illuminate\Support\Facades\Cache::forget('ak_home_v1');
-    \Illuminate\Support\Facades\Cache::forget('ak_catalog_v1');
-
-    $home = \App\Services\AnimekompiService::home();
-    $all = \App\Services\AnimekompiService::catalog();
+    $r = \App\Services\AnimekompiService::warm();
 
     $this->info('Cache anime siap dalam ' . round(microtime(true) - $t, 1) . 's: '
-        . count($all) . ' judul, populer ' . count($home['trending'] ?? []));
+        . $r['catalog'] . ' judul, ' . $r['genres'] . ' genre, jadwal ' . $r['schedule'] . ', populer ' . $r['trending']);
 })->purpose('Warm Animekompi catalog so the first visitor does not wait');
 
 \Illuminate\Support\Facades\Schedule::command('kz:warm-animek')->everyFifteenMinutes()->withoutOverlapping();

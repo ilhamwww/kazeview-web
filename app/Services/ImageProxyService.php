@@ -22,6 +22,7 @@ class ImageProxyService
         'indocast.site',
         'animekompi.sbs',
         'anichin.moe',
+        'anilist.co',
     ];
 
     public static function encode(string $url): string
