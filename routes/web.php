@@ -16,6 +16,19 @@ Route::get(
 // Legacy redirects from /streaming to clean root URLs
 Route::redirect('/streaming', '/');
 Route::redirect('/drakor', '/korean-drama');
+// Vidio (Indocast): tanpa id episode, arahkan ke episode pertama (atau ke filmnya sendiri).
+Route::get('/vidio/{id}', function (string $id) {
+    $media = \App\Services\VidioService::detail($id);
+
+    if (!$media) {
+        abort(404);
+    }
+
+    $episode = $media['episodes'][0]['id'] ?? $media['id'];
+
+    return redirect('/vidio/' . $id . '/' . $episode);
+})->whereNumber('id')->name('vidio.entry');
+
 Route::redirect('/indonesia/server-1', '/indonesia/moviebox');
 Route::redirect('/indonesia/server-2', '/indonesia/rebahin');
 Route::redirect('/indonesia/server-3', '/indonesia/rebahin');
@@ -2066,3 +2079,6 @@ Route::get('/robots.txt', function () {
 Route::get('/register-success', function () {
     return view('auth.register-success');
 })->name('register.success');
+
+// Proxy HLS Vidio (Indocast).
+require __DIR__ . '/vidio.php';

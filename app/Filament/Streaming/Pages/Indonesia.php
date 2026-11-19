@@ -3,6 +3,7 @@
 namespace App\Filament\Streaming\Pages;
 
 use App\Services\ChitogenxService;
+use App\Services\VidioService;
 use Filament\Pages\Page;
 
 class Indonesia extends Page
@@ -16,6 +17,8 @@ class Indonesia extends Page
     protected static bool $shouldRegisterNavigation = false;
 
     public const PROVIDER = 'chitogenx';
+    public const PROVIDER_VIDIO = 'vidio';
+    public const PROVIDERS = [self::PROVIDER_VIDIO, self::PROVIDER];
 
     public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = 'streaming', ?\Illuminate\Database\Eloquent\Model $tenant = null): string
     {
@@ -50,20 +53,37 @@ class Indonesia extends Page
         ['id' => 'classic', 'label' => '2023 & Sebelumnya'],
     ];
 
-    public array $providers = [
-        ['id' => self::PROVIDER, 'label' => 'Chitogenx'],
-    ];
+    /**
+     * Vidio baru dinyalakan lewat env setelah pemutaran terbukti penuh;
+     * sampai itu selesai, pengguna tetap memakai Chitogenx.
+     */
+    public function providers(): array
+    {
+        $list = [['id' => self::PROVIDER, 'label' => 'Chitogenx']];
+
+        if (filter_var(env('VIDIO_ENABLED', false), FILTER_VALIDATE_BOOL)) {
+            array_unshift($list, ['id' => self::PROVIDER_VIDIO, 'label' => 'Vidio']);
+        }
+
+        return $list;
+    }
+
+    public array $providers = [];
 
     public function mount(?string $provider = null): void
     {
-        // Provider Rebahin & LK21 sudah dipensiunkan; semua diarahkan ke Chitogenx.
-        if ($provider !== null && strtolower($provider) !== self::PROVIDER) {
+        // Rebahin & LK21 sudah pensiun. Provider tak dikenal diarahkan ke Chitogenx.
+        $provider = $provider !== null ? strtolower($provider) : self::PROVIDER;
+        $this->providers = $this->providers();
+        $allowed = array_column($this->providers, 'id');
+
+        if (!in_array($provider, $allowed, true)) {
             $this->redirect('/indonesia/' . self::PROVIDER, navigate: true);
 
             return;
         }
 
-        $this->provider = self::PROVIDER;
+        $this->provider = $provider;
         $this->page = 1;
         $this->category = request()->query('category', 'all');
         $this->search = request()->query('q', '');
@@ -80,7 +100,9 @@ class Indonesia extends Page
 
     public function setProvider(string $prov): mixed
     {
-        return redirect()->to('/indonesia/' . self::PROVIDER);
+        $allowed = array_column($this->providers(), 'id');
+
+        return redirect('/indonesia/' . (in_array($prov, $allowed, true) ? $prov : self::PROVIDER));
     }
 
     public function updatedSearch(): void
@@ -104,6 +126,18 @@ class Indonesia extends Page
         $this->loadItems();
     }
 
+    /**
+     * Sumber katalog mengikuti provider yang sedang aktif.
+     */
+    protected function catalog(string $category, int $page, int $limit, string $search = ''): array
+    {
+        if ($this->provider === self::PROVIDER_VIDIO) {
+            return VidioService::catalog($category, $page, $limit, $search);
+        }
+
+        return ChitogenxService::indonesiaCatalog($category, $page, $limit, $search);
+    }
+
     public function loadMore(): void
     {
         if (!$this->hasMorePages) {
@@ -112,7 +146,7 @@ class Indonesia extends Page
 
         $this->page++;
 
-        $response = ChitogenxService::indonesiaCatalog($this->category, $this->page, 24, $this->search);
+        $response = $this->catalog($this->category, $this->page, 24, $this->search);
         $newItems = $response['data'] ?? [];
 
         $existing = array_column($this->items, 'slug');
@@ -127,16 +161,16 @@ class Indonesia extends Page
 
     public function loadItems(): void
     {
-        $response = ChitogenxService::indonesiaCatalog($this->category, $this->page, 24, $this->search);
+        $response = $this->catalog($this->category, $this->page, 24, $this->search);
 
         $this->items = $response['data'] ?? [];
         $this->totalPages = (int) ($response['pagination']['totalPages'] ?? 1);
         $this->hasMorePages = (bool) ($response['pagination']['hasMore'] ?? false);
 
         if ($this->category === 'all' && $this->search === '') {
-            $this->trending = ChitogenxService::indonesiaCatalog('all', 1, 10)['data'] ?? [];
-            $this->latestMovies = ChitogenxService::indonesiaCatalog('movie', 1, 15)['data'] ?? [];
-            $this->latestSeries = ChitogenxService::indonesiaCatalog('series', 1, 15)['data'] ?? [];
+            $this->trending = $this->catalog('all', 1, 10)['data'] ?? [];
+            $this->latestMovies = $this->catalog('movie', 1, 15)['data'] ?? [];
+            $this->latestSeries = $this->catalog('series', 1, 15)['data'] ?? [];
             $this->spotlightItems = array_slice($this->trending, 2, 6);
         } else {
             $this->trending = [];
