@@ -1504,7 +1504,8 @@ Route::get('/api/proxy-stream', function (\Illuminate\Http\Request $request) {
                         return 0; // Abort cURL
                     }
 
-                    if ($statusCode < 300 || $statusCode >= 400) {
+                    // Jangan kirim status error ke klien: biarkan fallback relay NUC mencoba dulu.
+                    if ($statusCode >= 200 && $statusCode < 300) {
                         if (!headers_sent() && !$headersSent) {
                             http_response_code($statusCode);
                             header('Access-Control-Allow-Origin: *');
@@ -1531,6 +1532,11 @@ Route::get('/api/proxy-stream', function (\Illuminate\Http\Request $request) {
                 return strlen($headerLine);
             },
             CURLOPT_WRITEFUNCTION => function ($_ch, $data) use (&$headersSent, &$statusCode, &$headersBuffer) {
+                // Buang body error upstream (mis. halaman 403 Cloudflare).
+                if ($statusCode >= 400) {
+                    return strlen($data);
+                }
+
                 if (!$headersSent && !headers_sent()) {
                     http_response_code($statusCode);
                     header('Access-Control-Allow-Origin: *');
@@ -1561,6 +1567,75 @@ Route::get('/api/proxy-stream', function (\Illuminate\Http\Request $request) {
 
         // Jika berhasil streaming atau status sukses, hentikan retry loop
         if ($headersSent || ($statusCode >= 200 && $statusCode < 400 && !$shouldRetry)) {
+            exit;
+        }
+    }
+
+    if (!$headersSent && !headers_sent()) {
+        // Fallback: sebagian CDN anime memblokir IP datacenter (Cloudflare 403),
+        // jadi alirkan lewat relay NUC yang memakai IP residensial.
+        $relayUrl = 'http://100.110.54.105:8765/video?url=' . urlencode($url)
+            . '&referer=' . urlencode($request->get('referer') ?: 'https://mirainime.com/');
+
+        $relayHeaders = [];
+        $relayStatus = 0;
+        $relayStarted = false;
+
+        $relayHandle = curl_init($relayUrl);
+        curl_setopt_array($relayHandle, [
+            CURLOPT_PROXY => 'socks5h://127.0.0.1:1055',
+            CURLOPT_HTTPHEADER => !empty($clientRange) ? ['Range: ' . $clientRange] : [],
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 120,
+            CURLOPT_BUFFERSIZE => 131072,
+            CURLOPT_HEADERFUNCTION => function ($_ch, $line) use (&$relayStatus, &$relayHeaders, $forwardHeaders) {
+                $trimmed = trim($line);
+
+                if (stripos($trimmed, 'HTTP/') === 0) {
+                    if (preg_match('~HTTP/\S+\s+(\d+)~', $trimmed, $m)) {
+                        $relayStatus = (int) $m[1];
+                    }
+                    $relayHeaders = [];
+
+                    return strlen($line);
+                }
+
+                if ($trimmed !== '' && str_contains($trimmed, ':')) {
+                    [$name, $value] = explode(':', $trimmed, 2);
+                    if (in_array(strtolower(trim($name)), $forwardHeaders, true)) {
+                        $relayHeaders[] = $trimmed;
+                    }
+                }
+
+                return strlen($line);
+            },
+            CURLOPT_WRITEFUNCTION => function ($_ch, $data) use (&$relayStatus, &$relayHeaders, &$relayStarted) {
+                if (!$relayStarted && !headers_sent()) {
+                    http_response_code($relayStatus ?: 200);
+                    header('Access-Control-Allow-Origin: *');
+                    header('Access-Control-Allow-Methods: GET, HEAD, OPTIONS');
+                    header('Access-Control-Allow-Headers: Origin, Content-Type, Accept, Range');
+                    header('Access-Control-Expose-Headers: Content-Length, Content-Range, Accept-Ranges');
+                    header('Cache-Control: public, max-age=3600');
+
+                    foreach ($relayHeaders as $h) {
+                        header($h);
+                    }
+
+                    $relayStarted = true;
+                }
+
+                echo $data;
+
+                return strlen($data);
+            },
+        ]);
+
+        curl_exec($relayHandle);
+        curl_close($relayHandle);
+
+        if ($relayStarted) {
             exit;
         }
     }
