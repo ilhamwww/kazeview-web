@@ -18,6 +18,7 @@
                 showVideo: false,
                 muted: true,
                 timer: null,
+                gen: 0,
                 startX: null,
                 init() {
                     this.queue();
@@ -32,24 +33,31 @@
                 },
                 queue() {
                     clearTimeout(this.timer);
+                    // Naikkan generasi: callback dari slide sebelumnya (promise play yang
+                    // dibatalkan, timer lama) akan diabaikan.
+                    const gen = ++this.gen;
                     this.showVideo = false;
                     const v = this.$refs.video;
                     if (v) { v.pause(); v.removeAttribute('src'); v.load(); }
                     const trailer = this.heroes[this.active]?.trailer;
                     if (trailer && !this.saveData()) {
                         // Tampilkan gambar dulu, trailer menyusul (ala Netflix).
-                        this.timer = setTimeout(() => this.startTrailer(trailer), 2500);
+                        this.timer = setTimeout(() => this.startTrailer(trailer, gen), 2500);
                     } else {
                         this.timer = setTimeout(() => this.next(), 9000);
                     }
                 },
-                startTrailer(src) {
+                startTrailer(src, gen) {
                     const v = this.$refs.video;
-                    if (!v) return;
+                    if (!v || gen !== this.gen) return;
                     v.muted = this.muted;
                     v.src = src;
-                    v.play().then(() => { this.showVideo = true; })
-                        .catch(() => { this.timer = setTimeout(() => this.next(), 7000); });
+                    v.play().then(() => { if (gen === this.gen) this.showVideo = true; })
+                        .catch(() => {
+                            if (gen !== this.gen) return;
+                            clearTimeout(this.timer);
+                            this.timer = setTimeout(() => this.next(), 7000);
+                        });
                 },
                 onEnded() { this.next(); },
                 onError() {
