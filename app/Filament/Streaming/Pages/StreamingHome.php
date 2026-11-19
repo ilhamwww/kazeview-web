@@ -49,7 +49,10 @@ class StreamingHome extends BaseDashboard
             $sections = [['title' => 'Film Terbaru', 'slug' => 'latest-movies', 'items' => $dummy]];
         }
 
-        $this->heroes = array_map(fn ($i) => $this->withUrl($i), $heroes);
+        $this->heroes = array_slice(array_values(array_filter(
+            array_map(fn ($i) => $this->withUrl($i), $heroes),
+            fn ($i) => $i['url'] !== '#'
+        )), 0, 8);
         $this->buildSections($sections);
         $this->quickLinks = $this->buildQuickLinks();
         $this->continueWatching = $this->buildContinueWatching();
@@ -58,6 +61,7 @@ class StreamingHome extends BaseDashboard
     private function buildSections(array $sections): void
     {
         $bySlug = [];
+        $trendingPool = [];
         foreach ($sections as $section) {
             $slug = $section['slug'] ?? '';
 
@@ -75,6 +79,11 @@ class StreamingHome extends BaseDashboard
             if ($slug === 'trending-now') {
                 $this->topTen = array_slice($items, 0, 10);
                 continue;
+            }
+
+            // Chitogenx: rak trending film & serial dipakai untuk Top 10.
+            if (in_array($slug, ['film-yang-sedang-tren', 'drama-yang-sedang-trending'], true)) {
+                $trendingPool[$slug] = $items;
             }
 
             $meta = self::SECTION_META[$slug] ?? [];
@@ -100,6 +109,25 @@ class StreamingHome extends BaseDashboard
             }
         }
         $this->sections = array_merge($ordered, array_values($bySlug));
+
+        if (empty($this->topTen) && !empty($trendingPool)) {
+            // Selang-seling film dan serial supaya Top 10 tidak didominasi satu jenis.
+            $films = $trendingPool['film-yang-sedang-tren'] ?? [];
+            $series = $trendingPool['drama-yang-sedang-trending'] ?? [];
+            $mixed = [];
+            $seen = [];
+
+            for ($i = 0; count($mixed) < 10 && ($i < count($films) || $i < count($series)); $i++) {
+                foreach ([$series[$i] ?? null, $films[$i] ?? null] as $item) {
+                    if ($item && !isset($seen[$item['slug']]) && count($mixed) < 10) {
+                        $seen[$item['slug']] = true;
+                        $mixed[] = $item;
+                    }
+                }
+            }
+
+            $this->topTen = $mixed;
+        }
     }
 
     private function withUrl(array $item): array

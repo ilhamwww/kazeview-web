@@ -129,6 +129,7 @@ class ChitogenxService
             'logo' => null,
             'description' => (string) ($item['description'] ?? ''),
             'video_url' => '',
+            'trailer' => (string) ($item['trailer'] ?? ''),
             'slug' => $slug,
             'tmdb_id' => null,
             'adult' => false,

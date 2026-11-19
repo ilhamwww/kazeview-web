@@ -1,293 +1,231 @@
 @php
     $star = 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z';
-    $typeLabel = fn ($item) => ($item['is_series'] ?? false) ? 'Series' : 'Movie';
+    $heroPayload = array_map(fn ($h) => [
+        'title' => $h['title'] ?? '',
+        'url' => $h['url'] ?? '#',
+        'trailer' => $h['trailer'] ?? '',
+    ], $heroes);
 @endphp
 
-<div class="min-h-screen bg-[#050505] text-white pb-32">
+<div class="min-h-screen bg-[#141414] text-white pb-28">
 
-    {{-- ============ HERO ============ --}}
+    {{-- ================= BILLBOARD ================= --}}
     @if(!empty($heroes))
-    <section x-data="{
-            active: 0,
-            count: {{ count($heroes) }},
-            timer: null,
-            startX: null,
-            init() { this.play(); },
-            play() { this.stop(); this.timer = setInterval(() => this.next(false), 7000); },
-            stop() { if (this.timer) { clearInterval(this.timer); this.timer = null; } },
-            next(reset = true) { this.active = (this.active + 1) % this.count; if (reset) this.play(); },
-            prev() { this.active = (this.active - 1 + this.count) % this.count; this.play(); },
-            goTo(i) { this.active = i; this.play(); },
-            touchStart(e) { this.startX = e.touches[0].clientX; },
-            touchEnd(e) {
-                if (this.startX === null) return;
-                const dx = e.changedTouches[0].clientX - this.startX;
-                if (Math.abs(dx) > 50) { dx < 0 ? this.next() : this.prev(); }
-                this.startX = null;
-            }
-        }"
-        @touchstart.passive="touchStart($event)" @touchend.passive="touchEnd($event)"
-        class="relative w-full h-[78vh] md:h-[88vh] min-h-[520px] overflow-hidden bg-black">
+    <section class="relative w-full h-[72vh] min-h-[480px] md:h-[86vh] md:min-h-[600px] overflow-hidden bg-black"
+             x-data="{
+                heroes: @js($heroPayload),
+                active: 0,
+                showVideo: false,
+                muted: true,
+                timer: null,
+                startX: null,
+                init() {
+                    this.queue();
+                    document.addEventListener('visibilitychange', () => {
+                        const v = this.$refs.video;
+                        if (!v) return;
+                        document.hidden ? v.pause() : (this.showVideo && v.play().catch(() => {}));
+                    });
+                },
+                saveData() {
+                    return !!(navigator.connection && navigator.connection.saveData);
+                },
+                queue() {
+                    clearTimeout(this.timer);
+                    this.showVideo = false;
+                    const v = this.$refs.video;
+                    if (v) { v.pause(); v.removeAttribute('src'); v.load(); }
+                    const trailer = this.heroes[this.active]?.trailer;
+                    if (trailer && !this.saveData()) {
+                        // Tampilkan gambar dulu, trailer menyusul (ala Netflix).
+                        this.timer = setTimeout(() => this.startTrailer(trailer), 2500);
+                    } else {
+                        this.timer = setTimeout(() => this.next(), 9000);
+                    }
+                },
+                startTrailer(src) {
+                    const v = this.$refs.video;
+                    if (!v) return;
+                    v.muted = this.muted;
+                    v.src = src;
+                    v.play().then(() => { this.showVideo = true; })
+                        .catch(() => { this.timer = setTimeout(() => this.next(), 7000); });
+                },
+                onEnded() { this.next(); },
+                onError() { this.showVideo = false; this.timer = setTimeout(() => this.next(), 6000); },
+                next() { this.active = (this.active + 1) % this.heroes.length; this.queue(); },
+                prev() { this.active = (this.active - 1 + this.heroes.length) % this.heroes.length; this.queue(); },
+                goTo(i) { if (i !== this.active) { this.active = i; this.queue(); } },
+                toggleMute() {
+                    this.muted = !this.muted;
+                    if (this.$refs.video) this.$refs.video.muted = this.muted;
+                },
+                touchStart(e) { this.startX = e.touches[0].clientX; },
+                touchEnd(e) {
+                    if (this.startX === null) return;
+                    const dx = e.changedTouches[0].clientX - this.startX;
+                    if (Math.abs(dx) > 50) { dx < 0 ? this.next() : this.prev(); }
+                    this.startX = null;
+                }
+             }"
+             @touchstart.passive="touchStart($event)" @touchend.passive="touchEnd($event)">
 
+        {{-- Gambar latar per hero --}}
         @foreach($heroes as $index => $hero)
-        <div x-show="active === {{ $index }}"
-             x-transition:enter="transition ease-out duration-700" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-500" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-             class="absolute inset-0" @if($index !== 0) style="display:none;" @endif>
-
-            {{-- Background Picture: Poster vertikal di HP agar objek utama presisi di tengah, Banner landscape di Desktop --}}
-            <picture class="absolute inset-0 w-full h-full">
-                <source media="(max-width: 767px)" srcset="{{ $hero['thumbnail'] ?: $hero['banner'] }}">
-                <img src="{{ $hero['banner'] ?: ($hero['thumbnail'] ?? '') }}" alt="{{ $hero['title'] ?? '' }}"
-                     class="w-full h-full object-cover object-center"
+            <div class="absolute inset-0 transition-opacity duration-700"
+                 :class="active === {{ $index }} && !showVideo ? 'opacity-100' : 'opacity-0'"
+                 @if($index !== 0) style="opacity:0" @endif>
+                <img src="{{ $hero['banner'] ?: ($hero['thumbnail'] ?? '') }}" alt=""
+                     class="h-full w-full object-cover object-[center_20%]"
                      @if($index === 0) fetchpriority="high" @else loading="lazy" @endif>
-            </picture>
+            </div>
+        @endforeach
 
-            {{-- Overlay: Gradien kiri hanya di desktop (agar di HP gambar tidak tertutup hitam di sisi kiri/tengah) --}}
-            <div class="hidden md:block absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/80 to-transparent md:w-[75%]"></div>
-            <div class="absolute top-0 inset-x-0 h-32 md:h-40 bg-gradient-to-b from-[#050505]/85 via-[#050505]/40 to-transparent"></div>
-            <div class="absolute bottom-0 inset-x-0 h-[65%] md:h-[60%] bg-gradient-to-t from-[#050505] via-[#050505]/85 via-40% to-transparent"></div>
+        {{-- Trailer --}}
+        <video x-ref="video" muted playsinline preload="none"
+               x-on:ended="onEnded()" x-on:error="onError()"
+               class="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000"
+               :class="showVideo ? 'opacity-100' : 'opacity-0'"></video>
 
-            <div class="relative z-10 h-full w-full max-w-[1800px] mx-auto px-5 md:px-10 flex flex-col justify-end pb-24 md:pb-32">
-                <div class="max-w-2xl">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-[#E50914] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest">
-                            <span class="h-1.5 w-1.5 rounded-full bg-white"></span> Unggulan #{{ $index + 1 }}
-                        </span>
-                        <span class="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest backdrop-blur">{{ $typeLabel($hero) }}</span>
-                        @if(!empty($hero['quality']))
-                        <span class="rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-zinc-200">{{ $hero['quality'] }}</span>
-                        @endif
+        {{-- Vignette ala Netflix --}}
+        <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent md:via-black/20"></div>
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/70 to-transparent"></div>
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#141414] via-[#141414]/70 to-transparent"></div>
+
+        {{-- Info judul --}}
+        @foreach($heroes as $index => $hero)
+            <div x-show="active === {{ $index }}" x-cloak
+                 x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+                 class="absolute inset-x-0 bottom-[19%] md:bottom-[24%] z-10 px-4 md:px-12"
+                 @if($index !== 0) style="display:none" @endif>
+                <div class="max-w-[92%] sm:max-w-xl lg:max-w-2xl">
+                    <div class="mb-2 flex items-center gap-2 text-[11px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-300">
+                        <span class="text-[#E50914] text-base md:text-lg font-black leading-none">K</span>
+                        {{ ($hero['is_series'] ?? false) ? 'Serial' : 'Film' }}
                     </div>
 
-                    @if(!empty($hero['logo']))
-                    <h1 class="mt-4">
-                        <img src="{{ $hero['logo'] }}" alt="{{ $hero['title'] ?? '' }}" loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
-                             class="block h-auto w-auto max-w-[70%] sm:max-w-[420px] max-h-[90px] sm:max-h-[140px] lg:max-h-[170px] object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]"
-                             onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'block text-3xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight line-clamp-2 drop-shadow-lg',textContent:this.alt}))">
+                    <h1 class="text-[32px] leading-[1.02] sm:text-5xl lg:text-6xl font-black tracking-tight line-clamp-2 drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)]">
+                        {{ $hero['title'] ?? '' }}
                     </h1>
-                    @else
-                    <h1 class="mt-4 text-3xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight line-clamp-2 drop-shadow-lg">{{ $hero['title'] ?? '' }}</h1>
-                    @endif
 
-                    <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm font-semibold text-zinc-300">
+                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm font-semibold text-zinc-200">
                         @if(!empty($hero['rating']))
-                        <span class="flex items-center gap-1 text-yellow-400"><svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="{{ $star }}"/></svg>{{ $hero['rating'] }}</span>
+                            <span class="flex items-center gap-1 text-[#46d369]"><svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ $star }}"/></svg>{{ $hero['rating'] }}</span>
                         @endif
                         @if(!empty($hero['year']))<span>{{ $hero['year'] }}</span>@endif
-                        @if(!empty($hero['duration']))<span>{{ $hero['duration'] }}</span>@endif
+                        <span class="rounded-sm border border-white/40 px-1 py-px text-[10px] leading-none">HD</span>
+                        @if(!empty($hero['genre']))
+                            <span class="text-zinc-300">{{ implode(' • ', array_slice(array_map('trim', explode(',', $hero['genre'])), 0, 3)) }}</span>
+                        @endif
                     </div>
 
-                    @if(!empty($hero['genre']))
-                    <div class="mt-3 flex flex-wrap gap-1.5">
-                        @foreach(array_slice(array_map('trim', explode(',', $hero['genre'])), 0, 4) as $g)
-                        <span class="rounded-md border border-white/15 bg-black/50 px-2 py-0.5 text-[11px] font-semibold text-white">{{ $g }}</span>
-                        @endforeach
-                    </div>
+                    @if(!empty($hero['description']))
+                        <p class="mt-3 hidden sm:block max-w-xl text-sm md:text-[17px] leading-snug text-zinc-100 line-clamp-3 drop-shadow-[0_1px_6px_rgba(0,0,0,0.8)]">{{ $hero['description'] }}</p>
                     @endif
 
-                    <p class="mt-4 hidden sm:block max-w-xl text-sm md:text-base leading-relaxed text-zinc-200 line-clamp-3 drop-shadow">{{ $hero['description'] ?? '' }}</p>
-
-                    <div class="mt-6 flex items-center gap-3">
-                        <a href="{{ $hero['url'] }}" class="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-extrabold text-black shadow-lg transition active:scale-95 hover:bg-zinc-200">
-                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                            {{ ($hero['is_series'] ?? false) ? 'Lihat Episode' : 'Tonton Sekarang' }}
+                    <div class="mt-5 flex items-center gap-2.5 md:gap-3">
+                        <a href="{{ $hero['url'] }}"
+                           class="inline-flex items-center gap-2 rounded-[4px] bg-white px-5 md:px-7 py-2 md:py-2.5 text-sm md:text-lg font-bold text-black transition hover:bg-white/80 active:scale-95">
+                            <svg class="w-5 h-5 md:w-7 md:h-7 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                            Putar
+                        </a>
+                        <a href="{{ $hero['url'] }}"
+                           class="inline-flex items-center gap-2 rounded-[4px] bg-[rgba(109,109,110,0.7)] px-5 md:px-7 py-2 md:py-2.5 text-sm md:text-lg font-bold text-white transition hover:bg-[rgba(109,109,110,0.45)] active:scale-95">
+                            <svg class="w-5 h-5 md:w-7 md:h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 11v5M12 8h.01"/></svg>
+                            <span class="sm:hidden">Info</span><span class="hidden sm:inline">Info Selengkapnya</span>
                         </a>
                     </div>
                 </div>
             </div>
-        </div>
         @endforeach
 
-        {{-- Kontrol --}}
-        <div class="absolute bottom-8 md:bottom-12 inset-x-0 z-20">
-            <div class="max-w-[1800px] mx-auto px-5 md:px-10 flex items-center justify-between gap-4">
-                <div class="flex items-center gap-1.5">
-                    @foreach($heroes as $index => $hero)
-                    <button type="button" @click="goTo({{ $index }})" aria-label="Slide {{ $index + 1 }}"
-                            :class="active === {{ $index }} ? 'w-8 bg-[#E50914]' : 'w-2 bg-white/35'"
-                            class="h-2 rounded-full transition-all duration-300"></button>
-                    @endforeach
-                </div>
-                <div class="hidden md:flex items-center gap-2">
-                    <button type="button" @click="prev()" aria-label="Sebelumnya" class="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/40 backdrop-blur transition hover:bg-white/15 active:scale-95">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                    </button>
-                    <button type="button" @click="next()" aria-label="Berikutnya" class="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/40 backdrop-blur transition hover:bg-white/15 active:scale-95">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                    </button>
-                </div>
-            </div>
+        {{-- Kontrol kanan: mute + label usia --}}
+        <div class="absolute right-3 top-[86px] md:top-auto md:right-0 md:bottom-[24%] z-20 flex items-center gap-3">
+            <button type="button" x-show="showVideo" x-cloak @click="toggleMute()"
+                    :aria-label="muted ? 'Nyalakan suara' : 'Matikan suara'"
+                    class="grid h-9 w-9 md:h-11 md:w-11 place-items-center rounded-full border-2 border-white/80 bg-black/40 text-white transition hover:bg-white/15">
+                <svg x-show="muted" class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/></svg>
+                <svg x-show="!muted" class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></svg>
+            </button>
+            <span class="hidden md:inline-block border-l-[3px] border-zinc-300 bg-[rgba(51,51,51,0.6)] py-1.5 pl-3 pr-10 text-base font-medium text-white">13+</span>
+        </div>
+
+        {{-- Indikator slide --}}
+        <div class="absolute inset-x-0 bottom-[12%] md:bottom-[15%] z-20 flex justify-start gap-1.5 px-4 md:px-12">
+            <template x-for="(h, i) in heroes" :key="i">
+                <button type="button" @click="goTo(i)" :aria-label="'Tayangan ' + (i + 1)"
+                        class="h-[3px] rounded-full transition-all duration-300"
+                        :class="active === i ? 'w-7 bg-white' : 'w-3 bg-white/35 hover:bg-white/60'"></button>
+            </template>
         </div>
     </section>
     @else
-    <div class="pt-24 md:pt-28"></div>
+        <div class="pt-24 md:pt-28"></div>
     @endif
 
-    <div class="relative z-10 -mt-6 space-y-10 md:space-y-14">
+    {{-- ================= RAK ================= --}}
+    <div class="relative z-10 -mt-[6vh] md:-mt-[9vh] space-y-6 md:space-y-10">
 
-        {{-- ============ KATEGORI CEPAT ============ --}}
-        <section class="max-w-[1800px] mx-auto px-5 md:px-10">
-            <div class="flex gap-2.5 overflow-x-auto pb-1 -mx-5 px-5 md:-mx-10 md:px-10 scroll-px-5 md:scroll-px-10 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        {{-- Kategori cepat (mobile, ala chip Netflix) --}}
+        @if(!empty($quickLinks))
+            <div class="md:hidden flex gap-2 overflow-x-auto px-4 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                 @foreach($quickLinks as $link)
-                <a href="{{ $link['url'] }}" class="group flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold text-zinc-200 backdrop-blur transition hover:border-[#E50914]/60 hover:text-white active:scale-95">
-                    <svg class="w-4 h-4 text-[#E50914]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $link['icon'] }}"/></svg>
-                    {{ $link['label'] }}
-                </a>
+                    <a href="{{ $link['url'] }}" class="shrink-0 rounded-full border border-white/40 bg-black/30 px-3.5 py-1.5 text-[13px] font-semibold text-white backdrop-blur active:bg-white/10">{{ $link['label'] }}</a>
                 @endforeach
             </div>
-        </section>
+        @endif
 
-        {{-- ============ LANJUTKAN MENONTON ============ --}}
+        {{-- Lanjutkan Menonton --}}
         @if(!empty($continueWatching))
-        <section class="max-w-[1800px] mx-auto px-5 md:px-10">
-            <div class="mb-4 flex items-end justify-between">
-                <div>
-                    <h2 class="text-xl md:text-2xl font-extrabold tracking-tight">Lanjutkan Menonton</h2>
-                    <p class="mt-0.5 text-xs text-zinc-400">Lanjut dari posisi terakhir kamu berhenti</p>
-                </div>
-            </div>
-            <div class="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-5 px-5 md:-mx-10 md:px-10 scroll-px-5 md:scroll-px-10 snap-x [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-                @foreach($continueWatching as $cw)
-                <a href="{{ $cw['url'] }}" class="group relative w-[124px] sm:w-[140px] md:w-[156px] shrink-0 snap-start">
-                    <div class="relative aspect-[3/4] overflow-hidden rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-950 ring-1 ring-white/5">
-                        @if(!empty($cw['thumbnail']))
-                        <img src="{{ $cw['thumbnail'] }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" class="relative h-full w-full object-cover transition duration-300 group-hover:scale-105">
-                        @else
-                        <div class="absolute inset-0 flex items-center justify-center text-zinc-700">
-                            <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
-                        </div>
-                        @endif
-                        <div class="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
-                        <span class="absolute left-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-zinc-200">{{ $cw['label'] }}</span>
-                        <div class="absolute inset-0 grid place-items-center">
-                            <span class="grid h-10 w-10 place-items-center rounded-full bg-[#E50914]/90 shadow-lg shadow-black/50">
-                                <svg class="ml-0.5 w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                            </span>
-                        </div>
-                        <div class="absolute inset-x-2 bottom-2">
-                            @if(!empty($cw['episode']) && $cw['label'] !== 'Film')
-                                <p class="text-[11px] font-extrabold text-white drop-shadow">Episode {{ $cw['episode'] }}</p>
-                            @endif
-                            @if($cw['ago'])<p class="text-[10px] font-medium text-zinc-300 drop-shadow">{{ $cw['ago'] }}</p>@endif
-                        </div>
-                        {{-- Progress bar merah ala Netflix di bawah poster --}}
-                        @if(!empty($cw['has_progress']))
-                        <div class="absolute inset-x-0 bottom-0 h-[3px] bg-zinc-700/60 rounded-b-xl overflow-hidden">
-                            <div class="h-full bg-[#E50914] rounded-b-xl" style="width: {{ min(100, $cw['progress_percent']) }}%"></div>
-                        </div>
-                        @endif
-                    </div>
-                    <h3 class="mt-2 truncate text-xs md:text-[13px] font-semibold text-zinc-200" title="{{ $cw['title'] }}">{{ $cw['title'] }}</h3>
-                </a>
-                @endforeach
-            </div>
-        </section>
-        @endif
-
-        {{-- ============ TOP 10 ============ --}}
-        @if(!empty($topTen))
-        <section class="max-w-[1800px] mx-auto px-5 md:px-10">
-            <div class="mb-4 flex items-center gap-3">
-                <span class="rounded-md bg-[#E50914] px-2 py-1 text-xs font-black tracking-wider">TOP 10</span>
-                <h2 class="text-xl md:text-2xl font-extrabold tracking-tight">Lagi Trending Hari Ini</h2>
-            </div>
-            <div class="flex gap-2 md:gap-3 overflow-x-auto pb-2 -mx-5 px-5 md:-mx-10 md:px-10 scroll-px-5 md:scroll-px-10 snap-x [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-                @foreach($topTen as $rank => $item)
-                <a href="{{ $item['url'] }}" class="group relative block w-[150px] md:w-[214px] shrink-0 snap-start">
-                    <div class="relative flex items-end">
-                        <span class="pointer-events-none select-none absolute left-0 bottom-[-6px] md:bottom-[-10px] text-[104px] md:text-[150px] font-black leading-none tracking-tighter text-[#050505]"
-                              style="-webkit-text-stroke: 3px rgba(255,255,255,0.55);">{{ $rank + 1 }}</span>
-                        <div class="relative z-10 ml-auto w-[96px] md:w-[136px] aspect-[2/3] overflow-hidden rounded-lg bg-zinc-900 ring-1 ring-white/10 shadow-xl shadow-black/70">
-                            @if(!empty($item['thumbnail']))
-                            <img src="{{ $item['thumbnail'] }}" alt="{{ $item['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
-                            @endif
-                        </div>
-                    </div>
-                    <div class="ml-auto mt-2 w-[96px] md:w-[136px]">
-                        <h3 class="truncate text-xs md:text-[13px] font-semibold text-zinc-200 group-hover:text-white" title="{{ $item['title'] ?? '' }}">{{ $item['title'] ?? '' }}</h3>
-                        <p class="text-[11px] text-zinc-500">{{ $typeLabel($item) }}@if(!empty($item['year'])) · {{ $item['year'] }}@endif</p>
-                    </div>
-                </a>
-                @endforeach
-            </div>
-        </section>
-        @endif
-
-        {{-- ============ SECTIONS ============ --}}
-        @foreach($sections as $sIndex => $section)
-
-            @if($section['style'] === 'spotlight')
-            <section class="max-w-[1800px] mx-auto px-5 md:px-10">
-                <h2 class="mb-4 text-xl md:text-2xl font-extrabold tracking-tight">{{ $section['title'] }}</h2>
-                <div class="flex gap-4 overflow-x-auto pb-2 -mx-5 px-5 md:-mx-10 md:px-10 scroll-px-5 md:scroll-px-10 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-                    @foreach($section['items'] as $item)
-                    <a href="{{ $item['url'] }}" class="group relative flex w-[86vw] sm:w-[440px] lg:w-[520px] shrink-0 snap-start gap-4 overflow-hidden rounded-2xl border border-white/5 bg-zinc-950 p-4">
-                        <img src="{{ $item['banner'] ?: $item['thumbnail'] }}" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-40 transition duration-500 group-hover:scale-105">
-                        <div class="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/90 to-[#050505]/30"></div>
-                        <div class="relative w-24 sm:w-28 aspect-[2/3] shrink-0 overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/10">
-                            @if(!empty($item['thumbnail']))<img src="{{ $item['thumbnail'] }}" alt="{{ $item['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover">@endif
-                        </div>
-                        <div class="relative flex min-w-0 flex-1 flex-col justify-between py-0.5">
-                            <div>
-                                <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
-                                    <span class="rounded bg-yellow-500/15 px-1.5 py-0.5 text-yellow-400">Sorotan</span>
-                                    <span class="rounded bg-white/10 px-1.5 py-0.5 text-zinc-200">{{ $typeLabel($item) }}</span>
-                                    @if(!empty($item['rating']))
-                                    <span class="flex items-center gap-0.5 text-yellow-400"><svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="{{ $star }}"/></svg>{{ $item['rating'] }}</span>
-                                    @endif
-                                </div>
-                                <h3 class="mt-2 text-base sm:text-lg font-extrabold leading-tight line-clamp-2 group-hover:text-[#ff4d55] transition">{{ $item['title'] ?? '' }}</h3>
-                                <p class="mt-2 text-xs sm:text-[13px] leading-relaxed text-zinc-400 line-clamp-3">{{ $item['description'] ?: 'Belum ada sinopsis.' }}</p>
-                            </div>
-                            <span class="mt-3 inline-flex w-max items-center gap-1.5 rounded-lg bg-[#E50914] px-3 py-1.5 text-[11px] font-bold">
-                                <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Tonton
-                            </span>
-                        </div>
-                    </a>
-                    @endforeach
-                </div>
-            </section>
-            @else
-            <section class="max-w-[1800px] mx-auto px-5 md:px-10">
-                <div class="mb-4 flex items-center justify-between gap-3">
-                    <h2 class="text-xl md:text-2xl font-extrabold tracking-tight">{{ $section['title'] }}</h2>
-                    @if($section['more_url'])
-                    <a href="{{ $section['more_url'] }}" class="inline-flex shrink-0 items-center gap-1 text-xs md:text-sm font-semibold text-zinc-400 transition hover:text-white">
-                        Lihat Semua
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                    </a>
-                    @endif
-                </div>
-                <div class="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-5 px-5 md:-mx-10 md:px-10 scroll-px-5 md:scroll-px-10 snap-x [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-                    @foreach($section['items'] as $item)
-                    <a href="{{ $item['url'] }}" class="group w-[124px] sm:w-[150px] md:w-[170px] xl:w-[185px] shrink-0 snap-start">
-                        <div class="relative aspect-[2/3] overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/5">
-                            @if(!empty($item['thumbnail']))
-                            <img src="{{ $item['thumbnail'] }}" alt="{{ $item['title'] ?? '' }}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
-                            @endif
-                            <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/60 to-transparent"></div>
-                            <div class="absolute inset-x-0 top-0 flex justify-between p-2">
-                                <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-zinc-200">{{ $typeLabel($item) }}</span>
-                                @if(!empty($item['quality']))
-                                <span class="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-sky-300">{{ $item['quality'] }}</span>
+            <section class="relative">
+                <h2 class="mb-2.5 md:mb-3 px-4 md:px-12 text-[17px] md:text-[22px] font-bold tracking-tight text-zinc-100">Lanjutkan Menonton untuk Kamu</h2>
+                <div class="flex gap-2 md:gap-2.5 overflow-x-auto px-4 md:px-12 pb-3 pt-1 scroll-px-4 md:scroll-px-12 snap-x [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                    @foreach($continueWatching as $cw)
+                        <a href="{{ $cw['url'] }}" class="group w-[112px] sm:w-[136px] md:w-[166px] xl:w-[188px] shrink-0 snap-start">
+                            <div class="relative aspect-[2/3] overflow-hidden rounded-t-[4px] bg-zinc-900 transition duration-300 group-hover:scale-[1.04]">
+                                @if(!empty($cw['thumbnail']))
+                                    <img src="{{ $cw['thumbnail'] }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" class="h-full w-full object-cover">
                                 @endif
+                                <div class="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100">
+                                    <span class="grid h-10 w-10 md:h-12 md:w-12 place-items-center rounded-full border-2 border-white bg-black/50">
+                                        <svg class="ml-0.5 w-4 h-4 md:w-5 md:h-5 fill-white" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                                    </span>
+                                </div>
+                                <span class="absolute left-1.5 top-1.5 rounded-sm bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-200">{{ $cw['label'] }}</span>
                             </div>
-                            @if(!empty($item['rating']))
-                            <span class="absolute bottom-2 left-2 flex items-center gap-0.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-extrabold text-yellow-400">
-                                <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="{{ $star }}"/></svg>{{ $item['rating'] }}
-                            </span>
-                            @endif
-                        </div>
-                        <h3 class="mt-2 truncate text-xs md:text-[13px] font-semibold text-zinc-200 group-hover:text-white" title="{{ $item['title'] ?? '' }}">{{ $item['title'] ?? '' }}</h3>
-                        <p class="text-[11px] text-zinc-500">{{ $item['year'] ?? '' }}@if(!empty($item['genre'])) · {{ trim(explode(',', $item['genre'])[0]) }}@endif</p>
-                    </a>
+                            {{-- Progress bar --}}
+                            <div class="h-[3px] w-full bg-zinc-700/80">
+                                <div class="h-full bg-[#E50914]" style="width: {{ !empty($cw['has_progress']) ? max(6, min(100, $cw['progress_percent'])) : 6 }}%"></div>
+                            </div>
+                            <div class="rounded-b-[4px] bg-[#181818] px-2 py-1.5">
+                                <h3 class="truncate text-[12px] md:text-[13px] font-semibold text-zinc-200" title="{{ $cw['title'] }}">{{ $cw['title'] }}</h3>
+                                <p class="truncate text-[10px] md:text-[11px] text-zinc-400">
+                                    @if(!empty($cw['episode']) && $cw['label'] !== 'Film')Eps {{ $cw['episode'] }}@if($cw['ago']) · @endif @endif{{ $cw['ago'] }}
+                                </p>
+                            </div>
+                        </a>
                     @endforeach
                 </div>
             </section>
-            @endif
+        @endif
 
+        {{-- Top 10 --}}
+        @if(!empty($topTen))
+            @include('filament.streaming.partials.home-row', [
+                'title' => 'Hari Ini di KZSTRM',
+                'items' => $topTen,
+                'variant' => 'top10',
+            ])
+        @endif
 
+        {{-- Rak lainnya --}}
+        @foreach($sections as $section)
+            @include('filament.streaming.partials.home-row', [
+                'title' => $section['title'],
+                'items' => $section['items'],
+                'moreUrl' => $section['more_url'] ?? null,
+                'variant' => 'poster',
+            ])
         @endforeach
     </div>
 </div>
