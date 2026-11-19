@@ -702,6 +702,13 @@
                             this.art.destroy(false);
                             this.art = null;
                         }
+                        // Bersihkan sisa status web fullscreen supaya topbar tidak
+                        // ikut tersembunyi saat ganti episode / keluar player.
+                        document.querySelectorAll('.art-video-player.art-fullscreen-web').forEach((el) => {
+                            el.classList.remove('art-fullscreen-web');
+                        });
+                        document.body.classList.remove('kz-fullscreen-web-active');
+                        document.documentElement.classList.remove('kz-fullscreen-web-active');
                     },
 
                     async fetchStreamAsync(autoPlayAfter = true, force = false) {
@@ -822,7 +829,7 @@
                         this.art = new Artplayer({
                             container: artContainer,
                             url: this.videoSrc,
-                            type: 'm3u8',
+                            type: /\.m3u8(\?|$)/i.test(this.videoSrc) ? 'm3u8' : 'mp4',
                             theme: '#E50914',
                             volume: 0.8,
                             isLive: false,
@@ -1108,6 +1115,22 @@
                             });
                         };
                         this.art.on('setting', stampSettingNames);
+
+                        // Sinkronkan navbar saat masuk/keluar web fullscreen.
+                        // Tanpa ini, kelas kz-fullscreen-web-active bisa tertinggal
+                        // dan topbar tidak muncul lagi setelah keluar fullscreen.
+                        this.art.on('fullscreenWeb', (state) => {
+                            document.body.classList.toggle('kz-fullscreen-web-active', state);
+                            document.documentElement.classList.toggle('kz-fullscreen-web-active', state);
+                            window.dispatchEvent(new CustomEvent('artplayer:fullscreenWeb', { detail: state }));
+                        });
+
+                        this.art.on('fullscreen', (state) => {
+                            if (!state) {
+                                document.body.classList.remove('kz-fullscreen-web-active');
+                                document.documentElement.classList.remove('kz-fullscreen-web-active');
+                            }
+                        });
 
                         // Auto-resume ke posisi menit terakhir ditonton
                         if (this.savedProgressSeconds > 5) {

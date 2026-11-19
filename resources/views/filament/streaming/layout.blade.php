@@ -148,19 +148,19 @@
             isolation: isolate !important;
         }
 
-        /* Saat Web Fullscreen aktif: naikkan z-index player dan sembunyikan seluruh navbar */
+        /* Saat Web Fullscreen aktif: naikkan z-index player dan sembunyikan seluruh navbar.
+           Sengaja hanya memakai kelas presisi (.art-video-player.art-fullscreen-web) +
+           kelas JS (kz-fullscreen-web-active); selector longgar seperti [class*="fullscreen-web"]
+           membuat topbar tetap tersembunyi kalau ada node sisa player lama. */
         .art-video-player.art-fullscreen-web {
             z-index: 99999 !important;
             isolation: auto !important;
         }
 
-        body:has(.art-fullscreen-web) header,
-        body:has([class*="fullscreen-web"]) header,
         body.kz-fullscreen-web-active header,
-        body.art-fullscreen-web header,
-        html:has(.art-fullscreen-web) header,
         html.kz-fullscreen-web-active header,
-        html.art-fullscreen-web header {
+        body:has(.art-video-player.art-fullscreen-web) header,
+        html:has(.art-video-player.art-fullscreen-web) header {
             display: none !important;
             opacity: 0 !important;
             pointer-events: none !important;
@@ -1469,17 +1469,21 @@
         // Auto-detect Web Fullscreen on any player to hide navbar cleanly
         (function() {
             function syncFsWeb() {
-                const isFs = !!document.querySelector('.art-fullscreen-web, [class*="fullscreen-web"]');
+                const isFs = !!document.querySelector('.art-video-player.art-fullscreen-web');
                 document.body.classList.toggle('kz-fullscreen-web-active', isFs);
                 document.documentElement.classList.toggle('kz-fullscreen-web-active', isFs);
             }
             const observer = new MutationObserver(() => syncFsWeb());
             observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
             window.addEventListener('resize', syncFsWeb);
+            document.addEventListener('fullscreenchange', syncFsWeb);
             window.addEventListener('artplayer:fullscreenWeb', (e) => {
                 document.body.classList.toggle('kz-fullscreen-web-active', !!e.detail);
                 document.documentElement.classList.toggle('kz-fullscreen-web-active', !!e.detail);
             });
+            // Sinkronkan sekali saat halaman siap agar tidak ada kelas sisa.
+            window.addEventListener('pageshow', syncFsWeb);
+            syncFsWeb();
         })();
     </script>
 </body>
