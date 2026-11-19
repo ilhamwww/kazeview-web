@@ -54,8 +54,8 @@
                 if (!st || !st.needs_catalog_sync) return;
 
                 const [latestRes, popRes] = await Promise.all([
-                    fetch('https://api.shngm.io/v1/manga/list?page=1&page_size=24&sort=latest&sort_order=desc').then(r => r.ok ? r.json() : null).catch(() => null),
-                    fetch('https://api.shngm.io/v1/manga/list?page=1&page_size=24&sort=popularity&sort_order=desc').then(r => r.ok ? r.json() : null).catch(() => null),
+                    fetch('https://api.shinigami.io/v1/manga/list?page=1&page_size=24&sort=latest&sort_order=desc').then(r => r.ok ? r.json() : null).catch(() => null),
+                    fetch('https://api.shinigami.io/v1/manga/list?page=1&page_size=24&sort=popularity&sort_order=desc').then(r => r.ok ? r.json() : null).catch(() => null),
                 ]);
 
                 const combined = [

@@ -75,9 +75,9 @@
                         pages = res.pages;
                     } else if (upstreamChId) {
                         // Fallback client shinigami
-                        const shRes = await fetch('https://api.shngm.io/v1/chapter/detail/' + upstreamChId).then(r => r.ok ? r.json() : null).catch(() => null);
+                        const shRes = await fetch('https://api.shinigami.io/v1/chapter/detail/' + upstreamChId).then(r => r.ok ? r.json() : null).catch(() => null);
                         if (shRes && shRes.retcode === 0 && shRes.data && shRes.data.chapter && Array.isArray(shRes.data.chapter.data)) {
-                            const baseUrl = (shRes.data.base_url || 'https://assets.shngm.id').replace(/\/+$/, '');
+                            const baseUrl = (shRes.data.base_url || 'https://cdn.shinigami.gg').replace(/\/+$/, '');
                             const path = '/' + String(shRes.data.chapter.path || '').replace(/^\/+|\/+$/g, '') + '/';
                             pages = shRes.data.chapter.data.map((f, idx) => {
                                 const rawUrl = baseUrl + path + f;
@@ -123,9 +123,9 @@
 
                 // 2. Client-side fetch fallback (Shinigami API langsung dari browser jika server kena WAF)
                 if (upstreamChId) {
-                    const shRes = await fetch('https://api.shngm.io/v1/chapter/detail/' + upstreamChId).then(r => r.ok ? r.json() : null).catch(() => null);
+                    const shRes = await fetch('https://api.shinigami.io/v1/chapter/detail/' + upstreamChId).then(r => r.ok ? r.json() : null).catch(() => null);
                     if (shRes && shRes.retcode === 0 && shRes.data && shRes.data.chapter && Array.isArray(shRes.data.chapter.data)) {
-                        const baseUrl = (shRes.data.base_url || 'https://assets.shngm.id').replace(/\/+$/, '');
+                        const baseUrl = (shRes.data.base_url || 'https://cdn.shinigami.gg').replace(/\/+$/, '');
                         const path = '/' + String(shRes.data.chapter.path || '').replace(/^\/+|\/+$/g, '') + '/';
                         const files = shRes.data.chapter.data;
 
@@ -179,7 +179,7 @@
             if (Date.now() - lastSync < 600000) return;
 
             try {
-                const res = await fetch('https://api.shngm.io/v1/chapter/' + upstreamId + '/list?page=1&page_size=1000').then(r => r.ok ? r.json() : null).catch(() => null);
+                const res = await fetch('https://api.shinigami.io/v1/chapter/' + upstreamId + '/list?page=1&page_size=1000').then(r => r.ok ? r.json() : null).catch(() => null);
                 if (!res || res.retcode !== 0 || !Array.isArray(res.data) || res.data.length === 0) return;
                 sessionStorage.setItem(syncKey, String(Date.now()));
 

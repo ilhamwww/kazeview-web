@@ -61,8 +61,8 @@ class ShinigamiService
     public function getPopular(int $page = 1, int $pageSize = 24, ?string $format = null): array
     {
         $params = [
-            'page' => $page,
-            'page_size' => $pageSize,
+            'limit' => $pageSize,
+            'offset' => max(0, ($page - 1) * $pageSize),
             'sort' => 'popularity',
             'sort_order' => 'desc',
         ];
@@ -81,8 +81,8 @@ class ShinigamiService
     public function getLatest(int $page = 1, int $pageSize = 24, ?string $format = null): array
     {
         $params = [
-            'page' => $page,
-            'page_size' => $pageSize,
+            'limit' => $pageSize,
+            'offset' => max(0, ($page - 1) * $pageSize),
             'sort' => 'latest',
             'sort_order' => 'desc',
         ];
@@ -101,8 +101,8 @@ class ShinigamiService
     public function search(string $query, int $page = 1, int $pageSize = 24): array
     {
         $params = [
-            'page' => $page,
-            'page_size' => $pageSize,
+            'limit' => $pageSize,
+            'offset' => max(0, ($page - 1) * $pageSize),
             'q' => $query,
         ];
 
@@ -159,7 +159,7 @@ class ShinigamiService
      */
     public function getChapters(string $mangaId): array
     {
-        $res = $this->requestApi("/chapter/{$mangaId}/list", ['page_size' => 1000], 7200); // Cache daftar chapter 2 jam
+        $res = $this->requestApi("/chapter/{$mangaId}/list", ['limit' => 1000], 7200); // Cache daftar chapter 2 jam
         if (!$res || empty($res['data'])) {
             return [];
         }
@@ -201,7 +201,7 @@ class ShinigamiService
         }
 
         $d = $res['data'];
-        $baseUrl = rtrim($d['base_url'] ?? 'https://assets.shngm.id', '/');
+        $baseUrl = rtrim($d['base_url'] ?? 'https://cdn.shinigami.gg', '/');
         $path = '/' . trim($d['chapter']['path'] ?? '', '/') . '/';
         $rawPages = $d['chapter']['data'] ?? [];
 
@@ -238,7 +238,10 @@ class ShinigamiService
         }
 
         $meta = $res['meta'] ?? [];
-        $totalPage = $meta['total_page'] ?? 1;
+
+        // API baru memakai limit/offset + has_next (tanpa total_page).
+        $hasNext = (bool) ($meta['has_next'] ?? false);
+        $totalPage = (int) ($meta['total_page'] ?? ($hasNext ? $page + 1 : $page));
 
         $items = [];
         foreach ($res['data'] as $d) {
@@ -268,10 +271,10 @@ class ShinigamiService
 
         return [
             'data' => $items,
-            'page' => $meta['page'] ?? $page,
-            'total_page' => $totalPage,
-            'total_record' => $meta['total_record'] ?? count($items),
-            'has_next' => ($meta['page'] ?? $page) < $totalPage,
+            'page' => $page,
+            'total_page' => max(1, $totalPage),
+            'total_record' => (int) ($meta['total_record'] ?? ((int) ($meta['offset'] ?? 0) + count($items))),
+            'has_next' => $hasNext,
         ];
     }
 }

@@ -23,6 +23,11 @@ class ImageProxyService
         'animekompi.sbs',
         'anichin.moe',
         'anilist.co',
+        'shinigami.gg',
+        'shinigami.io',
+        'shinigami.mx',
+        'shngm.id',
+        'shngm.io',
     ];
 
     public static function encode(string $url): string

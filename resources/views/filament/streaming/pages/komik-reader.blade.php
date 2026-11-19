@@ -199,9 +199,9 @@
                 return;
             }
             try {
-                const res = await fetch('https://api.shngm.io/v1/chapter/detail/' + upstreamChId).then(r => r.ok ? r.json() : null).catch(() => null);
+                const res = await fetch('https://api.shinigami.io/v1/chapter/detail/' + upstreamChId).then(r => r.ok ? r.json() : null).catch(() => null);
                 if (res && res.retcode === 0 && res.data && res.data.chapter && Array.isArray(res.data.chapter.data)) {
-                    const baseUrl = (res.data.base_url || 'https://assets.shngm.id').replace(/\/+$/, '');
+                    const baseUrl = (res.data.base_url || 'https://cdn.shinigami.gg').replace(/\/+$/, '');
                     const path = '/' + String(res.data.chapter.path || '').replace(/^\/+|\/+$/g, '') + '/';
                     const files = res.data.chapter.data;
                     this.clientPages = files.map((f, idx) => {
