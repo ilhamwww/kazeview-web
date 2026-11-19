@@ -1451,7 +1451,11 @@ Route::get('/api/proxy-stream', function (\Illuminate\Http\Request $request) {
     $headersSent = false;
     $lastError = '';
 
-    for ($attempt = 0; $attempt < $totalAttempts; $attempt++) {
+    // Sumber yang sudah diketahui butuh relay (host diblokir Cloudflare) langsung dialihkan
+    // agar pemutar tidak menunggu percobaan header yang pasti gagal.
+    $forceRelay = $request->boolean('relay');
+
+    for ($attempt = 0; !$forceRelay && $attempt < $totalAttempts; $attempt++) {
         $p = $uniqueProfiles[$attempt];
 
         $reqHeaders = [

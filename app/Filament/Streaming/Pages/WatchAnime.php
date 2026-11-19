@@ -263,19 +263,37 @@ class WatchAnime extends Page
                     'embed_url' => '',
                 ];
             } elseif (!empty($rawStream) && !str_contains($rawStream, '/embed/')) {
-                // Direct MP4
-                if (str_contains($rawStream, '/api/proxy-stream')) {
-                    $currentStreamUrl = $rawStream;
-                } else {
-                    $currentStreamUrl = '/api/proxy-stream?url=' . urlencode($rawStream) . '&referer=' . urlencode('https://mirainime.com/');
+                // Kumpulkan semua kandidat MP4 lalu pilih yang benar-benar hidup.
+                $candidates = [['url' => $rawStream, 'label' => 'Fast HD', 'referer' => 'https://mirainime.com/']];
+
+                foreach (($epDetail['gdrive_sources'] ?? []) as $g) {
+                    if (!empty($g['url']) && $g['url'] !== $rawStream) {
+                        $candidates[] = ['url' => $g['url'], 'label' => $g['resolution'] ?? 'Mirror', 'referer' => 'https://mirainime.com/'];
+                    }
                 }
-                $servers[] = [
-                    'id' => 'server1',
-                    'name' => 'Server 1 (Fast)',
-                    'type' => 'mp4',
-                    'stream_url' => $currentStreamUrl,
-                    'embed_url' => '',
-                ];
+
+                if (!empty($otakuStream) && str_starts_with((string) $otakuStream, 'http') && $otakuStream !== $rawStream) {
+                    $candidates[] = ['url' => $otakuStream, 'label' => 'Alt HD', 'referer' => 'https://otakudesu.blog/'];
+                }
+
+                $resolved = \App\Services\AnimeSourceResolverService::resolve($candidates);
+
+                foreach (array_values($resolved) as $i => $src) {
+                    $query = 'url=' . urlencode($src['url']) . '&referer=' . urlencode($candidates[0]['referer'] ?? 'https://mirainime.com/');
+                    if (($src['via'] ?? 'direct') === 'relay') {
+                        $query .= '&relay=1';
+                    }
+
+                    $servers[] = [
+                        'id' => $i === 0 ? 'server1' : 'server_stream_' . ($i + 1),
+                        'name' => 'Server ' . ($i + 1) . ' (' . ($src['label'] ?: 'HD') . ')',
+                        'type' => 'mp4',
+                        'stream_url' => '/api/proxy-stream?' . $query,
+                        'embed_url' => '',
+                    ];
+                }
+
+                $currentStreamUrl = $servers[0]['stream_url'] ?? '';
             } elseif (!empty($embedUrl)) {
                 $miraiProxiedEmbed = (str_contains($embedUrl, 'mirainime.com') || str_contains($embedUrl, '178.211.139.171') || str_contains($embedUrl, 'rebahin'))
                     ? url('/api/streaming/embed?url=' . urlencode($embedUrl))
