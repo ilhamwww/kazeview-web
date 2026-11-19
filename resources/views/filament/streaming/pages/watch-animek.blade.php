@@ -1,3 +1,267 @@
+@push('styles')
+    <style>
+        .kz-noscroll { scrollbar-width: none; } .kz-noscroll::-webkit-scrollbar { display: none; }
+        .kz-thin { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
+        .kz-fade-x { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%); }
+        @media (min-width: 1024px) { .lg\:kz-fade-y { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 48px), transparent 100%); mask-image: linear-gradient(180deg, #000 calc(100% - 48px), transparent 100%); padding-bottom: 2rem; } }
+        @keyframes kzbar { 0%,100% { transform: scaleY(.4) } 50% { transform: scaleY(1) } }
+        [class*='kzbar'] { transform-origin: bottom; }
+
+        .artplayer-app {
+            width: 100% !important;
+            height: 100% !important;
+            background: #000 !important;
+        }
+
+        /* 1. Hapus total gradien hitam tebal dari art-bottom agar video jernih dan subtitle tidak tertutup */
+        /* Bar waktu gaya YouTube/Netflix + area sentuh 22px agar mudah di-drag di HP (garis visual tetap 4px) */
+        .art-video-player .art-progress { height: 22px !important; }
+        .art-video-player .art-control-progress { height: 22px !important; touch-action: none !important; }
+        .art-video-player .art-control-progress-inner {
+            height: 4px !important; background: rgba(255, 255, 255, 0.25) !important;
+            border-radius: 2px !important; transition: height 0.15s ease !important;
+        }
+        .art-video-player .art-control-progress:hover .art-control-progress-inner,
+        .art-video-player .art-control-progress:active .art-control-progress-inner { height: 6px !important; }
+        .art-video-player .art-progress-loaded { background: rgba(255, 255, 255, 0.45) !important; }
+        .art-video-player .art-progress-played { background: #E50914 !important; }
+        .art-video-player .art-progress-highlight { background: transparent !important; }
+        .art-video-player .art-progress-indicator { background-color: #E50914 !important; }
+        .art-video-player .art-volume-slider-handle { background: #E50914 !important; }
+
+        /* 1. Reset default art-bottom background saat kontrol sembunyi agar video jernih dan subtitle bebas */
+        .art-video-player .art-bottom {
+            background: none !important;
+            background-image: none !important;
+            transition: background-image 0.25s ease, opacity 0.25s ease !important;
+        }
+
+        /* Anti-spoiler: Sembunyikan mini progress bar di bagian bawah saat kontrol idle/tersembunyi */
+        .art-video-player .art-mini-progress-bar,
+        .art-video-player:not(.art-control-show):not(.art-hover) .art-bottom {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* 2. Saat kontrol aktif/hover, berikan gradien halus full-width di art-bottom dan aktifkan interaksi (seeking, scrubbing) */
+        .art-video-player.art-control-show .art-bottom,
+        .art-video-player.art-hover .art-bottom {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            background-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.45) 50px, transparent 85px) !important;
+            background-size: 100% 85px !important;
+            background-repeat: no-repeat !important;
+            background-position: bottom !important;
+        }
+
+        /* Elemen kontrol interaktif dan progress bar menangkap pointer events */
+        .art-video-player .art-bottom .art-controls,
+        .art-video-player .art-bottom .art-progress {
+            pointer-events: auto !important;
+        }
+
+        /* Sinkronisasi tombol Layar penuh (top-right overlay) dengan visibilitas kontrol */
+        .kz-fs-btn {
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        [data-kz-fs]:not(.kz-controls-visible) .kz-fs-btn {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateY(-8px) !important;
+        }
+        [data-kz-fs].kz-controls-visible .kz-fs-btn {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: translateY(0) !important;
+        }
+
+        .art-video-player .art-controls {
+            background: none !important;
+            background-image: none !important;
+        }
+
+        /* 3. Subtitle styling */
+        .art-video-player .art-subtitle {
+            z-index: 75 !important;
+            pointer-events: none !important;
+            text-align: center !important;
+            bottom: 35px !important;
+            padding: 0 4% !important;
+            white-space: pre-line !important;
+            transition: bottom 0.2s ease !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            text-shadow: none !important;
+        }
+
+        .art-video-player.art-control-show .art-subtitle {
+            bottom: 72px !important;
+        }
+
+        .art-subtitle-inner-box {
+            display: inline-block !important;
+            background: rgba(0, 0, 0, 0.75) !important;
+            padding: 4px 14px !important;
+            border-radius: 8px !important;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            font-size: 22px !important;
+            font-weight: 600 !important;
+            color: #ffffff !important;
+            line-height: 1.42 !important;
+            text-align: center !important;
+            box-decoration-break: clone !important;
+            -webkit-box-decoration-break: clone !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .art-subtitle-style-clean .art-subtitle-inner-box {
+            background: transparent !important;
+            box-shadow: none !important;
+            text-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.95),
+                0 0 4px rgba(0, 0, 0, 0.9),
+                1px 1px 2px rgba(0, 0, 0, 0.95),
+                -1px -1px 2px rgba(0, 0, 0, 0.95),
+                1px -1px 2px rgba(0, 0, 0, 0.95),
+                -1px 1px 2px rgba(0, 0, 0, 0.95),
+                0 0 8px rgba(0, 0, 0, 0.9) !important;
+        }
+
+        .art-subtitle-style-solid .art-subtitle-inner-box {
+            background: #000000 !important;
+        }
+
+        /* 5. Menu settings popup Artplayer 100% Persis Movie (Pixel-Perfect) */
+        .art-video-player .art-settings {
+            height: auto !important;
+            max-height: 380px !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+
+        .art-video-player .art-setting-panel {
+            background: rgba(18, 18, 20, 0.85) !important;
+            backdrop-filter: blur(18px) !important;
+            -webkit-backdrop-filter: blur(18px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.8) !important;
+            padding: 6px !important;
+            color: #f4f4f5 !important;
+            font-family: inherit !important;
+            min-width: 200px !important;
+        }
+
+        .art-video-player .art-setting-item {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            height: 38px !important;
+            line-height: 38px !important;
+            padding: 0 10px !important;
+            margin: 2px 0 !important;
+            border-radius: 10px !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            color: #d4d4d8 !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+        }
+
+        .art-video-player .art-setting-item:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #ffffff !important;
+        }
+
+        .art-video-player .art-setting-item-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon {
+            width: 18px !important;
+            height: 18px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #a1a1aa !important;
+            flex-shrink: 0 !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon svg {
+            width: 15px !important;
+            height: 15px !important;
+            stroke-width: 2 !important;
+            stroke: currentColor !important;
+            fill: none !important;
+        }
+
+        .art-video-player .art-setting-item-left-icon svg rect,
+        .art-video-player .art-setting-item-left-icon svg circle,
+        .art-video-player .art-setting-item-left-icon svg path,
+        .art-video-player .art-setting-item-left-icon svg line,
+        .art-video-player .art-setting-item-left-icon svg polyline {
+            stroke-width: 2 !important;
+        }
+
+        .art-video-player .art-setting-item-left-text {
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            letter-spacing: -0.01em !important;
+            color: inherit !important;
+        }
+
+        .art-video-player .art-setting-item-right {
+            display: flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            color: #a1a1aa !important;
+            font-size: 12px !important;
+        }
+
+        .art-video-player .art-setting-item-right-tooltip {
+            color: #a1a1aa !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+        }
+
+        .art-video-player .art-setting-item-right-icon {
+            width: 14px !important;
+            height: 14px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .art-video-player .art-setting-item-right-icon svg {
+            display: none !important;
+        }
+        .art-video-player .art-setting-item-right-icon::after {
+            content: '';
+            display: block;
+            width: 5.5px;
+            height: 5.5px;
+            border-top: 1.8px solid rgba(255, 255, 255, 0.75);
+            border-right: 1.8px solid rgba(255, 255, 255, 0.75);
+            transform: rotate(45deg);
+            margin-right: 2px;
+        }
+
+        .art-video-player .art-setting-item[data-name="pip"] .art-setting-item-right-icon::after,
+        .art-video-player .art-setting-item:nth-child(6) .art-setting-item-right-icon::after {
+            display: none !important;
+        }
+    </style>
+@endpush
+
 @php
     $m = $media;
     $servers = $stream['servers'] ?? [];
@@ -20,7 +284,7 @@
             <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
                 <div class="min-w-0">
                     <div class="overflow-hidden rounded-xl border border-white/10 bg-black shadow-2xl shadow-black/60">
-                        <div wire:ignore id="kz-animek-player" data-kz-fs class="aspect-video w-full"></div>
+                        <div wire:ignore id="kz-animek-player" data-kz-fs class="kz-controls-visible relative isolate z-10 w-full aspect-video bg-black lg:rounded-2xl overflow-hidden lg:ring-1 lg:ring-white/10 shadow-2xl"></div>
                     </div>
 
                     @if(empty($stream))
@@ -110,58 +374,187 @@ function initKzAnimek() {
     const videoUrl = @json($stream['video_url'] ?? '');
     const poster = @json($m['poster']);
     const nextUrl = @json($next['url'] ?? '');
-    const box = document.getElementById('kz-animek-player');
+    const shell = document.getElementById('kz-animek-player');
 
     const cur = document.querySelector('#kz-ep-list [data-current]');
     if (cur) cur.scrollIntoView({ block: 'nearest' });
 
-    if (!box || box.dataset.ready === '1' || !videoUrl) return;
-    box.dataset.ready = '1';
+    if (!shell || shell.dataset.ready === '1' || !videoUrl) return;
+    shell.dataset.ready = '1';
 
-    const art = new Artplayer({
-        container: box,
+    const useNativeFs = () => !!(window.KzFs && window.KzFs.isTouch());
+    let art = null;
+
+    art = new Artplayer({
+        container: shell,
         url: videoUrl,
-        type: 'mp4',
-        poster: poster,
-        autoplay: false,
+        type: videoUrl.includes('.m3u8') ? 'm3u8' : 'mp4',
+        theme: '#E50914',
         volume: 0.8,
-        setting: true,
-        playbackRate: true,
-        aspectRatio: true,
-        fullscreen: true,
-        fullscreenWeb: true,
+        muted: false,
+        autoplay: true,
         pip: true,
-        theme: '#e50914',
+        setting: true,
+        loop: false,
+        flip: false,
+        playbackRate: false,
+        aspectRatio: false,
+        fullscreen: !useNativeFs(),
+        fullscreenWeb: !useNativeFs(),
+        subtitleOffset: false,
+        miniProgressBar: false,
+        playsInline: true,
+        airplay: true,
+        hotkey: true,
+        controls: [
+            {
+                name: 'kz-fs',
+                position: 'right',
+                index: 70,
+                html: '<svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="14" height="10" rx="2"/><path d="M20 4v5h-5"/><path d="M20 9a8 8 0 0 0-8-6"/></svg>',
+                tooltip: 'Layar penuh',
+                style: useNativeFs() ? {} : { display: 'none' },
+                click: function () {
+                    if (!window.KzFs) return;
+                    if (window.KzFs.isActive(shell)) window.KzFs.exit();
+                    else window.KzFs.enter(shell, { video: art.video });
+                },
+            },
+            {
+                position: 'left',
+                index: 10,
+                html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>',
+                tooltip: 'Mundur 10 Detik',
+                click: function () { if (art) art.seek = Math.max(0, art.currentTime - 10); },
+            },
+            {
+                position: 'left',
+                index: 11,
+                html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg>',
+                tooltip: 'Maju 10 Detik',
+                click: function () { if (art) art.seek = Math.min(art.duration || 999999, art.currentTime + 10); },
+            },
+        ],
+        settings: [
+            {
+                html: 'Playback speed',
+                name: 'playback-speed',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>',
+                tooltip: '1x',
+                selector: [
+                    { html: '0.5x', speed: 0.5 },
+                    { html: '0.75x', speed: 0.75 },
+                    { default: true, html: '1x', speed: 1.0 },
+                    { html: '1.25x', speed: 1.25 },
+                    { html: '1.5x', speed: 1.5 },
+                    { html: '2x', speed: 2.0 },
+                ],
+                onSelect: function (item) { art.playbackRate = item.speed; return item.html; },
+            },
+            {
+                html: 'Picture-in-Picture',
+                name: 'pip',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="11" y="9" width="9" height="6" rx="1" stroke="currentColor" fill="none"/></svg>',
+                tooltip: 'Off',
+                selector: [{ html: 'On' }, { default: true, html: 'Off' }],
+                onSelect: function (item) { art.pip = !art.pip; return art.pip ? 'On' : 'Off'; },
+            },
+            {
+                html: 'Flip Video',
+                name: 'flip',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+                tooltip: 'Normal',
+                selector: [
+                    { default: true, html: 'Normal', flip: 'normal' },
+                    { html: 'Horizontal', flip: 'horizontal' },
+                    { html: 'Vertical', flip: 'vertical' },
+                ],
+                onSelect: function (item) { art.flip = item.flip; return item.html; },
+            },
+            {
+                html: 'Aspect Ratio',
+                name: 'aspect-ratio',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>',
+                tooltip: 'Default',
+                selector: [
+                    { default: true, html: 'Default', ratio: 'default' },
+                    { html: '16:9', ratio: '16:9' },
+                    { html: '4:3', ratio: '4:3' },
+                ],
+                onSelect: function (item) { art.aspectRatio = item.ratio; return item.html; },
+            },
+        ],
+    });
+
+    // ---- Tampilkan / sembunyikan kontrol (gaya player anime lama) ----
+    let hideTimer = null;
+    const showControls = () => {
+        shell.classList.add('kz-controls-visible');
+        if (art && art.controls) art.controls.show = true;
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+            if (art && art.playing && !(art.setting && art.setting.show)) hideControls();
+        }, 3500);
+    };
+    const hideControls = () => {
+        shell.classList.remove('kz-controls-visible');
+        if (art && art.controls) art.controls.show = false;
+        clearTimeout(hideTimer);
+    };
+
+    art.on('video:play', showControls);
+    art.on('video:pause', showControls);
+    shell.addEventListener('mousemove', showControls, { passive: true });
+    shell.addEventListener('touchstart', showControls, { passive: true });
+
+    // ---- Fullscreen otomatis (mengikuti player anime lama) ----
+    // HP: native fullscreen + kunci landscape saat video mulai diputar.
+    // Desktop: web fullscreen (theater) saat video mulai diputar.
+    const enterAutoFs = () => {
+        if (shell.dataset.autofsDone === '1') return;
+
+        if (useNativeFs()) {
+            if (!window.KzFs || window.KzFs.isActive(shell)) return;
+            shell.dataset.autofsDone = '1';
+            window.KzFs.enter(shell, { video: art.video });
+            setTimeout(() => {
+                if (window.KzFs && !window.KzFs.isActive(shell)) shell.dataset.autofsDone = '';
+            }, 900);
+            return;
+        }
+
+        shell.dataset.autofsDone = '1';
+        try { if (!art.fullscreenWeb) art.fullscreenWeb = true; } catch (e) {}
+    };
+
+    art.on('play', enterAutoFs);
+    art.on('video:play', enterAutoFs);
+    if (art.video) art.video.addEventListener('play', enterAutoFs);
+
+    // Kalau autoplay sempat jalan tanpa gesture (fullscreen ditolak browser),
+    // coba lagi pada sentuhan/klik pertama pengguna di area pemutar.
+    const retryNativeFs = () => {
+        if (!useNativeFs() || !window.KzFs) return;
+        if (window.KzFs.isActive(shell)) return;
+        if (!art || art.paused) return;
+        if (window.KzFs.enter(shell, { video: art.video })) shell.dataset.autofsDone = '1';
+    };
+    shell.addEventListener('touchend', retryNativeFs, { capture: true, passive: true });
+    shell.addEventListener('click', retryNativeFs, true);
+
+    // Fullscreen native ditolak: hanya desktop yang jatuh ke web fullscreen.
+    shell.addEventListener('kz-fs-failed', () => {
+        if (useNativeFs()) return;
+        try { art.fullscreenWeb = true; } catch (e) {}
+    });
+
+    art.on('fullscreenWeb', (state) => {
+        document.body.classList.toggle('kz-fullscreen-web-active', state);
+        document.documentElement.classList.toggle('kz-fullscreen-web-active', state);
     });
 
     // Lanjut otomatis ke episode berikutnya saat selesai.
     if (nextUrl) art.on('video:ended', () => { window.location.href = nextUrl; });
-
-    // HP/tablet: fullscreen native + kunci landscape. Desktop: web fullscreen.
-    const useNativeFs = () => !!(window.KzFs && window.KzFs.isTouch());
-    let autoFsDone = false;
-
-    const enterAutoFs = () => {
-        if (autoFsDone) return;
-        autoFsDone = true;
-
-        if (useNativeFs()) {
-            if (window.KzFs && !window.KzFs.isActive(box)) {
-                window.KzFs.enter(box, { video: art.video });
-            }
-            return;
-        }
-
-        try { if (!art.fullscreenWeb) art.fullscreenWeb = true; } catch (e) {}
-    };
-
-    art.on('video:play', enterAutoFs);
-    if (art.video) art.video.addEventListener('play', enterAutoFs);
-
-    // Kalau fullscreen native ditolak browser, jatuh ke web fullscreen.
-    box.addEventListener('kz-fs-failed', () => {
-        try { art.fullscreenWeb = true; } catch (e) {}
-    });
 
     document.querySelectorAll('.kz-server').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -171,7 +564,7 @@ function initKzAnimek() {
             });
             btn.classList.remove('border-white/10', 'bg-white/5', 'text-zinc-300');
             btn.classList.add('border-red-500/50', 'bg-red-600/15', 'text-white');
-            art.switchUrl(btn.dataset.src);
+            try { art.switchUrl(btn.dataset.src); } catch (e) { art.url = btn.dataset.src; }
         });
     });
 }
