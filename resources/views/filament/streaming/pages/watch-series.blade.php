@@ -752,6 +752,16 @@
                                     this.activeQuality = picked ? picked.quality : 0;
                                     this.videoSrc = picked ? picked.url : data.video_url;
                                     this.subtitles = data.subtitles || [];
+
+                                    // Aktifkan subtitle Indonesia otomatis setelah stream siap.
+                                    const preferred = (this.subtitles || []).find(s => (s.lang || '').toLowerCase() === 'id');
+
+                                    if (preferred) {
+                                        setTimeout(() => {
+                                            try { this.setSubtitle(preferred.lang); } catch (e) {}
+                                        }, 600);
+                                    }
+
                                     if (this.art) this.syncQualitySetting();
                                 }
                             } else {

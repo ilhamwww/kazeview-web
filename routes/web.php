@@ -1200,7 +1200,11 @@ Route::get('/api/streaming/subtitle', function (\Illuminate\Http\Request $reques
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
             ])->timeout(10)->get($url);
 
-            return $resp->successful() ? $resp->body() : null;
+            if (!$resp->successful()) {
+                return null;
+            }
+
+            return \App\Services\SubtitleService::toVtt($resp->body());
         });
 
         if (!$vtt) {

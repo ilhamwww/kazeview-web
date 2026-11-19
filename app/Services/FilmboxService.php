@@ -667,12 +667,27 @@ class FilmboxService
             }
 
             $lang = strtolower((string) ($sub['lang'] ?? $sub['language'] ?? ''));
+            $lang = str_replace(['_', '-'], '', $lang);
+
+            // Sumber memakai kode campur: in_id, id_id, ind, in.
+            $lang = match ($lang) {
+                'in', 'ind', 'idid', 'inid' => 'id',
+                'eng', 'enus' => 'en',
+                default => $lang,
+            };
+
+            $label = match ($lang) {
+                'id' => 'Indonesia',
+                'en' => 'English',
+                default => strtoupper((string) ($sub['label'] ?? $lang)),
+            };
+
             $subtitles[] = [
-                'lang' => $lang === 'in_id' ? 'id' : $lang,
-                'label' => $lang === 'id' ? 'Indonesia' : strtoupper($lang),
+                'lang' => $lang,
+                'label' => $label,
                 'url' => $url,
                 'path' => $url,
-                'default' => $lang === 'id',
+                'default' => false,
             ];
         }
 
