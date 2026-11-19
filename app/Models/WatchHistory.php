@@ -29,6 +29,15 @@ class WatchHistory extends Model
         'progress_percent' => 'float',
     ];
 
+    /**
+     * Film tidak punya episode: kolom last_episode NOT NULL, jadi isi 0
+     * agar riwayat film tetap bisa disimpan.
+     */
+    protected $attributes = [
+        'last_episode' => 0,
+        'watched_episodes' => '[]',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class);

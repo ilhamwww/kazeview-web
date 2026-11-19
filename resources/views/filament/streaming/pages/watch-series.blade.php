@@ -177,9 +177,6 @@
                         </button>
                     </div>
 
-                    {{-- Kualitas & Subtitle (player v3) --}}
-                    @include('filament.streaming.partials.player-v3-controls')
-
                     @if(!empty($activeEpisode['overview']))
                         <div x-data="{ more: false }" class="rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] p-4">
                             <h2 class="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Sinopsis</h2>
@@ -700,6 +697,25 @@
                         window.KzPlayerV3 && window.KzPlayerV3.rememberQuality(opt.quality);
                         this.videoSrc = opt.url;
                         window.KzPlayerV3 && window.KzPlayerV3.applyQuality(this, opt.url);
+                        this.syncQualitySetting();
+                    },
+
+                    // Isi menu "Resolution" di dalam player dengan daftar kualitas provider.
+                    syncQualitySetting() {
+                        if (!this.art || !this.art.setting) return;
+                        const opts = this.qualityOptions;
+                        if (!opts.length) return;
+                        const selector = [
+                            { html: 'Auto', quality: 0, levelIndex: -1 },
+                            ...opts.map(o => ({ html: o.label, quality: o.quality })),
+                        ];
+                        try {
+                            this.art.setting.update({
+                                name: 'resolution',
+                                selector: selector,
+                                tooltip: this.activeQuality ? this.activeQuality + 'p' : 'Auto',
+                            });
+                        } catch (e) {}
                     },
 
                     destroy() {
@@ -741,6 +757,7 @@
                                     this.activeQuality = picked ? picked.quality : 0;
                                     this.videoSrc = picked ? picked.url : data.video_url;
                                     this.subtitles = data.subtitles || [];
+                                    if (this.art) this.syncQualitySetting();
                                 }
                             } else {
                                 this.report('stream-api', res.status);
@@ -758,6 +775,7 @@
                             await this.$nextTick();
                             this.initPlayer();
                             this.afterInitFs();
+                            this.syncQualitySetting();
                         }
                     },
 
@@ -962,10 +980,14 @@
                                     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
                                     tooltip: 'Auto',
                                     selector: [
-                                        { default: true, html: 'Auto', levelIndex: -1 }
+                                        { default: true, html: 'Auto', quality: 0, levelIndex: -1 }
                                     ],
                                     onSelect: function (item) {
-                                        if (self.hls) self.hls.currentLevel = item.levelIndex;
+                                        if (item.quality) {
+                                            self.setQuality(item.quality);
+                                            return item.html;
+                                        }
+                                        if (self.hls) self.hls.currentLevel = -1;
                                         return item.html;
                                     },
                                 },
