@@ -15,6 +15,13 @@ class StreamingService
      */
     public static function getHomepageData(): array
     {
+        // Provider utama: Chitogenx (DutaMovie21).
+        $chito = ChitogenxService::home();
+
+        if (!empty($chito['heroes']) || !empty($chito['sections'])) {
+            return $chito;
+        }
+
         return Cache::remember('idlix_homepage', 1800, function () { // Cache for 30 minutes
             try {
                 $data = self::fetchHomepageJson();
@@ -117,6 +124,12 @@ class StreamingService
      */
     public static function search(string $query, int $page = 1, int $limit = 8): array
     {
+        $chito = ChitogenxService::search($query, $page, max($limit, 20));
+
+        if (!empty($chito['data'])) {
+            return $chito['data'];
+        }
+
         $results = [];
         try {
             $domain = ScraperSetting::getInstance()->idlix_domain;
@@ -234,6 +247,12 @@ class StreamingService
      */
     public static function getMovies(int $page = 1, int $limit = 36, string $sort = 'createdAt'): array
     {
+        $chito = ChitogenxService::listing('movie', $page, $limit);
+
+        if (!empty($chito['data'])) {
+            return $chito;
+        }
+
         $cacheKey = "idlix_movies_p{$page}_l{$limit}_s{$sort}";
         return Cache::remember($cacheKey, 1800, function () use ($page, $limit, $sort) {
             try {
@@ -332,6 +351,12 @@ class StreamingService
      */
     public static function getTrendingMovies(int $limit = 5, string $period = '7d'): array
     {
+        $chito = ChitogenxService::trending('movie', $limit);
+
+        if (!empty($chito)) {
+            return $chito;
+        }
+
         $cacheKey = "idlix_trending_movies_l{$limit}_p{$period}";
         return Cache::remember($cacheKey, 1800, function () use ($limit, $period) {
             try {
@@ -403,6 +428,12 @@ class StreamingService
      */
     public static function getSeries(int $page = 1, int $limit = 36, string $sort = 'createdAt'): array
     {
+        $chito = ChitogenxService::listing('series', $page, $limit);
+
+        if (!empty($chito['data'])) {
+            return $chito;
+        }
+
         $cacheKey = "idlix_series_list_p{$page}_l{$limit}_s{$sort}";
         return Cache::remember($cacheKey, 1800, function () use ($page, $limit, $sort) {
             try {
@@ -532,6 +563,12 @@ class StreamingService
      */
     public static function getKoreanDrama(int $page = 1, int $limit = 36, string $sort = 'latest'): array
     {
+        $chito = ChitogenxService::koreanDrama($page, $limit);
+
+        if (!empty($chito['data'])) {
+            return $chito;
+        }
+
         $fetchLimit = ($page === 1 && $limit < 36) ? 36 : $limit;
         $baseCacheKey = "idlix_korean_drama_p{$page}_l{$fetchLimit}_s{$sort}";
 
@@ -620,6 +657,12 @@ class StreamingService
      */
     public static function getTrendingSeries(int $limit = 5, string $period = '7d'): array
     {
+        $chito = ChitogenxService::trending('series', $limit);
+
+        if (!empty($chito)) {
+            return $chito;
+        }
+
         $cacheKey = "idlix_trending_series_l{$limit}_p{$period}";
         return Cache::remember($cacheKey, 1800, function () use ($limit, $period) {
             try {
@@ -691,6 +734,12 @@ class StreamingService
      */
     public static function getCollections(): array
     {
+        $chito = ChitogenxService::collections();
+
+        if (!empty($chito)) {
+            return $chito;
+        }
+
         return Cache::remember('idlix_collections_list', 86400, function () {
             try {
                 $domain = ScraperSetting::getInstance()->idlix_domain;
@@ -771,6 +820,12 @@ class StreamingService
      */
     public static function getCollectionDetail(string $slug): ?array
     {
+        $chito = ChitogenxService::collectionDetail($slug);
+
+        if ($chito) {
+            return $chito;
+        }
+
         return Cache::remember('idlix_collection_detail_' . $slug, 86400, function () use ($slug) {
             try {
                 $domain = ScraperSetting::getInstance()->idlix_domain;
@@ -1315,6 +1370,13 @@ class StreamingService
             return RebahinService::getSeriesDetail($slug);
         }
 
+        // Provider utama: Chitogenx.
+        $chito = ChitogenxService::detail($slug);
+
+        if ($chito && ($chito['type'] ?? '') === 'series') {
+            return $chito;
+        }
+
         return Cache::remember('idlix_series_' . $slug, 3600, function () use ($slug) {
             try {
                 $domain = ScraperSetting::getInstance()->idlix_domain;
@@ -1366,6 +1428,14 @@ class StreamingService
             return [
                 'season' => $s['defaultSeason'] ?? ['seasonNumber' => $seasonNumber, 'episodes' => []]
             ];
+        }
+
+        if (!str_starts_with($slug, 'mb-')) {
+            $chitoSeason = ChitogenxService::season($slug, $seasonNumber);
+
+            if ($chitoSeason && !empty($chitoSeason['season']['episodes'])) {
+                return $chitoSeason;
+            }
         }
 
         return Cache::remember('idlix_series_season_' . $slug . '_' . $seasonNumber, 3600, function () use ($slug, $seasonNumber) {
@@ -1422,6 +1492,11 @@ class StreamingService
      */
     public static function getValidCachedEpisodeStream(string $episodeId): ?array
     {
+        // Chitogenx: URL bertanda tangan, selalu ambil baru.
+        if (str_starts_with($episodeId, ChitogenxService::ID_PREFIX . ':')) {
+            return null;
+        }
+
         $cached = Cache::get('episode_stream_' . $episodeId);
         if ($cached && !self::isStreamExpired($cached)) {
             return $cached;
@@ -1442,6 +1517,19 @@ class StreamingService
 
         if (str_starts_with($episodeId, 'rb-')) {
             return RebahinService::resolveStream($episodeId);
+        }
+
+        // Provider utama: Chitogenx. URL bertanda tangan -> tanpa cache.
+        $chitoEpisode = ChitogenxService::parseEpisodeId($episodeId);
+
+        if ($chitoEpisode) {
+            $play = ChitogenxService::play(
+                $chitoEpisode['slug'],
+                $chitoEpisode['season'],
+                $chitoEpisode['episode']
+            );
+
+            return $play ?: null;
         }
 
         $cacheKey = 'episode_stream_' . $episodeId;
@@ -1701,6 +1789,13 @@ class StreamingService
             return IndoxxiTechService::getMovieDetail($slug);
         }
 
+        // Provider utama: Chitogenx.
+        $chito = ChitogenxService::detail($slug);
+
+        if ($chito && ($chito['type'] ?? '') === 'movie') {
+            return $chito;
+        }
+
         return Cache::remember('idlix_movie_' . $slug, 3600, function () use ($slug) {
             try {
                 $domain = ScraperSetting::getInstance()->idlix_domain;
@@ -1792,6 +1887,11 @@ class StreamingService
      */
     public static function getValidCachedMovieStream(string $movieId): ?array
     {
+        // Chitogenx: URL bertanda tangan, selalu ambil baru.
+        if (str_starts_with($movieId, ChitogenxService::ID_PREFIX . ':')) {
+            return null;
+        }
+
         $cached = Cache::get('movie_stream_' . $movieId);
         if ($cached && !self::isStreamExpired($cached)) {
             return $cached;
@@ -1965,6 +2065,15 @@ class StreamingService
      */
     public static function getMovieStream(string $movieId, bool $force = false)
     {
+        // Provider utama: Chitogenx. URL bertanda tangan -> tanpa cache.
+        $chitoMovie = ChitogenxService::parseEpisodeId($movieId);
+
+        if ($chitoMovie && $chitoMovie['season'] === null) {
+            $play = ChitogenxService::play($chitoMovie['slug']);
+
+            return $play ?: null;
+        }
+
         if (str_starts_with($movieId, 'mb-')) {
             $detail = NartoMovieBoxService::getMovieDetail($movieId);
             if ($detail && !empty($detail['video_url'])) {
