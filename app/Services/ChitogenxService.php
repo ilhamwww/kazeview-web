@@ -541,20 +541,58 @@ class ChitogenxService
         usort($sources, fn ($a, $b) => $b['quality'] <=> $a['quality']);
 
         $subtitles = [];
+        $seenLangs = [];
         foreach ((array) ($raw['subtitles'] ?? []) as $subtitle) {
             if (empty($subtitle['url']) || empty($subtitle['lang'])) {
                 continue;
             }
 
+            $lang = (string) $subtitle['lang'];
+
+            // Chitogenx memakai kode "in_id" untuk Bahasa Indonesia.
+            $lang = match ($lang) {
+                'in_id', 'id_id', 'ind' => 'id',
+                default => $lang,
+            };
+
+            if (isset($seenLangs[$lang])) {
+                continue;
+            }
+
+            $seenLangs[$lang] = true;
+
             $path = (string) $subtitle['url'];
             $absolute = str_starts_with($path, 'http') ? $path : self::BASE . $path;
+            $label = (string) ($subtitle['label'] ?? strtoupper($lang));
+
+            if ($lang === 'id') {
+                $label = 'Indonesia';
+            }
 
             $subtitles[] = [
-                'lang' => (string) $subtitle['lang'],
-                'label' => (string) ($subtitle['label'] ?? strtoupper((string) $subtitle['lang'])),
-                'url' => '/api/streaming/subtitle?url=' . rawurlencode($absolute),
-                'default' => in_array((string) $subtitle['lang'], ['id', 'en'], true),
+                'lang' => $lang,
+                'label' => $label,
+                // URL absolut; halaman player yang membungkusnya lewat proxy internal.
+                'url' => $absolute,
+                'path' => $absolute,
+                'default' => false,
             ];
+        }
+
+        // Indonesia diutamakan, lalu Inggris.
+        $defaultLang = null;
+        foreach (['id', 'en'] as $preferred) {
+            if (isset($seenLangs[$preferred])) {
+                $defaultLang = $preferred;
+                break;
+            }
+        }
+
+        if ($defaultLang !== null) {
+            foreach ($subtitles as &$subtitleRow) {
+                $subtitleRow['default'] = $subtitleRow['lang'] === $defaultLang;
+            }
+            unset($subtitleRow);
         }
 
         return [
