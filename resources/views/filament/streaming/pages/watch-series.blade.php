@@ -177,21 +177,8 @@
                         </button>
                     </div>
 
-                    {{-- Subtitle --}}
-                    <div class="flex items-center gap-2 overflow-x-auto kz-noscroll -mx-4 px-4 lg:mx-0 lg:px-0" role="group" aria-label="Pilih subtitle">
-                        <span class="shrink-0 text-[11px] font-semibold text-zinc-500 mr-1">Subtitle</span>
-                        <button type="button" @click="setSubtitle('id')" :aria-pressed="activeSubtitleLang === 'id'"
-                                :class="activeSubtitleLang === 'id' ? 'bg-white text-black ring-white' : 'bg-zinc-900 text-zinc-300 ring-white/10'"
-                                class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition">Indonesia</button>
-                        @if($hasEnSub)
-                            <button type="button" @click="setSubtitle('en')" :aria-pressed="activeSubtitleLang === 'en'"
-                                    :class="activeSubtitleLang === 'en' ? 'bg-white text-black ring-white' : 'bg-zinc-900 text-zinc-300 ring-white/10'"
-                                    class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition">English</button>
-                        @endif
-                        <button type="button" @click="setSubtitle('off')" :aria-pressed="activeSubtitleLang === 'off'"
-                                :class="activeSubtitleLang === 'off' ? 'bg-white text-black ring-white' : 'bg-zinc-900 text-zinc-300 ring-white/10'"
-                                class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition">Mati</button>
-                    </div>
+                    {{-- Kualitas & Subtitle (player v3) --}}
+                    @include('filament.streaming.partials.player-v3-controls')
 
                     @if(!empty($activeEpisode['overview']))
                         <div x-data="{ more: false }" class="rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] p-4">
@@ -523,6 +510,7 @@
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
     <script src="/js/kz-fullscreen.js?v=3"></script>
+    <script src="/js/kz-player-v3.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
         (function() {
@@ -550,6 +538,8 @@
                     hls: null,
                     videoSrc: {!! json_encode($streamData['video_url'] ?? '') !!},
                     subtitles: @json($streamData['subtitles'] ?? []),
+                    sources: @json($streamData['sources'] ?? []),
+                    activeQuality: 0,
                     episodeId: '{{ $activeEpisode['id'] ?? '' }}',
                     nextEpisodeId: '{{ $nextEpisode['id'] ?? '' }}',
                     activeSubtitleLang: 'id',
@@ -693,6 +683,25 @@
                         } catch (e) {}
                     },
 
+                    get qualityOptions() {
+                        return window.KzPlayerV3 ? window.KzPlayerV3.normalize(this.sources) : [];
+                    },
+
+                    subtitleLabel(lang) {
+                        const list = Array.isArray(this.subtitles) ? this.subtitles : Object.values(this.subtitles || {});
+                        const found = list.find(s => s && s.lang === lang);
+                        return found ? (found.label || lang) : '';
+                    },
+
+                    setQuality(quality) {
+                        const opt = this.qualityOptions.find(o => o.quality === Number(quality));
+                        if (!opt) return;
+                        this.activeQuality = opt.quality;
+                        window.KzPlayerV3 && window.KzPlayerV3.rememberQuality(opt.quality);
+                        this.videoSrc = opt.url;
+                        window.KzPlayerV3 && window.KzPlayerV3.applyQuality(this, opt.url);
+                    },
+
                     destroy() {
                         if (this.hls) {
                             this.hls.destroy();
@@ -725,7 +734,12 @@
                             if (res.ok) {
                                 const data = await res.json();
                                 if (data && data.video_url) {
-                                    this.videoSrc = data.video_url;
+                                    this.sources = data.sources || [];
+                                    const opts = window.KzPlayerV3 ? window.KzPlayerV3.normalize(this.sources) : [];
+                                    const pref = (window.KzPlayerV3 && opts.length) ? window.KzPlayerV3.preferredQuality(opts) : 0;
+                                    const picked = opts.find(o => o.quality === pref) || null;
+                                    this.activeQuality = picked ? picked.quality : 0;
+                                    this.videoSrc = picked ? picked.url : data.video_url;
                                     this.subtitles = data.subtitles || [];
                                 }
                             } else {

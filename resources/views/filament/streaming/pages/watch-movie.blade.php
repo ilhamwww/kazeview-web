@@ -169,20 +169,7 @@
                         Putar Film
                     </button>
 
-                    <div>
-                        <p class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Subtitle</p>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button type="button" @click="setSubtitle('id')"
-                                    :class="activeSubtitleLang === 'id' ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30' : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-600'"
-                                    class="py-2 rounded-lg text-xs font-bold border transition">Indonesia</button>
-                            <button type="button" @click="setSubtitle('en')"
-                                    :class="activeSubtitleLang === 'en' ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30' : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-600'"
-                                    class="py-2 rounded-lg text-xs font-bold border transition">English</button>
-                            <button type="button" @click="setSubtitle('off')"
-                                    :class="activeSubtitleLang === 'off' ? 'bg-zinc-700 border-zinc-600 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600'"
-                                    class="py-2 rounded-lg text-xs font-bold border transition">Mati</button>
-                        </div>
-                    </div>
+                    @include('filament.streaming.partials.player-v3-controls')
 
                     <div class="grid grid-cols-2 gap-2">
                         <button wire:click="toggleFavorite" type="button"
@@ -472,6 +459,7 @@
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
     <script src="/js/kz-fullscreen.js?v=3"></script>
+    <script src="/js/kz-player-v3.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
         (function() {
@@ -499,6 +487,8 @@
                     hls: null,
                     videoSrc: {!! json_encode($media['video_url'] ?? '') !!},
                     subtitles: @json($media['subtitles'] ?? []),
+                    sources: @json($media['sources'] ?? []),
+                    activeQuality: 0,
                     movieId: '{{ $media['id'] ?? '' }}',
                     movieTitle: {!! json_encode($media['title'] ?? '') !!},
                     movieYear: {!! json_encode($media['year'] ?? '') !!},
@@ -608,6 +598,25 @@
                         } catch (e) {}
                     },
 
+                    get qualityOptions() {
+                        return window.KzPlayerV3 ? window.KzPlayerV3.normalize(this.sources) : [];
+                    },
+
+                    subtitleLabel(lang) {
+                        const list = Array.isArray(this.subtitles) ? this.subtitles : Object.values(this.subtitles || {});
+                        const found = list.find(s => s && s.lang === lang);
+                        return found ? (found.label || lang) : '';
+                    },
+
+                    setQuality(quality) {
+                        const opt = this.qualityOptions.find(o => o.quality === Number(quality));
+                        if (!opt) return;
+                        this.activeQuality = opt.quality;
+                        window.KzPlayerV3 && window.KzPlayerV3.rememberQuality(opt.quality);
+                        this.videoSrc = opt.url;
+                        window.KzPlayerV3 && window.KzPlayerV3.applyQuality(this, opt.url);
+                    },
+
                     destroy() {
                         if (this.hls) {
                             this.hls.destroy();
@@ -634,7 +643,12 @@
                             if (res.ok) {
                                 const data = await res.json();
                                 if (data && data.video_url) {
-                                    this.videoSrc = data.video_url;
+                                    this.sources = data.sources || [];
+                                    const opts = window.KzPlayerV3 ? window.KzPlayerV3.normalize(this.sources) : [];
+                                    const pref = (window.KzPlayerV3 && opts.length) ? window.KzPlayerV3.preferredQuality(opts) : 0;
+                                    const picked = opts.find(o => o.quality === pref) || null;
+                                    this.activeQuality = picked ? picked.quality : 0;
+                                    this.videoSrc = picked ? picked.url : data.video_url;
                                     this.subtitles = data.subtitles || [];
                                 }
                             } else {
@@ -734,7 +748,7 @@
                         this.art = new Artplayer({
                             container: artContainer,
                             url: this.videoSrc,
-                            type: 'm3u8',
+                            type: /\.m3u8(\?|$)/i.test(this.videoSrc) ? 'm3u8' : 'mp4',
                             theme: '#E50914',
                             volume: 0.8,
                             isLive: false,
