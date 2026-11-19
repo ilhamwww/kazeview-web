@@ -143,14 +143,13 @@ class AnimekompiService
                 $all[$item['path']] = $item;
             }
 
-            for ($page = 1; $page <= 8; $page++) {
-                $list = self::api('/list', ['page' => $page], 1800);
+            // /list mengembalikan indeks A-Z: tiap baris berisi grup huruf
+            // dengan daftar 'animes'. Parameter page tidak memengaruhi hasil.
+            $list = self::api('/list', [], 1800);
+            $groups = is_array($list) ? ($list['data'] ?? (isset($list[0]) ? $list : [])) : [];
 
-                if (!is_array($list) || empty($list)) {
-                    break;
-                }
-
-                foreach ($list as $item) {
+            foreach ($groups as $group) {
+                foreach ((array) (($group['animes'] ?? [])) as $item) {
                     $mapped = self::mapItem((array) $item);
 
                     if ($mapped) {

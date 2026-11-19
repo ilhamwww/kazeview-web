@@ -19,7 +19,7 @@
                 </p>
             </div>
             <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-zinc-300">
-                {{ count($all) }} judul
+                {{ number_format($total) }} judul
             </span>
         </div>
 

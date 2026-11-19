@@ -18,6 +18,7 @@ class AnimekCatalog extends Page
     public array $trending = [];
     public array $latest = [];
     public array $all = [];
+    public int $total = 0;
 
     public function mount(): void
     {
@@ -26,5 +27,8 @@ class AnimekCatalog extends Page
         $this->trending = $home['trending'] ?? [];
         $this->latest = $home['latest'] ?? [];
         $this->all = AnimekompiService::catalog();
+        $this->total = count($this->all);
+        // Grid dibatasi agar halaman tetap ringan.
+        $this->all = array_slice($this->all, 0, 120);
     }
 }

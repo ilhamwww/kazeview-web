@@ -20,6 +20,8 @@ class ImageProxyService
         'aoneroom.com',
         'hakunaymatata.com',
         'indocast.site',
+        'animekompi.sbs',
+        'anichin.moe',
     ];
 
     public static function encode(string $url): string
@@ -102,7 +104,7 @@ class ImageProxyService
             CURLOPT_TIMEOUT => 20,
             CURLOPT_CONNECTTIMEOUT => 8,
             CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
-            CURLOPT_REFERER => 'https://www.wetv.com/',
+            CURLOPT_REFERER => (parse_url($url, PHP_URL_SCHEME) ?: 'https') . '://' . (parse_url($url, PHP_URL_HOST) ?: '') . '/',
         ]);
 
         $body = curl_exec($ch);
