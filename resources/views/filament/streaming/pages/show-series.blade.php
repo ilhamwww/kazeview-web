@@ -112,9 +112,10 @@
                     @endif
 
                     @if(!empty($series['overview']))
+                        <h2 class="mt-6 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">Sinopsis</h2>
                         <p x-data="{ more: false }" @click="more = !more"
                            :class="more ? '' : 'line-clamp-3'"
-                           class="mt-5 text-sm md:text-base text-zinc-300/90 leading-relaxed cursor-pointer max-w-2xl">{{ $series['overview'] }}</p>
+                           class="mt-2 text-sm md:text-base text-zinc-300/90 leading-relaxed cursor-pointer max-w-2xl">{{ $series['overview'] }}</p>
                     @endif
 
                     <div class="flex flex-wrap items-center gap-3 mt-7">

@@ -496,6 +496,18 @@ class FilmboxService
 
             $slug = self::slugFromPath($path);
             $cover = (string) ($data['cover_url'] ?? '');
+            $title = trim((string) $data['title']);
+
+            $description = trim((string) ($data['description'] ?? ''));
+
+            // Sebagian judul hanya mengulang judulnya di kolom deskripsi.
+            if ($description === '' || mb_strlen($description) < 60 || strcasecmp($description, $title) === 0) {
+                $rich = WeTVService::descriptionForTitle($title);
+
+                if ($rich) {
+                    $description = $rich;
+                }
+            }
 
             return [
                 'id' => self::ID_PREFIX . ':' . $path,
@@ -509,7 +521,8 @@ class FilmboxService
                 'rating' => is_numeric($data['rating'] ?? null) ? number_format((float) $data['rating'], 1) : '0.0',
                 'genre' => (string) ($data['genre'] ?? ''),
                 'genres' => $genres,
-                'description' => (string) ($data['description'] ?? ''),
+                'description' => $description,
+                'overview' => $description,
                 'thumbnail' => $cover,
                 'banner' => $cover,
                 'logo' => null,

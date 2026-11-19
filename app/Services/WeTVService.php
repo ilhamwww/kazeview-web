@@ -165,6 +165,40 @@ class WeTVService
     }
 
     /**
+     * Sinopsis kaya dari WeTV untuk judul tertentu (dipakai sebagai pelengkap).
+     */
+    public static function descriptionForTitle(string $title): ?string
+    {
+        $needle = strtolower(trim($title));
+
+        if ($needle === '') {
+            return null;
+        }
+
+        return Cache::remember('wetv_desc_' . md5($needle), 3600, function () use ($needle) {
+            // Ambil beranda terbaru: rak bisa berubah dan cache lama tidak memuat
+            // semua judul.
+            $home = self::api('/home', [], 300);
+            $sections = (array) (($home['sections'] ?? []));
+
+            foreach (['wetvHot', 'terbaru', 'segeraTayang', 'banners'] as $key) {
+                foreach ((array) ($sections[$key] ?? []) as $item) {
+                    if (strtolower(trim((string) ($item['title'] ?? ''))) !== $needle) {
+                        continue;
+                    }
+
+                    $detail = self::detail((string) $item['id']);
+                    $desc = trim((string) ($detail['description'] ?? ''));
+
+                    return mb_strlen($desc) >= 80 ? $desc : null;
+                }
+            }
+
+            return null;
+        });
+    }
+
+    /**
      * Detail serial + daftar episode (vid dipakai untuk memutar).
      */
     public static function detail(string $cid, int $ttl = 900): ?array
