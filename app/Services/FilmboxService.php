@@ -475,10 +475,22 @@ class FilmboxService
                     continue;
                 }
 
+                $episodeList = [];
+                foreach ($episodes as $number2) {
+                    $episodeList[] = [
+                        'id' => self::ID_PREFIX . ':' . $path . ':' . $number . ':' . $number2,
+                        'episodeNumber' => (int) $number2,
+                        'title' => 'Episode ' . $number2,
+                        'seasonNumber' => $number,
+                    ];
+                }
+
                 $seasons[] = [
                     'seasonNumber' => $number,
                     'episodeCount' => count($episodes),
                     'episodeNumbers' => $episodes,
+                    // Halaman serial membaca kunci 'episodes'.
+                    'episodes' => $episodeList,
                 ];
             }
 
