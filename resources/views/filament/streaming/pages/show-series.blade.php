@@ -15,7 +15,7 @@
         ?: ($series['poster'] ?? ($series['thumbnail'] ?? null));
 
     $logo = $tmdbImg($series['logoPath'] ?? null, 'w500');
-    $rating = (float) ($series['voteAverage'] ?? 0);
+    $rating = (float) ($series['voteAverage'] ?? 0) ?: (float) ($series['rating'] ?? 0);
     $year = !empty($series['firstAirDate'])
         ? \Carbon\Carbon::parse($series['firstAirDate'])->format('Y')
         : ($series['year'] ?? null);
