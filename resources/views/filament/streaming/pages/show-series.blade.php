@@ -54,7 +54,7 @@
 <div class="min-h-screen bg-[#050505] text-white pb-28 md:pb-16">
 
     {{-- ================= HERO ================= --}}
-    <section class="relative w-full min-h-[640px] md:min-h-[88vh] overflow-hidden bg-black flex flex-col justify-end">
+    <section class="relative w-full min-h-[500px] md:min-h-[560px] overflow-hidden bg-black flex flex-col justify-end">
         @if($backdrop)
             <img src="{{ $backdrop }}" alt="" class="absolute inset-0 w-full h-full object-cover object-top scale-105 filter blur-[8px] md:blur-[12px] opacity-75">
         @endif
