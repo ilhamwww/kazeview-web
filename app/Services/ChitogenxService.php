@@ -652,6 +652,87 @@ class ChitogenxService
     }
 
     /**
+     * Katalog Indonesia (film + series) dari Chitogenx.
+     */
+    public static function indonesiaCatalog(string $category = 'all', int $page = 1, int $limit = 24, string $search = ''): array
+    {
+        return Cache::remember(
+            'chito_id_cat_' . md5($category . '|' . $page . '|' . $limit . '|' . strtolower(trim($search))),
+            900,
+            function () use ($category, $page, $limit, $search) {
+                $all = [];
+                $seen = [];
+
+                foreach (['movie', 'series'] as $type) {
+                    foreach (self::pool($type) as $item) {
+                        if (!str_contains(strtolower((string) ($item['country'] ?? '')), 'indonesia')) {
+                            continue;
+                        }
+
+                        if (isset($seen[$item['slug']])) {
+                            continue;
+                        }
+
+                        $seen[$item['slug']] = true;
+                        $all[] = $item;
+                    }
+                }
+
+                $needle = strtolower(trim($search));
+
+                $filtered = array_values(array_filter($all, function ($item) use ($category, $needle) {
+                    $year = (int) ($item['year'] ?? 0);
+
+                    $okCategory = match ($category) {
+                        'movie' => ($item['type'] ?? '') === 'movie',
+                        'series' => ($item['type'] ?? '') === 'series',
+                        '2026', '2025', '2024' => $year === (int) $category,
+                        'classic' => $year > 0 && $year < 2024,
+                        default => true,
+                    };
+
+                    if (!$okCategory) {
+                        return false;
+                    }
+
+                    if ($needle !== '' && !str_contains(strtolower((string) ($item['title'] ?? '')), $needle)) {
+                        return false;
+                    }
+
+                    return true;
+                }));
+
+                $total = count($filtered);
+                $page = max(1, $page);
+                $limit = max(1, $limit);
+                $slice = array_slice($filtered, ($page - 1) * $limit, $limit);
+
+                $decorate = function (array $item): array {
+                    $item['url'] = (($item['type'] ?? '') === 'series')
+                        ? '/series/' . $item['slug']
+                        : '/movie/' . $item['slug'];
+                    // Label server lama tidak relevan lagi.
+                    $item['provider_badge'] = '';
+
+                    return $item;
+                };
+
+                return [
+                    'data' => array_map($decorate, $slice),
+                    'all_ids' => $total,
+                    'pagination' => [
+                        'page' => $page,
+                        'limit' => $limit,
+                        'total' => $total,
+                        'totalPages' => $total > 0 ? (int) ceil($total / $limit) : 0,
+                        'hasMore' => ($page * $limit) < $total,
+                    ],
+                ];
+            }
+        );
+    }
+
+    /**
      * Daftar slug yang benar-benar ada di Chitogenx (cache 30 menit).
      */
     public static function slugSet(): array

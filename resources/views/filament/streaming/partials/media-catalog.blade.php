@@ -13,6 +13,10 @@
         if (empty($it['slug'])) {
             return '#';
         }
+        // Item yang sudah membawa URL final (mis. katalog Chitogenx) dipakai apa adanya.
+        if (!empty($it['url'])) {
+            return $it['url'];
+        }
         $provider = property_exists($this, 'provider') ? ($this->provider ?: 'rebahin') : 'rebahin';
         if ($kind === 'indonesia') {
             $cleanSlug = preg_replace('/^(mb-|rb-|ix-|pm-|lk-)/', '', $it['slug']);

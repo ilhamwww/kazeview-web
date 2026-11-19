@@ -213,6 +213,11 @@ class StreamingHome extends BaseDashboard
         foreach ($rows as $row) {
             // Riwayat lama yang slug-nya tidak ada di provider aktif (mis. sisa IDLIX)
             // dilewati supaya "Lanjutkan Menonton" tidak pernah mengarah ke halaman mati.
+            if (in_array($row->item_type, ['indonesia_movie', 'indonesia_series'], true)) {
+                // Rebahin/LK21 sudah dipensiunkan.
+                continue;
+            }
+
             if (in_array($row->item_type, ['movie', 'series'], true)) {
                 $slug = (string) $row->item_id;
                 $otherProvider = (bool) preg_match('/^(rb-|mb-|ix-)/', $slug);

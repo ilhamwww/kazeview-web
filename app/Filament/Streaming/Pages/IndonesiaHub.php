@@ -19,6 +19,10 @@ class IndonesiaHub extends Page
 
     public function mount(): void
     {
+        // Hub lama (Rebahin/LK21) dipensiunkan: langsung ke katalog Chitogenx.
+        $this->redirect('/indonesia/' . Indonesia::PROVIDER, navigate: true);
+        return;
+
         $rebahinCount = IndonesiaMediaItem::where('source', 'server2')->where('is_published', true)->count();
 
         $this->networks = [
