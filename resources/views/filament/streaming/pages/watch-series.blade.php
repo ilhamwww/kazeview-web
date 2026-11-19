@@ -258,7 +258,7 @@
 </div>
 
 @push('styles')
-    <link rel="stylesheet" href="/css/kz-player-v3.css?v=1">
+    <link rel="stylesheet" href="/css/kz-player-v3.css?v=3">
     <style>
         .kz-noscroll { scrollbar-width: none; } .kz-noscroll::-webkit-scrollbar { display: none; }
         .kz-thin { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
@@ -722,8 +722,8 @@
                         const opts = this.qualityOptions;
                         if (!opts.length) return;
                         const selector = [
-                            { html: 'Auto', quality: 0, levelIndex: -1 },
-                            ...opts.map(o => ({ html: o.label, quality: o.quality })),
+                            { html: 'Auto', quality: 0, levelIndex: -1, default: !this.activeQuality },
+                            ...opts.map(o => ({ html: o.label, quality: o.quality, default: o.quality === this.activeQuality })),
                         ];
                         try {
                             this.art.setting.update({
@@ -997,8 +997,8 @@
                                     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
                                     tooltip: 'Auto',
                                     selector: [
-                                        { default: true, html: 'Auto', quality: 0, levelIndex: -1 },
-                                        ...self.qualityOptions.map(o => ({ html: o.label, quality: o.quality })),
+                                        { default: !self.activeQuality, html: 'Auto', quality: 0, levelIndex: -1 },
+                                        ...self.qualityOptions.map(o => ({ html: o.label, quality: o.quality, default: o.quality === self.activeQuality })),
                                     ],
                                     onSelect: function (item) {
                                         if (item.quality) {

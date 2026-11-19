@@ -46,6 +46,35 @@
     scrollbar-width: thin;
 }
 
+/* Ikon centang Artplayer berbentuk path terisi (fill), bukan stroke.
+   Aturan tema kita mematikan fill, jadi centang jadi tak terlihat. */
+.art-video-player .art-setting-item-left-icon .art-icon-check svg,
+.art-video-player .art-setting-item .art-icon-check svg {
+    fill: currentColor !important;
+    stroke: none !important;
+}
+
+.art-video-player .art-setting-item.art-current .art-icon-check svg {
+    fill: var(--art-theme, #fff) !important;
+}
+
+/* Tandai pilihan yang sedang dipakai dengan centang. */
+.art-video-player .art-selector-list .art-selector-item {
+    position: relative;
+}
+
+.art-video-player .art-selector-list .art-selector-item.art-current::after {
+    content: '✓';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--art-theme, #fff);
+}
+
 .art-video-player .art-selector-list::-webkit-scrollbar {
     width: 6px;
 }
