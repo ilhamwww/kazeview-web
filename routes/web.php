@@ -2102,3 +2102,15 @@ Route::get('/vidio/{any}', fn (string $any) => redirect('/original/' . $any))->w
 // URL lama halaman Indonesia.
 Route::redirect('/indonesia/chitogenx', '/indonesia/katalog');
 Route::redirect('/indonesia/vidio', '/indonesia/katalog');
+
+// URL katalog lama (/indonesia/{sumber}/{slug}) diarahkan ke halaman detail yang benar.
+Route::get('/indonesia/{provider}/{slug}', function (string $provider, string $slug) {
+    if (in_array(strtolower($provider), ['katalog', 'chitogenx', 'vidio', 'rebahin', 'lk21'], true)) {
+        $detail = \App\Services\StreamSource::detail($slug);
+        $type = ($detail['type'] ?? '') === 'series' ? 'series' : 'movie';
+
+        return redirect('/' . $type . '/' . $slug, 301);
+    }
+
+    abort(404);
+})->where('slug', '[A-Za-z0-9-]+')->name('indonesia.legacy-detail');

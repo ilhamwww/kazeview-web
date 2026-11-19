@@ -125,6 +125,8 @@ class FilmboxService
             'video_url' => '',
             'trailer' => (string) ($item['trailer_url'] ?? ''),
             'slug' => $slug,
+            // URL final per item supaya katalog tidak menebak rute dari provider.
+            'url' => ($type === 'series' ? '/series/' : '/movie/') . $slug,
             'detail_path' => $path,
             'subject_id' => (string) ($item['subjectId'] ?? ''),
             'tmdb_id' => null,
