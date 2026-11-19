@@ -328,8 +328,23 @@
         /* 5. Menu settings popup Artplayer 100% Persis IDLIX (Pixel-Perfect) */
         .art-video-player .art-settings {
             height: auto !important;
-            max-height: 380px !important;
-            overflow: visible !important;
+            /* Batasi tinggi panel agar tetap di dalam player, lalu scroll di dalamnya. */
+            max-height: min(420px, calc(100% - 56px)) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            overscroll-behavior: contain !important;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+        }
+
+        .art-video-player .art-settings::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .art-video-player .art-settings::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.26);
+            border-radius: 999px;
         }
 
         .art-video-player .art-setting-panel {
@@ -337,7 +352,7 @@
             width: 255px !important;
             max-width: 92vw !important;
             height: auto !important;
-            max-height: 380px !important;
+            max-height: none !important;
             overflow: visible !important;
             border-radius: 12px !important;
             backdrop-filter: blur(18px) saturate(180%) !important;
