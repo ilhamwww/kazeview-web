@@ -5,13 +5,13 @@ namespace App\Filament\Streaming\Pages;
 use App\Services\WeTVService;
 use Filament\Pages\Page;
 
-class WetvWatch extends Page
+class DramaAsiaWatch extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';
-    protected static ?string $navigationLabel = 'WeTV';
+    protected static ?string $navigationLabel = 'Drama Asia';
     protected static ?string $title = 'Nonton - KZSTRM';
-    protected static ?string $slug = 'wetv/{cid}/{vid}';
-    protected static string $view = 'filament.streaming.pages.watch-wetv';
+    protected static ?string $slug = 'drama-asia/{cid}/{vid}';
+    protected static string $view = 'filament.streaming.pages.watch-drama-asia';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 

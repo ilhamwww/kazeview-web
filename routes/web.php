@@ -16,19 +16,19 @@ Route::get(
 // Legacy redirects from /streaming to clean root URLs
 Route::redirect('/streaming', '/');
 Route::redirect('/drakor', '/korean-drama');
-// WeTV: tanpa vid, arahkan ke episode pertama.
-Route::get('/wetv/{cid}', function (string $cid) {
+// Drama Asia: tanpa vid, arahkan ke episode pertama.
+Route::get('/drama-asia/{cid}', function (string $cid) {
     $media = \App\Services\WeTVService::detail($cid);
 
     if (!$media || empty($media['episodes'][0]['vid'])) {
         abort(404);
     }
 
-    return redirect('/wetv/' . $cid . '/' . $media['episodes'][0]['vid']);
+    return redirect('/drama-asia/' . $cid . '/' . $media['episodes'][0]['vid']);
 })->name('wetv.entry');
 
-// Vidio (Indocast): tanpa id episode, arahkan ke episode pertama (atau ke filmnya sendiri).
-Route::get('/vidio/{id}', function (string $id) {
+// Judul original: tanpa id episode, arahkan ke episode pertama (atau ke filmnya sendiri).
+Route::get('/original/{id}', function (string $id) {
     $media = \App\Services\VidioService::detail($id);
 
     if (!$media) {
@@ -37,7 +37,7 @@ Route::get('/vidio/{id}', function (string $id) {
 
     $episode = $media['episodes'][0]['id'] ?? $media['id'];
 
-    return redirect('/vidio/' . $id . '/' . $episode);
+    return redirect('/original/' . $id . '/' . $episode);
 })->whereNumber('id')->name('vidio.entry');
 
 Route::redirect('/indonesia/server-1', '/indonesia/moviebox');
@@ -2093,3 +2093,12 @@ Route::get('/register-success', function () {
 
 // Proxy HLS Vidio (Indocast).
 require __DIR__ . '/vidio.php';
+
+// URL lama tetap diarahkan ke alamat baru.
+Route::redirect('/wetv', '/drama-asia');
+Route::get('/wetv/{any}', fn (string $any) => redirect('/drama-asia/' . $any))->where('any', '.*');
+Route::get('/vidio/{any}', fn (string $any) => redirect('/original/' . $any))->where('any', '.*');
+
+// URL lama halaman Indonesia.
+Route::redirect('/indonesia/chitogenx', '/indonesia/katalog');
+Route::redirect('/indonesia/vidio', '/indonesia/katalog');

@@ -685,7 +685,7 @@
                         // Harus dipanggil sebelum await apa pun, selagi masih di dalam gesture tap
                         if (this.useNativeFs()) this.enterNativeFs();
                         
-                        // Jika mode embed (Server mirror / Rebahin)
+                        // Mode embed
                         if (this.isEmbed) {
                             this.isPlaying = true;
                             return;

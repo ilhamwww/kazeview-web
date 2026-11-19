@@ -8,14 +8,14 @@
         <nav class="mb-6 flex items-center gap-2 text-xs text-zinc-400">
             <a href="/" class="hover:text-white">Home</a>
             <span>/</span>
-            <span class="text-zinc-300">WeTV</span>
+            <span class="text-zinc-300">Drama Asia</span>
         </nav>
 
         <div class="mb-8 flex flex-wrap items-end justify-between gap-3">
             <div>
-                <h1 class="text-2xl font-black tracking-tight md:text-4xl">Drama WeTV</h1>
+                <h1 class="text-2xl font-black tracking-tight md:text-4xl">Drama Asia</h1>
                 <p class="mt-2 max-w-2xl text-sm text-zinc-400">
-                    Serial asli WeTV, termasuk drama Indonesia. Kualitas sampai 720P dengan subtitle Indonesia.
+                    Serial drama Asia pilihan, termasuk drama Indonesia. Kualitas sampai 720P dengan subtitle Indonesia.
                 </p>
             </div>
             <span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
@@ -25,7 +25,7 @@
 
         @if(empty($items))
             <div class="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-zinc-400">
-                Katalog WeTV sedang tidak bisa dimuat. Coba lagi beberapa saat.
+                Katalog drama sedang tidak bisa dimuat. Coba lagi beberapa saat.
             </div>
         @else
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
@@ -38,7 +38,7 @@
                             @endif
                             <div class="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/90 to-transparent"></div>
 
-                            <span class="absolute left-1.5 top-1.5 rounded bg-red-600/90 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">WeTV</span>
+                            <span class="absolute left-1.5 top-1.5 rounded bg-red-600/90 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">ORIGINAL</span>
 
                             @if(!empty($item['badge']))
                                 <span class="absolute right-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">{{ $item['badge'] }}</span>

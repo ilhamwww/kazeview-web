@@ -10,7 +10,7 @@ class WatchVidio extends Page
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';
     protected static ?string $navigationLabel = 'Vidio';
     protected static ?string $title = 'Nonton - KZSTRM';
-    protected static ?string $slug = 'vidio/{id}/{episode}';
+    protected static ?string $slug = 'original/{id}/{episode}';
     protected static string $view = 'filament.streaming.pages.watch-vidio';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;

@@ -59,7 +59,7 @@
                             @if(!empty($m['genres']))
                                 <span>{{ implode(' • ', array_slice($m['genres'], 0, 3)) }}</span>
                             @endif
-                            <span class="rounded bg-red-600/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-300">Vidio</span>
+                            <span class="rounded bg-red-600/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-300">ORIGINAL</span>
                         </div>
 
                         @if(!empty($m['description']))

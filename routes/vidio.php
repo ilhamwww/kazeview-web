@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
  * segmen) mengarah balik ke proxy ini, sehingga pemutar cukup memakai satu
  * origin dan bebas masalah CORS. Segmen diteruskan apa adanya.
  */
-Route::get('/api/vidio/hls', function (\Illuminate\Http\Request $request) {
+Route::get('/api/hls', function (\Illuminate\Http\Request $request) {
     $encoded = (string) $request->query('u', '');
     $url = \App\Services\VidioService::decodeProxyUrl($encoded);
 
@@ -65,3 +65,17 @@ Route::get('/api/vidio/hls', function (\Illuminate\Http\Request $request) {
         'Cache-Control' => 'no-store',
     ]);
 })->middleware('throttle:600,1')->name('vidio.hls');
+
+/*
+ * Proxy gambar: dipakai supaya URL aset pihak ketiga (yang memuat nama
+ * provider) tidak muncul di HTML publik.
+ */
+Route::get('/api/img', function (\Illuminate\Http\Request $request) {
+    $url = \App\Services\ImageProxyService::decode((string) $request->query('u', ''));
+
+    if (!$url || !\App\Services\ImageProxyService::allowed($url)) {
+        abort(404);
+    }
+
+    return \App\Services\ImageProxyService::fetch($url);
+})->middleware('throttle:600,1')->name('img.proxy');

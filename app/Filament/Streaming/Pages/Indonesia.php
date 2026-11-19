@@ -4,6 +4,7 @@ namespace App\Filament\Streaming\Pages;
 
 use App\Services\ChitogenxService;
 use App\Services\VidioService;
+use App\Services\FilmboxService;
 use Filament\Pages\Page;
 
 class Indonesia extends Page
@@ -16,8 +17,8 @@ class Indonesia extends Page
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
 
-    public const PROVIDER = 'chitogenx';
-    public const PROVIDER_VIDIO = 'vidio';
+    public const PROVIDER = 'katalog';
+    public const PROVIDER_VIDIO = 'original';
     public const PROVIDERS = [self::PROVIDER_VIDIO, self::PROVIDER];
 
     public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = 'streaming', ?\Illuminate\Database\Eloquent\Model $tenant = null): string
@@ -59,13 +60,8 @@ class Indonesia extends Page
      */
     public function providers(): array
     {
-        $list = [['id' => self::PROVIDER, 'label' => 'Chitogenx']];
-
-        if (filter_var(env('VIDIO_ENABLED', false), FILTER_VALIDATE_BOOL)) {
-            array_unshift($list, ['id' => self::PROVIDER_VIDIO, 'label' => 'Vidio']);
-        }
-
-        return $list;
+        // Hanya satu sumber yang ditampilkan; nama provider tidak diekspos.
+        return [['id' => self::PROVIDER, 'label' => 'Katalog']];
     }
 
     public array $providers = [];
@@ -133,6 +129,15 @@ class Indonesia extends Page
     {
         if ($this->provider === self::PROVIDER_VIDIO) {
             return VidioService::catalog($category, $page, $limit, $search);
+        }
+
+        // Utama: Filmbox (Indocast), cadangan: Chitogenx.
+        if (FilmboxService::enabled()) {
+            $result = FilmboxService::indonesiaCatalog($category, $page, $limit, $search);
+
+            if (!empty($result['data'])) {
+                return $result;
+            }
         }
 
         return ChitogenxService::indonesiaCatalog($category, $page, $limit, $search);

@@ -96,19 +96,19 @@ class VidioService
 
         return [
             'id' => $id,
-            'slug' => 'vidio-' . $id,
+            'slug' => $id,
             'vidio_id' => $id,
             'title' => $title,
-            'thumbnail' => $poster,
-            'banner' => $landscape ?: $poster,
+            'thumbnail' => ImageProxyService::wrap($poster),
+            'banner' => ImageProxyService::wrap($landscape ?: $poster),
             'description' => (string) ($item['description'] ?? ''),
             'rating' => isset($item['rating']) && is_numeric($item['rating']) ? (float) $item['rating'] : null,
             'year' => isset($item['year']) ? (int) $item['year'] : null,
             'type' => $fallbackType === 'series' ? 'series' : 'movie',
             'is_series' => $fallbackType === 'series',
             'country' => 'Indonesia',
-            'provider_badge' => 'Vidio',
-            'url' => '/vidio/' . $id,
+            'provider_badge' => '',
+            'url' => '/original/' . $id,
         ];
     }
 
@@ -285,8 +285,8 @@ class VidioService
             'id' => (string) ($json['id'] ?? $id),
             'title' => (string) ($json['title'] ?? ''),
             'description' => (string) ($json['description'] ?? ''),
-            'poster' => (string) ($json['coverPortrait'] ?? ''),
-            'backdrop' => (string) ($json['coverLandscape'] ?? ''),
+            'poster' => ImageProxyService::wrap((string) ($json['coverPortrait'] ?? '')),
+            'backdrop' => ImageProxyService::wrap((string) ($json['coverLandscape'] ?? '')),
             'trailer' => (string) ($json['trailerUrl'] ?? ''),
             'rating' => isset($json['rating']) && is_numeric($json['rating']) ? (float) $json['rating'] : null,
             'year' => isset($json['releaseDate']) ? (int) substr((string) $json['releaseDate'], 0, 4) : null,
@@ -352,7 +352,7 @@ class VidioService
      */
     public static function proxyUrl(string $url): string
     {
-        return url('/api/vidio/hls?u=' . self::encodeProxyUrl($url) . '&v=2');
+        return url('/api/hls?u=' . self::encodeProxyUrl($url) . '&v=2');
     }
 
     public static function encodeProxyUrl(string $url): string
@@ -390,7 +390,7 @@ class VidioService
             return false;
         }
 
-        foreach (['vidio.com', 'vidiocdn.com', 'akamaized.net', 'indocast.site', 'aoneroom.com'] as $domain) {
+        foreach (['vidio.com', 'vidiocdn.com', 'akamaized.net', 'indocast.site', 'aoneroom.com', 'wetvinfo.com', 'hakunaymatata.com'] as $domain) {
             if ($host === $domain || str_ends_with($host, '.' . $domain)) {
                 return true;
             }

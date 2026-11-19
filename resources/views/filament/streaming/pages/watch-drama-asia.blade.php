@@ -18,7 +18,7 @@
             <nav class="mb-4 flex items-center gap-2 text-xs text-zinc-400">
                 <a href="/" class="hover:text-white">Home</a>
                 <span>/</span>
-                <a href="/wetv" class="hover:text-white">WeTV</a>
+                <a href="/drama-asia" class="hover:text-white">Drama Asia</a>
                 <span>/</span>
                 <span class="truncate text-zinc-300">{{ $m['title'] }}</span>
             </nav>
@@ -26,7 +26,7 @@
             <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <div class="min-w-0">
                     <div class="overflow-hidden rounded-xl border border-white/10 bg-black shadow-2xl shadow-black/60">
-                        <div wire:ignore id="kz-wetv-player" class="aspect-video w-full"></div>
+                        <div wire:ignore id="kz-drama-player" class="aspect-video w-full"></div>
                     </div>
 
                     @if(empty($streamUrl))
@@ -51,7 +51,7 @@
                             @if(!empty($m['genres']))
                                 <span>{{ implode(' • ', array_slice($m['genres'], 0, 3)) }}</span>
                             @endif
-                            <span class="rounded bg-red-600/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-300">WeTV</span>
+                            <span class="rounded bg-red-600/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-300">ORIGINAL</span>
                         </div>
 
                         @if(!empty($m['description']))
@@ -69,7 +69,7 @@
 
                         <div class="max-h-[520px] space-y-1.5 overflow-y-auto pr-1">
                             @foreach($episodes as $ep)
-                                <a href="/wetv/{{ $m['cid'] }}/{{ $ep['vid'] }}"
+                                <a href="/drama-asia/{{ $m['cid'] }}/{{ $ep['vid'] }}"
                                    class="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition {{ $ep['vid'] === $currentVid ? 'bg-red-600/90 font-semibold text-white' : 'bg-white/[0.04] text-zinc-300 hover:bg-white/10' }}">
                                     <span class="truncate">{{ $ep['title'] ?: 'Episode ' . $ep['number'] }}</span>
                                     @if(!empty($ep['free']))
@@ -88,18 +88,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
 <script>
-function initKzWetv() {
+function initKzDrama() {
     const streamUrl = @json($streamUrl);
     const qualities = @json($qualities);
     const subtitles = @json($subtitles);
-    const itemId = 'wetv-' + @json((string) $m['cid']);
+    const itemId = 'da-' + @json((string) $m['cid']);
     const episodeId = @json((string) $currentVid);
     const title = @json($m['title']);
     const poster = @json($m['poster']);
     const progressUrl = @json(route('api.watch-progress'));
     const csrf = @json(csrf_token());
 
-    const box = document.getElementById('kz-wetv-player');
+    const box = document.getElementById('kz-drama-player');
     if (!box || box.dataset.ready === '1') return;
 
     if (!streamUrl) {
@@ -201,8 +201,8 @@ function initKzWetv() {
 }
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => setTimeout(initKzWetv, 150));
+    document.addEventListener('DOMContentLoaded', () => setTimeout(initKzDrama, 150));
 } else {
-    setTimeout(initKzWetv, 150);
+    setTimeout(initKzDrama, 150);
 }
 </script>

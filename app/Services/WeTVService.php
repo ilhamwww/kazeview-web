@@ -89,18 +89,18 @@ class WeTVService
 
         return [
             'cid' => $cid,
-            'slug' => 'wetv-' . $cid,
+            'slug' => $cid,
             'title' => $title,
-            'thumbnail' => $vertical ?: $horizontal,
-            'banner' => $horizontal ?: $vertical,
+            'thumbnail' => ImageProxyService::wrap($vertical ?: $horizontal),
+            'banner' => ImageProxyService::wrap($horizontal ?: $vertical),
             'subtitle' => (string) ($item['subtitle'] ?? ''),
             'badge' => (string) ($item['badge'] ?? ''),
             'status' => (string) ($item['statusText'] ?? ''),
             'rating' => is_numeric($score) && (float) $score > 0 ? (float) $score : null,
-            'provider_badge' => 'WeTV',
+            'provider_badge' => '',
             'type' => 'series',
             'is_series' => true,
-            'url' => '/wetv/' . $cid,
+            'url' => '/drama-asia/' . $cid,
         ];
     }
 
@@ -197,7 +197,7 @@ class WeTVService
                 'number' => (string) ($ep['episodeNumber'] ?? ''),
                 'duration' => (int) ($ep['durationSeconds'] ?? 0),
                 'free' => (bool) ($ep['isFree'] ?? false),
-                'thumbnail' => (string) ($ep['thumbnail'] ?? ''),
+                'thumbnail' => ImageProxyService::wrap((string) ($ep['thumbnail'] ?? '')),
             ];
         }
 
@@ -211,8 +211,8 @@ class WeTVService
             'title' => (string) ($series['title'] ?? ''),
             'subtitle' => (string) ($series['subtitle'] ?? ''),
             'description' => (string) ($series['description'] ?? ''),
-            'poster' => (string) ($series['coverVertical'] ?? ''),
-            'backdrop' => (string) ($series['coverHorizontal'] ?? ''),
+            'poster' => ImageProxyService::wrap((string) ($series['coverVertical'] ?? '')),
+            'backdrop' => ImageProxyService::wrap((string) ($series['coverHorizontal'] ?? '')),
             'year' => (int) ($series['year'] ?? 0) ?: null,
             'region' => (string) ($series['region'] ?? ''),
             'genres' => array_values(array_filter($genres)),
@@ -260,16 +260,17 @@ class WeTVService
             $subtitles[] = [
                 'lang' => strtolower((string) ($sub['lang'] ?? '')),
                 'label' => (string) ($sub['name'] ?? strtoupper((string) ($sub['lang'] ?? ''))),
-                'url' => (string) $sub['url'],
+                // Lewat proxy sendiri supaya host asal tidak tampil di HTML.
+                'url' => VidioService::proxyUrl((string) $sub['url']),
             ];
         }
 
         return [
-            'stream_url' => (string) ($resolutions[0]['url'] ?? $data['url'] ?? ''),
-            'stream_direct' => (string) ($data['url'] ?? ''),
+            'stream_url' => VidioService::proxyUrl((string) ($resolutions[0]['url'] ?? $data['url'] ?? '')),
+            'stream_direct' => '',
             'qualities' => array_map(fn ($r) => [
                 'label' => (string) ($r['resolution'] ?? ''),
-                'url' => (string) $r['url'],
+                'url' => VidioService::proxyUrl((string) $r['url']),
             ], $resolutions),
             'subtitles' => $subtitles,
             'preview' => (bool) ($data['preview'] ?? false),

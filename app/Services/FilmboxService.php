@@ -261,6 +261,112 @@ class FilmboxService
         });
     }
 
+    /**
+     * Rak-rak Indonesia (section ID sama dengan yang dipakai Moviebox).
+     */
+    public static function indonesiaSections(): array
+    {
+        return [
+            '6528093688173053896', // Trending Indonesia
+            '5283462032510044280', // Drama Indonesia Terkini
+            '5848753831881965888', // Horor Indonesia
+            '7749480172839487888', // Indonesia Comedy
+            '3528002473103362040', // Horor & Kriminal
+            '3770510954220470720', // Family Time
+            '6379320635445106408', // Marriage Stories
+            '1004503178596994616', // Sejarah
+            '325004885257240608',  // Love Triangle
+        ];
+    }
+
+    /**
+     * Katalog Indonesia: gabungan rak Indonesia + filter negara.
+     */
+    public static function indonesiaItems(): array
+    {
+        return Cache::remember('fb_indonesia_items_v1', 1800, function () {
+            $items = [];
+
+            foreach (self::indonesiaSections() as $sectionId) {
+                for ($page = 1; $page <= 3; $page++) {
+                    $json = self::request('/section', ['id' => $sectionId, 'page' => $page], 1800);
+
+                    if (!$json) {
+                        break;
+                    }
+
+                    $found = 0;
+                    foreach ((array) ($json['data']['items'] ?? []) as $item) {
+                        $mapped = self::mapItem((array) $item);
+
+                        if (!$mapped) {
+                            continue;
+                        }
+
+                        if (stripos((string) ($item['country'] ?? ''), 'indonesia') === false) {
+                            continue;
+                        }
+
+                        $found++;
+                        $items[$mapped['detail_path']] = $mapped;
+                    }
+
+                    if ($found === 0) {
+                        break;
+                    }
+                }
+            }
+
+            // Lengkapi dari pool utama (negara Indonesia).
+            foreach (array_merge(self::pool('movie'), self::pool('series')) as $item) {
+                if (stripos((string) ($item['country'] ?? ''), 'indonesia') !== false) {
+                    $items[$item['detail_path']] ??= $item;
+                }
+            }
+
+            return array_values($items);
+        });
+    }
+
+    public static function indonesiaCatalog(string $category = 'all', int $page = 1, int $limit = 24, string $search = ''): array
+    {
+        $items = self::indonesiaItems();
+        $needle = strtolower(trim($search));
+
+        $items = array_values(array_filter($items, function ($item) use ($category, $needle) {
+            $okType = match ($category) {
+                'movie' => $item['type'] === 'movie',
+                'series' => $item['type'] === 'series',
+                default => true,
+            };
+
+            if (!$okType) {
+                return false;
+            }
+
+            if ($needle !== '' && !str_contains(strtolower($item['title']), $needle)) {
+                return false;
+            }
+
+            return true;
+        }));
+
+        $total = count($items);
+        $page = max(1, $page);
+        $limit = max(1, $limit);
+
+        return [
+            'data' => array_slice($items, ($page - 1) * $limit, $limit),
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'totalPages' => $total > 0 ? (int) ceil($total / $limit) : 0,
+                'hasMore' => ($page * $limit) < $total,
+            ],
+        ];
+    }
+
     public static function listing(string $type, int $page = 1, int $limit = 36): array
     {
         $page = max(1, $page);
@@ -398,8 +504,7 @@ class FilmboxService
                 'duration' => '',
                 'seasons' => $seasons,
                 'defaultSeason' => $seasons[0] ?? null,
-                'provider' => 'filmbox',
-            ];
+                ];
         });
     }
 
@@ -534,7 +639,6 @@ class FilmboxService
             'video_url' => $sources[0]['url'],
             'sources' => $sources,
             'subtitles' => $subtitles,
-            'provider' => 'filmbox',
         ];
     }
 
