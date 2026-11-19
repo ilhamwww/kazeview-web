@@ -16,6 +16,17 @@ Route::get(
 // Legacy redirects from /streaming to clean root URLs
 Route::redirect('/streaming', '/');
 Route::redirect('/drakor', '/korean-drama');
+// WeTV: tanpa vid, arahkan ke episode pertama.
+Route::get('/wetv/{cid}', function (string $cid) {
+    $media = \App\Services\WeTVService::detail($cid);
+
+    if (!$media || empty($media['episodes'][0]['vid'])) {
+        abort(404);
+    }
+
+    return redirect('/wetv/' . $cid . '/' . $media['episodes'][0]['vid']);
+})->name('wetv.entry');
+
 // Vidio (Indocast): tanpa id episode, arahkan ke episode pertama (atau ke filmnya sendiri).
 Route::get('/vidio/{id}', function (string $id) {
     $media = \App\Services\VidioService::detail($id);
