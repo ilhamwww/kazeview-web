@@ -52,7 +52,15 @@
                         .catch(() => { this.timer = setTimeout(() => this.next(), 7000); });
                 },
                 onEnded() { this.next(); },
-                onError() { this.showVideo = false; this.timer = setTimeout(() => this.next(), 6000); },
+                onError() {
+                    // Mengosongkan src saat ganti slide juga memicu 'error'; abaikan itu
+                    // supaya timer trailer slide baru tidak tertimpa.
+                    const v = this.$refs.video;
+                    if (!v || !v.getAttribute('src')) return;
+                    clearTimeout(this.timer);
+                    this.showVideo = false;
+                    this.timer = setTimeout(() => this.next(), 6000);
+                },
                 next() { this.active = (this.active + 1) % this.heroes.length; this.queue(); },
                 prev() { this.active = (this.active - 1 + this.heroes.length) % this.heroes.length; this.queue(); },
                 goTo(i) { if (i !== this.active) { this.active = i; this.queue(); } },
@@ -72,12 +80,14 @@
 
         {{-- Gambar latar per hero --}}
         @foreach($heroes as $index => $hero)
+            {{-- Opacity awal dari server, lalu Alpine mengambil alih lewat :style (bukan class,
+                 karena style inline selalu menang atas class). --}}
             <div class="absolute inset-0 transition-opacity duration-700"
-                 :class="active === {{ $index }} && !showVideo ? 'opacity-100' : 'opacity-0'"
-                 @if($index !== 0) style="opacity:0" @endif>
+                 style="opacity: {{ $index === 0 ? 1 : 0 }}"
+                 :style="{ opacity: active === {{ $index }} && !showVideo ? 1 : 0 }">
                 <img src="{{ $hero['banner'] ?: ($hero['thumbnail'] ?? '') }}" alt=""
                      class="h-full w-full object-cover object-[center_20%]"
-                     @if($index === 0) fetchpriority="high" @else loading="lazy" @endif>
+                     @if($index === 0) fetchpriority="high" @endif decoding="async">
             </div>
         @endforeach
 
