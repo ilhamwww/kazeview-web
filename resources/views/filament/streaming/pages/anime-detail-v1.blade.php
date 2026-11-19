@@ -186,6 +186,12 @@
                             <span>{{ $isFavorited ? 'Tersimpan' : 'Favorit' }}</span>
                         </button>
                     </div>
+                    @if(!empty($watchedEpisodes) && $lastWatchedEpisode !== null)
+                        <div class="mt-4 flex flex-wrap items-center gap-2" data-resume-episode="{{ $lastWatchedEpisode }}" data-watched-count="{{ count($watchedEpisodes) }}">
+                            <a href="{{ \App\Filament\Streaming\Pages\WatchAnime::getUrl(['anime_slug' => $animeSlug, 'episode_slug' => $lastWatchedEpisode], panel: 'streaming') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold border border-emerald-500/30 transition">Lanjutkan Episode {{ $lastWatchedEpisode }}</a>
+                            <span class="text-xs text-zinc-400">{{ count($watchedEpisodes) }} episode sudah dilihat</span>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
