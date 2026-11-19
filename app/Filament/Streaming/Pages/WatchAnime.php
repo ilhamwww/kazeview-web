@@ -278,6 +278,11 @@ class WatchAnime extends Page
 
                 $resolved = \App\Services\AnimeSourceResolverService::resolve($candidates);
 
+                // Tidak ada satu pun MP4 yang hidup -> pakai pemutar embed sebagai cadangan.
+                if (empty($resolved) || (int) ($resolved[0]['status'] ?? 0) === 0) {
+                    $resolved = [];
+                }
+
                 foreach (array_values($resolved) as $i => $src) {
                     $query = 'url=' . urlencode($src['url']) . '&referer=' . urlencode($candidates[0]['referer'] ?? 'https://mirainime.com/');
                     if (($src['via'] ?? 'direct') === 'relay') {
@@ -294,6 +299,17 @@ class WatchAnime extends Page
                 }
 
                 $currentStreamUrl = $servers[0]['stream_url'] ?? '';
+
+                if (empty($servers) && !empty($embedUrl)) {
+                    $servers[] = [
+                        'id' => 'server1',
+                        'name' => 'Server 1 (Embed)',
+                        'type' => 'embed',
+                        'stream_url' => '',
+                        'embed_url' => url('/api/streaming/embed?url=' . urlencode($embedUrl)),
+                    ];
+                    $currentStreamUrl = '';
+                }
             } elseif (!empty($embedUrl)) {
                 $miraiProxiedEmbed = (str_contains($embedUrl, 'mirainime.com') || str_contains($embedUrl, '178.211.139.171') || str_contains($embedUrl, 'rebahin'))
                     ? url('/api/streaming/embed?url=' . urlencode($embedUrl))
