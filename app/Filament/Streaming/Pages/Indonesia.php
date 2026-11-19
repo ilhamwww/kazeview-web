@@ -45,7 +45,7 @@ class Indonesia extends Page
     ];
 
     public array $categories = [
-        ['id' => 'all', 'label' => 'Semua'],
+        ['id' => 'all', 'label' => 'Lagi Hype 🔥'],
         ['id' => 'movie', 'label' => 'Film'],
         ['id' => 'series', 'label' => 'Series'],
         ['id' => '2026', 'label' => '2026'],

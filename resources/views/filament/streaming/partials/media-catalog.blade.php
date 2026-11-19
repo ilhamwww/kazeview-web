@@ -424,21 +424,12 @@
                             Hasil Pencarian: "{{ $search }}"
                         @elseif(($category ?? 'all') !== 'all')
                             Kategori: {{ $activeCategoryLabel ?? ucfirst($category) }}
-                        @elseif(($provider ?? 'all') !== 'all')
-                            Sumber: {{ collect($providers ?? [])->firstWhere('id', $provider)['label'] ?? ucfirst($provider) }}
                         @elseif($kind === 'indonesia')
                             Semua Koleksi Indonesia
                         @else
                             Baru Ditambahkan
                         @endif
                     </h2>
-                    @if(!empty($search) || ($category ?? 'all') !== 'all' || ($provider ?? 'all') !== 'all')
-                        <button type="button" wire:click="resetFilter"
-                                class="text-xs font-bold text-red-500 hover:text-red-400 bg-red-600/10 border border-red-600/20 px-2.5 py-0.5 rounded-md transition flex items-center gap-1">
-                            <span>Reset</span>
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    @endif
                 </div>
                 @if($kind !== 'indonesia' || !empty($search) || ($category ?? 'all') !== 'all')
                     <p class="text-xs md:text-sm text-zinc-500 mt-1">
