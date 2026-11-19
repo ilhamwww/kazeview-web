@@ -54,3 +54,18 @@ Artisan::command('kz:warm-filmbox', function () {
 })->purpose('Warm Filmbox catalog caches so visitors never wait for a rebuild');
 
 \Illuminate\Support\Facades\Schedule::command('kz:warm-filmbox')->everyTenMinutes()->withoutOverlapping();
+
+Artisan::command('kz:warm-animek', function () {
+    $t = microtime(true);
+
+    \Illuminate\Support\Facades\Cache::forget('ak_home_v1');
+    \Illuminate\Support\Facades\Cache::forget('ak_catalog_v1');
+
+    $home = \App\Services\AnimekompiService::home();
+    $all = \App\Services\AnimekompiService::catalog();
+
+    $this->info('Cache anime siap dalam ' . round(microtime(true) - $t, 1) . 's: '
+        . count($all) . ' judul, populer ' . count($home['trending'] ?? []));
+})->purpose('Warm Animekompi catalog so the first visitor does not wait');
+
+\Illuminate\Support\Facades\Schedule::command('kz:warm-animek')->everyFifteenMinutes()->withoutOverlapping();
