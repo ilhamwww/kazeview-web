@@ -2118,3 +2118,16 @@ Route::get('/indonesia/{provider}/{slug}', function (string $provider, string $s
 
     abort(404);
 })->where('slug', '[A-Za-z0-9-]+')->name('indonesia.legacy-detail');
+
+// Anime (Animekompi): tanpa episode, arahkan ke episode terbaru.
+Route::get('/animek/{path}', function (string $path) {
+    $media = \App\Services\AnimekompiService::detail($path);
+
+    if (!$media || empty($media['episodes'])) {
+        abort(404);
+    }
+
+    $latest = end($media['episodes']);
+
+    return redirect('/animek/' . $path . '/' . $latest['id']);
+})->where('path', '[A-Za-z0-9-]+')->name('animek.entry');

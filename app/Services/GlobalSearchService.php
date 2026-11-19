@@ -241,6 +241,27 @@ class GlobalSearchService
                         } catch (\Throwable $e) {}
                     }
 
+                    // 2b-bis. Anime dari Animekompi (Indocast)
+                    if ($needAnime && \App\Services\AnimekompiService::enabled()) {
+                        try {
+                            foreach (\App\Services\AnimekompiService::search($q) as $ak) {
+                                $animes[] = [
+                                    'id' => 'ak:' . $ak['path'],
+                                    'title' => $ak['title'],
+                                    'category' => 'anime',
+                                    'type' => 'Anime',
+                                    'badge' => 'Anime',
+                                    'year' => $ak['episodes'] ? ($ak['episodes'] . ' Eps') : ($ak['year'] ?: 'Anime'),
+                                    'rating' => $ak['rating'] ? number_format((float) $ak['rating'], 1) : null,
+                                    'thumbnail' => $ak['thumbnail'],
+                                    'url' => url('/animek/' . $ak['path']),
+                                    'slug' => $ak['path'],
+                                    'source_name' => null,
+                                ];
+                            }
+                        } catch (\Throwable $e) {}
+                    }
+
                     // 2c. Parse Dracin Responses
                     if ($needDracin) {
                         // DramaBox
