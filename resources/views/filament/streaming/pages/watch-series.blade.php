@@ -18,7 +18,8 @@
         }
     }
     $seasons = collect($series['seasons'] ?? [])->filter(fn ($x) => (int) ($x['seasonNumber'] ?? 0) > 0)->sortBy('seasonNumber')->values();
-    $poster = $tmdb($activeEpisode['stillPath'] ?? null, 'w780') ?: $tmdb($series['backdropPath'] ?? null, 'w1280');
+    $seriesPoster = $series['poster'] ?? $series['thumbnail'] ?? $series['banner'] ?? '';
+    $poster = $tmdb($activeEpisode['stillPath'] ?? null, 'w780') ?: $tmdb($series['backdropPath'] ?? null, 'w1280') ?: $seriesPoster;
     $logo = $tmdb($series['logoPath'] ?? null, 'w500');
     $rating = (float) (($activeEpisode['voteAverage'] ?? 0) ?: ($series['voteAverage'] ?? 0));
     $year = substr((string) ($activeEpisode['airDate'] ?? $series['firstAirDate'] ?? ''), 0, 4);
@@ -194,15 +195,16 @@
                             @php
                                 $n = (int) $ep['episodeNumber'];
                                 $isActive = $n === $epNo;
-                                $still = $tmdb($ep['stillPath'] ?? null, 'w300');
+                                // Sumber kita tidak punya still per episode, jadi pakai poster serial.
+                                $thumb = $tmdb($ep['stillPath'] ?? null, 'w300') ?: $seriesPoster;
                             @endphp
                             <li>
                                 <a href="{{ $epUrl($n) }}" @if($isActive) data-active aria-current="true" @endif
                                    @if(!$isActive && !empty($ep['id'])) data-stream-id="{{ $ep['id'] }}" @endif
                                    class="group flex gap-3 p-2 -mx-2 lg:mx-0 rounded-xl transition {{ $isActive ? 'bg-red-600/10 ring-1 ring-red-500/40' : 'hover:bg-white/[0.04] active:bg-white/[0.06]' }}">
-                                    <div class="relative w-32 sm:w-36 aspect-video shrink-0 self-start rounded-lg overflow-hidden bg-zinc-800">
-                                        @if($still)
-                                            <img src="{{ $still }}" alt="" class="w-full h-full object-cover {{ $isActive ? '' : 'opacity-90 group-hover:opacity-100' }}" loading="lazy">
+                                    <div class="relative w-[68px] sm:w-20 aspect-[2/3] shrink-0 self-start rounded-lg overflow-hidden bg-zinc-800">
+                                        @if($thumb)
+                                            <img src="{{ $thumb }}" alt="" class="w-full h-full object-cover object-top {{ $isActive ? '' : 'opacity-90 group-hover:opacity-100' }}" loading="lazy" referrerpolicy="no-referrer">
                                         @endif
                                         @if($isActive)
                                             <span class="absolute inset-0 bg-black/50 flex items-center justify-center">
