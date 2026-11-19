@@ -287,27 +287,6 @@
             </section>
             @endif
 
-            {{-- Strip Network setelah section ketiga --}}
-            @if($sIndex === 2 && !empty($networks))
-            <section class="max-w-[1800px] mx-auto px-5 md:px-10">
-                <div class="mb-4 flex items-center justify-between gap-3">
-                    <h2 class="text-xl md:text-2xl font-extrabold tracking-tight">Jelajahi per Network</h2>
-                    <a href="{{ \App\Filament\Streaming\Pages\Network::getUrl(panel: 'streaming') }}" class="inline-flex shrink-0 items-center gap-1 text-xs md:text-sm font-semibold text-zinc-400 transition hover:text-white">
-                        Lihat Semua
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
-                <div class="flex gap-3 md:grid md:grid-cols-5 md:gap-4 overflow-x-auto pb-2 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-                    @foreach($networks as $net)
-                    <a href="{{ $net['url'] }}" class="group relative flex h-24 md:h-28 w-[170px] md:w-auto shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br {{ $net['accent'] }} transition active:scale-95 hover:border-white/25">
-                        <div class="absolute inset-x-0 bottom-0 h-1" style="background: {{ $net['color'] }};"></div>
-                        <div class="h-9 md:h-10 w-[70%] flex items-center justify-center [&>svg]:max-h-full [&>svg]:max-w-full [&>svg]:w-auto [&>svg]:h-full">{!! $net['logo_svg'] !!}</div>
-                        <span class="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-bold text-zinc-300">{{ $net['badge'] }}</span>
-                    </a>
-                    @endforeach
-                </div>
-            </section>
-            @endif
 
         @endforeach
     </div>

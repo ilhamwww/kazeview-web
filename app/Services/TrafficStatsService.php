@@ -465,7 +465,7 @@ class TrafficStatsService
                 $isAnime = str_contains($lower, 'anime') || str_contains($lower, 'suzune') || str_contains($lower, 'suguha') || str_contains($lower, 'mirainime') || str_contains($lower, 'otakudesu');
                 $isDracin = str_contains($lower, 'dracin') || str_contains($lower, 'dramabox') || str_contains($lower, 'melolo') || str_contains($lower, 'goodbos') || str_contains($lower, 'reelbuzz') || str_contains($lower, 'serealplus') || str_contains($lower, 'flextv') || str_contains($lower, 'reelshort') || str_contains($lower, 'dramawave');
                 $isSeries = str_contains($lower, '/series');
-                $isMovie = str_contains($lower, '/movie') || str_contains($lower, 'idlix') || str_contains($lower, 'rebahin') || str_contains($lower, 'stream-relay');
+                $isMovie = str_contains($lower, '/movie') || str_contains($lower, 'rebahin') || str_contains($lower, 'stream-relay');
                 $isManga = str_contains($lower, 'manga') || str_contains($lower, 'manhwa') || str_contains($lower, 'comic') || str_contains($lower, 'doujin') || str_contains($lower, 'doujindesu');
                 $isProxy = str_contains($lower, 'proxy-') || str_contains($lower, 'stream');
 

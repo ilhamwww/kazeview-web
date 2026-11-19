@@ -13,7 +13,7 @@ headers = {
 }
 
 try:
-    r = requests.get(url, impersonate="chrome124", headers=headers, timeout=12)
+    r = requests.get(url, impersonate="chrome124", headers=headers, timeout=12, verify=False)
     sys.stdout.write(r.text)
 except Exception as e:
     sys.stderr.write(str(e))

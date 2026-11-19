@@ -20,7 +20,6 @@ class StreamingHome extends BaseDashboard
     public array $sections = [];
     public array $topTen = [];
     public array $continueWatching = [];
-    public array $networks = [];
     public array $quickLinks = [];
 
     /**
@@ -33,7 +32,6 @@ class StreamingHome extends BaseDashboard
         'latest-series'     => ['title' => 'Series Terbaru', 'more' => 'series'],
         'indonesia'         => ['title' => 'Film & Series Indonesia', 'more' => 'indonesia'],
         'drakor'            => ['title' => 'Drakor', 'more' => 'drakor'],
-        'network-originals' => ['title' => 'Original dari Network', 'more' => 'network'],
         'collections'       => ['title' => 'Dari Koleksi Pilihan', 'more' => 'collections'],
     ];
 
@@ -53,7 +51,6 @@ class StreamingHome extends BaseDashboard
 
         $this->heroes = array_map(fn ($i) => $this->withUrl($i), $heroes);
         $this->buildSections($sections);
-        $this->networks = $this->buildNetworks();
         $this->quickLinks = $this->buildQuickLinks();
         $this->continueWatching = $this->buildContinueWatching();
     }
@@ -132,24 +129,11 @@ class StreamingHome extends BaseDashboard
             'series' => TVSeries::getUrl(panel: 'streaming'),
             'indonesia' => IndonesiaHub::getUrl(panel: 'streaming'),
             'drakor' => KoreanDrama::getUrl(panel: 'streaming'),
-            'network' => Network::getUrl(panel: 'streaming'),
             'collections' => Collections::getUrl(panel: 'streaming'),
             default => null,
         };
     }
 
-    private function buildNetworks(): array
-    {
-        return array_map(fn ($n) => [
-            'name' => $n['name'],
-            'slug' => $n['slug'],
-            'badge' => $n['badge'],
-            'color' => $n['color'],
-            'accent' => $n['accent'],
-            'logo_svg' => $n['logo_svg'],
-            'url' => NetworkDetail::getUrl(parameters: ['slug' => $n['slug']], panel: 'streaming'),
-        ], StreamingService::getNetworksList());
-    }
 
     private function buildQuickLinks(): array
     {
@@ -158,7 +142,6 @@ class StreamingHome extends BaseDashboard
             ['label' => 'TV Series', 'url' => TVSeries::getUrl(panel: 'streaming'), 'icon' => 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
             ['label' => 'Indonesia', 'url' => IndonesiaHub::getUrl(panel: 'streaming'), 'icon' => 'M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3'],
             ['label' => 'Drakor', 'url' => KoreanDrama::getUrl(panel: 'streaming'), 'icon' => 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'],
-            ['label' => 'Network', 'url' => Network::getUrl(panel: 'streaming'), 'icon' => 'M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z'],
             ['label' => 'Koleksi', 'url' => Collections::getUrl(panel: 'streaming'), 'icon' => 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
             ['label' => 'Dracin', 'url' => Dracin::getUrl(panel: 'streaming'), 'icon' => 'M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z'],
             ['label' => 'Anime', 'url' => ExploreAnime::getUrl(panel: 'streaming'), 'icon' => 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
@@ -211,7 +194,7 @@ class StreamingHome extends BaseDashboard
         $rows = $rows->reject(fn ($row) => $row->item_type === 'anime' && str_starts_with((string) $row->item_id, 'anime_v5:'));
 
         foreach ($rows as $row) {
-            // Riwayat lama yang slug-nya tidak ada di provider aktif (mis. sisa IDLIX)
+            // Riwayat lama yang slug-nya tidak ada di provider aktif
             // dilewati supaya "Lanjutkan Menonton" tidak pernah mengarah ke halaman mati.
             if (in_array($row->item_type, ['indonesia_movie', 'indonesia_series'], true)) {
                 // Rebahin/LK21 sudah dipensiunkan.

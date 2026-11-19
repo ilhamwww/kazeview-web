@@ -11,7 +11,7 @@ class GlobalSearchService
 {
     /**
      * Ultra-Fast Unified Global Search across all KZSTRM sources:
-     * - Movies & TV Series (IDLIX via Fast NUC Relay & Rebahin)
+     * - Movies & TV Series (Chitogenx)
      * - Anime (Mirainime & Otakudesu - Parallel Async)
      * - Dracin (Parallel Async Pool: DramaBox, ReelBuzz, Sereal+, FlexTV, ReelShort, DramaWave)
      *

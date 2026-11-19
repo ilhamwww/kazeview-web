@@ -134,6 +134,25 @@ class AnimeDetail extends Page
                 ->where('item_type', 'anime')
                 ->exists()
             : false;
+
+        // Load watched state from this account's canonical anime history (including legacy keys).
+        if (auth()->check()) {
+            $history = auth()->user()->watchHistories()
+                ->where('item_type', 'anime')
+                ->whereIn('item_id', [
+                    'anime_v1:' . $this->animeSlug,
+                    'v1:' . $this->animeSlug,
+                    'anime:' . $this->animeSlug,
+                ])
+                ->first();
+            $this->watchedEpisodes = array_values(array_unique(array_map(
+                'strval',
+                is_array($history?->watched_episodes) ? $history->watched_episodes : []
+            )));
+            $this->lastWatchedEpisode = $history?->last_episode !== null
+                ? (string) $history->last_episode
+                : null;
+        }
     }
 
     public function selectDownloadEpisode(string $ep): void

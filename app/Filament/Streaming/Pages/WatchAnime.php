@@ -64,6 +64,16 @@ class WatchAnime extends Page
                 ->exists()
             : false;
 
+        // Hydrate known episode progress, then mark the current episode viewed.
+        if (auth()->check()) {
+            $history = auth()->user()->watchHistories()
+                ->where('item_type', 'anime')
+                ->whereIn('item_id', ['anime_v1:' . $this->animeSlug, 'v1:' . $this->animeSlug, 'anime:' . $this->animeSlug])
+                ->first();
+            $this->watchedEpisodes = array_values(array_unique(array_map('strval', is_array($history?->watched_episodes) ? $history->watched_episodes : [])));
+            $this->lastWatchedEpisode = $history?->last_episode !== null ? (string) $history->last_episode : null;
+        }
+
         // Record Watch History
         $this->saveWatchHistory($this->episodeSlug);
     }
@@ -409,9 +419,13 @@ class WatchAnime extends Page
             ->first();
 
         $watchedList = $history && is_array($history->watched_episodes) ? $history->watched_episodes : [];
+        $watchedList = array_values(array_unique(array_map('strval', $watchedList)));
+        $epNum = (string) $epNum;
         if (!in_array($epNum, $watchedList, true)) {
             $watchedList[] = $epNum;
         }
+        $this->watchedEpisodes = $watchedList;
+        $this->lastWatchedEpisode = $epNum;
 
         $user->watchHistories()->updateOrCreate(
             [
@@ -456,10 +470,14 @@ class WatchAnime extends Page
         return $this->resolveEpisodeData((string)$epSlug);
     }
 
-    public function recordEpisodeWatched(string $epSlug): void
+    public function recordEpisodeWatched(string $epSlug): array
     {
         $this->skipRender();
-        $this->saveWatchHistory((string)$epSlug);
+        $this->saveWatchHistory((string) $epSlug);
+        return [
+            'watched_episodes' => $this->watchedEpisodes,
+            'last_episode' => $this->lastWatchedEpisode,
+        ];
     }
 
     public function switchServer(string $serverId): void

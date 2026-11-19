@@ -25,21 +25,6 @@ class ShowSeries extends Page
     {
         $this->seriesSlug = $slug;
 
-        // Auto-redirect Rebahin series to canonical IDLIX series if available
-        if (str_starts_with($slug, 'rb-')) {
-            try {
-                $rbDetail = StreamingService::getSeriesDetail($slug);
-                if ($rbDetail) {
-                    $idlixSeries = StreamingService::findIdlixSeriesByTitle($rbDetail['title'] ?? '', $rbDetail['year'] ?? null);
-                    if ($idlixSeries && !empty($idlixSeries['slug'])) {
-                        return redirect()->to(self::getUrl(['slug' => $idlixSeries['slug']], panel: 'streaming'));
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Ignore and proceed
-            }
-        }
-
         $this->series = StreamingService::getSeriesDetail($slug);
 
         if (!$this->series) {

@@ -1660,7 +1660,7 @@ Route::get('/api/proxy-hls', function (\Illuminate\Http\Request $request) {
     $basePath = parse_url($url, PHP_URL_PATH) ?: '/';
     $baseDir = $scheme . '://' . $host . preg_replace('~/[^/]*$~', '/', $basePath);
     $baseAbs = $scheme . '://' . $host;
-    // Bunny & Majorplay (IDLIX) memakai token query dengan token_path. Segmen relatif / sub-playlist pada host yang sama
+    // Bunny & Majorplay memakai token query dengan token_path. Segmen relatif / sub-playlist pada host yang sama
     // harus membawa token yang sama agar manifest signed dapat diputar sampai selesai.
     $parentQuery = parse_url($url, PHP_URL_QUERY) ?: null;
     $inheritedQuery = (str_ends_with($host, '.b-cdn.net') || str_contains($host, 'majorplay.net') || str_contains($host, 'farsunpteltd.net'))

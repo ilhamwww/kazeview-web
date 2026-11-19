@@ -31,7 +31,7 @@ Artisan::command('kz:watchdog', function () {
     $this->info('Executing KZSTRM Unified Watchdog & Self-Healing...');
     $report = \App\Services\WatchdogService::checkAndHeal();
     $this->line(json_encode($report, JSON_PRETTY_PRINT));
-})->purpose('Health check and automatic self-healing for IDLIX, Anime Vault, and Comics');
+})->purpose('Health check and automatic self-healing for Anime Vault and Comics');
 
 \Illuminate\Support\Facades\Schedule::command('kz:sync-indonesia-vault')->twiceDaily(6, 18);
 \Illuminate\Support\Facades\Schedule::command('kz:sync-anime-vault')->everyFifteenMinutes();

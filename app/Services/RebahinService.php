@@ -531,8 +531,11 @@ class RebahinService
         $cacheKey = 'rb_resolved_stream_' . md5($cleanInput);
         return Cache::remember($cacheKey, 7200, function () use ($cleanInput) {
             try {
+                $nodeBin = file_exists('/root/.nvm/versions/node/v20.18.0/bin/node')
+                    ? '/root/.nvm/versions/node/v20.18.0/bin/node'
+                    : 'node';
                 $script = base_path('scripts/resolve_rebahin_stream.cjs');
-                $process = new \Symfony\Component\Process\Process(['node', $script, $cleanInput]);
+                $process = new \Symfony\Component\Process\Process([$nodeBin, $script, $cleanInput]);
                 $process->setTimeout(25);
                 $process->run();
 
@@ -653,6 +656,25 @@ class RebahinService
                             if (!isset($episodes[$epNum]['id'])) {
                                 $episodes[$epNum]['id'] = 'rb-' . $embedUrl;
                             }
+
+                            // Seamless: resolve native HLS Groovy Monster stream jika embed dari JWPlayer Rebahin (178.211.139.171)
+                            if (str_contains($embedUrl, '178.211.139.171')) {
+                                try {
+                                    $resolvedHls = self::resolveStream($embedUrl);
+                                    if ($resolvedHls && !empty($resolvedHls['video_url'])) {
+                                        $sNum = count($episodes[$epNum]['servers']) + 1;
+                                        $episodes[$epNum]['servers'][] = [
+                                            'id' => "server_hls_{$sNum}",
+                                            'name' => 'Server ' . $sNum . ' (Native HD - Bebas Iklan)',
+                                            'type' => 'hls',
+                                            'stream_url' => $resolvedHls['video_url'],
+                                            'video_url' => $resolvedHls['video_url'],
+                                            'embed_url' => '',
+                                        ];
+                                    }
+                                } catch (\Throwable $e) {}
+                            }
+
                             $sNum = count($episodes[$epNum]['servers']) + 1;
                             $label = $sNum === 1 ? 'Server 1 (HD)' : ($sNum === 2 ? 'Server 2 (Mirror)' : "Server {$sNum}");
                             $episodes[$epNum]['servers'][] = [
@@ -707,7 +729,7 @@ class RebahinService
     }
 
     /**
-     * Cari mirror untuk film IDLIX (berdasarkan judul & tahun)
+     * Cari mirror film (berdasarkan judul & tahun)
      */
     public static function findMovieMirror(string $title, ?string $year = null): ?array
     {
@@ -734,7 +756,7 @@ class RebahinService
     }
 
     /**
-     * Cari mirror untuk serial TV IDLIX (berdasarkan judul & tahun)
+     * Cari mirror serial TV (berdasarkan judul & tahun)
      */
     public static function findSeriesMirror(string $title, ?string $year = null): ?array
     {

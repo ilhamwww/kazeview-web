@@ -19,7 +19,7 @@
 
     <!-- Left Column: Promo / Branding -->
     <div class="hidden lg:flex flex-col text-left space-y-8 max-w-xl w-1/2">
-        <!-- Logo IDLIX -->
+        <!-- Logo -->
         <div class="flex items-center gap-3.5">
             <div class="w-12 h-12 rounded-2xl bg-red-600/10 flex items-center justify-center">
                 <svg class="w-6 h-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

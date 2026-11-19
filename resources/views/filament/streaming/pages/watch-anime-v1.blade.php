@@ -589,8 +589,8 @@
                 return {
                     hls: null,
                     sidebarQuery: '',
-                    watchedEpisodes: @js(auth()->check() ? (auth()->user()->watchHistories()->where('item_type', 'anime')->whereIn('item_id', ['anime_v1:' . $animeSlug, 'v1:' . $animeSlug, 'anime:' . $animeSlug])->value('watched_episodes') ?? []) : []),
-                    lastWatchedEpisode: @js(auth()->check() ? auth()->user()->watchHistories()->where('item_type', 'anime')->whereIn('item_id', ['anime_v1:' . $animeSlug, 'v1:' . $animeSlug, 'anime:' . $animeSlug])->value('last_episode') : null),
+                    watchedEpisodes: @js($watchedEpisodes ?? []),
+                    lastWatchedEpisode: @js($lastWatchedEpisode ?? null),
                     animeSlug: '{{ $animeSlug }}',
                     currentEp: '{{ $episodeSlug }}',
                     prevEp: @js($prevEpisodeSlug),
@@ -772,7 +772,14 @@
                         }
 
                         // Catat riwayat tontonan di background
-                        try { this.$wire.recordEpisodeWatched(epSlug); } catch(e){}
+                        try {
+                            this.$wire.recordEpisodeWatched(epSlug).then((state) => {
+                                if (state && Array.isArray(state.watched_episodes)) {
+                                    this.watchedEpisodes = state.watched_episodes.map(String);
+                                    this.lastWatchedEpisode = String(state.last_episode || epSlug);
+                                }
+                            });
+                        } catch(e){}
 
                         // Scroll halus ke player jika di mobile
                         if (window.innerWidth < 1024) {

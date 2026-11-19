@@ -90,7 +90,7 @@
             bottom: 72px !important;
         }
 
-        /* 4. Kotak subtitle transparan ala IDLIX / Netflix yang super rapi dan kontras tinggi */
+        /* 4. Kotak subtitle transparan ala Netflix yang super rapi dan kontras tinggi */
         .art-subtitle-inner-box {
             display: inline-block !important;
             background: rgba(0, 0, 0, 0.75) !important;
@@ -127,7 +127,7 @@
             background: #000000 !important;
         }
 
-        /* 5. Menu settings popup Artplayer 100% Persis IDLIX (Pixel-Perfect) */
+        /* 5. Menu settings popup Artplayer Pixel-Perfect */
         .art-video-player .art-settings {
             height: auto !important;
             max-height: 380px !important;
@@ -350,24 +350,6 @@
                     </button>
                 </div>
 
-                {{-- Server Switcher (sama dengan Movie / Series) --}}
-                @if(!empty($servers) && count($servers) > 1)
-                    <div class="px-4 lg:px-0 pt-3 flex items-center gap-2 overflow-x-auto kz-noscroll pb-1 scroll-pr-4 after:content-[''] after:shrink-0 after:w-2">
-                        <span class="text-xs font-bold text-zinc-400 mr-1 flex items-center gap-1.5 shrink-0">
-                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.7 7.2a3 3 0 012.4-1.2h7.8a3 3 0 012.4 1.2l2.55 4.35A4.5 4.5 0 0121 14.25"/></svg>
-                            Pilihan Server:
-                        </span>
-                        @foreach($servers as $s)
-                            <button type="button"
-                                    @click="switchServer('{{ $s['id'] }}', '{{ $s['embed_url'] ?? '' }}', {{ ($s['type'] ?? '') === 'embed' ? 'true' : 'false' }})"
-                                    :class="activeServer === '{{ $s['id'] }}' ? 'bg-red-600 text-white ring-red-500 shadow-lg shadow-red-600/30' : 'bg-zinc-900 text-zinc-300 ring-white/10 hover:text-white'"
-                                    class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold ring-1 transition flex items-center gap-1.5 cursor-pointer">
-                                <span class="w-1.5 h-1.5 rounded-full" :class="activeServer === '{{ $s['id'] }}' ? 'bg-white' : 'bg-zinc-500'"></span>
-                                {{ $s['name'] }}
-                            </button>
-                        @endforeach
-                    </div>
-                @endif
                 <div x-show="isEmbed" x-cloak class="mx-4 lg:mx-0 flex items-center gap-2 text-[11px] text-zinc-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2 mt-2">
                     <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
                     <span><strong>Tips Bebas Iklan</strong>: Server mirror memakai pemutar luar. Gunakan browser <strong>Brave</strong> atau pasang <strong>AdGuard / uBlock</strong> agar bebas iklan.</span>
@@ -1062,7 +1044,7 @@
                             window.kzServerLoader.applyToArtplayer(this.art, 'Memilih server terbaik', 'Mengoptimalkan stream film & resolusi HD');
                         }
 
-                        // Subtitle box wrapper observer (IDLIX & Netflix style)
+                        // Subtitle box wrapper observer (Netflix style)
                         const subEl = this.art.template.$subtitle;
                         if (subEl) {
                             subEl.classList.remove('art-subtitle-style-clean', 'art-subtitle-style-solid');

@@ -13,7 +13,7 @@
 </head>
 <body class="min-h-screen text-white flex items-center justify-center px-6 py-12 md:px-16 max-w-[1600px] mx-auto">
     <div class="w-full max-w-[520px] bg-zinc-900 border border-zinc-800 rounded-[20px] p-8 md:p-10 shadow-2xl text-center space-y-8">
-        <!-- Logo IDLIX -->
+        <!-- Logo -->
         <div class="flex flex-col items-center gap-3.5">
             <div class="w-16 h-16 rounded-2xl bg-red-600/10 flex items-center justify-center mb-2">
                 <svg class="w-8 h-8 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

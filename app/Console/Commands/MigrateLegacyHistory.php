@@ -10,7 +10,7 @@ class MigrateLegacyHistory extends Command
 {
     protected $signature = 'streaming:migrate-history {--apply : Tulis perubahan ke database}';
 
-    protected $description = 'Pindahkan riwayat tontonan lama (slug IDLIX) ke slug Chitogenx';
+    protected $description = 'Pindahkan riwayat tontonan lama (slug provider lama) ke slug Chitogenx';
 
     public function handle(): int
     {
@@ -36,7 +36,7 @@ class MigrateLegacyHistory extends Command
 
             $target = null;
 
-            // 1) Buang akhiran tahun ala IDLIX: "judul-2026" -> "judul"
+            // 1) Buang akhiran tahun ala provider lama: "judul-2026" -> "judul"
             if (preg_match('/^(.*)-(\d{4})$/', $id, $m) && isset($known[$m[1]])) {
                 $target = $m[1];
             }

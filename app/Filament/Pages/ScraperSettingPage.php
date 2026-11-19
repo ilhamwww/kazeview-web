@@ -58,18 +58,6 @@ class ScraperSettingPage extends Page implements HasForms
                             ->default('https://anoboy.be/'),
                     ]),
 
-                Forms\Components\Section::make('IDLIX Domain')
-                    ->description('Atur domain sumber scraping IDLIX. Default: https://z2.idlixku.com/')
-                    ->schema([
-                        Forms\Components\TextInput::make('idlix_domain')
-                            ->label('Domain IDLIX')
-                            ->placeholder('https://z2.idlixku.com/')
-                            ->helperText('Contoh: https://z2.idlixku.com/')
-                            ->required()
-                            ->url()
-                            ->maxLength(255)
-                            ->default('https://z2.idlixku.com/'),
-                    ]),
 
                 Forms\Components\Section::make('Dramabuzz API (Dracin)')
                     ->description('Atur API URL dan API Key untuk mengambil daftar platform drama (Dracin).')
