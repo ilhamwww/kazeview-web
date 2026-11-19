@@ -75,12 +75,26 @@ Route::post('/api/sync-native-comic', function (\Illuminate\Http\Request $reques
         return response()->json(['success' => false, 'error' => 'Invalid comic payload'], 400);
     }
 
+    // Judul alternatif dari sumber bisa sangat panjang (banyak sinonim dipisah "|"),
+    // sedangkan kolomnya varchar(255). Potong supaya ingest tidak gagal 500.
+    $clip = fn ($v, $len = 255) => $v === null ? null : \Illuminate\Support\Str::limit((string) $v, $len, '');
+
+    // Sumber kadang mengubah slug untuk judul yang sama. Cari dulu lewat upstream_id
+    // supaya tidak menabrak unique constraint saat slug-nya berubah.
+    $existing = null;
+    if (!empty($comicData['upstream_id'])) {
+        $existing = \App\Models\NativeComic::where('upstream_id', $comicData['upstream_id'])->first();
+    }
+    if (!$existing) {
+        $existing = \App\Models\NativeComic::where('slug', $clip($comicData['slug'], 240))->first();
+    }
+
     $comic = \App\Models\NativeComic::updateOrCreate(
-        ['slug' => $comicData['slug']],
+        ['slug' => $existing->slug ?? $clip($comicData['slug'], 240)],
         [
             'upstream_id' => $comicData['upstream_id'] ?? null,
-            'title' => $comicData['title'],
-            'alt_title' => $comicData['alt_title'] ?? null,
+            'title' => $clip($comicData['title'], 250),
+            'alt_title' => $clip($comicData['alt_title'] ?? null, 250),
             'cover_path' => $comicData['cover_path'] ?? null,
             'original_cover_url' => $comicData['original_cover_url'] ?? null,
             'description' => $comicData['description'] ?? null,
@@ -89,9 +103,9 @@ Route::post('/api/sync-native-comic', function (\Illuminate\Http\Request $reques
             'status' => $comicData['status'] ?? 'Ongoing',
             'rating' => $comicData['rating'] ?? 9.0,
             'genres' => $comicData['genres'] ?? [],
-            'author' => $comicData['author'] ?? '',
-            'artist' => $comicData['artist'] ?? '',
-            'latest_chapter' => $comicData['latest_chapter'] ?? '',
+            'author' => $clip($comicData['author'] ?? '', 200),
+            'artist' => $clip($comicData['artist'] ?? '', 200),
+            'latest_chapter' => $clip($comicData['latest_chapter'] ?? '', 40),
             'latest_chapter_at' => now(),
         ]
     );
@@ -108,7 +122,7 @@ Route::post('/api/sync-native-comic', function (\Illuminate\Http\Request $reques
                     [
                         'upstream_chapter_id' => $ch['upstream_chapter_id'] ?? null,
                         'chapter_slug' => (string) ($ch['chapter_slug'] ?? $ch['chapter_number']),
-                        'chapter_title' => $ch['chapter_title'] ?? ('Chapter ' . $ch['chapter_number']),
+                        'chapter_title' => $clip($ch['chapter_title'] ?? ('Chapter ' . $ch['chapter_number']), 250),
                         'pages' => $ch['pages'] ?? [],
                         'released_at' => now(),
                     ]
