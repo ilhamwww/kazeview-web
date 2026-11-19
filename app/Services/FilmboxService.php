@@ -33,6 +33,20 @@ class FilmboxService
         return trim((string) env('INDOCAST_API_KEY', ''));
     }
 
+    /**
+     * Cache dengan stale-while-revalidate: data lama tetap disajikan seketika
+     * sementara pembaruan berjalan di belakang, jadi pengguna tidak pernah
+     * menunggu rebuild penuh.
+     */
+    protected static function rememberFlexible(string $key, callable $callback, int $fresh = 1800, int $stale = 21600)
+    {
+        try {
+            return Cache::flexible($key, [$fresh, $stale], $callback);
+        } catch (\Throwable $e) {
+            return Cache::remember($key, $stale, $callback);
+        }
+    }
+
     public static function request(string $path, array $query = [], int $ttl = 900, int $timeout = 30): ?array
     {
         if (!self::enabled()) {
@@ -175,7 +189,7 @@ class FilmboxService
      */
     public static function home(): array
     {
-        return Cache::remember('fb_home_v1', 1800, function () {
+        return self::rememberFlexible('fb_home_v1', function () {
             $raw = self::request('/home', [], 1800);
             $data = $raw['data'] ?? [];
 
@@ -224,7 +238,7 @@ class FilmboxService
     {
         $type = $type === 'series' ? 'series' : 'movie';
 
-        return Cache::remember('fb_pool_' . $type, 1800, function () use ($type) {
+        return self::rememberFlexible('fb_pool_' . $type, function () use ($type) {
             $all = [];
             $seen = [];
 
@@ -240,11 +254,11 @@ class FilmboxService
             };
 
             $ingest(self::collect(self::request('/home', [], 1800)));
-            $ingest(self::collect(self::request('/trending', [], 1800)));
+            $ingest(self::collect(self::request('/trending', [], 21600)));
 
             if ($type === 'movie') {
                 for ($page = 1; $page <= 3; $page++) {
-                    $json = self::request('/movie', ['page' => $page], 1800);
+                    $json = self::request('/movie', ['page' => $page], 21600);
 
                     if (!$json) {
                         break;
@@ -286,12 +300,12 @@ class FilmboxService
      */
     public static function indonesiaItems(): array
     {
-        return Cache::remember('fb_indonesia_items_v1', 1800, function () {
+        return self::rememberFlexible('fb_indonesia_items_v1', function () {
             $items = [];
 
             foreach (self::indonesiaSections() as $sectionId) {
                 for ($page = 1; $page <= 3; $page++) {
-                    $json = self::request('/section', ['id' => $sectionId, 'page' => $page], 1800);
+                    $json = self::request('/section', ['id' => $sectionId, 'page' => $page], 21600);
 
                     if (!$json) {
                         break;
