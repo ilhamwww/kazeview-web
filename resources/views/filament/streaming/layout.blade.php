@@ -895,7 +895,7 @@
         x-transition:leave-end="opacity-0">
 
         <div @click.away="searchOpen = false"
-            class="w-full max-w-xl bg-zinc-950/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl shadow-black/40 overflow-hidden"
+            class="flex max-h-[80vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl shadow-black/40 backdrop-blur-xl"
             x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
             x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
@@ -962,7 +962,7 @@
             </div>
 
             <!-- Results Scroll Area -->
-            <div class="max-h-[60vh] overflow-y-auto">
+            <div class="min-h-0 flex-1 overflow-y-auto">
                 <!-- Search Loading State -->
                 <div x-show="searchLoading" class="py-12 flex items-center justify-center gap-2 text-zinc-400">
                     <svg class="animate-spin h-5 w-5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -978,8 +978,9 @@
 
                 <!-- Empty Results State -->
                 <div x-show="searchResults.length === 0 && searchQuery.length > 0 && !searchLoading"
-                    class="py-12 text-center text-zinc-500">
-                    Tidak ada hasil untuk "<span class="text-zinc-300 font-semibold" x-text="searchQuery"></span>"
+                    class="px-6 py-14 text-center">
+                    <p class="text-sm text-zinc-400">Tidak ada hasil untuk <span class="font-semibold text-zinc-200" x-text="searchQuery"></span></p>
+                    <p class="mt-1.5 text-xs text-zinc-600">Coba kata kunci lain atau ejaan yang lebih singkat.</p>
                 </div>
 
                 <!-- Default State (when no search query has been typed) -->
@@ -988,70 +989,63 @@
                 </div>
 
                 <!-- Results list -->
-                <div class="py-2" x-show="searchResults.length > 0 && !searchLoading">
+                <div class="py-1.5" x-show="searchResults.length > 0 && !searchLoading">
                     <template x-for="item in searchResults" :key="item.id">
                         <a :href="item.url"
-                            class="w-full flex items-center gap-3 px-5 py-3 text-left transition hover:bg-white/5">
-                            <div
-                                class="w-10 h-14 rounded-lg overflow-hidden bg-zinc-900 flex-shrink-0 border border-white/5">
+                            class="group flex items-center gap-3 px-4 py-2.5 transition hover:bg-white/[0.06]">
+
+                            {{-- Poster --}}
+                            <div class="h-[74px] w-12 shrink-0 overflow-hidden rounded-md bg-zinc-900 ring-1 ring-white/10">
                                 <template x-if="item.thumbnail">
-                                    <img :alt="item.title" class="w-full h-full object-cover" :src="item.thumbnail" loading="lazy">
+                                    <img :alt="item.title" class="h-full w-full object-cover" :src="item.thumbnail" loading="lazy">
                                 </template>
                                 <template x-if="!item.thumbnail">
-                                    <div
-                                        class="w-full h-full flex items-center justify-center text-[10px] text-zinc-600 bg-zinc-800">
-                                        No Image</div>
+                                    <div class="flex h-full w-full items-center justify-center bg-zinc-800 text-[9px] uppercase tracking-wide text-zinc-600">N/A</div>
                                 </template>
                             </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-sm font-medium text-white line-clamp-2 leading-snug"
-                                        x-text="item.title + (item.year && item.category !== 'anime' && item.category !== 'dracin' ? ' (' + item.year + ')' : '')"></span>
-                                </div>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <!-- Badge Kategori -->
-                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                                        :class="{
-                                            'bg-red-500/20 text-red-400 border border-red-500/30': item.category === 'movie',
-                                            'bg-blue-500/20 text-blue-400 border border-blue-500/30': item.category === 'series',
-                                            'bg-purple-500/20 text-purple-400 border border-purple-500/30': item.category === 'anime',
-                                            'bg-amber-500/20 text-amber-400 border border-amber-500/30': item.category === 'dracin',
-                                            'bg-zinc-800 text-zinc-300 border border-zinc-700': !['movie','series','anime','dracin'].includes(item.category)
-                                        }"
-                                        x-text="item.type || item.badge || 'Film'">
-                                    </span>
 
-                                    <!-- Badge Sumber -->
-                                    <template x-if="item.source_name">
-                                        <span class="text-[10px] text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/5"
-                                            x-text="item.source_name"></span>
-                                    </template>
+                            {{-- Teks --}}
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-[13.5px] font-semibold leading-snug text-zinc-100 group-hover:text-white"
+                                   x-text="item.title"></p>
 
-                                    <!-- Rating -->
-                                    <template x-if="item.rating && item.rating !== '0.0'">
-                                        <span class="flex items-center gap-0.5 text-xs text-yellow-400">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                viewBox="0 0 24 24" fill="currentColor" color="currentColor"
-                                                class="w-3 h-3" stroke-width="1.5" stroke="currentColor">
-                                                <path
-                                                    d="M13.7276 3.44418L15.4874 6.99288C15.7274 7.48687 16.3673 7.9607 16.9073 8.05143L20.0969 8.58575C22.1367 8.92853 22.6167 10.4206 21.1468 11.8925L18.6671 14.3927C18.2471 14.8161 18.0172 15.6327 18.1471 16.2175L18.8571 19.3125C19.417 21.7623 18.1271 22.71 15.9774 21.4296L12.9877 19.6452C12.4478 19.3226 11.5579 19.3226 11.0079 19.6452L8.01827 21.4296C5.8785 22.71 4.57865 21.7522 5.13859 19.3125L5.84851 16.2175C5.97849 15.6327 5.74852 14.8161 5.32856 14.3927L2.84884 11.8925C1.389 10.4206 1.85895 8.92853 3.89872 8.58575L7.08837 8.05143C7.61831 7.9607 8.25824 7.48687 8.49821 6.99288L10.258 3.44418C11.2179 1.51861 12.7777 1.51861 13.7276 3.44418Z"
-                                                    stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"></path>
-                                            </svg>
-                                            <span x-text="item.rating"></span>
-                                        </span>
-                                    </template>
-                                </div>
+                                <p class="mt-0.5 flex items-center gap-1.5 text-[11px] text-zinc-500">
+                                    <span x-text="item.year || ''"></span>
+                                    <template x-if="item.year"><span class="text-zinc-700">•</span></template>
+                                    <span class="font-semibold uppercase tracking-wider"
+                                          :class="{
+                                              'text-red-400': item.category === 'movie',
+                                              'text-sky-400': item.category === 'series',
+                                              'text-violet-400': item.category === 'anime',
+                                              'text-amber-400': item.category === 'dracin',
+                                              'text-zinc-400': !['movie','series','anime','dracin'].includes(item.category)
+                                          }"
+                                          x-text="item.category === 'movie' ? 'Film' : (item.category === 'series' ? 'Series' : (item.category === 'anime' ? 'Anime' : (item.category === 'dracin' ? 'Dracin' : (item.type || 'Film'))))"></span>
+                                </p>
                             </div>
+
+                            {{-- Rating --}}
+                            <template x-if="item.rating && item.rating !== '0.0'">
+                                <span class="flex shrink-0 items-center gap-1 text-[11px] font-bold text-amber-400">
+                                    <svg class="h-3 w-3 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                    <span x-text="item.rating"></span>
+                                </span>
+                            </template>
+
+                            <svg class="h-4 w-4 shrink-0 text-zinc-600 transition group-hover:text-zinc-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
                         </a>
                     </template>
                 </div>
             </div>
 
-            <!-- Footer view all results -->
-            <div class="border-t border-white/10 px-5 py-3" x-show="searchResults.length > 0 && !searchLoading">
-                <button class="text-sm text-red-500 hover:text-red-400 font-bold hover:underline"
-                    @click="searchOpen = false">Close Results</button>
+            <!-- Footer -->
+            <div class="flex items-center justify-between border-t border-white/10 px-4 py-2.5 text-xs"
+                 x-show="searchResults.length > 0 && !searchLoading">
+                <span class="text-zinc-500"><span class="font-semibold text-zinc-300" x-text="searchResults.length"></span> hasil</span>
+                <button class="rounded-md px-2 py-1 font-semibold text-zinc-400 transition hover:bg-white/5 hover:text-white"
+                    @click="searchOpen = false">Tutup</button>
             </div>
         </div>
     </div>

@@ -718,7 +718,90 @@ class FilmboxService
     }
 
     /**
-     * Pencarian lokal dari pool (endpoint search Filmbox kosong).
+     * Pencarian di katalog Filmbox (POST + JSON {"keyword": "..."}).
+     */
+    public static function searchRemote(string $query, int $ttl = 900): array
+    {
+        $query = trim($query);
+
+        if ($query === '' || !self::enabled()) {
+            return [];
+        }
+
+        $cacheKey = 'fb_search_' . md5(mb_strtolower($query));
+
+        $payload = Cache::remember($cacheKey, $ttl, function () use ($query) {
+            try {
+                $res = Http::withHeaders([
+                    'x-api-key' => self::key(),
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
+                ])->timeout(30)->post(self::BASE . '/search', ['keyword' => $query]);
+
+                return $res->ok() ? $res->json() : null;
+            } catch (\Throwable $e) {
+                return null;
+            }
+        });
+
+        $items = (array) (($payload['data']['items'] ?? []));
+
+        // Halaman kedua menambah cakupan (mis. varian tahun berbeda).
+        $second = Cache::remember($cacheKey . '_p2', $ttl, function () use ($query) {
+            try {
+                $res = Http::withHeaders([
+                    'x-api-key' => self::key(),
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
+                ])->timeout(30)->post(self::BASE . '/search', ['keyword' => $query, 'page' => 2]);
+
+                return $res->ok() ? $res->json() : null;
+            } catch (\Throwable $e) {
+                return null;
+            }
+        });
+
+        $items = array_merge($items, (array) (($second['data']['items'] ?? [])));
+
+        if (empty($items)) {
+            Cache::forget($cacheKey);
+        }
+
+        $out = [];
+        $seen = [];
+
+        foreach ($items as $item) {
+            $mapped = self::mapItem((array) $item);
+
+            if ($mapped && !isset($seen[$mapped['detail_path']])) {
+                $seen[$mapped['detail_path']] = true;
+                $out[] = $mapped;
+            }
+        }
+
+        // Judul kembar (mis. beberapa "Sugar Baby") tidak boleh berbagi URL:
+        // yang bertabrakan memakai detailPath penuh sebagai slug.
+        $counts = [];
+
+        foreach ($out as $item) {
+            $counts[$item['slug']] = ($counts[$item['slug']] ?? 0) + 1;
+        }
+
+        foreach ($out as &$item) {
+            if (($counts[$item['slug']] ?? 0) > 1) {
+                $item['slug'] = $item['detail_path'];
+                $item['url'] = ($item['type'] === 'series' ? '/series/' : '/movie/') . $item['detail_path'];
+            }
+        }
+        unset($item);
+
+        return $out;
+    }
+
+    /**
+     * Pencarian lokal dari pool (cadangan bila API gagal).
      */
     public static function search(string $query, int $page = 1, int $limit = 20): array
     {
@@ -728,7 +811,25 @@ class FilmboxService
             return ['data' => [], 'pagination' => ['page' => 1, 'limit' => $limit, 'total' => 0, 'totalPages' => 0]];
         }
 
-        $all = array_merge(self::pool('movie'), self::pool('series'));
+        $remote = self::searchRemote($query);
+
+        if (!empty($remote)) {
+            $total = count($remote);
+            $page = max(1, $page);
+            $limit = max(1, $limit);
+
+            return [
+                'data' => array_slice($remote, ($page - 1) * $limit, $limit),
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'totalPages' => (int) ceil($total / $limit),
+                ],
+            ];
+        }
+
+        $all = array_merge(self::pool('movie'), self::pool('series'), self::indonesiaItems());
         $matches = array_values(array_filter($all, fn ($i) => str_contains(strtolower($i['title']), $needle)));
         $total = count($matches);
 

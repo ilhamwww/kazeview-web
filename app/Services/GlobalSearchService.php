@@ -32,7 +32,7 @@ class GlobalSearchService
             $category = 'all';
         }
 
-        $cacheKey = 'kz_global_search_v4_' . md5(strtolower($q) . '_' . $category . '_' . $limit);
+        $cacheKey = 'kz_global_search_v5_' . md5(strtolower($q) . '_' . $category . '_' . $limit);
 
         return Cache::remember($cacheKey, 3600, function () use ($q, $category, $limit) {
             $movies = [];
@@ -263,7 +263,7 @@ class GlobalSearchService
                                         'thumbnail' => $it['coverWap'] ?? $it['cover'] ?? null,
                                         'url' => url('/dracin/dramabox/drama/' . $id),
                                         'slug' => $id,
-                                        'source_name' => 'DramaBox',
+                                        'source_name' => null,
                                     ];
                                 }
                             }
@@ -288,7 +288,7 @@ class GlobalSearchService
                                         'thumbnail' => $it['cover'] ?? $it['poster'] ?? null,
                                         'url' => url('/dracin/reelbuzz/drama/' . $id),
                                         'slug' => $id,
-                                        'source_name' => 'ReelBuzz',
+                                        'source_name' => null,
                                     ];
                                 }
                             }
@@ -314,7 +314,7 @@ class GlobalSearchService
                                         'thumbnail' => $it['contentCoverUrl'] ?? $it['cover'] ?? null,
                                         'url' => url('/dracin/serealplus/drama/' . $id),
                                         'slug' => $id,
-                                        'source_name' => 'Sereal+',
+                                        'source_name' => null,
                                     ];
                                 }
                             }
@@ -340,7 +340,7 @@ class GlobalSearchService
                                         'thumbnail' => $it['cover'] ?? null,
                                         'url' => url('/dracin/flextv/drama/' . $id),
                                         'slug' => $id,
-                                        'source_name' => 'FlexTV',
+                                        'source_name' => null,
                                     ];
                                 }
                             }
@@ -366,7 +366,7 @@ class GlobalSearchService
                                         'thumbnail' => $it['pic'] ?? null,
                                         'url' => url('/dracin/reelshort/drama/' . $id),
                                         'slug' => $id,
-                                        'source_name' => 'ReelShort',
+                                        'source_name' => null,
                                     ];
                                 }
                             }
@@ -392,7 +392,7 @@ class GlobalSearchService
                                         'thumbnail' => $it['cover'] ?? null,
                                         'url' => url('/dracin/dramawave/drama/' . $id),
                                         'slug' => $id,
-                                        'source_name' => 'DramaWave',
+                                        'source_name' => null,
                                     ];
                                 }
                             }

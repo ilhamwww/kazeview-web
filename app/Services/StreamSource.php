@@ -96,14 +96,45 @@ class StreamSource
 
     public static function search(string $query, int $page = 1, int $limit = 20): array
     {
-        if (FilmboxService::enabled()) {
-            $found = FilmboxService::search($query, $page, $limit);
+        $primary = ['data' => [], 'pagination' => []];
 
-            if (!empty($found['data'])) {
-                return $found;
-            }
+        if (FilmboxService::enabled()) {
+            $primary = FilmboxService::search($query, 1, max($limit, 20));
         }
 
-        return ChitogenxService::search($query, $page, $limit);
+        // Lengkapi dengan sumber cadangan, tanpa duplikat.
+        $secondary = ChitogenxService::search($query, 1, max($limit, 20));
+        $merged = [];
+        $seen = [];
+
+        foreach (array_merge($primary['data'] ?? [], $secondary['data'] ?? []) as $item) {
+            // Jangan pakai slug saja: banyak judul kembar beda tahun/tipe.
+            $key = implode('|', [
+                strtolower(trim((string) ($item['title'] ?? ''))),
+                (string) ($item['year'] ?? ''),
+                (string) ($item['type'] ?? ''),
+            ]);
+
+            if ($key === '' || isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $merged[] = $item;
+        }
+
+        $total = count($merged);
+        $page = max(1, $page);
+        $limit = max(1, $limit);
+
+        return [
+            'data' => array_slice($merged, ($page - 1) * $limit, $limit),
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'totalPages' => $total > 0 ? (int) ceil($total / $limit) : 0,
+            ],
+        ];
     }
 }
