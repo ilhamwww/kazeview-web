@@ -258,6 +258,7 @@
 </div>
 
 @push('styles')
+    <link rel="stylesheet" href="/css/kz-player-v3.css?v=1">
     <style>
         .kz-noscroll { scrollbar-width: none; } .kz-noscroll::-webkit-scrollbar { display: none; }
         .kz-thin { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }

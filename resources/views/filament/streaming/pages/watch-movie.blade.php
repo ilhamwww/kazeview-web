@@ -214,6 +214,7 @@
 </div>
 
 @push('styles')
+    <link rel="stylesheet" href="/css/kz-player-v3.css?v=1">
     <style>
         .artplayer-app {
             width: 100% !important;

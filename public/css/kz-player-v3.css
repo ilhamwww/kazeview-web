@@ -1,0 +1,62 @@
+/* KZ Player v3 — panel pengaturan di dalam player */
+
+/* Panel Captions/Resolution dibatasi tingginya lalu di-scroll, bukan meluber. */
+.art-video-player {
+    --art-settings-max-height: min(340px, 55vh);
+}
+
+.art-video-player .art-settings {
+    max-height: var(--art-settings-max-height) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+    border-radius: 12px;
+}
+
+.art-video-player .art-settings::-webkit-scrollbar {
+    width: 6px;
+}
+
+.art-video-player .art-settings::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.art-video-player .art-settings::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+}
+
+.art-video-player .art-settings::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* Tiap baris tidak boleh mengecil/terpotong saat panel di-scroll. */
+.art-video-player .art-settings .art-setting-panel .art-setting-item {
+    flex-shrink: 0;
+}
+
+/* Daftar pilihan (selector) juga mengikuti tinggi panel. */
+.art-video-player .art-selector-list {
+    max-height: var(--art-settings-max-height) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.art-video-player .art-selector-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.art-video-player .art-selector-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+}
+
+@media (max-height: 640px) {
+    .art-video-player {
+        --art-settings-max-height: 46vh;
+    }
+}
