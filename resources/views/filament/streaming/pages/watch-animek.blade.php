@@ -20,7 +20,7 @@
             <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
                 <div class="min-w-0">
                     <div class="overflow-hidden rounded-xl border border-white/10 bg-black shadow-2xl shadow-black/60">
-                        <div wire:ignore id="kz-animek-player" class="aspect-video w-full"></div>
+                        <div wire:ignore id="kz-animek-player" data-kz-fs class="aspect-video w-full"></div>
                     </div>
 
                     @if(empty($stream))
@@ -104,6 +104,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
+<script src="/js/kz-fullscreen.js?v=3"></script>
 <script>
 function initKzAnimek() {
     const videoUrl = @json($stream['video_url'] ?? '');
@@ -135,6 +136,32 @@ function initKzAnimek() {
 
     // Lanjut otomatis ke episode berikutnya saat selesai.
     if (nextUrl) art.on('video:ended', () => { window.location.href = nextUrl; });
+
+    // HP/tablet: fullscreen native + kunci landscape. Desktop: web fullscreen.
+    const useNativeFs = () => !!(window.KzFs && window.KzFs.isTouch());
+    let autoFsDone = false;
+
+    const enterAutoFs = () => {
+        if (autoFsDone) return;
+        autoFsDone = true;
+
+        if (useNativeFs()) {
+            if (window.KzFs && !window.KzFs.isActive(box)) {
+                window.KzFs.enter(box, { video: art.video });
+            }
+            return;
+        }
+
+        try { if (!art.fullscreenWeb) art.fullscreenWeb = true; } catch (e) {}
+    };
+
+    art.on('video:play', enterAutoFs);
+    if (art.video) art.video.addEventListener('play', enterAutoFs);
+
+    // Kalau fullscreen native ditolak browser, jatuh ke web fullscreen.
+    box.addEventListener('kz-fs-failed', () => {
+        try { art.fullscreenWeb = true; } catch (e) {}
+    });
 
     document.querySelectorAll('.kz-server').forEach((btn) => {
         btn.addEventListener('click', () => {
