@@ -16,7 +16,7 @@ class StreamingService
     public static function getHomepageData(): array
     {
         // Provider utama: Chitogenx (DutaMovie21).
-        $chito = ChitogenxService::home();
+        $chito = StreamSource::home();
 
         if (!empty($chito['heroes']) || !empty($chito['sections'])) {
             return $chito;
@@ -30,7 +30,7 @@ class StreamingService
      */
     public static function search(string $query, int $page = 1, int $limit = 8): array
     {
-        $chito = ChitogenxService::search($query, $page, max($limit, 20));
+        $chito = StreamSource::search($query, $page, max($limit, 20));
 
         if (!empty($chito['data'])) {
             return $chito['data'];
@@ -44,7 +44,7 @@ class StreamingService
      */
     public static function getMovies(int $page = 1, int $limit = 36, string $sort = 'createdAt'): array
     {
-        $chito = ChitogenxService::listing('movie', $page, $limit);
+        $chito = StreamSource::listing('movie', $page, $limit);
 
         if (!empty($chito['data'])) {
             return $chito;
@@ -58,7 +58,7 @@ class StreamingService
      */
     public static function getTrendingMovies(int $limit = 5, string $period = '7d'): array
     {
-        $chito = ChitogenxService::trending('movie', $limit);
+        $chito = StreamSource::trending('movie', $limit);
 
         if (!empty($chito)) {
             return $chito;
@@ -72,7 +72,7 @@ class StreamingService
      */
     public static function getSeries(int $page = 1, int $limit = 36, string $sort = 'createdAt'): array
     {
-        $chito = ChitogenxService::listing('series', $page, $limit);
+        $chito = StreamSource::listing('series', $page, $limit);
 
         if (!empty($chito['data'])) {
             return $chito;
@@ -102,7 +102,7 @@ class StreamingService
      */
     public static function getTrendingSeries(int $limit = 5, string $period = '7d'): array
     {
-        $chito = ChitogenxService::trending('series', $limit);
+        $chito = StreamSource::trending('series', $limit);
 
         if (!empty($chito)) {
             return $chito;
@@ -241,7 +241,7 @@ class StreamingService
         }
 
         // Provider utama: Chitogenx.
-        $chito = ChitogenxService::detail($slug);
+        $chito = StreamSource::detail($slug);
 
         if ($chito && ($chito['type'] ?? '') === 'series') {
             return $chito;
@@ -270,7 +270,7 @@ class StreamingService
         }
 
         if (!str_starts_with($slug, 'mb-')) {
-            $chitoSeason = ChitogenxService::season($slug, $seasonNumber);
+            $chitoSeason = StreamSource::season($slug, $seasonNumber);
 
             if ($chitoSeason && !empty($chitoSeason['season']['episodes'])) {
                 return $chitoSeason;
@@ -323,6 +323,22 @@ class StreamingService
      */
     public static function getEpisodeStream(string $episodeId, bool $force = false)
     {
+        // Indocast Filmbox: fb:<detailPath>:<season>:<episode>
+        if (str_starts_with($episodeId, 'fb:')) {
+            $parts = explode(':', $episodeId);
+            $path = $parts[1] ?? '';
+            $season = isset($parts[2]) ? (int) $parts[2] : null;
+            $episode = isset($parts[3]) ? (int) $parts[3] : null;
+
+            if ($path !== '') {
+                $play = StreamSource::play($path, $season, $episode);
+
+                if ($play) {
+                    return $play;
+                }
+            }
+        }
+
         if (str_starts_with($episodeId, 'mb-')) {
             if (preg_match('/^mb-(.*?)-ep-(\d+)$/', $episodeId, $m)) {
                 return NartoMovieBoxService::resolveEpisodeStream('mb-' . $m[1], (int)$m[2]);
@@ -337,7 +353,7 @@ class StreamingService
         $chitoEpisode = ChitogenxService::parseEpisodeId($episodeId);
 
         if ($chitoEpisode) {
-            $play = ChitogenxService::play(
+            $play = StreamSource::play(
                 $chitoEpisode['slug'],
                 $chitoEpisode['season'],
                 $chitoEpisode['episode']
@@ -386,7 +402,7 @@ class StreamingService
         }
 
         // Provider utama: Chitogenx.
-        $chito = ChitogenxService::detail($slug);
+        $chito = StreamSource::detail($slug);
 
         if ($chito && ($chito['type'] ?? '') === 'movie') {
             return $chito;
@@ -420,11 +436,21 @@ class StreamingService
      */
     public static function getMovieStream(string $movieId, bool $force = false)
     {
+        // Indocast Filmbox: fb:<detailPath>
+        if (str_starts_with($movieId, 'fb:')) {
+            $path = substr($movieId, 3);
+            $play = StreamSource::play($path);
+
+            if ($play) {
+                return $play;
+            }
+        }
+
         // Provider utama: Chitogenx. URL bertanda tangan -> tanpa cache.
         $chitoMovie = ChitogenxService::parseEpisodeId($movieId);
 
         if ($chitoMovie && $chitoMovie['season'] === null) {
-            $play = ChitogenxService::play($chitoMovie['slug']);
+            $play = StreamSource::play($chitoMovie['slug']);
 
             return $play ?: null;
         }
