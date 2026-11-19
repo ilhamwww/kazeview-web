@@ -117,10 +117,9 @@
                  class="absolute inset-x-0 bottom-[19%] md:bottom-[24%] z-10 px-4 md:px-12"
                  @if($index !== 0) style="display:none" @endif>
                 <div class="max-w-[92%] sm:max-w-xl lg:max-w-2xl">
-                    <div class="mb-2 flex items-center gap-2 text-[11px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-300">
-                        <span class="text-[#E50914] text-base md:text-lg font-black leading-none">K</span>
+                    <p class="mb-2 text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-400">
                         {{ ($hero['is_series'] ?? false) ? 'Serial' : 'Film' }}
-                    </div>
+                    </p>
 
                     <h1 class="text-[32px] leading-[1.02] sm:text-5xl lg:text-6xl font-black tracking-tight line-clamp-2 drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)]">
                         {{ $hero['title'] ?? '' }}
@@ -165,7 +164,7 @@
                 <svg x-show="muted" class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/></svg>
                 <svg x-show="!muted" class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></svg>
             </button>
-            <span class="hidden md:inline-block border-l-[3px] border-zinc-300 bg-[rgba(51,51,51,0.6)] py-1.5 pl-3 pr-10 text-base font-medium text-white">13+</span>
+
         </div>
 
         {{-- Indikator slide --}}

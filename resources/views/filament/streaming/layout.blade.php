@@ -942,22 +942,22 @@
                 <button type="button" @click="setSearchCategory('movie')"
                     :class="searchCategory === 'movie' ? 'bg-red-600 text-white font-bold shadow-md shadow-red-600/30' : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'"
                     class="px-3 py-1 rounded-full whitespace-nowrap transition text-xs">
-                    🎬 Film
+                    Film
                 </button>
                 <button type="button" @click="setSearchCategory('series')"
                     :class="searchCategory === 'series' ? 'bg-red-600 text-white font-bold shadow-md shadow-red-600/30' : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'"
                     class="px-3 py-1 rounded-full whitespace-nowrap transition text-xs">
-                    📺 Series
+                    Series
                 </button>
                 <button type="button" @click="setSearchCategory('anime')"
                     :class="searchCategory === 'anime' ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-600/30' : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'"
                     class="px-3 py-1 rounded-full whitespace-nowrap transition text-xs">
-                    ⛩️ Anime
+                    Anime
                 </button>
                 <button type="button" @click="setSearchCategory('dracin')"
                     :class="searchCategory === 'dracin' ? 'bg-amber-600 text-white font-bold shadow-md shadow-amber-600/30' : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'"
                     class="px-3 py-1 rounded-full whitespace-nowrap transition text-xs">
-                    🎭 Dracin
+                    Dracin
                 </button>
             </div>
 
@@ -1188,7 +1188,7 @@
                     </div>
                     <div class="flex items-start gap-3">
                         <div class="w-6 h-6 rounded-full bg-red-600/20 text-red-400 font-bold flex items-center justify-center flex-shrink-0 text-xs">2</div>
-                        <div>Gulir ke bawah lalu pilih opsi <strong>"Tambah ke Layar Utama" (Add to Home Screen)</strong> ➕.</div>
+                        <div>Gulir ke bawah lalu pilih opsi <strong>"Tambah ke Layar Utama" (Add to Home Screen)</strong>.</div>
                     </div>
                     <div class="flex items-start gap-3">
                         <div class="w-6 h-6 rounded-full bg-red-600/20 text-red-400 font-bold flex items-center justify-center flex-shrink-0 text-xs">3</div>

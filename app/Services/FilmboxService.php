@@ -83,6 +83,18 @@ class FilmboxService
     }
 
     /**
+     * Bersihkan judul: buang emoji, nama provider, dan spasi berlebih.
+     */
+    public static function cleanText(string $text): string
+    {
+        $text = preg_replace('/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}\x{200D}\x{2190}-\x{21FF}\x{2700}-\x{27BF}]/u', '', $text) ?? $text;
+        $text = str_ireplace(['moviebox', 'one room', 'onerom'], 'Katalog', $text);
+        $text = preg_replace('/\s{2,}/', ' ', $text) ?? $text;
+
+        return trim($text, " \t\n\r\0\x0B-–—•|");
+    }
+
+    /**
      * detailPath -> slug publik (buang akhiran hash).
      */
     public static function slugFromPath(string $detailPath): string
@@ -124,7 +136,7 @@ class FilmboxService
 
         return [
             'id' => self::ID_PREFIX . ':' . $path,
-            'title' => (string) ($item['title'] ?? 'Tanpa Judul'),
+            'title' => self::cleanText((string) ($item['title'] ?? 'Tanpa Judul')),
             'type' => $type,
             'quality' => 'HD',
             'year' => $year,
@@ -202,6 +214,8 @@ class FilmboxService
             }
 
             $sections = [];
+            $usedTitles = [];
+
             foreach ((array) ($data['content_sections'] ?? []) as $section) {
                 $items = [];
                 $seen = [];
@@ -215,12 +229,17 @@ class FilmboxService
                     }
                 }
 
-                if (empty($items)) {
+                $title = self::cleanText((string) ($section['section_title'] ?? 'Lainnya'));
+
+                // Jangan tampilkan rak dengan judul sama dua kali.
+                if (empty($items) || $title === '' || isset($usedTitles[mb_strtolower($title)])) {
                     continue;
                 }
 
+                $usedTitles[mb_strtolower($title)] = true;
+
                 $sections[] = [
-                    'title' => (string) ($section['section_title'] ?? 'Lainnya'),
+                    'title' => $title,
                     'slug' => self::slugFromPath((string) ($section['section_path'] ?? 'section')),
                     'section_id' => (string) ($section['section_id'] ?? ''),
                     'items' => $items,
