@@ -7,7 +7,7 @@
     ], $heroes);
 @endphp
 
-<div class="min-h-screen bg-[#141414] text-white pb-28">
+<div class="min-h-screen bg-[#050505] text-white pb-28">
 
     {{-- ================= BILLBOARD ================= --}}
     @if(!empty($heroes))
@@ -108,7 +108,7 @@
         {{-- Vignette ala Netflix --}}
         <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent md:via-black/20"></div>
         <div class="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/70 to-transparent"></div>
-        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#141414] via-[#141414]/70 to-transparent"></div>
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#050505] via-[#050505]/70 to-transparent"></div>
 
         {{-- Info judul --}}
         @foreach($heroes as $index => $hero)
@@ -117,20 +117,21 @@
                  class="absolute inset-x-0 bottom-[19%] md:bottom-[24%] z-10 px-4 md:px-12"
                  @if($index !== 0) style="display:none" @endif>
                 <div class="max-w-[92%] sm:max-w-xl lg:max-w-2xl">
-                    <p class="mb-2 text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-400">
-                        {{ ($hero['is_series'] ?? false) ? 'Serial' : 'Film' }}
-                    </p>
+                    <div class="mb-4 flex items-center gap-2">
+                        <span class="inline-flex items-center gap-1.5 rounded bg-red-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-white">Sorotan</span>
+                        <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-400">{{ ($hero['is_series'] ?? false) ? 'Serial' : 'Film' }}</span>
+                    </div>
 
-                    <h1 class="text-[32px] leading-[1.02] sm:text-5xl lg:text-6xl font-black tracking-tight line-clamp-2 drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)]">
+                    <h1 class="text-4xl font-black leading-[0.95] tracking-tight line-clamp-2 drop-shadow-2xl sm:text-5xl lg:text-6xl xl:text-7xl">
                         {{ $hero['title'] ?? '' }}
                     </h1>
 
-                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm font-semibold text-zinc-200">
+                    <div class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-semibold text-zinc-300">
                         @if(!empty($hero['rating']))
-                            <span class="flex items-center gap-1 text-[#46d369]"><svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ $star }}"/></svg>{{ $hero['rating'] }}</span>
+                            <span class="flex items-center gap-1 text-yellow-400"><svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ $star }}"/></svg>{{ number_format((float) $hero['rating'], 1) }}</span>
                         @endif
                         @if(!empty($hero['year']))<span>{{ $hero['year'] }}</span>@endif
-                        <span class="rounded-sm border border-white/40 px-1 py-px text-[10px] leading-none">HD</span>
+                        <span class="rounded border border-zinc-500 px-1.5 py-0.5 text-[10px] font-black text-zinc-200">HD</span>
                         @if(!empty($hero['genre']))
                             <span class="text-zinc-300">{{ implode(' • ', array_slice(array_map('trim', explode(',', $hero['genre'])), 0, 3)) }}</span>
                         @endif
@@ -142,14 +143,14 @@
 
                     <div class="mt-5 flex items-center gap-2.5 md:gap-3">
                         <a href="{{ $hero['url'] }}"
-                           class="inline-flex items-center gap-2 rounded-[4px] bg-white px-5 md:px-7 py-2 md:py-2.5 text-sm md:text-lg font-bold text-black transition hover:bg-white/80 active:scale-95">
-                            <svg class="w-5 h-5 md:w-7 md:h-7 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-                            Putar
+                           class="inline-flex items-center gap-2 rounded-lg bg-white pl-5 pr-6 py-3 text-sm font-bold text-black transition hover:bg-zinc-200 active:scale-95">
+                            <svg class="h-5 w-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                            {{ ($hero['is_series'] ?? false) ? 'Tonton Sekarang' : 'Putar' }}
                         </a>
                         <a href="{{ $hero['url'] }}"
-                           class="inline-flex items-center gap-2 rounded-[4px] bg-[rgba(109,109,110,0.7)] px-5 md:px-7 py-2 md:py-2.5 text-sm md:text-lg font-bold text-white transition hover:bg-[rgba(109,109,110,0.45)] active:scale-95">
-                            <svg class="w-5 h-5 md:w-7 md:h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 11v5M12 8h.01"/></svg>
-                            <span class="sm:hidden">Info</span><span class="hidden sm:inline">Info Selengkapnya</span>
+                           class="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-zinc-500/30 px-5 py-3 text-sm font-bold text-white backdrop-blur-md transition hover:bg-zinc-500/50 active:scale-95">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+                            <span class="sm:hidden">Info</span><span class="hidden sm:inline">Info Lengkap</span>
                         </a>
                     </div>
                 </div>
@@ -181,13 +182,13 @@
     @endif
 
     {{-- ================= RAK ================= --}}
-    <div class="relative z-10 -mt-[6vh] md:-mt-[9vh] space-y-6 md:space-y-10">
+    <div class="relative z-10 -mt-[6vh] md:-mt-[9vh] space-y-7 md:space-y-11">
 
         {{-- Kategori cepat (mobile, ala chip Netflix) --}}
         @if(!empty($quickLinks))
-            <div class="md:hidden flex gap-2 overflow-x-auto px-4 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+            <div class="md:hidden flex gap-2 overflow-x-auto px-6 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                 @foreach($quickLinks as $link)
-                    <a href="{{ $link['url'] }}" class="shrink-0 rounded-full border border-white/40 bg-black/30 px-3.5 py-1.5 text-[13px] font-semibold text-white backdrop-blur active:bg-white/10">{{ $link['label'] }}</a>
+                    <a href="{{ $link['url'] }}" class="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-bold tracking-wide text-zinc-300 backdrop-blur transition hover:bg-white/10 hover:text-white">{{ $link['label'] }}</a>
                 @endforeach
             </div>
         @endif
@@ -195,31 +196,35 @@
         {{-- Lanjutkan Menonton --}}
         @if(!empty($continueWatching))
             <section class="relative">
-                <h2 class="mb-2.5 md:mb-3 px-4 md:px-12 text-[17px] md:text-[22px] font-bold tracking-tight text-zinc-100">Lanjutkan Menonton untuk Kamu</h2>
-                <div class="flex gap-2 md:gap-2.5 overflow-x-auto px-4 md:px-12 pb-3 pt-1 scroll-px-4 md:scroll-px-12 snap-x [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                <h2 class="mb-3 px-6 md:px-12 text-xl md:text-2xl font-black tracking-tight text-white">Lanjutkan Menonton untuk Kamu</h2>
+                <div class="flex gap-x-4 overflow-x-auto overflow-y-hidden px-6 md:px-12 pb-6 pt-1 scroll-px-6 md:scroll-px-12 snap-x [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                     @foreach($continueWatching as $cw)
-                        <a href="{{ $cw['url'] }}" class="group w-[112px] sm:w-[136px] md:w-[166px] xl:w-[188px] shrink-0 snap-start">
-                            <div class="relative aspect-[2/3] overflow-hidden rounded-t-[4px] bg-zinc-900 transition duration-300 group-hover:scale-[1.04]">
+                        <a href="{{ $cw['url'] }}" class="group block w-[136px] sm:w-[158px] md:w-[182px] xl:w-[200px] shrink-0 snap-start">
+                            <div class="relative aspect-[2/3] overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/5 shadow-lg shadow-black/40 transition group-hover:ring-red-600/60">
                                 @if(!empty($cw['thumbnail']))
-                                    <img src="{{ $cw['thumbnail'] }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" class="h-full w-full object-cover">
+                                    <img src="{{ $cw['thumbnail'] }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"
+                                         class="h-full w-full object-cover transition duration-500 group-hover:scale-105">
                                 @endif
-                                <div class="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100">
-                                    <span class="grid h-10 w-10 md:h-12 md:w-12 place-items-center rounded-full border-2 border-white bg-black/50">
-                                        <svg class="ml-0.5 w-4 h-4 md:w-5 md:h-5 fill-white" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+
+                                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/0 to-black/0 opacity-70 transition group-hover:opacity-100"></div>
+
+                                <div class="absolute inset-0 grid place-items-center opacity-0 transition group-hover:opacity-100">
+                                    <span class="grid h-11 w-11 place-items-center rounded-full border-2 border-white bg-black/55">
+                                        <svg class="ml-0.5 h-4 w-4 fill-white" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
                                     </span>
                                 </div>
-                                <span class="absolute left-1.5 top-1.5 rounded-sm bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-200">{{ $cw['label'] }}</span>
+
+                                <span class="absolute left-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-200">{{ $cw['label'] }}</span>
+
+                                <div class="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+                                    <div class="h-full bg-[#E50914]" style="width: {{ !empty($cw['has_progress']) ? max(4, min(100, $cw['progress_percent'])) : 4 }}%"></div>
+                                </div>
                             </div>
-                            {{-- Progress bar --}}
-                            <div class="h-[3px] w-full bg-zinc-700/80">
-                                <div class="h-full bg-[#E50914]" style="width: {{ !empty($cw['has_progress']) ? max(6, min(100, $cw['progress_percent'])) : 6 }}%"></div>
-                            </div>
-                            <div class="rounded-b-[4px] bg-[#181818] px-2 py-1.5">
-                                <h3 class="truncate text-[12px] md:text-[13px] font-semibold text-zinc-200" title="{{ $cw['title'] }}">{{ $cw['title'] }}</h3>
-                                <p class="truncate text-[10px] md:text-[11px] text-zinc-400">
-                                    @if(!empty($cw['episode']) && $cw['label'] !== 'Film')Eps {{ $cw['episode'] }}@if($cw['ago']) · @endif @endif{{ $cw['ago'] }}
-                                </p>
-                            </div>
+
+                            <h3 class="mt-2 truncate text-xs md:text-[13px] font-semibold text-zinc-200 transition group-hover:text-red-500" title="{{ $cw['title'] }}">{{ $cw['title'] }}</h3>
+                            <p class="truncate text-[11px] text-zinc-500">
+                                @if(!empty($cw['episode']) && $cw['label'] !== 'Film')Episode {{ $cw['episode'] }}@if($cw['ago']) · @endif @endif{{ $cw['ago'] }}
+                            </p>
                         </a>
                     @endforeach
                 </div>
