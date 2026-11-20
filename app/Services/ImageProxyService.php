@@ -92,13 +92,10 @@ class ImageProxyService
 
     public static function fetch(string $url)
     {
-        $cacheKey = 'img_' . md5($url);
-
-        $cached = Cache::get($cacheKey);
-
-        if (is_array($cached) && !empty($cached['body'])) {
-            return response($cached['body'], 200, [
-                'Content-Type' => $cached['type'] ?: 'image/jpeg',
+        // Cache di disk: byte gambar tidak lagi masuk tabel cache database.
+        if ($hit = ImageDiskCache::get($url)) {
+            return response($hit['body'], 200, [
+                'Content-Type' => $hit['type'],
                 'Cache-Control' => 'public, max-age=86400',
             ]);
         }
@@ -124,7 +121,7 @@ class ImageProxyService
             return response('', 404);
         }
 
-        Cache::put($cacheKey, ['body' => $body, 'type' => $type], 86400);
+        ImageDiskCache::put($url, $body, $type);
 
         return response($body, 200, [
             'Content-Type' => $type ?: 'image/jpeg',

@@ -1916,10 +1916,14 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
         abort(403, 'Unauthorized domain');
     }
 
-    $cacheKey = 'img_proxy_' . md5($url);
-    $cacheDuration = 86400 * 30; // Cache 30 hari di database agar super ringan & hemat resource
+    // Cache di disk (bukan tabel cache DB) supaya database tidak membengkak.
+    if ($hit = \App\Services\ImageDiskCache::get($url)) {
+        return response($hit['body'])
+            ->header('Content-Type', $hit['type'])
+            ->header('Cache-Control', 'public, max-age=2592000, immutable');
+    }
 
-    $imageData = \Illuminate\Support\Facades\Cache::remember($cacheKey, $cacheDuration, function () use ($url, $host) {
+    $imageData = (function () use ($url, $host) {
         try {
             // Khusus aset Shinigami, lewati jembatan NUC residensial Indonesia agar 100% bebas blokir Cloudflare
             if (str_contains($host, 'shngm.id') || str_contains($host, 'shngm.io')) {
@@ -1973,13 +1977,16 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
             // Log or ignore
         }
         return null;
-    });
+    })();
 
     if (!$imageData) {
         abort(404, 'Image not found');
     }
 
-    return response(base64_decode($imageData['content']))
+    $imageBody = base64_decode($imageData['content']);
+    \App\Services\ImageDiskCache::put($url, $imageBody, (string) $imageData['content_type']);
+
+    return response($imageBody)
         ->header('Content-Type', $imageData['content_type'])
         ->header('Cache-Control', 'public, max-age=2592000, immutable');
 })->name('api.proxy-image');

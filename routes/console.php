@@ -64,3 +64,5 @@ Artisan::command('kz:warm-animek', function () {
 })->purpose('Warm Animekompi catalog so the first visitor does not wait');
 
 \Illuminate\Support\Facades\Schedule::command('kz:warm-animek')->everyFifteenMinutes()->withoutOverlapping();
+
+\Illuminate\Support\Facades\Schedule::command('kz:prune-cache')->hourly()->withoutOverlapping();
