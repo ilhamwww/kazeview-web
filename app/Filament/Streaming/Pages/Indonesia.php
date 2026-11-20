@@ -60,11 +60,8 @@ class Indonesia extends Page
      */
     public function providers(): array
     {
-        // Nama provider tidak diekspos; "Original" = katalog Vidio.
-        return [
-            ['id' => self::PROVIDER, 'label' => 'Katalog'],
-            ['id' => self::PROVIDER_VIDIO, 'label' => 'Original'],
-        ];
+        // Nama provider tidak diekspos; hanya katalog utama yang ditampilkan.
+        return [['id' => self::PROVIDER, 'label' => 'Katalog']];
     }
 
     public array $providers = [];
