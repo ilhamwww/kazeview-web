@@ -65,6 +65,11 @@ class StreamingHome extends BaseDashboard
         foreach ($sections as $section) {
             $slug = $section['slug'] ?? '';
 
+            // Rak "Gratis Sekarang" dari sumber tidak ditampilkan di beranda.
+            if (stripos((string) ($section['title'] ?? ''), 'gratis') !== false || stripos($slug, 'gratis') !== false) {
+                continue;
+            }
+
             // Hanya item yang benar-benar bisa dibuka (punya slug). Ini membuang placeholder
             // seperti "Recently Added Episodes" yang tidak punya link/gambar asli.
             $items = array_values(array_filter(
