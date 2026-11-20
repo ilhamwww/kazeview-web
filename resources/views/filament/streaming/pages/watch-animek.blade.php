@@ -378,6 +378,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
 <script src="/js/kz-fullscreen.js?v=3"></script>
+<script src="/js/kz-player-core.js?v=1"></script>
 <script>
 function initKzAnimek() {
     const videoUrl = @json($stream['video_url'] ?? '');
@@ -416,108 +417,17 @@ function initKzAnimek() {
     }
 
     const useNativeFs = () => !!(window.KzFs && window.KzFs.isTouch());
-    let art = null;
-
-    art = new Artplayer({
+    const art = new Artplayer(KzPlayerCore.config({
         container: shell,
         url: videoUrl,
-        type: videoUrl.includes('.m3u8') ? 'm3u8' : 'mp4',
-        theme: '#E50914',
-        volume: 0.8,
-        muted: false,
-        autoplay: true,
-        pip: true,
-        setting: true,
-        loop: false,
-        flip: false,
-        playbackRate: false,
-        aspectRatio: false,
-        fullscreen: !useNativeFs(),
-        fullscreenWeb: !useNativeFs(),
-        subtitleOffset: false,
-        miniProgressBar: false,
-        playsInline: true,
-        airplay: true,
-        hotkey: true,
-        controls: [
-            {
-                name: 'kz-fs',
-                position: 'right',
-                index: 70,
-                html: '<svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="14" height="10" rx="2"/><path d="M20 4v5h-5"/><path d="M20 9a8 8 0 0 0-8-6"/></svg>',
-                tooltip: 'Layar penuh',
-                style: useNativeFs() ? {} : { display: 'none' },
-                click: function () {
-                    if (!window.KzFs) return;
-                    if (window.KzFs.isActive(shell)) window.KzFs.exit();
-                    else window.KzFs.enter(shell, { video: art.video });
-                },
-            },
-            {
-                position: 'left',
-                index: 10,
-                html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>',
-                tooltip: 'Mundur 10 Detik',
-                click: function () { if (art) art.seek = Math.max(0, art.currentTime - 10); },
-            },
-            {
-                position: 'left',
-                index: 11,
-                html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg>',
-                tooltip: 'Maju 10 Detik',
-                click: function () { if (art) art.seek = Math.min(art.duration || 999999, art.currentTime + 10); },
-            },
-        ],
-        settings: [
-            {
-                html: 'Playback speed',
-                name: 'playback-speed',
-                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>',
-                tooltip: '1x',
-                selector: [
-                    { html: '0.5x', speed: 0.5 },
-                    { html: '0.75x', speed: 0.75 },
-                    { default: true, html: '1x', speed: 1.0 },
-                    { html: '1.25x', speed: 1.25 },
-                    { html: '1.5x', speed: 1.5 },
-                    { html: '2x', speed: 2.0 },
-                ],
-                onSelect: function (item) { art.playbackRate = item.speed; return item.html; },
-            },
-            {
-                html: 'Picture-in-Picture',
-                name: 'pip',
-                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="11" y="9" width="9" height="6" rx="1" stroke="currentColor" fill="none"/></svg>',
-                tooltip: 'Off',
-                selector: [{ html: 'On' }, { default: true, html: 'Off' }],
-                onSelect: function (item) { art.pip = !art.pip; return art.pip ? 'On' : 'Off'; },
-            },
-            {
-                html: 'Flip Video',
-                name: 'flip',
-                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
-                tooltip: 'Normal',
-                selector: [
-                    { default: true, html: 'Normal', flip: 'normal' },
-                    { html: 'Horizontal', flip: 'horizontal' },
-                    { html: 'Vertical', flip: 'vertical' },
-                ],
-                onSelect: function (item) { art.flip = item.flip; return item.html; },
-            },
-            {
-                html: 'Aspect Ratio',
-                name: 'aspect-ratio',
-                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>',
-                tooltip: 'Default',
-                selector: [
-                    { default: true, html: 'Default', ratio: 'default' },
-                    { html: '16:9', ratio: '16:9' },
-                    { html: '4:3', ratio: '4:3' },
-                ],
-                onSelect: function (item) { art.aspectRatio = item.ratio; return item.html; },
-            },
-        ],
-    });
+        poster: poster,
+        nativeFs: useNativeFs(),
+        getArt: () => art,
+        shell: shell,
+    }));
+
+    // Judul episode tetap tampil di menu setelan kalau nanti subtitle tersedia.
+    window.__kzArt = art;
 
     // ---- Tampilkan / sembunyikan kontrol (gaya player anime lama) ----
     let hideTimer = null;
@@ -540,38 +450,8 @@ function initKzAnimek() {
     shell.addEventListener('mousemove', showControls, { passive: true });
     shell.addEventListener('touchstart', showControls, { passive: true });
 
-    // ---- Fullscreen otomatis (mengikuti player anime lama) ----
-    // HP: native fullscreen + kunci landscape saat video mulai diputar.
-    // Desktop: web fullscreen (theater) saat video mulai diputar.
-    const enterAutoFs = () => {
-        if (shell.dataset.autofsDone === '1') return;
-
-        if (useNativeFs()) {
-            if (!window.KzFs || window.KzFs.isActive(shell)) return;
-            shell.dataset.autofsDone = '1';
-            window.KzFs.enter(shell, { video: art.video });
-            setTimeout(() => {
-                if (window.KzFs && !window.KzFs.isActive(shell)) shell.dataset.autofsDone = '';
-            }, 900);
-            return;
-        }
-
-        shell.dataset.autofsDone = '1';
-        try { if (!art.fullscreenWeb) art.fullscreenWeb = true; } catch (e) {}
-    };
-
-    art.on('play', enterAutoFs);
-    art.on('video:play', enterAutoFs);
-    if (art.video) art.video.addEventListener('play', enterAutoFs);
-
-    // Catatan: jangan pasang fullscreen pada klik/tap sembarang di pemutar.
-    // Itu membuat tombol pause/seek ikut memicu layar penuh.
-
-    // Fullscreen native ditolak: hanya desktop yang jatuh ke web fullscreen.
-    shell.addEventListener('kz-fs-failed', () => {
-        if (useNativeFs()) return;
-        try { art.fullscreenWeb = true; } catch (e) {}
-    });
+    // ---- Fullscreen otomatis: HP native + landscape, desktop web fullscreen ----
+    KzPlayerCore.bindAutoFullscreen(art, shell);
 
     art.on('fullscreenWeb', (state) => {
         document.body.classList.toggle('kz-fullscreen-web-active', state);
