@@ -54,6 +54,13 @@ class StreamingHome extends BaseDashboard
             fn ($i) => $i['url'] !== '#'
         )), 0, 8);
         $this->buildSections($sections);
+
+        // Top 10 beranda memakai rak trending Filmbox (campuran film & serial).
+        $fbTrending = \App\Services\FilmboxService::trendingNow(10);
+
+        if (!empty($fbTrending)) {
+            $this->topTen = $fbTrending;
+        }
         $this->quickLinks = $this->buildQuickLinks();
         $this->continueWatching = $this->buildContinueWatching();
     }

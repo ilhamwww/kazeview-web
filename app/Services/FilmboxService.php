@@ -429,6 +429,46 @@ class FilmboxService
     }
 
     /**
+     * Top 10 dari rak trending Filmbox (campuran film & serial).
+     */
+    public static function trendingNow(int $limit = 10): array
+    {
+        $json = self::request('/trending', [], 1800);
+        $data = is_array($json) ? ($json['data'] ?? $json) : null;
+
+        // Bentuk respons: { data: { items: [...], pager: {...} } }
+        $rows = is_array($data) && isset($data['items']) && is_array($data['items'])
+            ? $data['items']
+            : (is_array($data) && array_is_list($data) ? $data : null);
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $out = [];
+        $seen = [];
+
+        foreach ($rows as $row) {
+            $mapped = self::mapItem((array) $row);
+
+            if (!$mapped || isset($seen[$mapped['slug']])) {
+                continue;
+            }
+
+            $seen[$mapped['slug']] = true;
+            $mapped['is_series'] = ($mapped['type'] ?? '') === 'series';
+            $mapped['thumbnail'] = \App\Services\ImageProxyService::wrap((string) $mapped['thumbnail']);
+            $out[] = $mapped;
+
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Cari detailPath dari slug publik (atau detailPath penuh).
      */
     public static function resolvePath(string $slugOrPath): ?string

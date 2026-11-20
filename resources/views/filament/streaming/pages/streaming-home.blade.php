@@ -234,7 +234,7 @@
         {{-- Top 10 --}}
         @if(!empty($topTen))
             @include('filament.streaming.partials.home-row', [
-                'title' => 'Hari Ini di KZSTRM',
+                'title' => 'Top 10 Minggu Ini',
                 'items' => $topTen,
                 'variant' => 'top10',
             ])
