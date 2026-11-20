@@ -378,7 +378,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
 <script src="/js/kz-fullscreen.js?v=3"></script>
-<script src="/js/kz-player-core.js?v=1"></script>
+<script src="/js/kz-player-core.js?v=9"></script>
 <script>
 function initKzAnimek() {
     const videoUrl = @json($stream['video_url'] ?? '');
@@ -428,6 +428,7 @@ function initKzAnimek() {
 
     // Judul episode tetap tampil di menu setelan kalau nanti subtitle tersedia.
     window.__kzArt = art;
+    KzPlayerCore.enhance(art, shell);
 
     // ---- Tampilkan / sembunyikan kontrol (gaya player anime lama) ----
     let hideTimer = null;

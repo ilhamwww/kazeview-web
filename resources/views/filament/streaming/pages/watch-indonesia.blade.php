@@ -512,7 +512,7 @@
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
     <script src="/js/kz-fullscreen.js?v=3"></script>
-<script src="/js/kz-player-core.js?v=2"></script>
+<script src="/js/kz-player-core.js?v=9"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
         (function () {
@@ -1024,6 +1024,7 @@
                         if (kzKeepType) artConfig.customType = kzKeepType;
 
                         this.art = new Artplayer(artConfig);
+                        KzPlayerCore.enhance(this.art, self.$refs.playerShell);
 
                         // Stamp data-name on setting items for custom styling
                         const stampSettingNames = () => {

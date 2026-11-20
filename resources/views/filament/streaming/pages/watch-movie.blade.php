@@ -460,7 +460,7 @@
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
     <script src="/js/kz-fullscreen.js?v=3"></script>
-<script src="/js/kz-player-core.js?v=2"></script>
+<script src="/js/kz-player-core.js?v=9"></script>
     <script src="/js/kz-player-v3.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
@@ -885,6 +885,7 @@
                         this.art = new Artplayer(kzCfg);
                         window.__kzArt = this.art;
                         window.art = this.art;
+                        KzPlayerCore.enhance(this.art, this.$refs.playerShell);
                         // Stamp data-name on setting items for custom styling
                         const stampSettingNames = () => {
                             const items = document.querySelectorAll('.art-setting-item');
@@ -893,7 +894,6 @@
                                 if (names[idx]) item.setAttribute('data-name', names[idx]);
                             });
                         };
-                        window.art = this.art;
                         this.art.on('setting', stampSettingNames);
                         this.art.on('fullscreenWeb', (state) => {
                             document.body.classList.toggle('kz-fullscreen-web-active', state);

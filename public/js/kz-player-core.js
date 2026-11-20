@@ -376,6 +376,121 @@
         } catch (e) {}
     }
 
+
+    var __kzUiStyle = false;
+    function injectUiStyle() {
+        if (__kzUiStyle) return;
+        __kzUiStyle = true;
+        var st = document.createElement('style');
+        st.id = 'kz-ui-auto-style';
+        st.textContent = [
+            '.kz-ui-hidden .art-bottom,.kz-ui-hidden .art-top,.kz-ui-hidden .art-mask{opacity:0!important;pointer-events:none!important;transition:opacity .22s ease}',
+            '.kz-ui-hidden .art-progress,.kz-ui-hidden .art-controls{opacity:0!important;pointer-events:none!important}',
+            '.kz-ui-hidden{cursor:none}',
+            '.kz-ui-hidden .art-setting,.kz-ui-hidden .art-contextmenus{opacity:1!important;pointer-events:auto!important}',
+            '@media (hover:hover){.art-video-player:hover{cursor:default}}'
+        ].join('\n');
+        document.head.appendChild(st);
+    }
+
+    /**
+     * UI auto-hide ala YouTube/Netflix:
+     *  - desktop: mouse bergerak -> muncul, diam 3 detik -> hilang
+     *  - HP: tap di area video -> sembunyi/muncul
+     *  - pause/panel setelan terbuka -> UI selalu tampil
+     */
+    function enhance(art, shell) {
+        if (!art || !shell || shell.__kzUiBound) return;
+        shell.__kzUiBound = true;
+        injectUiStyle();
+
+        var visible = true;
+        var timer = null;
+        var touch = isTouch();
+        var suppressUntil = 0;
+
+        function panelOpen() {
+            var s = shell.querySelector('.art-setting');
+            if (!s) return false;
+            return s.offsetHeight > 0 && getComputedStyle(s).opacity !== '0';
+        }
+
+        function apply(v) {
+            visible = v;
+            shell.classList.toggle('kz-ui-hidden', !v);
+            try { art.controls.show = v; } catch (e) {}
+        }
+
+        function schedule() {
+            clearTimeout(timer);
+            if (art.paused) return;
+            timer = setTimeout(function () {
+                if (!panelOpen()) apply(false);
+            }, 3000);
+        }
+
+        function show(force) {
+            if (!force && Date.now() < suppressUntil) return;
+            apply(true);
+            schedule();
+        }
+
+        function hide() {
+            clearTimeout(timer);
+            if (!art.paused && !panelOpen()) apply(false);
+        }
+
+        if (!touch) {
+            shell.addEventListener('mousemove', function () { if (!visible || timer === null) show(); else schedule(); });
+            shell.addEventListener('mouseleave', hide);
+        } else {
+            var lastToggle = 0;
+            var toggleUi = function (e) {
+                if (e.target.closest('.art-controls, .art-progress, .art-setting, .art-contextmenus, a, button, input')) return;
+                var now = Date.now();
+                if (now - lastToggle < 350) return; // touchend + click bisa dobel
+                lastToggle = now;
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+                // Baca dari DOM, bukan variabel lokal: auto-hide bisa berjalan
+                // tanpa lewat jalur ini, jadi status harus selalu yang terlihat.
+                if (shell.classList.contains('kz-ui-hidden')) {
+                    show(true);
+                } else {
+                    // Cegah event 'play' dari tap yang sama langsung memunculkan UI lagi.
+                    suppressUntil = Date.now() + 900;
+                    hide();
+                }
+            };
+            // Sebagian browser menahan 'click' setelah touchstart dicegah Artplayer,
+            // jadi dengarkan touchend juga.
+            var lastTouch = 0;
+            // Jangan biarkan Artplayer menganggap tap ini sebagai play/pause:
+            // tap di area video khusus untuk sembunyikan/munculkan UI.
+            shell.addEventListener('touchstart', function (e) {
+                if (e.target.closest('.art-controls, .art-progress, .art-setting, .art-contextmenus, a, button, input')) return;
+                e.stopPropagation();
+            }, true);
+            shell.addEventListener('touchend', function (e) {
+                lastTouch = Date.now();
+                toggleUi(e);
+            }, true);
+            // Click susulan setelah touchend diabaikan supaya tidak toggle dua kali.
+            shell.addEventListener('click', function (e) {
+                if (Date.now() - lastTouch < 800) return;
+                toggleUi(e);
+            }, true);
+        }
+
+        art.on('play', show);
+        art.on('pause', function () { clearTimeout(timer); apply(true); });
+        art.on('seek', show);
+        art.on('video:play', show);
+        art.on('destroy', function () { clearTimeout(timer); });
+
+        if (!art.paused) schedule();
+    }
+
     window.KzPlayerCore = {
         isTouch: isTouch,
         icons: ICONS,
@@ -384,6 +499,7 @@
         baseControls: baseControls,
         config: config,
         bindAutoFullscreen: bindAutoFullscreen,
+        enhance: enhance,
         attachSubtitles: attachSubtitles,
     };
 })();
