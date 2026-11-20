@@ -10,10 +10,6 @@
 {{-- Header situs fixed: tinggi 56px di HP, top-4 + 56px di desktop. --}}
 <div class="pt-[calc(56px+env(safe-area-inset-top,0px))] lg:pt-[88px]">
     <div class="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3 md:px-8">
-        <a href="/animek" class="hidden shrink-0 items-center gap-2 sm:flex">
-            <span class="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-red-500 to-fuchsia-600 text-[11px] font-black text-white">A</span>
-            <span class="text-sm font-black tracking-tight text-white">Anime</span>
-        </a>
         <nav class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:ml-3" aria-label="Navigasi anime">
             @foreach($tabs as $key => [$label, $href])
                 <a href="{{ $href }}"
