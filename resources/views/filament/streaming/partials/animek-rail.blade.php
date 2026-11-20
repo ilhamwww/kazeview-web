@@ -11,7 +11,7 @@
             <a href="{{ $more }}" class="shrink-0 text-xs font-semibold text-zinc-400 transition hover:text-white">Lihat semua →</a>
         @endif
     </div>
-    <div class="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:-mx-8 md:px-8 [&::-webkit-scrollbar]:hidden">
+    <div class="flex snap-x gap-3 overflow-x-auto overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         @foreach($items as $item)
             <div class="w-[124px] shrink-0 snap-start sm:w-[142px] md:w-[160px]">
                 @include('filament.streaming.partials.animek-card', ['item' => $item, 'useEpisode' => $useEpisode ?? false])

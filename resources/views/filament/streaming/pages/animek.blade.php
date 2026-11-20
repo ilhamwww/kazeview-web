@@ -102,10 +102,10 @@
                 <h2 class="text-[17px] font-bold tracking-tight md:text-[21px]">Top 10 Hari Ini</h2>
                 <p class="mt-0.5 text-xs text-zinc-500">Paling banyak ditonton hari ini</p>
             </div>
-            <div class="-mx-4 flex snap-x gap-1 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:-mx-8 md:px-8 [&::-webkit-scrollbar]:hidden">
+            <div class="flex snap-x items-end gap-1 overflow-x-auto overflow-y-hidden pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 @foreach($trending as $n => $item)
                     <a href="{{ $item['url'] }}" class="group relative flex shrink-0 snap-start items-end" title="{{ $item['title'] }}">
-                        <span class="pointer-events-none -mr-5 select-none text-[96px] font-black leading-[0.8] text-transparent [-webkit-text-stroke:2px_rgba(255,255,255,0.28)] md:text-[124px]">{{ $n + 1 }}</span>
+                        <span class="pointer-events-none -mr-5 select-none text-[80px] font-black leading-[0.72] text-transparent [-webkit-text-stroke:2px_rgba(255,255,255,0.28)] md:text-[104px]">{{ $n + 1 }}</span>
                         <div class="relative w-[112px] overflow-hidden rounded-xl ring-1 ring-white/10 transition duration-300 group-hover:-translate-y-0.5 group-hover:ring-2 group-hover:ring-red-500/70 md:w-[138px]">
                             <img src="{{ $item['thumbnail'] }}" alt="{{ $item['title'] }}" loading="lazy" class="aspect-[2/3] w-full object-cover">
                             @if(!empty($item['episode']))
