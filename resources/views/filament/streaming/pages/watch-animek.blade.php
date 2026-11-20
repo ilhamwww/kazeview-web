@@ -285,6 +285,7 @@
                 <div class="min-w-0">
                     <div class="overflow-hidden rounded-xl border border-white/10 bg-black shadow-2xl shadow-black/60">
                         <div wire:ignore id="kz-animek-player" data-kz-fs class="kz-controls-visible relative isolate z-10 w-full aspect-video bg-black lg:rounded-2xl overflow-hidden lg:ring-1 lg:ring-white/10 shadow-2xl"></div>
+                        <div wire:ignore id="kz-animek-embed" class="hidden w-full aspect-video overflow-hidden bg-black lg:rounded-2xl"></div>
                     </div>
 
                     @if(empty($stream))
@@ -307,7 +308,7 @@
                             <div class="flex flex-wrap items-center gap-1.5">
                                 <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Server</span>
                                 @foreach($servers as $i => $srv)
-                                    <button type="button" data-src="{{ $srv['url'] }}"
+                                    <button type="button" data-src="{{ $srv['url'] }}" data-kind="{{ $srv['kind'] ?? 'video' }}"
                                             class="kz-server rounded-md border px-2.5 py-1 text-[11.5px] font-semibold transition {{ $i === 0 ? 'border-red-500/50 bg-red-600/15 text-white' : 'border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10' }}">{{ $srv['name'] }}</button>
                                 @endforeach
                             </div>
@@ -372,6 +373,7 @@
 <script>
 function initKzAnimek() {
     const videoUrl = @json($stream['video_url'] ?? '');
+    const embedUrl = @json($stream['embed_url'] ?? '');
     const poster = @json($m['poster']);
     const nextUrl = @json($next['url'] ?? '');
     const shell = document.getElementById('kz-animek-player');
@@ -379,8 +381,31 @@ function initKzAnimek() {
     const cur = document.querySelector('#kz-ep-list [data-current]');
     if (cur) cur.scrollIntoView({ block: 'nearest' });
 
-    if (!shell || shell.dataset.ready === '1' || !videoUrl) return;
+    const embedBox = document.getElementById('kz-animek-embed');
+
+    if (!shell || shell.dataset.ready === '1') return;
     shell.dataset.ready = '1';
+
+    // Sebagian judul (film) hanya punya server embed: tampilkan iframe pemutar.
+    const mountEmbed = (url) => {
+        if (!embedBox) return;
+        shell.classList.add('hidden');
+        embedBox.classList.remove('hidden');
+        embedBox.innerHTML = '<iframe src="' + url + '" class="h-full w-full" frameborder="0" scrolling="no" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>';
+    };
+
+    const showPlayer = () => {
+        if (embedBox) {
+            embedBox.classList.add('hidden');
+            embedBox.innerHTML = '';
+        }
+        shell.classList.remove('hidden');
+    };
+
+    if (!videoUrl) {
+        if (embedUrl) mountEmbed(embedUrl);
+        return;
+    }
 
     const useNativeFs = () => !!(window.KzFs && window.KzFs.isTouch());
     let art = null;
@@ -564,6 +589,12 @@ function initKzAnimek() {
             });
             btn.classList.remove('border-white/10', 'bg-white/5', 'text-zinc-300');
             btn.classList.add('border-red-500/50', 'bg-red-600/15', 'text-white');
+            if (btn.dataset.kind === 'embed') {
+                mountEmbed(btn.dataset.src);
+                return;
+            }
+
+            showPlayer();
             try { art.switchUrl(btn.dataset.src); } catch (e) { art.url = btn.dataset.src; }
         });
     });

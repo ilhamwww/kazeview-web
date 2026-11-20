@@ -603,6 +603,12 @@ class AnimekompiService
             }
 
             $number = self::episodeLabel((string) ($ep['episode_number'] ?? ''));
+            $epTitle = (string) ($ep['title'] ?? '');
+
+            // Entri "Download Batch" bukan episode yang bisa diputar.
+            if ($number === '' && preg_match('/\b(download|batch)\b/i', $epTitle)) {
+                continue;
+            }
 
             // Sumber kadang mengirim nomor episode ganda (rilis ulang). Simpan satu,
             // prioritaskan entri yang punya tanggal rilis.
@@ -711,26 +717,67 @@ class AnimekompiService
 
         foreach ((array) ($data['servers'] ?? []) as $server) {
             $url = trim((string) ($server['url'] ?? ''));
+            $embed = trim((string) ($server['embed_url'] ?? ''));
+            $name = (string) ($server['name'] ?? 'Server');
 
-            if ($url === '' || !str_starts_with($url, 'http')) {
-                continue;
+            // Sebagian judul (terutama film) hanya menyediakan embed, tanpa MP4.
+            if ($url !== '' && str_starts_with($url, 'http')) {
+                $servers[] = [
+                    'name' => $name,
+                    'kind' => 'video',
+                    'url' => str_starts_with($url, 'https://indocast.site/api/animekompi/proxy')
+                        ? url('/api/av?u=' . ImageProxyService::encode($url))
+                        : $url,
+                ];
+            } elseif ($embed !== '' && str_starts_with($embed, 'http')) {
+                $servers[] = [
+                    'name' => $name,
+                    'kind' => 'embed',
+                    'url' => $embed,
+                ];
             }
-
-            $servers[] = [
-                'name' => (string) ($server['name'] ?? 'Server'),
-                'url' => str_starts_with($url, 'https://indocast.site/api/animekompi/proxy')
-                    ? url('/api/av?u=' . ImageProxyService::encode($url))
-                    : $url,
-            ];
         }
 
         if (empty($servers)) {
             return null;
         }
 
+        $direct = null;
+        $embed = null;
+
+        // Untuk embed, dahulukan pemutar langsung; shortener (short.ink) paling akhir.
+        $embedOrder = ['gdriveplayer', 'bestx', 'stream', 'short.ink'];
+
+        usort($servers, function ($a, $b) use ($embedOrder) {
+            if ($a['kind'] !== $b['kind']) {
+                return $a['kind'] === 'video' ? -1 : 1;
+            }
+
+            $rank = function ($url) use ($embedOrder) {
+                foreach ($embedOrder as $i => $needle) {
+                    if (str_contains($url, $needle)) {
+                        return $i;
+                    }
+                }
+
+                return count($embedOrder);
+            };
+
+            return $rank($a['url']) <=> $rank($b['url']);
+        });
+
+        foreach ($servers as $srv) {
+            if ($srv['kind'] === 'video' && $direct === null) {
+                $direct = $srv['url'];
+            } elseif ($srv['kind'] === 'embed' && $embed === null) {
+                $embed = $srv['url'];
+            }
+        }
+
         return [
             'episode_title' => (string) ($data['title'] ?? ''),
-            'video_url' => $servers[0]['url'],
+            'video_url' => $direct,
+            'embed_url' => $embed,
             'servers' => $servers,
             'subtitles' => [],
         ];
