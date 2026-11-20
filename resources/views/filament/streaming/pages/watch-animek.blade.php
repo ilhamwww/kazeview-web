@@ -265,6 +265,10 @@
 @php
     $m = $media;
     $servers = $stream['servers'] ?? [];
+
+    $currentEp = collect($episodes ?? [])->firstWhere('id', $currentId);
+    $epNumber = $currentEp['number'] ?? '';
+    $epTitle = trim((string) ($currentEp['title'] ?? '')) ?: ($epNumber !== '' ? 'Episode ' . $epNumber : null);
 @endphp
 
 <div class="min-h-screen bg-[#0b0b0f] pb-24 text-zinc-100">
@@ -277,9 +281,13 @@
         </div>
 
         <div class="relative mx-auto max-w-[1500px] px-4 md:px-8">
-            <a href="{{ $m['url'] }}" class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold text-zinc-200 ring-1 ring-white/10 transition hover:bg-white/20">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> Detail anime
-            </a>
+            @include('filament.streaming.partials.topbar', [
+                'backUrl' => $m['url'],
+                'title' => $m['title'] ?? 'Anime',
+                'subtitle' => $epTitle ?? null,
+                'badge' => !empty($epNumber) ? 'EP ' . $epNumber : null,
+                'aria' => 'Kembali ke detail anime',
+            ])
 
             <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
                 <div class="min-w-0">

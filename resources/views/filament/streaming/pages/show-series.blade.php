@@ -63,12 +63,19 @@
         <div class="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#050505]/90 to-transparent"></div>
 
         <div class="relative w-full max-w-[1800px] mx-auto px-6 md:px-12 pt-24 md:pt-28 pb-12 md:pb-16 z-10">
-            {{-- Tombol kembali, sama seperti di halaman pemutaran --}}
-            <a href="/tv-series" onclick="if (history.length > 1) { history.back(); return false; }" aria-label="Kembali"
-               class="group mb-5 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-2 ring-1 ring-white/10 backdrop-blur transition hover:bg-white/10 active:scale-95">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
-                <span class="pr-1 text-xs font-semibold text-zinc-200">Kembali</span>
-            </a>
+            {{-- Topbar: kembali, judul, dan badge tahun (gaya halaman pemutaran) --}}
+            <div class="mb-4">
+                @include('filament.streaming.partials.topbar', [
+                    'backUrl' => '/tv-series',
+                    'title' => $series['title'] ?? 'TV Series',
+                    'subtitle' => collect([
+                        $year,
+                        !empty($seasons) ? count($seasons) . ' season' : null,
+                    ])->filter()->implode(' · '),
+                    'badge' => !empty($seasons) ? 'S' . count($seasons) : 'TV',
+                    'aria' => 'Kembali ke TV Series',
+                ])
+            </div>
 
             <div class="flex flex-col md:flex-row md:items-end gap-8 md:gap-12">
                 @if($poster)

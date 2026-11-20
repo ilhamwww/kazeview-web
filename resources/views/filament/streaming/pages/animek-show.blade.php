@@ -32,10 +32,17 @@
         </div>
 
         <div class="relative mx-auto max-w-[1400px] px-4 pt-2 md:px-8">
-            <a href="{{ url()->previous() !== url()->current() ? url()->previous() : '/animek' }}"
-               class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold text-zinc-200 ring-1 ring-white/10 transition hover:bg-white/20">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> Kembali
-            </a>
+            @include('filament.streaming.partials.topbar', [
+                'backUrl' => url()->previous() !== url()->current() ? url()->previous() : '/animek',
+                'title' => $m['title'] ?? 'Anime',
+                'subtitle' => collect([
+                    $m['kind'] ?: 'Anime',
+                    $m['year'] ?? null,
+                    !empty($m['total_episodes']) ? $m['total_episodes'] . ' episode' : null,
+                ])->filter()->implode(' · '),
+                'badge' => strtoupper((string) ($m['kind'] ?: 'TV')),
+                'aria' => 'Kembali',
+            ])
 
             <div class="mt-6 grid gap-6 md:grid-cols-[240px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[280px_minmax(0,1fr)]">
                 <div class="mx-auto w-[190px] md:mx-0 md:w-full">
