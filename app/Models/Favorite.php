@@ -13,6 +13,11 @@ class Favorite extends Model
         'title',
         'thumbnail',
         'url',
+        'is_nsfw',
+    ];
+
+    protected $casts = [
+        'is_nsfw' => 'boolean',
     ];
 
     public function user()

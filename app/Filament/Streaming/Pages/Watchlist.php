@@ -17,6 +17,14 @@ class Watchlist extends Page
 
     public string $activeFilter = 'all'; // all, movie, tv_series, dracin, anime, komik, doujin
 
+    /** Konten 18+ disembunyikan sampai pengguna memintanya. */
+    public bool $showNsfw = false;
+
+    public function toggleNsfw(): void
+    {
+        $this->showNsfw = ! $this->showNsfw;
+    }
+
     public function setFilter(string $filter): void
     {
         $this->activeFilter = $filter;
@@ -73,7 +81,37 @@ class Watchlist extends Page
             $query->where('item_type', 'doujin');
         }
 
-        return $query->get();
+        return $query->get()->reject(fn ($fav) => $this->isNsfw($fav))->values();
+    }
+
+    public function getNsfwFavoritesProperty(): Collection
+    {
+        if (! auth()->check()) {
+            return collect([]);
+        }
+
+        $query = auth()->user()->favorites()->latest();
+
+        if ($this->activeFilter === 'movie') {
+            $query->where('item_type', 'movie');
+        } elseif ($this->activeFilter === 'tv_series') {
+            $query->where('item_type', 'tv_series');
+        } elseif ($this->activeFilter === 'dracin') {
+            $query->where('item_type', 'dracin');
+        } elseif ($this->activeFilter === 'anime') {
+            $query->whereIn('item_type', ['anime', 'bstation']);
+        } elseif ($this->activeFilter === 'komik') {
+            $query->whereIn('item_type', ['komik', 'comic', 'webtoon', 'manga']);
+        } elseif ($this->activeFilter === 'doujin') {
+            $query->where('item_type', 'doujin');
+        }
+
+        return $query->get()->filter(fn ($fav) => $this->isNsfw($fav))->values();
+    }
+
+    protected function isNsfw($fav): bool
+    {
+        return $fav->item_type === 'doujin' || (bool) ($fav->is_nsfw ?? false);
     }
 
     public function getCountsProperty(): array

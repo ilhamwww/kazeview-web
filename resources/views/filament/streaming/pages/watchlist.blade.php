@@ -119,7 +119,7 @@
             </div>
 
             <!-- Content Grid / Empty State -->
-            @if($this->filteredFavorites->isEmpty())
+            @if($this->filteredFavorites->isEmpty() && $this->nsfwFavorites->isEmpty())
                 <div class="bg-zinc-950/60 border border-zinc-800/80 rounded-3xl p-12 text-center space-y-4">
                     <div class="w-16 h-16 mx-auto rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-600">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" /></svg>
@@ -140,6 +140,7 @@
                     </div>
                 </div>
             @else
+                @if($this->filteredFavorites->isNotEmpty())
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
                     @foreach($this->filteredFavorites as $fav)
                         @php
@@ -272,6 +273,76 @@
                         </div>
                     @endforeach
                 </div>
+                @endif
+
+                {{-- Konten 18+ — disembunyikan sampai diminta --}}
+                @if($this->nsfwFavorites->isNotEmpty())
+                    <section class="mt-10 rounded-3xl border border-rose-900/40 bg-zinc-950/70 overflow-hidden">
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-rose-900/30 px-5 py-4">
+                            <div class="flex items-center gap-3">
+                                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-900/40 text-rose-300">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-bold text-white">Konten Dewasa (18+)</h3>
+                                    <p class="text-[11px] text-zinc-500">{{ $this->nsfwFavorites->count() }} judul disembunyikan</p>
+                                </div>
+                            </div>
+                            <button type="button" wire:click="toggleNsfw"
+                                    class="rounded-xl border border-rose-800/60 bg-rose-950/50 px-4 py-2 text-xs font-bold text-rose-200 transition hover:bg-rose-900/60">
+                                {{ $showNsfw ? 'Sembunyikan lagi' : 'Tampilkan' }}
+                            </button>
+                        </div>
+
+                        @if(! $showNsfw)
+                            <div class="relative px-5 py-6">
+                                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" aria-hidden="true">
+                                    @for($i = 0; $i < min(6, $this->nsfwFavorites->count()); $i++)
+                                        <div class="aspect-[2/3] rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black blur-md"></div>
+                                    @endfor
+                                </div>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 px-4 text-center">
+                                    <svg class="h-6 w-6 text-rose-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                                    <p class="text-xs font-semibold text-zinc-300">Konten 18+ tersembunyi. Tekan Tampilkan untuk melihat.</p>
+                                </div>
+                            </div>
+                        @else
+                            <div class="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                                @foreach($this->nsfwFavorites as $fav)
+                                    @php
+                                        $nsfwUrl = $fav->url ?: '#';
+                                    @endphp
+                                    <div class="group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40 transition hover:border-rose-700/60">
+                                        <div class="relative aspect-[2/3] bg-zinc-950">
+                                            @if($fav->thumbnail)
+                                                <img src="{{ $fav->thumbnail }}" alt="{{ $fav->title }}" loading="lazy" referrerpolicy="no-referrer"
+                                                     class="h-full w-full object-cover transition duration-500 group-hover:scale-105">
+                                            @else
+                                                <div class="flex h-full w-full items-center justify-center text-xs text-zinc-600">No Image</div>
+                                            @endif
+                                            <span class="absolute left-2 top-2 rounded-md bg-rose-700/90 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">18+</span>
+                                            <button wire:click="removeFavorite({{ $fav->id }})"
+                                                    wire:confirm="Hapus {{ $fav->title }} dari daftar tontonan?"
+                                                    class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-zinc-300 transition hover:bg-red-600 hover:text-white"
+                                                    title="Hapus dari Bookmark">
+                                                <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                            </button>
+                                        </div>
+                                        <div class="p-3">
+                                            <a href="{{ $nsfwUrl }}" class="block">
+                                                <h3 class="line-clamp-2 text-xs font-bold leading-snug text-white transition group-hover:text-rose-300 md:text-sm">{{ $fav->title }}</h3>
+                                            </a>
+                                            <a href="{{ $nsfwUrl }}" class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-zinc-800/80 px-3 py-2 text-xs font-bold text-zinc-300 transition hover:bg-rose-700 hover:text-white">
+                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                                                <span>Baca</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </section>
+                @endif
             @endif
         @endguest
 
