@@ -198,6 +198,28 @@
                 </div>
             </div>
 
+            {{-- Genre Filter Pills (Khusus Indonesia) --}}
+            @if(!empty($genreOptions))
+                <div class="flex items-center gap-2 overflow-x-auto kz-noscroll -mx-6 px-6 md:mx-0 md:px-0 py-2.5 border-b border-zinc-800/60">
+                    <span class="shrink-0 text-xs font-bold text-zinc-400 mr-1 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h18M6 9h12M9 13.5h6M11 18h2"/></svg>
+                        Genre:
+                    </span>
+                    @foreach($genreOptions as $g)
+                        @php $isGenreActive = ($genre ?? '') === $g['id']; @endphp
+                        <button type="button"
+                                wire:click="setGenre('{{ $g['id'] }}')"
+                                class="px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition shrink-0 border
+                                {{ $isGenreActive
+                                    ? 'bg-red-600 text-white border-red-500 shadow-md shadow-red-600/30'
+                                    : 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border-zinc-800' }}">
+                            {{ $g['label'] }}
+                            <span class="ml-1 text-[10px] {{ $isGenreActive ? 'text-white/70' : 'text-zinc-600' }}">{{ $g['count'] }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            @endif
+
             {{-- Provider Selector Pills (Khusus Halaman Combo Indonesia) --}}
             @if(!empty($providers) && count($providers) > 1)
                 <div class="flex items-center gap-2 overflow-x-auto kz-noscroll py-2.5">
@@ -227,7 +249,7 @@
     @endif
 
     {{-- ================= TOP 10 ================= --}}
-    @if(count($trending) >= 5 && empty($search) && ($category ?? 'all') === 'all')
+    @if(count($trending) >= 5 && empty($search) && empty($genre) && ($category ?? 'all') === 'all')
         <section class="relative z-10 w-full max-w-[1800px] mx-auto px-6 md:px-12 pt-8">
             <div class="flex items-center gap-3 mb-5">
                 <h2 class="text-xl md:text-2xl font-black tracking-tight">Top 10 {{ $label }} Minggu Ini</h2>
@@ -256,7 +278,7 @@
     @endif
 
     {{-- ================= SECTIONS ALA HOME (KHUSUS INDONESIA KETIKA SEMUA & TANPA PENCARIAN) ================= --}}
-    @if($kind === 'indonesia' && empty($search) && ($category ?? 'all') === 'all')
+    @if($kind === 'indonesia' && empty($search) && empty($genre) && ($category ?? 'all') === 'all')
         <div class="relative z-10 space-y-10 md:space-y-12 pt-8">
 
             {{-- 1. Film Bioskop Indonesia Terbaru --}}

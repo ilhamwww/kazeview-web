@@ -30,6 +30,8 @@ class Indonesia extends Page
     public string $category = 'all';
     public string $provider = self::PROVIDER;
     public string $search = '';
+    public string $genre = '';
+    public array $genres = [];
 
     public array $trending = [];
     public array $items = [];
@@ -42,6 +44,7 @@ class Indonesia extends Page
     protected $queryString = [
         'category' => ['except' => 'all'],
         'search' => ['except' => '', 'as' => 'q'],
+        'genre' => ['except' => ''],
     ];
 
     public array $categories = [
@@ -83,6 +86,8 @@ class Indonesia extends Page
         $this->page = 1;
         $this->category = request()->query('category', 'all');
         $this->search = request()->query('q', '');
+        $this->genre = (string) request()->query('genre', '');
+        $this->genres = \App\Services\FilmboxService::indonesiaGenres();
         $this->loadItems();
     }
 
@@ -90,6 +95,13 @@ class Indonesia extends Page
     {
         $this->category = $cat;
         $this->search = '';
+        $this->page = 1;
+        $this->loadItems();
+    }
+
+    public function setGenre(string $genre): void
+    {
+        $this->genre = $this->genre === $genre ? '' : $genre;
         $this->page = 1;
         $this->loadItems();
     }
@@ -118,6 +130,7 @@ class Indonesia extends Page
     {
         $this->category = 'all';
         $this->search = '';
+        $this->genre = '';
         $this->page = 1;
         $this->loadItems();
     }
@@ -133,7 +146,7 @@ class Indonesia extends Page
 
         // Utama: Filmbox (Indocast), cadangan: Chitogenx.
         if (FilmboxService::enabled()) {
-            $result = FilmboxService::indonesiaCatalog($category, $page, $limit, $search);
+            $result = FilmboxService::indonesiaCatalog($category, $page, $limit, $search, $this->genre);
 
             if (!empty($result['data'])) {
                 return $result;

@@ -364,12 +364,44 @@ class FilmboxService
         });
     }
 
-    public static function indonesiaCatalog(string $category = 'all', int $page = 1, int $limit = 24, string $search = ''): array
+    /**
+     * Genre yang benar-benar ada di katalog Indonesia, diurutkan dari yang terbanyak.
+     */
+    public static function indonesiaGenres(int $limit = 18): array
+    {
+        $counts = [];
+
+        foreach (self::indonesiaItems() as $item) {
+            foreach (explode(',', (string) ($item['genre'] ?? '')) as $genre) {
+                $genre = trim($genre);
+                if ($genre === '') {
+                    continue;
+                }
+                $key = strtolower($genre);
+                $counts[$key] = ($counts[$key] ?? 0) + 1;
+            }
+        }
+
+        arsort($counts);
+
+        $out = [];
+        foreach (array_slice($counts, 0, $limit, true) as $slug => $count) {
+            if (in_array($slug, ['hentai', 'erotica', 'adult', 'yaoi', 'yuri'], true)) {
+                continue;
+            }
+            $out[] = ['id' => $slug, 'label' => ucwords($slug), 'count' => $count];
+        }
+
+        return $out;
+    }
+
+    public static function indonesiaCatalog(string $category = 'all', int $page = 1, int $limit = 24, string $search = '', string $genre = ''): array
     {
         $items = self::indonesiaItems();
         $needle = strtolower(trim($search));
+        $genreNeedle = strtolower(trim($genre));
 
-        $items = array_values(array_filter($items, function ($item) use ($category, $needle) {
+        $items = array_values(array_filter($items, function ($item) use ($category, $needle, $genreNeedle) {
             $okType = match ($category) {
                 'movie' => $item['type'] === 'movie',
                 'series' => $item['type'] === 'series',
@@ -382,6 +414,13 @@ class FilmboxService
 
             if ($needle !== '' && !str_contains(strtolower($item['title']), $needle)) {
                 return false;
+            }
+
+            if ($genreNeedle !== '') {
+                $genres = array_map('trim', explode(',', strtolower((string) ($item['genre'] ?? ''))));
+                if (!in_array($genreNeedle, $genres, true)) {
+                    return false;
+                }
             }
 
             return true;

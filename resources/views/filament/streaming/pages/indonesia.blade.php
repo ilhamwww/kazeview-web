@@ -10,6 +10,8 @@
     'provider' => $provider,
     'server' => $provider ?? 'rebahin',
     'search' => $search,
+    'genreOptions' => $genres,
+    'genre' => $genre,
     'activeCategoryLabel' => collect($categories)->firstWhere('id', $category)['label'] ?? ucfirst($category),
     'latestMovies' => $latestMovies,
     'latestSeries' => $latestSeries,
