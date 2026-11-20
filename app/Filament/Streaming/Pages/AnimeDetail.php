@@ -14,7 +14,7 @@ class AnimeDetail extends Page
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';
     protected static ?string $navigationLabel = 'Anime Detail';
     protected static ?string $title = 'Anime Detail';
-    protected static ?string $slug = 'anime/{slug}';
+    protected static ?string $slug = 'anime-v2/{slug}';
     protected static string $view = 'filament.streaming.pages.anime-detail-v1';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;

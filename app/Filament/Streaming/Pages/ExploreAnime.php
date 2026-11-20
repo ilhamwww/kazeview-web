@@ -13,7 +13,7 @@ class ExploreAnime extends Page
     protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
     protected static ?string $navigationLabel = 'Anime';
     protected static ?string $title = 'Anime';
-    protected static ?string $slug = 'anime';
+    protected static ?string $slug = 'anime-v2';
     protected static string $view = 'filament.streaming.pages.explore-anime-v1';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;

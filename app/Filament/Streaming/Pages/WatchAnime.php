@@ -14,7 +14,7 @@ class WatchAnime extends Page
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';
     protected static ?string $navigationLabel = 'Nonton Anime';
     protected static ?string $title = 'Nonton Anime';
-    protected static ?string $slug = 'anime/{anime_slug}/episode/{episode_slug}';
+    protected static ?string $slug = 'anime-v2/{anime_slug}/episode/{episode_slug}';
     protected static string $view = 'filament.streaming.pages.watch-anime-v1';
     protected static string $layout = 'filament.streaming.layout';
     protected static bool $shouldRegisterNavigation = false;
@@ -388,7 +388,7 @@ class WatchAnime extends Page
                 'stream_url' => $currentStreamUrl,
                 'servers' => $servers,
                 'downloads' => $downloads,
-                'url' => url('/anime/' . $this->animeSlug . '/episode/' . $epSlug),
+                'url' => url('/anime-v2/' . $this->animeSlug . '/episode/' . $epSlug),
             ];
         });
     }
@@ -471,7 +471,7 @@ class WatchAnime extends Page
                 'thumbnail' => $thumbnail,
                 'last_episode' => $epNum,
                 'watched_episodes' => $watchedList,
-                'url' => url('/anime/' . $this->animeSlug . '/episode/' . $epNum),
+                'url' => url('/anime-v2/' . $this->animeSlug . '/episode/' . $epNum),
             ]
         );
     }

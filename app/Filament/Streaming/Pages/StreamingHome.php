@@ -245,7 +245,7 @@ class StreamingHome extends BaseDashboard
                     if (!str_starts_with($url, '/')) {
                         $url = '/' . $url;
                     }
-                    $url = str_replace('/anime-v1/', '/anime/', $url);
+                    $url = str_replace('/anime-v1/', '/anime-v2/', $url);
                 } elseif ($row->item_type === 'dracin' && str_contains($row->item_id, ':')) {
                     [$net, $id] = explode(':', $row->item_id, 2);
                     $url = DracinDetail::getUrl(parameters: ['network_slug' => $net, 'id' => $id], panel: 'streaming');
@@ -262,7 +262,7 @@ class StreamingHome extends BaseDashboard
                     if (str_starts_with($row->item_id, 'anime_v5:')) {
                         $url = WatchAnimeV5::getUrl(['anime_slug' => $cleanSlug, 'episode_slug' => (string) $ep], panel: 'streaming');
                     } else {
-                        $url = url('/anime/' . $cleanSlug . '/episode/' . $ep);
+                        $url = url('/anime-v2/' . $cleanSlug . '/episode/' . $ep);
                     }
                 }
             } catch (\Throwable $e) {

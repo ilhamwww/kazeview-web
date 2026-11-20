@@ -2132,3 +2132,10 @@ Route::get('/indonesia/{provider}/{slug}', function (string $provider, string $s
 
     abort(404);
 })->where('slug', '[A-Za-z0-9-]+')->name('indonesia.legacy-detail');
+
+// Mirainime diarsipkan ke /anime-v2; hub anime utama sekarang /animek (Animekompi).
+Route::get('/anime', fn () => redirect('/animek', 301));
+Route::get('/anime/{slug}/episode/{episode}', fn ($slug, $episode) => redirect('/anime-v2/' . $slug . '/episode/' . $episode, 301))
+    ->where('slug', '[A-Za-z0-9-]+')->where('episode', '[A-Za-z0-9-]+');
+Route::get('/anime/{slug}', fn ($slug) => redirect('/anime-v2/' . $slug, 301))
+    ->where('slug', '[A-Za-z0-9-]+');
