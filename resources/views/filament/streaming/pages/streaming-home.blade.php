@@ -176,6 +176,15 @@
             ])
         @endif
 
+        {{-- Karena kamu menonton ... --}}
+        @if(!empty($because['items']))
+            @include('filament.streaming.partials.home-row', [
+                'title' => $because['title'],
+                'items' => $because['items'],
+                'variant' => 'poster',
+            ])
+        @endif
+
         {{-- Rak lainnya --}}
         @foreach($sections as $section)
             @include('filament.streaming.partials.home-row', [

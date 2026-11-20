@@ -20,6 +20,7 @@ class StreamingHome extends BaseDashboard
     public array $sections = [];
     public array $topTen = [];
     public array $continueWatching = [];
+    public array $because = [];
     public array $quickLinks = [];
 
     /**
@@ -63,6 +64,7 @@ class StreamingHome extends BaseDashboard
         }
         $this->quickLinks = $this->buildQuickLinks();
         $this->continueWatching = $this->buildContinueWatching();
+        $this->because = \App\Services\RecommendationService::forUser(auth()->user(), 14);
     }
 
     private function buildSections(array $sections): void

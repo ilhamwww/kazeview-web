@@ -23,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\WatchHistory::saved(function (\App\Models\WatchHistory $history) {
             try {
                 \App\Services\ExpService::awardFromWatchHistory($history);
+                \App\Services\RecommendationService::forget((int) $history->user_id);
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('EXP award skipped', ['error' => $e->getMessage()]);
             }
