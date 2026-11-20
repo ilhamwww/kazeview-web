@@ -407,6 +407,7 @@
                     ['Komik', \App\Filament\Streaming\Pages\Komik::getUrl(panel: 'streaming'), $isKomik, 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25'],
                 ];
                 $exploreNav = [
+                    ['Network', 'Penyedia pilihan', '/network', str_contains($currentUrl, '/network'), 'M12 21a9 9 0 100-18 9 9 0 000 18zm0 0c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3M3.6 9h16.8M3.6 15h16.8'],
                     ['Live TV', 'Siaran TV nasional', '/tv', $isTv, 'M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z'],
                     ['Drakor', 'Drama Korea terbaru', \App\Filament\Streaming\Pages\KoreanDrama::getUrl(panel: 'streaming'), $isDrakor, 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'],
                     ['Collections', 'Koleksi pilihan', \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming'), $isCollection, 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
@@ -874,6 +875,7 @@
                 <a href="/dracin" class="hover:text-white transition">Dracin</a>
                 <span>•</span>
                 <a href="/animek" class="hover:text-white transition">Anime</a>
+                <a href="/network" class="hover:text-white transition">Network</a>
                 <a href="/anime-v2" class="hover:text-white transition">Arsip Anime</a>
                 <span>•</span>
                 <a href="/traffic" class="hover:text-white transition">Live Traffic</a>

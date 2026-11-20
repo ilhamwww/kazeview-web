@@ -23,6 +23,8 @@ class ImageProxyService
         'animekompi.sbs',
         'anichin.moe',
         'anilist.co',
+        'discomax.com',
+        'hbomax.com',
         'shinigami.gg',
         'shinigami.io',
         'shinigami.mx',
