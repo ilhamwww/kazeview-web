@@ -33,13 +33,13 @@
             <template x-for="(s, n) in slides" :key="'bg'+n">
                 <img :src="s.poster" alt="" aria-hidden="true"
                      class="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl transition-opacity duration-700"
-                     :class="i === n ? 'opacity-45' : 'opacity-0'">
+                     :class="i === n ? 'opacity-60' : 'opacity-0'">
             </template>
-            <div class="absolute inset-0 bg-gradient-to-r from-[#0b0b0f] via-[#0b0b0f]/85 to-[#0b0b0f]/30"></div>
+            <div class="absolute inset-0 bg-gradient-to-r from-[#0b0b0f] via-[#0b0b0f]/80 to-[#0b0b0f]/10"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#0b0b0f] via-transparent to-transparent"></div>
 
-            <div class="relative grid h-[430px] items-center gap-6 overflow-hidden p-5 pb-12 sm:h-[450px] sm:p-8 sm:pb-14 md:h-[470px] md:grid-cols-[minmax(0,1fr)_auto] md:p-12">
-                <div class="min-w-0 max-w-2xl">
+            <div class="relative grid min-h-[400px] items-center gap-6 p-5 pb-12 sm:min-h-[420px] sm:p-8 sm:pb-14 md:min-h-[440px] md:grid-cols-[minmax(0,1fr)_auto] md:p-10">
+                <div class="min-w-0 max-w-2xl min-h-[268px] sm:min-h-[276px] md:min-h-[300px]">
                     <span class="inline-flex items-center gap-1.5 rounded-full bg-red-600/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-red-400 ring-1 ring-red-500/30">
                         <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span> Sorotan
                     </span>
