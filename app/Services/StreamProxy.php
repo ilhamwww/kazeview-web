@@ -2,19 +2,17 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 
 /**
  * Membungkus URL media pihak ketiga menjadi URL milik domain sendiri
- * dengan token acak, supaya nama provider tidak pernah muncul di browser.
+ * dengan token terenkripsi, supaya nama provider tidak pernah muncul di browser.
  *
- * Token disimpan di cache selama 6 jam; URL asli tidak pernah dikirim
- * ke halaman.
+ * Token memakai enkripsi APP_KEY, bukan cache: tetap valid walau cache
+ * dibersihkan dan tidak bisa dibaca sebagai base64 biasa.
  */
 class StreamProxy
 {
-    protected const TTL = 21600;
-
     public static function url(string $url, string $ext = ''): string
     {
         $url = trim($url);
@@ -31,12 +29,14 @@ class StreamProxy
             return $url;
         }
 
-        $key = substr(hash('sha256', $url), 0, 32);
-        Cache::put('kz_stream_' . $key, $url, self::TTL);
+        $token = rtrim(strtr(base64_encode(Crypt::encryptString($url)), '+/', '-_'), '=');
 
-        $suffix = in_array($ext, ['m3u8', 'mp4'], true) ? '.' . $ext : '';
+        // Hanya playlist yang perlu akhiran .m3u8 (deteksi tipe di pemutar).
+        // .mp4 sengaja tidak dipakai: Cloudflare menganggapnya video dan
+        // menelan header Range, sehingga seek/pemutaran rusak.
+        $suffix = $ext === 'm3u8' ? '.m3u8' : '';
 
-        return url('/api/hls/' . $key . $suffix);
+        return url('/api/hls/' . $token . $suffix);
     }
 
     /**
@@ -49,20 +49,34 @@ class StreamProxy
         }
 
         $path = parse_url($url, PHP_URL_PATH) ?: '';
-        $key = basename($path);
-        $key = preg_replace('/\.[a-z0-9]+$/i', '', $key) ?: '';
+        $token = basename($path);
+        $token = preg_replace('/\.[a-z0-9]+$/i', '', $token) ?: '';
 
-        return self::resolve($key);
+        return self::resolve($token);
     }
 
-    public static function resolve(string $key): ?string
+    public static function resolve(string $token): ?string
     {
-        if ($key === '' || ! preg_match('/^[a-f0-9]{32}$/', $key)) {
+        $token = preg_replace('/\.[a-z0-9]+$/i', '', trim($token));
+
+        if ($token === '') {
             return null;
         }
 
-        $url = Cache::get('kz_stream_' . $key);
+        $raw = strtr($token, '-_', '+/');
+        $raw .= str_repeat('=', (4 - strlen($raw) % 4) % 4);
+        $encrypted = base64_decode($raw, true);
 
-        return is_string($url) && $url !== '' ? $url : null;
+        if ($encrypted === false || $encrypted === '') {
+            return null;
+        }
+
+        try {
+            $url = Crypt::decryptString($encrypted);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return is_string($url) && str_starts_with($url, 'http') ? $url : null;
     }
 }
