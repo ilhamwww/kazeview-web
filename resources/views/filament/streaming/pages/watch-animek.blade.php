@@ -556,16 +556,8 @@ function initKzAnimek() {
     art.on('video:play', enterAutoFs);
     if (art.video) art.video.addEventListener('play', enterAutoFs);
 
-    // Kalau autoplay sempat jalan tanpa gesture (fullscreen ditolak browser),
-    // coba lagi pada sentuhan/klik pertama pengguna di area pemutar.
-    const retryNativeFs = () => {
-        if (!useNativeFs() || !window.KzFs) return;
-        if (window.KzFs.isActive(shell)) return;
-        if (!art || art.paused) return;
-        if (window.KzFs.enter(shell, { video: art.video })) shell.dataset.autofsDone = '1';
-    };
-    shell.addEventListener('touchend', retryNativeFs, { capture: true, passive: true });
-    shell.addEventListener('click', retryNativeFs, true);
+    // Catatan: jangan pasang fullscreen pada klik/tap sembarang di pemutar.
+    // Itu membuat tombol pause/seek ikut memicu layar penuh.
 
     // Fullscreen native ditolak: hanya desktop yang jatuh ke web fullscreen.
     shell.addEventListener('kz-fs-failed', () => {
