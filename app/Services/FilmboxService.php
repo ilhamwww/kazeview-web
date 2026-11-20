@@ -343,7 +343,8 @@ class FilmboxService
                         }
 
                         $found++;
-                        $items[$mapped['detail_path']] = $mapped;
+                        // Kunci per slug supaya judul yang punya dua detailPath tidak tampil dua kali.
+                        $items[$mapped['slug'] ?: $mapped['detail_path']] = $mapped;
                     }
 
                     if ($found === 0) {
@@ -355,7 +356,7 @@ class FilmboxService
             // Lengkapi dari pool utama (negara Indonesia).
             foreach (array_merge(self::pool('movie'), self::pool('series')) as $item) {
                 if (stripos((string) ($item['country'] ?? ''), 'indonesia') !== false) {
-                    $items[$item['detail_path']] ??= $item;
+                    $items[$item['slug'] ?: $item['detail_path']] ??= $item;
                 }
             }
 
