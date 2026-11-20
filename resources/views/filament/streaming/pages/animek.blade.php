@@ -60,11 +60,13 @@
                     </div>
                 </div>
 
-                <div class="relative hidden md:block">
+                {{-- Poster: wadah berukuran tetap, tiap slide absolute supaya saat
+                     transisi dua poster tidak menumpuk dan menambah tinggi hero. --}}
+                <div class="relative hidden w-[230px] shrink-0 self-center md:block lg:w-[260px]" style="aspect-ratio: 2 / 3;">
                     <template x-for="(s, n) in slides" :key="'p'+n">
                         <a :href="s.url" x-show="i === n" x-transition.opacity.duration.500ms
-                           class="block w-[230px] overflow-hidden rounded-2xl shadow-2xl shadow-black/70 ring-1 ring-white/15 lg:w-[260px]">
-                            <img :src="s.poster" :alt="s.title" class="aspect-[2/3] w-full object-cover">
+                           class="absolute inset-0 block overflow-hidden rounded-2xl shadow-2xl shadow-black/70 ring-1 ring-white/15">
+                            <img :src="s.poster" :alt="s.title" class="h-full w-full object-cover">
                         </a>
                     </template>
                 </div>
