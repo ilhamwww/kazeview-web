@@ -1203,9 +1203,14 @@ Route::match(['GET', 'POST', 'OPTIONS'], '/api/streaming/embed-proxy', function 
 })->name('api.streaming.embed-proxy');
 
 Route::get('/api/streaming/subtitle', function (\Illuminate\Http\Request $request) {
-    $url = $request->query('url');
-    if (empty($url)) {
+    $url = (string) $request->query('url');
+    if ($url === '') {
         return response('VTT URL is required', 400);
+    }
+
+    // URL subtitle bisa berupa token proxy milik sendiri, bukan URL upstream.
+    if ($resolved = \App\Services\StreamProxy::resolveFromUrl($url)) {
+        $url = $resolved;
     }
 
     try {

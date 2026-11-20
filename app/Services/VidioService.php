@@ -332,7 +332,7 @@ class VidioService
             $subtitles[] = [
                 'lang' => $lang,
                 'label' => $label,
-                'url' => (string) ($sub['url_proxy'] ?? $sub['url'] ?? ''),
+                'url' => \App\Services\StreamProxy::url((string) ($sub['url_proxy'] ?? $sub['url'] ?? '')),
             ];
         }
 
@@ -341,8 +341,9 @@ class VidioService
         $proxy = (string) ($json['streamUrl_Proxy'] ?? '');
 
         return [
-            'stream_url' => $proxy !== '' ? $proxy : (string) $json['streamUrl'],
-            'stream_direct' => (string) $json['streamUrl'],
+            // Token acak: browser hanya melihat domain KZSTRM.
+            'stream_url' => \App\Services\StreamProxy::url($proxy !== '' ? $proxy : (string) $json['streamUrl'], 'm3u8'),
+            'stream_direct' => \App\Services\StreamProxy::url((string) $json['streamUrl'], 'm3u8'),
             'subtitles' => array_values(array_filter($subtitles, fn ($s) => $s['url'] !== '')),
         ];
     }

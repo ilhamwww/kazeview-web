@@ -299,6 +299,31 @@ class FilmboxService
     /**
      * Rak-rak Indonesia (section ID sama dengan yang dipakai Moviebox).
      */
+    /**
+     * Buang pembungkus proxy indocast kalau isinya URL CDN langsung,
+     * supaya browser tidak pernah melihat domain perantara.
+     */
+    protected static function isHlsUrl(string $url): bool
+    {
+        return str_contains(strtolower(urldecode(urldecode($url))), '.m3u8');
+    }
+
+    public static function unwrapProxy(string $url): string
+    {
+        if ($url === '' || !str_contains($url, 'indocast.site')) {
+            return $url;
+        }
+
+        if (preg_match('~[?&]url=([^&]+)~', $url, $m)) {
+            $inner = urldecode($m[1]);
+            if (str_starts_with($inner, 'http://') || str_starts_with($inner, 'https://')) {
+                return $inner;
+            }
+        }
+
+        return $url;
+    }
+
     public static function indonesiaSections(): array
     {
         return [
@@ -739,6 +764,8 @@ class FilmboxService
         $sources = [];
 
         foreach ((array) ($data['hls'] ?? []) as $entry) {
+            // Pakai proxy upstream (token CDN tetap valid), lalu sembunyikan
+            // di balik token domain sendiri.
             $url = (string) ($entry['url_proxy'] ?? $entry['url'] ?? '');
 
             if ($url === '') {
@@ -747,7 +774,7 @@ class FilmboxService
 
             $sources[] = [
                 'quality' => (int) preg_replace('/\D/', '', (string) ($entry['resolutions'] ?? 0)),
-                'url' => $url,
+                'url' => StreamProxy::url($url, self::isHlsUrl($url) ? 'm3u8' : 'mp4'),
             ];
         }
 
@@ -758,7 +785,7 @@ class FilmboxService
             if ($url !== '') {
                 $sources[] = [
                     'quality' => (int) ($data['quality'] ?? 0),
-                    'url' => $url,
+                    'url' => StreamProxy::url($url, self::isHlsUrl($url) ? 'm3u8' : 'mp4'),
                 ];
             }
         }
@@ -771,7 +798,7 @@ class FilmboxService
 
         $subtitles = [];
         foreach ((array) ($data['subtitles'] ?? []) as $sub) {
-            $url = (string) ($sub['url'] ?? $sub['url_proxy'] ?? '');
+            $url = (string) ($sub['url_proxy'] ?? $sub['url'] ?? '');
 
             if ($url === '') {
                 continue;
@@ -796,8 +823,8 @@ class FilmboxService
             $subtitles[] = [
                 'lang' => $lang,
                 'label' => $label,
-                'url' => $url,
-                'path' => $url,
+                'url' => StreamProxy::url($url, self::isHlsUrl($url) ? 'm3u8' : 'mp4'),
+                'path' => StreamProxy::url($url),
                 'default' => false,
             ];
         }

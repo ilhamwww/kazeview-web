@@ -106,7 +106,8 @@
 <script src="/js/kz-player-core.js?v=10"></script>
 <script>
 function initKzVidio() {
-    const streamUrl = @json(\App\Services\VidioService::proxyUrl($stream['stream_direct'] ?? ''));
+    // stream_url sudah berupa token domain sendiri; jangan dibungkus dua kali.
+    const streamUrl = @json($streamUrl);
     const subtitles = @json($subtitles);
     const itemId = 'vidio-' + @json((string) $m['id']);
     const episodeId = @json((string) $episodeId);
