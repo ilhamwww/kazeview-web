@@ -34,17 +34,27 @@
         </div>
     @endif
 
-    {{-- Top bar --}}
-    <div class="relative w-full max-w-[1400px] mx-auto px-4 lg:px-8 pt-20 md:pt-24 pb-2 flex items-center justify-between">
-        <a href="{{ Movies::getUrl(panel: 'streaming') }}"
-           class="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-            Movies
-        </a>
-        <span class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400">
-            <span class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
-            Sedang Menonton
-        </span>
+    {{-- Top bar (disamakan dengan halaman TV Series) --}}
+    <div class="relative w-full max-w-[1400px] mx-auto px-4 lg:px-8 pt-20 md:pt-24 pb-2">
+        <div class="flex items-center gap-3 h-14 lg:h-12">
+            <a href="{{ Movies::getUrl(panel: 'streaming') }}" aria-label="Kembali ke daftar film"
+               class="w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10 active:bg-white/10 hover:bg-white/10 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            </a>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold leading-tight truncate">{{ $media['title'] ?? 'Film' }}</p>
+                <p class="text-[11px] text-zinc-400 leading-tight truncate">
+                    @php
+                        $mSub = collect([
+                            !empty($media['year']) ? (string) $media['year'] : null,
+                            $mRuntime,
+                        ])->filter()->implode(' · ');
+                    @endphp
+                    {{ $mSub !== '' ? $mSub : 'Film' }}
+                </p>
+            </div>
+            <span class="shrink-0 text-[10px] font-black tracking-wider text-red-300 bg-red-600/15 ring-1 ring-red-500/30 px-2 py-1 rounded-md tabular-nums">{{ !empty($media['quality']) ? strtoupper((string) $media['quality']) : 'HD' }}</span>
+        </div>
     </div>
 
     <div class="relative w-full max-w-[1400px] mx-auto px-0 lg:px-8 space-y-8" x-data="watchPlayerInit()">
