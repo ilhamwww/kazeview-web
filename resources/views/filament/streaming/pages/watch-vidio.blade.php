@@ -102,6 +102,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
+<script src="/js/kz-fullscreen.js?v=3"></script>
+<script src="/js/kz-player-core.js?v=10"></script>
 <script>
 function initKzVidio() {
     const streamUrl = @json(\App\Services\VidioService::proxyUrl($stream['stream_direct'] ?? ''));
@@ -151,24 +153,24 @@ function initKzVidio() {
         }).catch(() => {});
     };
 
-    const artOptions = {
+const artOptions = KzPlayerCore.config({
         container: box,
         url: streamUrl,
-        // Vidio selalu HLS; URL proxy tidak berakhiran .m3u8 sehingga tipenya dipaksa.
-        type: 'm3u8',
+        forceHls: true,
         poster: poster,
         autoplay: false,
-        muted: false,
-        volume: 0.8,
-        setting: true,
-        playbackRate: true,
-        aspectRatio: true,
-        fullscreen: true,
-        fullscreenWeb: true,
-        pip: true,
-        airplay: true,
-        theme: '#e50914',
-        customType: {
+        nativeFs: window.KzFs ? window.KzFs.isTouch() : false,
+        getArt: () => art,
+        shell: box,
+        extraSettings: subtitles.length
+            ? KzPlayerCore.subtitleSettings(
+                subtitles.map((s, i) => ({ html: s.label, url: s.url, default: i === 0 })),
+                subtitles[0].label
+            )
+            : [],
+    });
+    // HLS Vidio: injeksi pilihan resolusi dari manifest.
+    artOptions.customType = {
             m3u8: function (video, url, artInstance) {
                 if (!window.Hls || !window.Hls.isSupported()) {
                     video.src = url;
@@ -205,29 +207,11 @@ function initKzVidio() {
                     });
                 });
             },
-        },
-    };
-
-    if (subtitles.length) {
-        artOptions.subtitle = {
-            url: subtitles[0].url,
-            type: 'vtt',
-            style: { color: '#fff', fontSize: '20px' },
         };
-        artOptions.settings = [
-            {
-                name: 'subtitle',
-                html: 'Subtitle',
-                selector: subtitles.map((s, i) => ({ html: s.label, url: s.url, default: i === 0 })),
-                onSelect(item) {
-                    art.subtitle.switch(item.url, { name: item.html });
-                    return item.html;
-                },
-            },
-        ];
-    }
 
     const art = new Artplayer(artOptions);
+    window.__kzArt = art;
+    KzPlayerCore.enhance(art, box);
 
     art.on('video:timeupdate', () => saveProgress(art));
     art.on('video:pause', () => saveProgress(art));

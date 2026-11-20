@@ -245,7 +245,7 @@
 
         const native = opts.nativeFs !== undefined ? opts.nativeFs : isTouch();
         const url = opts.url || '';
-        const isHls = /\.m3u8(\?|$)/i.test(url);
+        const isHls = !!opts.forceHls || /\.m3u8(\?|$)/i.test(url);
 
         const cfg = {
             container: opts.container,
