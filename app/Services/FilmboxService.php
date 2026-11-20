@@ -412,6 +412,18 @@ class FilmboxService
                 return false;
             }
 
+            // Filter tahun: "2026", "2025", "2024", atau "classic" (2023 ke bawah).
+            if (preg_match('/^\d{4}$/', $category)) {
+                if ((string) ($item['year'] ?? '') !== $category) {
+                    return false;
+                }
+            } elseif ($category === 'classic') {
+                $year = (int) ($item['year'] ?? 0);
+                if ($year === 0 || $year > 2023) {
+                    return false;
+                }
+            }
+
             if ($needle !== '' && !str_contains(strtolower($item['title']), $needle)) {
                 return false;
             }
