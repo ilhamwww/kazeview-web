@@ -142,6 +142,101 @@
         return list;
     }
 
+
+    /**
+     * Setelan subtitle standar: Captions, ukuran, posisi, gaya.
+     * captionOptions: [{html, url, default}] atau format halaman masing-masing.
+     */
+    function subtitleSettings(captionOptions, currentLabel) {
+        const sel = Array.isArray(captionOptions) ? captionOptions : [];
+
+        return [
+            {
+                html: 'Captions',
+                name: 'captions',
+                icon: ICONS.captions,
+                tooltip: currentLabel || 'Off',
+                selector: sel,
+                onSelect: function (item) {
+                    const art = window.__kzArt;
+                    if (!art) return item.html;
+                    if (item.url) {
+                        art.subtitle.show = true;
+                        art.subtitle.switch(item.url, { name: item.html });
+                    } else {
+                        art.subtitle.show = false;
+                    }
+                    return item.html;
+                },
+            },
+            {
+                html: 'Subtitle size',
+                name: 'subtitle-size',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M9 8h6"/><path d="M12 8v6"/></svg>',
+                tooltip: '100%',
+                selector: [
+                    { html: '75%', size: '16px' },
+                    { default: true, html: '100%', size: '22px' },
+                    { html: '125%', size: '26px' },
+                    { html: '150%', size: '30px' },
+                ],
+                onSelect: function (item) {
+                    if (window.__kzArt) window.__kzArt.subtitle.style('fontSize', item.size);
+                    return item.html;
+                },
+            },
+            {
+                html: 'Subtitle position',
+                name: 'subtitle-position',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><line x1="6" y1="13" x2="18" y2="13" stroke-width="2.5"/></svg>',
+                tooltip: 'Default',
+                selector: [
+                    { default: true, html: 'Default', bottom: '35px' },
+                    { html: 'Top', top: '40px' },
+                    { html: 'Bottom', bottom: '15px' },
+                ],
+                onSelect: function (item) {
+                    const art = window.__kzArt;
+                    if (!art) return item.html;
+                    if (item.top) {
+                        art.subtitle.style('bottom', 'auto');
+                        art.subtitle.style('top', item.top);
+                    } else {
+                        art.subtitle.style('top', 'auto');
+                        art.subtitle.style('bottom', item.bottom || '35px');
+                    }
+                    return item.html;
+                },
+            },
+            {
+                html: 'Subtitle style',
+                name: 'subtitle-style',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-7-7-8 8 7 7 8-8z"/><path d="m19 11 2 2-2 2-2-2z"/><line x1="2" y1="21" x2="22" y2="21"/></svg>',
+                tooltip: (function () {
+                    var v = localStorage.getItem('kz-subtitle-style');
+                    return v === 'solid' ? 'Solid Black' : (v === 'custom' ? 'Custom' : 'Clean Outline');
+                })(),
+                selector: [
+                    { default: (localStorage.getItem('kz-subtitle-style') || 'clean') === 'clean', html: 'Clean Outline', cls: 'art-subtitle-style-clean' },
+                    { default: localStorage.getItem('kz-subtitle-style') === 'custom', html: 'Custom', cls: '' },
+                    { default: localStorage.getItem('kz-subtitle-style') === 'solid', html: 'Solid Black', cls: 'art-subtitle-style-solid' },
+                ],
+                onSelect: function (item) {
+                    var art = window.__kzArt;
+                    if (!art) return item.html;
+                    var el = art.template && art.template.$subtitle;
+                    if (el) {
+                        el.classList.remove('art-subtitle-style-clean', 'art-subtitle-style-solid');
+                        if (item.cls) el.classList.add(item.cls);
+                    }
+                    var key = item.html === 'Solid Black' ? 'solid' : (item.html === 'Custom' ? 'custom' : 'clean');
+                    try { localStorage.setItem('kz-subtitle-style', key); } catch (e) {}
+                    return item.html;
+                },
+            },
+        ];
+    }
+
     /**
      * Konfigurasi Artplayer standar.
      */
@@ -182,16 +277,17 @@
                 m3u8: function (video, source, art) {
                     if (window.Hls && window.Hls.isSupported()) {
                         if (art.hls) art.hls.destroy();
-                        const hls = new window.Hls({ enableWorker: true });
+
+                        const hlsOpts = Object.assign({ enableWorker: true }, (opts.hls && opts.hls.options) || {});
+                        const hls = new window.Hls(hlsOpts);
+                        art.hls = hls;
+
+                        if (opts.hls && typeof opts.hls.setup === 'function') {
+                            try { opts.hls.setup(hls, video, art); } catch (e) {}
+                        }
+
                         hls.loadSource(source);
                         hls.attachMedia(video);
-                        art.hls = hls;
-                        hls.on(window.Hls.Events.ERROR, function (_e, data) {
-                            if (!data.fatal) return;
-                            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
-                            else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-                            else hls.destroy();
-                        });
                         art.on('destroy', function () { hls.destroy(); });
                     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                         video.src = source;
@@ -284,6 +380,7 @@
         isTouch: isTouch,
         icons: ICONS,
         baseSettings: baseSettings,
+        subtitleSettings: subtitleSettings,
         baseControls: baseControls,
         config: config,
         bindAutoFullscreen: bindAutoFullscreen,

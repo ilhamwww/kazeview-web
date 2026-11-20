@@ -512,6 +512,7 @@
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
     <script src="/js/kz-fullscreen.js?v=3"></script>
+<script src="/js/kz-player-core.js?v=2"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
         (function () {
@@ -1007,6 +1008,20 @@
                                 }
                             };
                         }
+
+                        // Inti pemutar bersama: tema, tombol, setelan, subtitle.
+                        // customType khusus Indonesia (HEVC + subtitle HLS) dipertahankan.
+                        const kzKeepType = artConfig.customType;
+                        Object.assign(artConfig, KzPlayerCore.config({
+                            container: container,
+                            url: this.videoSrc,
+                            subtitleUrl: defaultSubUrl,
+                            nativeFs: self.useNativeFs(),
+                            getArt: () => self.art,
+                            shell: self.$refs.playerShell,
+                            extraSettings: KzPlayerCore.subtitleSettings(captionOptions, (defaultSub && (defaultSub.label || 'Indonesian')) || 'Off'),
+                        }));
+                        if (kzKeepType) artConfig.customType = kzKeepType;
 
                         this.art = new Artplayer(artConfig);
 

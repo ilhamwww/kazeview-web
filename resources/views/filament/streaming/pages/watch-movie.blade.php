@@ -460,6 +460,7 @@
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/artplayer/5.1.7/artplayer.js"></script>
     <script src="/js/kz-fullscreen.js?v=3"></script>
+<script src="/js/kz-player-core.js?v=2"></script>
     <script src="/js/kz-player-v3.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
     <script>
@@ -768,196 +769,18 @@
                             }
                         ];
 
-                        this.art = new Artplayer({
+                        const kzCfg = KzPlayerCore.config({
                             container: artContainer,
                             url: this.videoSrc,
-                            type: /\.m3u8(\?|$)/i.test(this.videoSrc) ? 'm3u8' : 'mp4',
-                            theme: '#E50914',
-                            volume: 0.8,
-                            isLive: false,
-                            muted: false,
-                            autoplay: true,
-                            pip: true,
-                            setting: true,
-                            loop: false,
-                            flip: false,
-                            playbackRate: false,
-                            aspectRatio: false,
-                            fullscreen: !self.useNativeFs(),
-                            fullscreenWeb: !self.useNativeFs(),
-                            subtitleOffset: false,
-                            miniProgressBar: false,
-                            playsInline: true,
-                            airplay: true,
-                            hotkey: true,
-                            subtitle: {
-                                url: defaultSubUrl,
-                                type: 'vtt',
-                                escape: false,
-                                style: {
-                                    color: '#ffffff',
-                                    fontSize: '22px',
-                                    fontWeight: '600',
-                                },
-                                encoding: 'utf-8',
-                            },
-                            controls: [
-                                {
-                                    name: 'kz-fs',
-                                    position: 'right',
-                                    index: 70,
-                                    html: '<svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="14" height="10" rx="2"/><path d="M20 4v5h-5"/><path d="M20 9a8 8 0 0 0-8-6"/></svg>',
-                                    tooltip: 'Layar penuh',
-                                    style: self.useNativeFs() ? {} : { display: 'none' },
-                                    click: () => self.toggleNativeFs(),
-                                },
-                                {
-                                    position: 'left',
-                                    index: 10,
-                                    html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>',
-                                    tooltip: 'Mundur 10 Detik',
-                                    click: function () {
-                                        if (self.art) self.art.seek = Math.max(0, self.art.currentTime - 10);
-                                    },
-                                },
-                                {
-                                    position: 'left',
-                                    index: 11,
-                                    html: '<svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg>',
-                                    tooltip: 'Maju 10 Detik',
-                                    click: function () {
-                                        if (self.art) self.art.seek = Math.min(self.art.duration || 999999, self.art.currentTime + 10);
-                                    },
-                                },
-                            ],
-                            settings: [
-                                {
-                                    html: 'Captions',
-                                    name: 'captions',
-                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M10 9H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2"/><path d="M18 9h-2a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2"/></svg>',
-                                    tooltip: defaultSub ? (defaultSub.label || 'Indonesian') : 'Off',
-                                    selector: captionOptions,
-                                    onSelect: function (item) {
-                                        if (item.url) {
-                                            self.art.subtitle.show = true;
-                                            self.art.subtitle.switch(item.url, { name: item.html });
-                                        } else {
-                                            self.art.subtitle.show = false;
-                                        }
-                                        return item.html;
-                                    },
-                                },
-                                {
-                                    html: 'Subtitle size',
-                                    name: 'subtitle-size',
-                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M9 8h6"/><path d="M12 8v6"/></svg>',
-                                    tooltip: '100%',
-                                    selector: [
-                                        { html: '75%', size: '16px' },
-                                        { default: true, html: '100%', size: '22px' },
-                                        { html: '125%', size: '26px' },
-                                        { html: '150%', size: '30px' },
-                                    ],
-                                    onSelect: function (item) {
-                                        self.art.subtitle.style('fontSize', item.size);
-                                        return item.html;
-                                    },
-                                },
-                                {
-                                    html: 'Subtitle position',
-                                    name: 'subtitle-position',
-                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><line x1="6" y1="13" x2="18" y2="13" stroke-width="2.5"/></svg>',
-                                    tooltip: 'Default',
-                                    selector: [
-                                        { default: true, html: 'Default', bottom: '35px' },
-                                        { html: 'Top', bottom: 'auto', top: '40px' },
-                                        { html: 'Bottom', bottom: '15px' },
-                                    ],
-                                    onSelect: function (item) {
-                                        if (item.top) {
-                                            self.art.subtitle.style('bottom', 'auto');
-                                            self.art.subtitle.style('top', item.top);
-                                        } else {
-                                            self.art.subtitle.style('top', 'auto');
-                                            self.art.subtitle.style('bottom', item.bottom);
-                                        }
-                                        return item.html;
-                                    },
-                                },
-                                {
-                                    html: 'Resolution',
-                                    name: 'resolution',
-                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
-                                    tooltip: 'Auto',
-                                    selector: [
-                                        { default: !self.activeQuality, html: 'Auto', quality: 0, levelIndex: -1 },
-                                        ...self.qualityOptions.map(o => ({ html: o.label, quality: o.quality, default: o.quality === self.activeQuality })),
-                                    ],
-                                    onSelect: function (item) {
-                                        if (item.quality) {
-                                            self.setQuality(item.quality);
-                                            return item.html;
-                                        }
-                                        if (self.hls) self.hls.currentLevel = -1;
-                                        return item.html;
-                                    },
-                                },
-                                {
-                                    html: 'Playback speed',
-                                    name: 'playback-speed',
-                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>',
-                                    tooltip: '1x',
-                                    selector: [
-                                        { html: '0.5x', speed: 0.5 },
-                                        { html: '0.75x', speed: 0.75 },
-                                        { default: true, html: '1x', speed: 1.0 },
-                                        { html: '1.25x', speed: 1.25 },
-                                        { html: '1.5x', speed: 1.5 },
-                                        { html: '2x', speed: 2.0 },
-                                    ],
-                                    onSelect: function (item) {
-                                        self.art.playbackRate = item.speed;
-                                        return item.html;
-                                    },
-                                },
-                                {
-                                    html: 'Picture-in-Picture',
-                                    name: 'pip',
-                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="11" y="9" width="9" height="6" rx="1" stroke="currentColor" fill="none"/></svg>',
-                                    tooltip: 'Off',
-                                    selector: [
-                                        { html: 'On' },
-                                        { default: true, html: 'Off' }
-                                    ],
-                                    onSelect: function (item) {
-                                        self.art.pip = !self.art.pip;
-                                        return self.art.pip ? 'On' : 'Off';
-                                    },
-                                },
-                                {
-                                    html: 'Subtitle style',
-                                    name: 'subtitle-style',
-                                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-7-7-8 8 7 7 8-8z"/><path d="m19 11 2 2-2 2-2-2z"/><line x1="2" y1="21" x2="22" y2="21"/></svg>',
-                                    tooltip: savedSubStyle === 'art-subtitle-style-solid' ? 'Solid Black' : (savedSubStyle === 'custom' ? 'Custom' : 'Clean Outline'),
-                                    selector: [
-                                        { default: savedSubStyle === 'art-subtitle-style-clean', html: 'Clean Outline', cls: 'art-subtitle-style-clean' },
-                                        { default: savedSubStyle === 'custom', html: 'Custom', cls: '' },
-                                        { default: savedSubStyle === 'art-subtitle-style-solid', html: 'Solid Black', cls: 'art-subtitle-style-solid' },
-                                    ],
-                                    onSelect: function (item) {
-                                        const subEl = self.art.template.$subtitle;
-                                        if (subEl) {
-                                            subEl.classList.remove('art-subtitle-style-clean', 'art-subtitle-style-solid');
-                                            if (item.cls) subEl.classList.add(item.cls);
-                                        }
-                                        try {
-                                            localStorage.setItem('kz_sub_style', item.cls || 'custom');
-                                        } catch (e) {}
-                                        return item.html;
-                                    },
-                                },
-                            ],
-                            customType: {
+                            poster: {{ \Illuminate\Support\Js::from($mBanner ?? '') }},
+                            subtitleUrl: defaultSubUrl,
+                            nativeFs: self.useNativeFs(),
+                            getArt: () => self.art,
+                            shell: this.$refs.playerShell,
+                            extraSettings: KzPlayerCore.subtitleSettings(captionOptions, defaultSub ? (defaultSub.label || 'Indonesian') : 'Off'),
+                        });
+                        // HLS khusus film (fallback proxy + pemulihan codec) tetap dipakai.
+                        kzCfg.customType = {
                                 m3u8: function (video, url, artInstance) {
                                     if (window.Hls && window.Hls.isSupported()) {
                                         if (artInstance.hls) artInstance.hls.destroy();
@@ -1058,9 +881,10 @@
                                         video.src = url;
                                     }
                                 }
-                            }
-                        });
-
+                            };
+                        this.art = new Artplayer(kzCfg);
+                        window.__kzArt = this.art;
+                        window.art = this.art;
                         // Stamp data-name on setting items for custom styling
                         const stampSettingNames = () => {
                             const items = document.querySelectorAll('.art-setting-item');
