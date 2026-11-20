@@ -593,6 +593,7 @@ class AnimekompiService
         }
 
         $episodes = [];
+        $seenNumbers = [];
 
         foreach ((array) ($data['episode_list'] ?? []) as $ep) {
             $id = trim((string) ($ep['episode_id'] ?? ''));
@@ -602,6 +603,22 @@ class AnimekompiService
             }
 
             $number = self::episodeLabel((string) ($ep['episode_number'] ?? ''));
+
+            // Sumber kadang mengirim nomor episode ganda (rilis ulang). Simpan satu,
+            // prioritaskan entri yang punya tanggal rilis.
+            if ($number !== '' && isset($seenNumbers[$number])) {
+                $idx = $seenNumbers[$number];
+
+                if (($episodes[$idx]['date'] ?? '') === '' && !empty($ep['release_date'])) {
+                    $episodes[$idx]['date'] = (string) $ep['release_date'];
+                }
+
+                continue;
+            }
+
+            if ($number !== '') {
+                $seenNumbers[$number] = count($episodes);
+            }
 
             $episodes[] = [
                 'id' => $id,

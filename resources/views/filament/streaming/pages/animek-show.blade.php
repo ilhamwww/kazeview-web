@@ -88,14 +88,22 @@
                         </div>
                     @endif
 
-                    <div class="mt-6 flex flex-wrap justify-center gap-2.5 md:justify-start">
-                        @if($first)
-                            <a href="{{ $first['url'] }}" class="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-zinc-200">
+                    <div class="mt-6 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
+                        @if($resume && $resume['url'])
+                            <a href="{{ $resume['url'] }}" class="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-red-600/25 transition hover:bg-red-500">
+                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg> Lanjutkan Episode {{ $resume['number'] }}
+                            </a>
+                        @endif
+                        @if($first && (!$resume || (int) $resume['number'] !== (int) $first['number']))
+                            <a href="{{ $first['url'] }}" class="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition {{ $resume ? 'bg-white/10 text-white ring-1 ring-white/15 hover:bg-white/15' : 'bg-white text-black hover:bg-zinc-200' }}">
                                 <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg> Mulai dari Episode {{ $first['number'] }}
                             </a>
                         @endif
                         @if($last && $last !== $first)
-                            <a href="{{ $last['url'] }}" class="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-red-500">Episode Terbaru · {{ $last['number'] }}</a>
+                            <a href="{{ $last['url'] }}" class="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition {{ $resume ? 'bg-white/10 text-white ring-1 ring-white/15 hover:bg-white/15' : 'bg-red-600 text-white hover:bg-red-500' }}">Episode Terbaru · {{ $last['number'] }}</a>
+                        @endif
+                        @if($resume && $resume['ago'])
+                            <span class="basis-full text-center text-[12px] text-zinc-500 md:basis-auto md:text-left">Terakhir kamu tonton {{ $resume['ago'] }}</span>
                         @endif
                     </div>
 
@@ -136,14 +144,23 @@
             @else
                 <div class="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 xl:grid-cols-8" :class="desc ? 'kz-ep-desc' : ''">
                     @foreach($eps as $n => $ep)
+                        @php $isResume = $resume && (int) $resume['number'] === (int) $ep['number']; @endphp
                         <a href="{{ $ep['url'] }}"
                            x-show="q === '' || '{{ $ep['number'] }}'.includes(q.trim())"
                            :style="desc ? 'order: {{ count($eps) - $n }}' : 'order: {{ $n }}'"
                            title="{{ $ep['title'] }}"
-                           class="group flex min-h-[78px] flex-col items-center justify-start rounded-xl border border-white/[0.07] bg-white/[0.03] px-2 pb-2.5 pt-3 text-center transition hover:border-red-500/50 hover:bg-red-600/10">
-                            <span class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 group-hover:text-red-300">Episode</span>
+                           class="group relative flex min-h-[78px] flex-col items-center justify-start rounded-xl border px-2 pb-2.5 pt-3 text-center transition {{ $isResume ? 'border-red-500/70 bg-red-600/15' : 'border-white/[0.07] bg-white/[0.03] hover:border-red-500/50 hover:bg-red-600/10' }}">
+                            @if($isResume)
+                                <span class="absolute -top-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-red-600 px-2 py-[2px] text-[9px] font-black uppercase tracking-wide text-white">Terakhir ditonton</span>
+                            @endif
+                            <span class="text-[10px] font-semibold uppercase tracking-wider {{ $isResume ? 'text-red-300' : 'text-zinc-500' }} group-hover:text-red-300">Episode</span>
                             <span class="mt-0.5 text-lg font-black text-white">{{ $ep['number'] }}</span>
                             <span class="mt-0.5 min-h-[15px] text-[10px] text-zinc-500">{{ $fmtDate($ep['date']) }}</span>
+                            @if($isResume && $resume['percent'] > 0)
+                                <span class="mt-auto block h-[3px] w-full overflow-hidden rounded-full bg-white/15">
+                                    <span class="block h-full rounded-full bg-red-500" style="width: {{ min(100, $resume['percent']) }}%"></span>
+                                </span>
+                            @endif
                         </a>
                     @endforeach
                 </div>
