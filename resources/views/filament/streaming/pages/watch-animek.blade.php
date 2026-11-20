@@ -430,6 +430,55 @@ function initKzAnimek() {
     window.__kzArt = art;
     KzPlayerCore.enhance(art, shell);
 
+@auth
+    // Riwayat + EXP anime: kirim progres ke endpoint yang sama dengan film/series.
+    const kzAnimeMeta = {
+        itemId: @json($path ?? ($media['slug'] ?? '')),
+        episode: @json($currentId ?? ''),
+        title: @json($media['title'] ?? ''),
+        thumb: @json($media['poster'] ?? ''),
+    };
+    let kzLastSent = 0;
+
+    const kzPayload = () => {
+        const v = art.video;
+        if (!v || !v.duration || !isFinite(v.duration) || v.duration < 1) return null;
+        const fd = new FormData();
+        fd.append('_token', '{{ csrf_token() }}');
+        fd.append('item_id', kzAnimeMeta.itemId);
+        fd.append('item_type', 'anime');
+        fd.append('episode', kzAnimeMeta.episode);
+        fd.append('title', kzAnimeMeta.title);
+        fd.append('thumbnail', kzAnimeMeta.thumb);
+        fd.append('url', location.pathname);
+        fd.append('progress', v.currentTime);
+        fd.append('duration', v.duration);
+        return fd;
+    };
+
+    const kzSendProgress = (force) => {
+        const now = Date.now();
+        if (!force && now - kzLastSent < 15000) return;
+        const fd = kzPayload();
+        if (!fd) return;
+        kzLastSent = now;
+        fetch('/api/watch-progress', {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            keepalive: true,
+        }).catch(() => {});
+    };
+
+    art.on('video:timeupdate', () => kzSendProgress(false));
+    art.on('pause', () => kzSendProgress(true));
+    art.on('ended', () => kzSendProgress(true));
+    window.addEventListener('pagehide', () => {
+        const fd = kzPayload();
+        if (fd && navigator.sendBeacon) navigator.sendBeacon('/api/watch-progress', fd);
+    });
+@endauth
+
     // ---- Tampilkan / sembunyikan kontrol (gaya player anime lama) ----
     let hideTimer = null;
     const showControls = () => {

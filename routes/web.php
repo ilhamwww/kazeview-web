@@ -692,7 +692,7 @@ Route::post('/api/watch-progress', function (\Illuminate\Http\Request $request) 
         'item_type' => $data['item_type'],
     ]);
     $history->fill($updatePayload);
-    if (in_array($data['item_type'], ['series', 'indonesia_series'], true)
+    if (in_array($data['item_type'], ['series', 'indonesia_series', 'anime'], true)
         && !empty($data['episode'])
         && $percent >= \App\Services\ExpService::MOVIE_DONE_PERCENT) {
         $episodes = is_array($history->watched_episodes) ? $history->watched_episodes : [];
@@ -700,7 +700,7 @@ Route::post('/api/watch-progress', function (\Illuminate\Http\Request $request) 
         $history->watched_episodes = array_values(array_unique(array_map('strval', $episodes)));
     }
     $history->save();
-    if (in_array($data['item_type'], ['series', 'indonesia_movie', 'indonesia_series'], true)) {
+    if (in_array($data['item_type'], ['series', 'indonesia_movie', 'indonesia_series', 'anime'], true)) {
         \App\Services\ExpService::awardFromWatchHistory($history);
     }
 
