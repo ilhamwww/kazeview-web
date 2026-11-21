@@ -23,13 +23,20 @@ class ShowSeries extends Page
 
     public function mount($slug)
     {
-        $this->seriesSlug = $slug;
+        [$series, $canonical] = $this->resolveSlug($slug, 'series');
 
-        $this->series = StreamingService::getSeriesDetail($slug);
-
-        if (!$this->series) {
+        if (!$series) {
             abort(404);
         }
+
+        // URL lama dengan akhiran acak diarahkan ke slug bersih.
+        if ($canonical !== $slug) {
+            $this->redirect('/series/' . $canonical);
+            return;
+        }
+
+        $this->seriesSlug = $slug;
+        $this->series = $series;
 
         // Set default season on load
         $this->selectedSeasonNumber = $this->series['defaultSeason']['seasonNumber'] ?? 1;
@@ -94,4 +101,64 @@ class ShowSeries extends Page
             $this->currentSeasonData = $seasonDetail['season'];
         }
     }
+
+    /**
+     * Slug kanonik: buang akhiran acak dari detailPath Filmbox, dan cari
+     * detailPath yang benar kalau slug pendek belum ketemu.
+     *
+     * @return array{0:?array,1:string} [data, slug kanonik]
+     */
+    protected function resolveSlug(string $slug, string $type): array
+    {
+        $slug = trim($slug);
+        $clean = preg_replace('/-[A-Za-z0-9]{8,16}$/', '', $slug) ?: $slug;
+
+        $data = $type === 'series'
+            ? \App\Services\StreamingService::getSeriesDetail($slug)
+            : \App\Services\StreamingService::getMovieDetail($slug);
+
+        if ($data) {
+            return [$data, $clean];
+        }
+
+        // Cari detailPath asli lewat katalog Filmbox (+ pencarian judul).
+        if ($hit = \App\Services\FilmboxService::findBySlug($clean)) {
+            $candidate = (string) ($hit['detail_path'] ?? '') ?: (string) ($hit['slug'] ?? '');
+
+            $found = $type === 'series'
+                ? \App\Services\StreamingService::getSeriesDetail($candidate)
+                : \App\Services\StreamingService::getMovieDetail($candidate);
+
+            if ($found) {
+                return [$found, (string) ($hit['slug'] ?? '') ?: $clean];
+            }
+        }
+
+        // Coba detailPath asli (dengan akhiran) lewat katalog Filmbox.
+        $pool = $type === 'series'
+            ? \App\Services\FilmboxService::pool('series')
+            : \App\Services\FilmboxService::pool('movie');
+
+        foreach ($pool as $item) {
+            $itemSlug = (string) ($item['slug'] ?? '');
+            $itemPath = (string) ($item['detail_path'] ?? '');
+
+            if ($itemSlug !== $clean && $itemPath !== $slug) {
+                continue;
+            }
+
+            $candidate = $itemPath !== '' ? $itemPath : $itemSlug;
+
+            $found = $type === 'series'
+                ? \App\Services\StreamingService::getSeriesDetail($candidate)
+                : \App\Services\StreamingService::getMovieDetail($candidate);
+
+            if ($found) {
+                return [$found, $itemSlug !== '' ? $itemSlug : $clean];
+            }
+        }
+
+        return [null, $clean];
+    }
+
 }

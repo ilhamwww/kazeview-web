@@ -25,13 +25,19 @@ class WatchMovie extends Page
 
     public function mount($slug)
     {
-        $this->movieSlug = $slug;
+        [$media, $canonical] = $this->resolveSlug($slug, 'movie');
 
-        $this->media = StreamingService::getMovieDetail($slug);
-
-        if (!$this->media) {
+        if (!$media) {
             abort(404);
         }
+
+        if ($canonical !== $slug) {
+            $this->redirect('/movie/' . $canonical);
+            return;
+        }
+
+        $this->movieSlug = $slug;
+        $this->media = $media;
 
         // Server-side subscription check
         if (auth()->check() && auth()->user()->isSubscriptionExpired()) {
@@ -221,4 +227,62 @@ class WatchMovie extends Page
                 ->send();
         }
     }
+
+    /**
+     * Slug kanonik: buang akhiran acak Filmbox, atau cari detailPath asli.
+     *
+     * @return array{0:?array,1:string}
+     */
+    protected function resolveSlug(string $slug, string $type = 'movie'): array
+    {
+        $slug = trim($slug);
+        $clean = preg_replace('/-[A-Za-z0-9]{8,16}$/', '', $slug) ?: $slug;
+
+        $data = $type === 'series'
+            ? \App\Services\StreamingService::getSeriesDetail($slug)
+            : \App\Services\StreamingService::getMovieDetail($slug);
+
+        if ($data) {
+            return [$data, $clean];
+        }
+
+        // Cari detailPath asli lewat katalog Filmbox (+ pencarian judul).
+        if ($hit = \App\Services\FilmboxService::findBySlug($clean)) {
+            $candidate = (string) ($hit['detail_path'] ?? '') ?: (string) ($hit['slug'] ?? '');
+
+            $found = $type === 'series'
+                ? \App\Services\StreamingService::getSeriesDetail($candidate)
+                : \App\Services\StreamingService::getMovieDetail($candidate);
+
+            if ($found) {
+                return [$found, (string) ($hit['slug'] ?? '') ?: $clean];
+            }
+        }
+
+        $pool = $type === 'series'
+            ? \App\Services\FilmboxService::pool('series')
+            : \App\Services\FilmboxService::pool('movie');
+
+        foreach ($pool as $item) {
+            $itemSlug = (string) ($item['slug'] ?? '');
+            $itemPath = (string) ($item['detail_path'] ?? '');
+
+            if ($itemSlug !== $clean && $itemPath !== $slug) {
+                continue;
+            }
+
+            $candidate = $itemPath !== '' ? $itemPath : $itemSlug;
+
+            $found = $type === 'series'
+                ? \App\Services\StreamingService::getSeriesDetail($candidate)
+                : \App\Services\StreamingService::getMovieDetail($candidate);
+
+            if ($found) {
+                return [$found, $itemSlug !== '' ? $itemSlug : $clean];
+            }
+        }
+
+        return [null, $clean];
+    }
+
 }

@@ -303,6 +303,45 @@ class FilmboxService
      * Buang pembungkus proxy indocast kalau isinya URL CDN langsung,
      * supaya browser tidak pernah melihat domain perantara.
      */
+    /**
+     * Cari item Filmbox berdasarkan slug publik (tanpa akhiran acak).
+     */
+    public static function findBySlug(string $slug): ?array
+    {
+        $slug = trim($slug);
+
+        if ($slug === '') {
+            return null;
+        }
+
+        $pools = array_merge(
+            self::pool('movie'),
+            self::pool('series'),
+            self::indonesiaItems()
+        );
+
+        foreach ($pools as $item) {
+            $itemSlug = (string) ($item['slug'] ?? '');
+            $itemPath = (string) ($item['detail_path'] ?? '');
+
+            if ($itemSlug === $slug || $itemPath === $slug) {
+                return $item;
+            }
+        }
+
+        // Terakhir: cari lewat judul (slug → kata).
+        $keyword = str_replace('-', ' ', $slug);
+        $result = self::search($keyword);
+
+        foreach ((array) ($result['data'] ?? []) as $item) {
+            if (($item['slug'] ?? '') === $slug || ($item['detail_path'] ?? '') === $slug) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
     protected static function isHlsUrl(string $url): bool
     {
         return str_contains(strtolower(urldecode(urldecode($url))), '.m3u8');
