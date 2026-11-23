@@ -1,4 +1,5 @@
 <div class="min-h-screen bg-black text-zinc-100 selection:bg-red-600 selection:text-white"
+     style="overflow-anchor: none;"
      x-data="{
         navVisible: true,
         lastScrollY: 0,
@@ -15,6 +16,10 @@
         serverHistory: @js($serverHistory),
         lastServerSync: 0,
         init() {
+            // Browser tidak boleh memulihkan scroll sendiri: gambar webtoon
+            // dimuat bertahap dan membuat posisi meloncat ke bawah.
+            if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
             this.fetchChapterFromClientIfEmpty();
             // Cek apakah ada riwayat tersimpan untuk chapter ini (sinkronisasi cloud vs local)
             try {
@@ -33,6 +38,19 @@
                     h = localHist;
                 }
 
+                if (! h) {
+                    // Chapter baru: selalu mulai dari panel pertama.
+                    this.$nextTick(() => {
+                        window.scrollTo(0, 0);
+                        setTimeout(() => window.scrollTo(0, 0), 500);
+                    });
+                }
+
+                if (h && h.progress >= 95) {
+                    // Sudah tamat, jangan dilempar ke dasar lagi.
+                    h = null;
+                }
+
                 if (h && (h.panelIndex > 1 || h.progress > 5)) {
                     this.currentProgress = h.progress || 0;
                     this.currentPanel = h.panelIndex || 1;
@@ -49,7 +67,8 @@
                         if (el) {
                             el.scrollIntoView({ behavior: 'auto', block: 'start' });
                         } else if (h && h.scrollY > 0 && !hashMatch) {
-                            window.scrollTo({ top: h.scrollY, behavior: 'auto' });
+                            const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+                            window.scrollTo({ top: Math.min(h.scrollY, max), behavior: 'auto' });
                         }
                         if (retry < 5) {
                             setTimeout(() => restoreScroll(retry + 1), 300);
