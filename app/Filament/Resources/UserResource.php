@@ -26,6 +26,19 @@ class UserResource extends Resource
     protected static ?string $navigationGroup = 'Settings';
     protected static ?string $navigationLabel = 'Users';
 
+    /** Tampilkan jumlah akun yang menunggu persetujuan. */
+    public static function getNavigationBadge(): ?string
+    {
+        $pending = static::getModel()::where('is_approved', false)->count();
+
+        return $pending > 0 ? (string) $pending : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form

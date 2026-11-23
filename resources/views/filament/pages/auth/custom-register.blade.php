@@ -54,6 +54,25 @@
 
             <!-- Form -->
             <form wire:submit.prevent="register" class="space-y-6">
+                <!-- Invite Code -->
+                <div>
+                    <label for="invite_code" class="block text-[11px] font-bold text-zinc-400 tracking-wider uppercase mb-2">
+                        KODE UNDANGAN
+                    </label>
+                    <input
+                        type="text"
+                        id="invite_code"
+                        wire:model="data.invite_code"
+                        required
+                        autocomplete="off"
+                        class="w-full bg-zinc-950 border border-zinc-700 focus:border-red-600 focus:ring-1 focus:ring-red-600 rounded-lg px-4 py-3.5 text-sm text-white placeholder-zinc-600 focus:outline-none transition duration-150"
+                        placeholder="Masukkan kode dari admin"
+                    >
+                    @error('data.invite_code')
+                        <span class="text-xs text-red-500 mt-1.5 block font-medium">{{ $message }}</span>
+                    @enderror
+                </div>
+
                 <!-- Name Field -->
                 <div>
                     <label for="name" class="block text-[11px] font-bold text-zinc-400 tracking-wider uppercase mb-2">

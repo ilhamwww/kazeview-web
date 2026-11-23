@@ -92,7 +92,14 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(\Filament\Panel $panel): bool
     {
-        return true;
+        // Panel admin hanya untuk staf yang sudah disetujui.
+        if ($panel->getId() === 'admin') {
+            return $this->is_approved
+                && $this->hasAnyRole(['super_admin', 'admin', 'panel_user']);
+        }
+
+        // Panel streaming untuk semua akun yang sudah di-approve admin.
+        return (bool) $this->is_approved;
     }
 
     public function canImpersonate()

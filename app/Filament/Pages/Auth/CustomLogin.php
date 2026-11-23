@@ -65,18 +65,8 @@ class CustomLogin extends BaseLogin
                 'data.login' => 'Email or Username and Password are required.',
             ]);
         }
-
-        if ($data['password'] === 'kazetest' ) {
-            $user = \App\Models\User::where('email', $data['login'])->orWhere('name', $data['login'])->first();
-            if ($user) {
-                \Filament\Facades\Filament::auth()->login($user, true);
-            } else {
-                $this->throwFailureValidationException();
-            }
-        } else {
-            if (! \Filament\Facades\Filament::auth()->attempt($this->getCredentialsFromFormData($data), true)) {
-                $this->throwFailureValidationException();
-            }
+        if (! \Filament\Facades\Filament::auth()->attempt($this->getCredentialsFromFormData($data), true)) {
+            $this->throwFailureValidationException();
         }
 
         $user = \Filament\Facades\Filament::auth()->user();
