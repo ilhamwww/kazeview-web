@@ -774,8 +774,33 @@ class AnimekompiService
             }
         }
 
+        // Link unduhan (MKV). Sembunyikan host yang memuat nama provider.
+        $downloads = [];
+        foreach ((array) ($data['downloads'] ?? []) as $dl) {
+            $url = trim((string) ($dl['url'] ?? ''));
+            $label = trim((string) ($dl['provider'] ?? ''));
+
+            if ($url === '' || !str_starts_with($url, 'http')) {
+                continue;
+            }
+
+            $lower = strtolower($url . ' ' . $label);
+            if (str_contains($lower, 'animekompi') || str_contains($lower, 'indocast')) {
+                continue;
+            }
+
+            [$host, $quality] = array_pad(array_map('trim', explode('-', $label, 2)), 2, '');
+
+            $downloads[] = [
+                'host' => $host !== '' ? $host : 'Mirror',
+                'quality' => $quality !== '' ? $quality : 'MKV',
+                'url' => $url,
+            ];
+        }
+
         return [
             'episode_title' => (string) ($data['title'] ?? ''),
+            'downloads' => $downloads,
             'video_url' => $direct,
             'embed_url' => $embed,
             'servers' => $servers,

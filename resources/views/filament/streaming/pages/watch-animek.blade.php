@@ -370,6 +370,42 @@
                             @endforeach
                         </div>
                     </div>
+
+                    {{-- Unduhan MKV episode ini --}}
+                    @php
+                        $kzDl = collect($stream['downloads'] ?? []);
+                        $kzDl720 = $kzDl->filter(fn ($d) => str_contains((string) $d['quality'], '720') || str_contains((string) $d['quality'], '1080'));
+                    @endphp
+                    @if($kzDl->isNotEmpty())
+                        <div class="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                            <div class="mb-3 flex items-center gap-2">
+                                <svg class="h-4 w-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                                <h2 class="text-sm font-bold uppercase tracking-wider text-zinc-300">Unduh MKV</h2>
+                                <span class="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-zinc-300">Kualitas penuh</span>
+                            </div>
+
+                            @php
+                                $qualities = $kzDl->pluck('quality')->unique()->sort()->reverse();
+                            @endphp
+
+                            @foreach($qualities as $quality)
+                                <div class="mb-2 last:mb-0">
+                                    <p class="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-zinc-500">{{ $quality }}</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach($kzDl->where('quality', $quality) as $dl)
+                                            <a href="{{ $dl['url'] }}" target="_blank" rel="noopener nofollow"
+                                               class="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 text-[11.5px] font-bold text-zinc-300 transition hover:border-red-500/50 hover:bg-red-600/15 hover:text-white">
+                                                {{ $dl['host'] }}
+                                                <svg class="h-3 w-3 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+
+                            <p class="mt-2 text-[10.5px] text-zinc-500">File MKV dengan subtitle menempel — visual lebih tajam daripada streaming.</p>
+                        </div>
+                    @endif
                 </aside>
             </div>
         </div>
