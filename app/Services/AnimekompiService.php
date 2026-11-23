@@ -41,12 +41,12 @@ class AnimekompiService
 
     public static function enabled(): bool
     {
-        return trim((string) env('INDOCAST_API_KEY', '')) !== '';
+        return trim((string) config('services.indocast.key', '')) !== '';
     }
 
     protected static function key(): string
     {
-        return trim((string) env('INDOCAST_API_KEY', ''));
+        return trim((string) config('services.indocast.key', ''));
     }
 
     public static function api(string $path, array $query = [], int $ttl = 900, int $timeout = 30): ?array

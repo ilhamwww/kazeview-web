@@ -22,12 +22,12 @@ class VidioService
 
     public static function enabled(): bool
     {
-        return trim((string) env('INDOCAST_API_KEY', '')) !== '';
+        return trim((string) config('services.indocast.key', '')) !== '';
     }
 
     protected static function key(): string
     {
-        return trim((string) env('INDOCAST_API_KEY', ''));
+        return trim((string) config('services.indocast.key', ''));
     }
 
     /**

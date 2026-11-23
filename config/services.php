@@ -46,4 +46,8 @@ return [
         'search_limit' => (int) env('AI_PHOTO_SEARCH_LIMIT', 20),
     ],
 
+    'indocast' => [
+        'key' => env('INDOCAST_API_KEY'),
+    ],
+
 ];

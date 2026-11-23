@@ -17,7 +17,7 @@ class IndocastProviderService
 
     public static function key(): string
     {
-        return trim((string) env('INDOCAST_API_KEY', ''));
+        return trim((string) config('services.indocast.key', ''));
     }
 
     public static function enabled(): bool
