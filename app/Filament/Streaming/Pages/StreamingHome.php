@@ -106,6 +106,9 @@ class StreamingHome extends BaseDashboard
                 $title = str_replace('Trending in', 'Trending di', $section['title'] ?? '') ?: 'Pilihan Untukmu';
             }
 
+            // Beranda tampil tanpa emoji, termasuk yang ikut dari judul rak sumber.
+            $title = self::stripEmoji($title);
+
             $bySlug[$slug] = [
                 'slug' => $slug,
                 'title' => $title,
@@ -327,4 +330,13 @@ class StreamingHome extends BaseDashboard
 
         return array_slice($result, 0, 12);
     }
+
+    /** Hilangkan emoji dari judul yang datang bersama data sumber. */
+    private static function stripEmoji(string $text): string
+    {
+        $clean = preg_replace('/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}]/u', '', $text);
+
+        return trim(preg_replace('/\s+/u', ' ', (string) $clean));
+    }
+
 }
