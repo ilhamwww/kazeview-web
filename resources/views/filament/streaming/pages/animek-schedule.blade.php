@@ -28,21 +28,26 @@
                 @if(empty($d['items']))
                     <p class="py-16 text-center text-sm text-zinc-400">Tidak ada jadwal untuk hari {{ $d['day'] }}.</p>
                 @else
-                    <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 md:gap-4">
                         @foreach($d['items'] as $item)
-                            <a href="{{ $item['url'] }}"
-                               class="group flex items-center gap-3.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5 transition hover:border-red-500/40 hover:bg-white/[0.06]">
-                                <div class="w-14 shrink-0 text-center">
-                                    <span class="block text-lg font-black tabular-nums text-white">{{ $item['time'] ?: '—' }}</span>
-                                    <span class="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">WIB</span>
-                                </div>
-                                <img src="{{ $item['thumbnail'] }}" alt="" loading="lazy" class="aspect-[2/3] w-[50px] shrink-0 rounded-lg object-cover ring-1 ring-white/10">
-                                <div class="min-w-0 flex-1">
-                                    <h3 class="line-clamp-2 text-[13.5px] font-semibold leading-snug text-zinc-100 group-hover:text-white">{{ $item['title'] }}</h3>
+                            <a href="{{ $item['url'] }}" class="group block">
+                                <div class="relative aspect-[2/3] overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/10 transition group-hover:ring-red-500/50">
+                                    @if(!empty($item['thumbnail']))
+                                        <img src="{{ $item['thumbnail'] }}" alt="{{ $item['title'] }}" loading="lazy"
+                                             class="h-full w-full object-cover transition duration-500 group-hover:scale-105">
+                                    @endif
+
+                                    <span class="absolute left-2 top-2 rounded-md bg-black/80 px-1.5 py-0.5 text-[10px] font-black tabular-nums text-white backdrop-blur-sm">
+                                        {{ $item['time'] ?: '—' }} WIB
+                                    </span>
+
                                     @if(!empty($item['episode']))
-                                        <p class="mt-1 text-[11.5px] font-bold text-red-400">Episode {{ $item['episode'] }}</p>
+                                        <span class="absolute inset-x-2 bottom-2 rounded-md bg-red-600/90 px-1.5 py-0.5 text-center text-[10px] font-bold text-white">
+                                            Episode {{ $item['episode'] }}
+                                        </span>
                                     @endif
                                 </div>
+                                <h3 class="mt-2 line-clamp-2 text-xs font-semibold leading-snug text-zinc-200 transition group-hover:text-white md:text-[13px]">{{ $item['title'] }}</h3>
                             </a>
                         @endforeach
                     </div>
