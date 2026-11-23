@@ -14,6 +14,13 @@ class DoujindesuScraperService
     protected int $mo = 3600000;
     protected string $appSecret = 'dfdf72051dbfdc7d76889ebd31324e74';
 
+    public function __construct()
+    {
+        // IP server ini diblokir Cloudflare; permintaan lewat relay NUC.
+        $this->apiUrl = (string) config('services.doujin.api_url', $this->apiUrl);
+        $this->baseUrl = (string) config('services.doujin.base_url', $this->baseUrl);
+    }
+
     /** Normalize upstream synopsis HTML/entities into readable plain text. */
     protected function cleanDescription(mixed $description): string
     {
@@ -125,7 +132,13 @@ class DoujindesuScraperService
      */
     public function fetchApi(string $endpoint, array $queryParams = []): ?array
     {
-        $url = rtrim($this->apiUrl, '/') . '/' . ltrim($endpoint, '/');
+        if (str_contains($this->apiUrl, '/doujin/api')) {
+            // Mode relay NUC: endpoint dikirim lewat query string.
+            $url = $this->apiUrl;
+            $queryParams = array_merge(['endpoint' => $endpoint], $queryParams);
+        } else {
+            $url = rtrim($this->apiUrl, '/') . '/' . ltrim($endpoint, '/');
+        }
         $deviceId = 'dev_' . substr(md5($endpoint . serialize($queryParams)), 0, 12) . '_' . base_convert(time(), 10, 36);
 
         try {

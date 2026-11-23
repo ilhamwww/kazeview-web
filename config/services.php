@@ -50,4 +50,9 @@ return [
         'key' => env('INDOCAST_API_KEY'),
     ],
 
+    'doujin' => [
+        'api_url' => env('DOUJIN_API_URL', 'http://100.110.54.105:8765/doujin/api'),
+        'base_url' => env('DOUJIN_BASE_URL', 'https://doujin.desu.xxx'),
+    ],
+
 ];
