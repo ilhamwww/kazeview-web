@@ -9,7 +9,7 @@
                     <span>Koleksi Favorit</span>
                 </div>
                 <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-                    Daftar Tontonan Saya
+                    Daftar Favorit Saya
                     @auth
                         <span class="text-sm font-mono font-normal text-zinc-400 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
                             {{ $this->counts['all'] }} Tersimpan

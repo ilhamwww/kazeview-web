@@ -8,8 +8,8 @@ use Illuminate\Support\Collection;
 class Watchlist extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-bookmark';
-    protected static ?string $navigationLabel = 'Daftar Tontonan';
-    protected static ?string $title = 'Daftar Tontonan Saya - KZSTRM';
+    protected static ?string $navigationLabel = 'Daftar Favorit';
+    protected static ?string $title = 'Daftar Favorit Saya - KZSTRM';
     protected static ?string $slug = 'watchlist';
     protected static string $view = 'filament.streaming.pages.watchlist';
     protected static string $layout = 'filament.streaming.layout';
@@ -40,7 +40,7 @@ class Watchlist extends Page
         if ($fav) {
             $fav->delete();
             \Filament\Notifications\Notification::make()
-                ->title('Dihapus dari Daftar Tontonan')
+                ->title('Dihapus dari Daftar Favorit')
                 ->success()
                 ->send();
         }
