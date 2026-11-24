@@ -97,17 +97,19 @@
 
                     <div class="mt-6 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
                         @if($resume && $resume['url'])
-                            <a href="{{ $resume['url'] }}" class="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-red-600/25 transition hover:bg-red-500">
-                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg> Lanjutkan Episode {{ $resume['number'] }}
+                            <a href="{{ $resume['url'] }}" class="inline-flex items-center gap-2 rounded-lg border border-transparent bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-600/25 transition hover:bg-red-500">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg> Lanjutkan Episode {{ $resume['number'] }}
                             </a>
                         @endif
                         @if($first && (!$resume || (int) $resume['number'] !== (int) $first['number']))
-                            <a href="{{ $first['url'] }}" class="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition {{ $resume ? 'bg-white/10 text-white ring-1 ring-white/15 hover:bg-white/15' : 'bg-white text-black hover:bg-zinc-200' }}">
-                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg> Mulai dari Episode {{ $first['number'] }}
+                            <a href="{{ $first['url'] }}" class="inline-flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-bold transition border {{ $resume ? 'bg-zinc-500/30 hover:bg-zinc-500/50 backdrop-blur-md border-white/10 text-white' : 'bg-white text-black border-transparent hover:bg-zinc-200' }}">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg> Mulai dari Episode {{ $first['number'] }}
                             </a>
                         @endif
                         @if($last && $last !== $first)
-                            <a href="{{ $last['url'] }}" class="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition {{ $resume ? 'bg-white/10 text-white ring-1 ring-white/15 hover:bg-white/15' : 'bg-red-600 text-white hover:bg-red-500' }}">Episode Terbaru · {{ $last['number'] }}</a>
+                            <a href="{{ $last['url'] }}" class="inline-flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-bold transition border border-white/10 bg-zinc-500/30 text-white backdrop-blur-md hover:bg-zinc-500/50">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z"/></svg> Episode Terbaru · {{ $last['number'] }}
+                            </a>
                         @endif
                         @include('filament.streaming.partials.favorite-button', ['isFavorited' => $isFavorited])
 
