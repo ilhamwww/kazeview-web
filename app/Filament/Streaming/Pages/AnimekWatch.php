@@ -51,6 +51,36 @@ class AnimekWatch extends Page
         $this->prev = $this->episodes[$pos - 1] ?? null;
         $this->next = $this->episodes[$pos + 1] ?? null;
         $this->stream = AnimekompiService::play($this->currentId);
+        $this->attachDriveServer();
+    }
+
+    /**
+     * Kalau episode ini sudah ada salinan 1080p di Drive, tampilkan sebagai
+     * server "Native" dan jadikan sumber utama.
+     */
+    protected function attachDriveServer(): void
+    {
+        if (! $this->stream) {
+            return;
+        }
+
+        $row = \App\Models\DriveEpisode::where('episode_id', $this->currentId)->first();
+
+        if (! $row || trim((string) $row->rel_path) === '') {
+            return;
+        }
+
+        $url = \App\Services\DriveStream::url($row->rel_path);
+        $servers = $this->stream['servers'] ?? [];
+
+        array_unshift($servers, [
+            'name' => 'Native',
+            'url' => $url,
+            'kind' => 'video',
+        ]);
+
+        $this->stream['servers'] = $servers;
+        $this->stream['video_url'] = $url;
     }
 
     public function getTitle(): string
