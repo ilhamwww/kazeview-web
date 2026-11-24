@@ -103,6 +103,19 @@ class ShowSeries extends Page
     }
 
     /**
+     * Buang akhiran acak Filmbox (mis. -OxG19N1Uao3) tanpa memotong kata
+     * judul asli seperti "-olympians" atau "-monsters".
+     */
+    protected function stripRandomSuffix(string $slug): string
+    {
+        if (preg_match('/-([A-Za-z0-9]{8,16})$/', $slug, $m) && preg_match('/[A-Z0-9]/', $m[1])) {
+            return substr($slug, 0, -strlen($m[0]));
+        }
+
+        return $slug;
+    }
+
+    /**
      * Slug kanonik: buang akhiran acak dari detailPath Filmbox, dan cari
      * detailPath yang benar kalau slug pendek belum ketemu.
      *
@@ -111,11 +124,17 @@ class ShowSeries extends Page
     protected function resolveSlug(string $slug, string $type): array
     {
         $slug = trim($slug);
-        $clean = preg_replace('/-[A-Za-z0-9]{8,16}$/', '', $slug) ?: $slug;
+        $clean = $this->stripRandomSuffix($slug);
 
         $data = $type === 'series'
             ? \App\Services\StreamingService::getSeriesDetail($slug)
             : \App\Services\StreamingService::getMovieDetail($slug);
+
+        if (! $data && $clean !== $slug) {
+            $data = $type === 'series'
+                ? \App\Services\StreamingService::getSeriesDetail($clean)
+                : \App\Services\StreamingService::getMovieDetail($clean);
+        }
 
         if ($data) {
             return [$data, $clean];
