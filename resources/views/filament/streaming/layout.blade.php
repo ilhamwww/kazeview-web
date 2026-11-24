@@ -750,7 +750,7 @@
                     }
                     $sheetLinks = array_merge($sheetLinks, [
                         ['Collections', \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming'), $isCollection, 'M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m0 0a2.246 2.246 0 00-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0121 12v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6c0-.98.626-1.813 1.5-2.122'],
-                        ['Watchlist', '/watchlist', str_contains($currentUrl, '/watchlist'), 'M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z'],
+                        ['Daftar Favorit', '/watchlist', str_contains($currentUrl, '/watchlist'), 'M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z'],
                     ]);
                 @endphp
                 <div class="grid grid-cols-4 gap-2">
@@ -758,7 +758,7 @@
                         <a href="{{ $href }}" @click="mobileMenuOpen = false"
                            class="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl transition active:scale-95 {{ $active ? 'bg-red-600 text-white shadow-lg shadow-red-900/40' : 'bg-white/[0.04] ring-1 ring-white/5 text-zinc-300' }}">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/></svg>
-                            <span class="text-[11px] font-bold leading-none">{{ $label }}</span>
+                            <span class="text-[11px] font-bold leading-tight text-center">{{ $label }}</span>
                         </a>
                     @endforeach
                 </div>
