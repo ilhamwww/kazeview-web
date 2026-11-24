@@ -243,6 +243,8 @@ class WatchIndonesia extends Page
             }
         }
 
+        $this->refreshFavoriteState();
+
         // Simpan title halaman
         static::$title = ($this->media['title'] ?? 'Nonton Film') . " - {$this->serverLabel} - KZSTRM"; 
     }
@@ -274,5 +276,53 @@ class WatchIndonesia extends Page
                 $this->media['subtitles'] = $stream['subtitles'] ?? [];
             }
         }
+    }
+
+    protected function favoriteItemId(): string
+    {
+        return $this->providerParam . ':' . $this->slugParam;
+    }
+
+    public function toggleFavorite(): void
+    {
+        if (!auth()->check()) {
+            return;
+        }
+
+        $user = auth()->user();
+        $itemId = $this->favoriteItemId();
+        $itemType = $this->isSeries ? 'tv_series' : 'movie';
+
+        $fav = $user->favorites()
+            ->where('item_id', $itemId)
+            ->where('item_type', $itemType)
+            ->first();
+
+        if ($fav) {
+            $fav->delete();
+            $this->isFavorited = false;
+
+            \Filament\Notifications\Notification::make()
+                ->title('Dihapus dari Favorit')
+                ->success()
+                ->send();
+
+            return;
+        }
+
+        $user->favorites()->create([
+            'item_id' => $itemId,
+            'item_type' => $itemType,
+            'title' => $this->media['title'] ?? 'Indonesia',
+            'thumbnail' => $this->media['poster'] ?? ($this->media['posterPath'] ?? null),
+            'url' => request()->url(),
+        ]);
+
+        $this->isFavorited = true;
+
+        \Filament\Notifications\Notification::make()
+            ->title('Ditambahkan ke Favorit')
+            ->success()
+            ->send();
     }
 }

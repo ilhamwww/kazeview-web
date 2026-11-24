@@ -484,14 +484,18 @@
                             Putar Film
                         </button>
 
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="space-y-2">
+                            @include('filament.streaming.partials.favorite-button', ['isFavorited' => $isFavorited, 'favWidth' => 'w-full'])
+
                             <a href="{{ $catalogUrl }}"
-                               class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-zinc-950 border border-zinc-800 text-zinc-200 hover:border-zinc-600 transition">
-                                Katalog {{ $serverLabel }}
+                               class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg font-bold text-sm transition border bg-zinc-500/30 hover:bg-zinc-500/50 backdrop-blur-md border-white/10 text-white">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h12A2.25 2.25 0 0120.25 6v12A2.25 2.25 0 0118 20.25H6A2.25 2.25 0 013.75 18V6z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5M9 3.75v16.5"/></svg>
+                                <span>Katalog {{ $serverLabel }}</span>
                             </a>
                             <button type="button" x-data="{ ok: false }"
                                     @click="navigator.clipboard.writeText(window.location.href); ok = true; setTimeout(() => ok = false, 1800)"
-                                    class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-zinc-950 border border-zinc-800 text-zinc-200 hover:border-zinc-600 transition cursor-pointer">
+                                    class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg font-bold text-sm transition border bg-zinc-500/30 hover:bg-zinc-500/50 backdrop-blur-md border-white/10 text-white cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/></svg>
                                 <span x-text="ok ? 'Link disalin' : 'Bagikan'">Bagikan</span>
                             </button>
                         </div>

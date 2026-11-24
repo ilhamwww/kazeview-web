@@ -156,17 +156,13 @@
                         Putar Film
                     </button>
 
-                    <div class="grid grid-cols-2 gap-2">
-                        <button wire:click="toggleFavorite" type="button"
-                                class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border transition {{ $isFavorited ? 'bg-red-600/15 border-red-600/50 text-red-400' : 'bg-zinc-950 border-zinc-800 text-zinc-200 hover:border-zinc-600' }}">
-                            <svg class="w-4 h-4 {{ $isFavorited ? 'fill-current' : 'fill-none stroke-current' }}" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                            </svg>
-                            {{ $isFavorited ? 'Tersimpan' : 'Favorit' }}
-                        </button>
+                    <div class="space-y-2">
+                        @include('filament.streaming.partials.favorite-button', ['isFavorited' => $isFavorited, 'favWidth' => 'w-full'])
+
                         <button type="button" x-data="{ ok: false }"
                                 @click="navigator.clipboard.writeText(window.location.href); ok = true; setTimeout(() => ok = false, 1800)"
-                                class="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-zinc-950 border border-zinc-800 text-zinc-200 hover:border-zinc-600 transition">
+                                class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg font-bold text-sm transition border bg-zinc-500/30 hover:bg-zinc-500/50 backdrop-blur-md border-white/10 text-white">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/></svg>
                             <span x-text="ok ? 'Link disalin' : 'Bagikan'">Bagikan</span>
                         </button>
                     </div>

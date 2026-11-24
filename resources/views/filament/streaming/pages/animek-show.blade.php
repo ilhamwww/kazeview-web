@@ -109,13 +109,7 @@
                         @if($last && $last !== $first)
                             <a href="{{ $last['url'] }}" class="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition {{ $resume ? 'bg-white/10 text-white ring-1 ring-white/15 hover:bg-white/15' : 'bg-red-600 text-white hover:bg-red-500' }}">Episode Terbaru · {{ $last['number'] }}</a>
                         @endif
-                        <button type="button" wire:click="toggleFavorite" wire:loading.attr="disabled"
-                                class="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold ring-1 transition disabled:opacity-60 {{ $isFavorited ? 'bg-red-600/15 text-red-300 ring-red-500/40 hover:bg-red-600/25' : 'bg-white/5 text-zinc-200 ring-white/15 hover:bg-white/10' }}">
-                            <svg class="h-4 w-4" fill="{{ $isFavorited ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25s-7.5-4.6-7.5-9.5A4.25 4.25 0 0 1 12 7.9a4.25 4.25 0 0 1 7.5 2.85c0 4.9-7.5 9.5-7.5 9.5Z"/>
-                            </svg>
-                            <span>{{ $isFavorited ? 'Tersimpan di Favorit' : 'Tambah ke Favorit' }}</span>
-                        </button>
+                        @include('filament.streaming.partials.favorite-button', ['isFavorited' => $isFavorited])
 
                         @if($resume && $resume['ago'])
                             <span class="basis-full text-center text-[12px] text-zinc-500 md:basis-auto md:text-left">Terakhir kamu tonton {{ $resume['ago'] }}</span>
