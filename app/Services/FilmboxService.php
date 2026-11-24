@@ -775,19 +775,14 @@ class FilmboxService
             return null;
         }
 
+        // Upstream hanya membaca "se"/"ep". Kalau dikirim "season"/"episode",
+        // permintaannya diabaikan dan yang dibalas selalu episode 1.
         $query = [
             'subjectId' => $detail['subject_id'],
             'detailPath' => $detail['detail_path'],
+            'se' => $seasonNumber ?? 0,
+            'ep' => $episodeNumber ?? 0,
         ];
-
-        if ($seasonNumber !== null && $episodeNumber !== null) {
-            $query['season'] = $seasonNumber;
-            $query['episode'] = $episodeNumber;
-        } else {
-            // Film tunggal: upstream hanya membalas stream kalau se & ep = 0.
-            $query['se'] = 0;
-            $query['ep'] = 0;
-        }
 
         $raw = self::request('/getplay', $query, 300, 60);
 
