@@ -161,6 +161,30 @@ Route::get('/api/av', function (\Illuminate\Http\Request $request) {
     return redirect()->away(\App\Services\StreamProxy::url($url, 'mp4'), 302)->header('Cache-Control', 'no-store');
 })->name('api.anime-video');
 
+Route::get('/api/drive-auth', function (\Illuminate\Http\Request $request) {
+    $path = \App\Services\StreamProxy::resolveRaw((string) $request->query('t', ''));
+
+    if (! $path || ! str_starts_with($path, 'drivepath:')) {
+        abort(404);
+    }
+
+    $payload = substr($path, strlen('drivepath:'));
+    $size = null;
+
+    if (str_contains($payload, '|')) {
+        [$payload, $size] = explode('|', $payload, 2);
+        $size = (int) $size;
+    }
+
+    $encoded = implode('/', array_map('rawurlencode', array_filter(explode('/', trim($payload, '/')), fn ($p) => $p !== '')));
+
+    return response('', 200, [
+        'X-Drive-Path' => $encoded,
+        'X-Drive-Size' => (string) (int) $size,
+        'Cache-Control' => 'no-store',
+    ]);
+})->withoutMiddleware(['web']);
+
 Route::get('/api/drive/{token}', function (string $token) {
     $path = \App\Services\StreamProxy::resolveRaw($token);
 
@@ -169,6 +193,13 @@ Route::get('/api/drive/{token}', function (string $token) {
     }
 
     $range = request()->header('Range') ?: ($_SERVER['HTTP_RANGE'] ?? null);
+    $payload = substr($path, strlen('drivepath:'));
+    $size = null;
 
-    return \App\Services\DriveStream::stream(substr($path, strlen('drivepath:')), $range);
+    if (str_contains($payload, '|')) {
+        [$payload, $size] = explode('|', $payload, 2);
+        $size = (int) $size;
+    }
+
+    return \App\Services\DriveStream::stream($payload, $range, $size);
 })->where('token', '[A-Za-z0-9_\-]+');

@@ -252,6 +252,7 @@
             url: url,
             type: isHls ? 'm3u8' : 'mp4',
             poster: opts.poster || '',
+            preload: 'auto',
             theme: '#E50914',
             volume: opts.volume !== undefined ? opts.volume : 0.8,
             muted: !!opts.muted,

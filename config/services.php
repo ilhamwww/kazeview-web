@@ -55,4 +55,6 @@ return [
         'base_url' => env('DOUJIN_BASE_URL', 'https://doujin.desu.xxx'),
     ],
 
+    'drive_host' => env('DRIVE_STREAM_HOST', 'https://media.kazeview.com'),
+
 ];

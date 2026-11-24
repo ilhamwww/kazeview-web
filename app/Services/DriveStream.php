@@ -14,11 +14,14 @@ class DriveStream
     protected const SERVE = 'http://127.0.0.1:8099';
 
     /** URL publik (token terenkripsi) untuk dipakai di halaman tonton. */
-    public static function url(string $relPath): string
+    public static function url(string $relPath, ?int $size = null): string
     {
-        $token = rtrim(strtr(base64_encode(\Illuminate\Support\Facades\Crypt::encryptString('drivepath:' . $relPath)), '+/', '-_'), '=');
+        $payload = 'drivepath:' . $relPath . '|' . (int) $size;
+        $token = rtrim(strtr(base64_encode(\Illuminate\Support\Facades\Crypt::encryptString($payload)), '+/', '-_'), '=');
 
-        return url('/api/drive/' . $token);
+        $host = rtrim((string) config('services.drive_host', 'https://media.kazeview.com'), '/');
+
+        return $host . '/api/drive/' . $token;
     }
 
     /** Path relatif di dalam folder Drive KZSTRM → URL rclone serve. */
@@ -36,9 +39,13 @@ class DriveStream
      * Probe hanya 1 byte (bukan seluruh file) untuk tahu total ukuran, lalu
      * badan file dialirkan per potongan dengan Range yang diminta client.
      */
-    public static function stream(string $relPath, ?string $range = null): \Symfony\Component\HttpFoundation\Response
+    public static function stream(string $relPath, ?string $range = null, ?int $knownSize = null): \Symfony\Component\HttpFoundation\Response
     {
         $url = self::mediaUrl($relPath);
+
+        if ($knownSize && $knownSize > 0) {
+            return self::respond($url, $range, 'video/mp4', $knownSize);
+        }
 
         $probeHeaders = [];
         $probe = curl_init($url);
@@ -77,6 +84,12 @@ class DriveStream
         $contentType = $probeHeaders['content-type'] ?? 'video/x-matroska';
         $total = ! empty($probeHeaders['content-length']) ? (int) $probeHeaders['content-length'] : null;
 
+        return self::respond($url, $range, $contentType, $total);
+    }
+
+    /** Bangun respons streaming dengan Content-Range yang benar. */
+    protected static function respond(string $url, ?string $range, string $contentType, ?int $total): \Symfony\Component\HttpFoundation\Response
+    {
         $outStatus = 200;
         $outHeaders = [
             'Content-Type' => $contentType,
