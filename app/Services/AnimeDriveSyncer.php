@@ -63,6 +63,16 @@ class AnimeDriveSyncer
      */
     public function matchAnimek(string $otakuTitle, ?array $index = null): ?array
     {
+        // Hasil pemetaan AniList disimpan lebih dulu: judul yang beda total
+        // (mis. "Tempal: Item no Chikara" = "Overgeared") hanya ketemu di sini.
+        $mapped = \App\Models\AnimeMap::where('otaku_title', $otakuTitle)
+            ->whereNotNull('animek_path')
+            ->first();
+
+        if ($mapped) {
+            return ['title' => $mapped->animek_title ?: $mapped->animek_path, 'path' => $mapped->animek_path];
+        }
+
         $catalog = $index ?: $this->catalogIndex();
         [$base, $season, $part] = self::parseTitle($otakuTitle);
 
