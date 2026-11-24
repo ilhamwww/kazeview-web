@@ -23,6 +23,10 @@ class AnimekShow extends Page
     public array $similar = [];
     public ?array $resume = null;
 
+    public bool $isFavorited = false;
+
+    public string $animePath = '';
+
     /**
      * Jangan tangkap halaman statis /animek/jelajah, /genre, /jadwal.
      */
@@ -37,6 +41,7 @@ class AnimekShow extends Page
 
     public function mount(string $path): void
     {
+        $this->animePath = $path;
         $this->media = AnimekompiService::detail($path);
 
         if (!$this->media) {
@@ -45,6 +50,12 @@ class AnimekShow extends Page
 
         $this->similar = AnimekompiService::similar($this->media, 12);
         $this->resume = $this->buildResume($path);
+
+        $this->isFavorited = auth()->check()
+            && auth()->user()->favorites()
+                ->where('item_id', 'animek:' . $path)
+                ->where('item_type', 'anime')
+                ->exists();
     }
 
     /**
@@ -98,6 +109,48 @@ class AnimekShow extends Page
             'seconds' => (int) ($row->progress_seconds ?? 0),
             'ago' => $row->updated_at ? $row->updated_at->diffForHumans() : null,
         ];
+    }
+
+    public function toggleFavorite(): void
+    {
+        if (!auth()->check()) {
+            return;
+        }
+
+        $user = auth()->user();
+        $itemId = 'animek:' . $this->animePath;
+
+        $fav = $user->favorites()
+            ->where('item_id', $itemId)
+            ->where('item_type', 'anime')
+            ->first();
+
+        if ($fav) {
+            $fav->delete();
+            $this->isFavorited = false;
+
+            \Filament\Notifications\Notification::make()
+                ->title('Dihapus dari Favorit')
+                ->success()
+                ->send();
+
+            return;
+        }
+
+        $user->favorites()->create([
+            'item_id' => $itemId,
+            'item_type' => 'anime',
+            'title' => $this->media['title'] ?? 'Anime',
+            'thumbnail' => $this->media['poster'] ?? ($this->media['thumbnail'] ?? null),
+            'url' => '/animek/' . $this->animePath,
+        ]);
+
+        $this->isFavorited = true;
+
+        \Filament\Notifications\Notification::make()
+            ->title('Ditambahkan ke Favorit')
+            ->success()
+            ->send();
     }
 
     public function getTitle(): string
