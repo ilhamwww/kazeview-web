@@ -56,9 +56,12 @@ class AnimekShow extends Page
             return null;
         }
 
+        // Riwayat animek tersimpan dalam dua bentuk: "animek:<path>" dengan
+        // nomor episode, dan "<path>" dengan id/slug episode.
         $row = \App\Models\WatchHistory::where('user_id', auth()->id())
             ->where('item_type', 'anime')
-            ->where('item_id', 'animek:' . $path)
+            ->whereIn('item_id', ['animek:' . $path, $path])
+            ->orderByDesc('updated_at')
             ->first();
 
         if (!$row || !$row->last_episode) {
@@ -66,15 +69,29 @@ class AnimekShow extends Page
         }
 
         $target = null;
+        $number = 0;
+
         foreach ($this->media['episodes'] ?? [] as $ep) {
-            if ((int) $ep['number'] === (int) $row->last_episode) {
+            $epId = (string) ($ep['id'] ?? '');
+            $epNumber = (int) ($ep['number'] ?? 0);
+
+            if ($epId !== '' && $epId === (string) $row->last_episode) {
                 $target = $ep;
+                $number = $epNumber;
+                break;
+            }
+
+            if ($epNumber > 0 && $epNumber === (int) $row->last_episode) {
+                $target = $ep;
+                $number = $epNumber;
                 break;
             }
         }
 
+        $number = $number ?: (int) preg_replace('/\D+/', '', (string) $row->last_episode);
+
         return [
-            'number' => (int) $row->last_episode,
+            'number' => $number,
             'url' => $row->url ?: ($target['url'] ?? null),
             'episode_id' => $target['id'] ?? null,
             'percent' => (int) ($row->progress_percent ?? 0),
