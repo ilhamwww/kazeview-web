@@ -108,6 +108,11 @@ class AnimeDriveSyncer
         return $index;
     }
 
+    public function otakuDetail(string $url): ?array
+    {
+        return $this->otaku->scrapeAnimeSeriesDetail($url);
+    }
+
     public function otakuOngoing(int $page = 1): array
     {
         return $this->otaku->scrapeAnimeList($page, 'ongoing');
@@ -285,7 +290,8 @@ class AnimeDriveSyncer
             mkdir($staging, 0775, true);
         }
 
-        $base = preg_replace('/[^A-Za-z0-9 ._-]+/', '', $animeTitle) ?: $animePath;
+        $base = str_replace([':', '：'], ' -', $animeTitle);
+        $base = preg_replace('/[^A-Za-z0-9 ._-]+/', '', $base) ?: $animePath;
         $base = trim(preg_replace('/\s+/', ' ', $base));
         $safe = $base . ' - S' . str_pad((string) $season, 2, '0', STR_PAD_LEFT) . 'E' . str_pad((string) $epNumber, 2, '0', STR_PAD_LEFT) . ' [1080p]';
 

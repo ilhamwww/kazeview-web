@@ -11,6 +11,7 @@ class AnimeDriveSync extends Command
 {
     protected $signature = 'anime:drive-sync
         {--anime= : Slug/path anime di Animekompi (mis. overgeared)}
+        {--otaku= : URL anime Otakudesu untuk sinkron tanpa halaman Animekompi}
         {--episodes= : Daftar episode, mis. 1-9 atau 8,9}
         {--limit=1 : Jumlah episode terbaru per judul yang diproses (mode ongoing)}
         {--max=0 : Batas total episode yang disinkron dalam satu jalan (0 = tanpa batas)}
@@ -21,6 +22,10 @@ class AnimeDriveSync extends Command
     public function handle(AnimeDriveSyncer $syncer): int
     {
         $dry = (bool) $this->option('dry-run');
+
+        if ($otaku = $this->option('otaku')) {
+            return $this->syncOtakuOnly($syncer, (string) $otaku, $dry);
+        }
 
         if ($anime = $this->option('anime')) {
             return $this->syncOneAnime($syncer, (string) $anime, $dry);
@@ -86,6 +91,50 @@ class AnimeDriveSync extends Command
         }
 
         $this->info("Selesai: {$ok} episode");
+
+        return self::SUCCESS;
+    }
+
+    protected function syncOtakuOnly(AnimeDriveSyncer $syncer, string $url, bool $dry): int
+    {
+        $detail = $syncer->otakuDetail($url);
+
+        if (! $detail) {
+            $this->error('Detail Otakudesu tidak terbaca');
+
+            return self::FAILURE;
+        }
+
+        $title = (string) ($detail['title'] ?? 'Otakudesu');
+        $slug = basename(rtrim(parse_url($url, PHP_URL_PATH) ?: '', '/'));
+        $episodes = $syncer->otakuEpisodes($url);
+
+        if (! $episodes) {
+            $this->error('Tidak ada episode');
+
+            return self::FAILURE;
+        }
+
+        $wanted = $this->parseEpisodes((string) $this->option('episodes'), array_keys($episodes));
+        if (! $wanted) {
+            $wanted = array_keys($episodes);
+        }
+        sort($wanted);
+
+        $this->info("{$title} — {$slug}: " . count($wanted) . ' episode');
+        $ok = 0;
+
+        foreach ($wanted as $num) {
+            $episodeId = 'otaku:' . $slug . ':' . $num;
+            $res = $syncer->syncEpisode('otaku:' . $slug, $title, 1, (int) $num, $episodeId, (string) $episodes[$num], $dry);
+            $this->line("Ep {$num}: [{$res['status']}] {$res['message']}");
+
+            if (in_array($res['status'], ['ok', 'dry'], true)) {
+                $ok++;
+            }
+        }
+
+        $this->info("Selesai: {$ok}/" . count($wanted));
 
         return self::SUCCESS;
     }
