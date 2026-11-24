@@ -160,3 +160,15 @@ Route::get('/api/av', function (\Illuminate\Http\Request $request) {
 
     return redirect()->away(\App\Services\StreamProxy::url($url, 'mp4'), 302)->header('Cache-Control', 'no-store');
 })->name('api.anime-video');
+
+Route::get('/api/drive/{token}', function (string $token) {
+    $path = \App\Services\StreamProxy::resolveRaw($token);
+
+    if (! $path || ! str_starts_with($path, 'drivepath:')) {
+        abort(404);
+    }
+
+    $range = request()->header('Range') ?: ($_SERVER['HTTP_RANGE'] ?? null);
+
+    return \App\Services\DriveStream::stream(substr($path, strlen('drivepath:')), $range);
+})->where('token', '[A-Za-z0-9_\-]+');

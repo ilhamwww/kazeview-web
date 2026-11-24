@@ -79,4 +79,30 @@ class StreamProxy
 
         return is_string($url) && str_starts_with($url, 'http') ? $url : null;
     }
+
+    /** Seperti resolve(), tapi mengizinkan skema internal (mis. drivepath:). */
+    public static function resolveRaw(string $token): ?string
+    {
+        $token = preg_replace('/\.[a-z0-9]+$/i', '', trim($token));
+
+        if ($token === '') {
+            return null;
+        }
+
+        $raw = strtr($token, '-_', '+/');
+        $raw .= str_repeat('=', (4 - strlen($raw) % 4) % 4);
+        $encrypted = base64_decode($raw, true);
+
+        if ($encrypted === false || $encrypted === '') {
+            return null;
+        }
+
+        try {
+            $url = Crypt::decryptString($encrypted);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return is_string($url) && $url !== '' ? $url : null;
+    }
 }
