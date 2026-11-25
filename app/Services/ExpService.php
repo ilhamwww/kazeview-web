@@ -35,16 +35,18 @@ class ExpService
     ];
 
     /** EXP kumulatif minimum untuk tiap level. */
+    // Selisih antar level naik rata 2.000 poin (3k, 5k, 7k, ... 20k) supaya
+    // tangga terlihat seimbang dan puncaknya tetap 100.000.
     public const LEVELS = [
         1 => 0,
-        2 => 300,
-        3 => 900,
-        4 => 1800,
-        5 => 3000,
-        6 => 4800,
-        7 => 7000,
-        8 => 10000,
-        9 => 35000,
+        2 => 3000,
+        3 => 8000,
+        4 => 15000,
+        5 => 24000,
+        6 => 35000,
+        7 => 48000,
+        8 => 63000,
+        9 => 80000,
         10 => 100000,
     ];
 
