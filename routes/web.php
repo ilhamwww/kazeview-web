@@ -1998,6 +1998,23 @@ Route::get('/api/proxy-image', function (\Illuminate\Http\Request $request) {
                 ];
             }
 
+            // Aset desu.xxx (banner/cdn-static) sering diblokir Cloudflare dari IP server,
+            // jadi ambil lewat relay NUC yang memakai IP residensial.
+            if (str_contains($host, 'desu.xxx') || str_contains($host, 'desu.pics')) {
+                try {
+                    $nucImg = \Illuminate\Support\Facades\Http::timeout(20)
+                        ->get('http://127.0.0.1:18765/doujin/img?url=' . urlencode($url));
+                    $nucImgCt = $nucImg->header('Content-Type') ?: '';
+
+                    if ($nucImg->successful() && str_starts_with($nucImgCt, 'image/')) {
+                        return [
+                            'content' => base64_encode($nucImg->body()),
+                            'content_type' => $nucImgCt
+                        ];
+                    }
+                } catch (\Throwable $ne) {}
+            }
+
             // Fallback via wsrv.nl jika upstream terblokir / menolak direct image request (misal Tencent EdgeOne / Cloudflare WAF)
             $wsrvUrl = 'https://wsrv.nl/?url=' . urlencode($url);
             $wsrvRes = \Illuminate\Support\Facades\Http::timeout(10)->get($wsrvUrl);
