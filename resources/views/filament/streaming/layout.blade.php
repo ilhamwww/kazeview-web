@@ -412,8 +412,9 @@
                     ['Drakor', 'Drama Korea terbaru', \App\Filament\Streaming\Pages\KoreanDrama::getUrl(panel: 'streaming'), $isDrakor, 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'],
                     ['Collections', 'Koleksi pilihan', \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming'), $isCollection, 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
                 ];
+                $nsfwNav = [];
                 if (auth()->check() && !empty(auth()->user()->nsfw_enabled)) {
-                    $exploreNav[] = ['Doujin 18+', 'Manhwa & doujin dewasa', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
+                    $nsfwNav[] = ['Doujin', 'Manhwa & doujin dewasa', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
                 }
                 $activeExplore = collect($exploreNav)->first(fn ($i) => $i[3]);
             @endphp
@@ -462,6 +463,28 @@
                                 </a>
                             @endforeach
                         </div>
+
+                        @if(!empty($nsfwNav))
+                            <div class="mt-2 border-t border-zinc-800 pt-2">
+                                <p class="px-2.5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">NSFW</p>
+                                <div class="grid grid-cols-2 gap-1.5">
+                                    @foreach ($nsfwNav as [$label, $desc, $url, $active, $icon])
+                                        <a href="{{ $url }}" @if ($active) aria-current="page" @endif
+                                            class="group flex items-center gap-3 p-2.5 rounded-xl border transition {{ $active ? 'bg-red-600/15 border-red-500/30' : 'border-transparent hover:bg-white/5 hover:border-white/10' }}">
+                                            <span class="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 {{ $active ? 'bg-red-600 text-white' : 'bg-zinc-800/80 text-zinc-300 group-hover:text-white' }}">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}" />
+                                                </svg>
+                                            </span>
+                                            <span class="min-w-0">
+                                                <span class="block text-sm font-bold {{ $active ? 'text-white' : 'text-zinc-200' }}">{{ $label }}</span>
+                                                <span class="block text-[11px] text-zinc-400 truncate">{{ $desc }}</span>
+                                            </span>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </nav>
@@ -745,8 +768,9 @@
                         ['Anime', \App\Filament\Streaming\Pages\AnimekCatalog::getUrl(panel: 'streaming'), $isAnime, 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456L18 9.75z'],
                         ['Komik', \App\Filament\Streaming\Pages\Komik::getUrl(panel: 'streaming'), $isKomik, 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25'],
                     ];
+                    $nsfwLinks = [];
                     if (auth()->check() && !empty(auth()->user()->nsfw_enabled)) {
-                        $sheetLinks[] = ['Doujin 18+', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
+                        $nsfwLinks[] = ['Doujin', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
                     }
                     $sheetLinks = array_merge($sheetLinks, [
                         ['Collections', \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming'), $isCollection, 'M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m0 0a2.246 2.246 0 00-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0121 12v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6c0-.98.626-1.813 1.5-2.122'],
@@ -763,6 +787,22 @@
                     @endforeach
                 </div>
             </div>
+
+            @if(!empty($nsfwLinks))
+                {{-- NSFW --}}
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2">NSFW</p>
+                    <div class="grid grid-cols-4 gap-2">
+                        @foreach($nsfwLinks as [$label, $href, $active, $path])
+                            <a href="{{ $href }}" @click="mobileMenuOpen = false"
+                               class="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl transition active:scale-95 {{ $active ? 'bg-red-600 text-white shadow-lg shadow-red-900/40' : 'bg-white/[0.04] ring-1 ring-white/5 text-zinc-300' }}">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/></svg>
+                                <span class="text-[11px] font-bold leading-tight text-center">{{ $label }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             {{-- Lainnya --}}
             <div>
