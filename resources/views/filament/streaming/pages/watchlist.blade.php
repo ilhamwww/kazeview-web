@@ -311,6 +311,7 @@
                                 @foreach($this->nsfwFavorites as $fav)
                                     @php
                                         $nsfwUrl = $fav->url ?: '#';
+                                        $nsfwReading = in_array($fav->item_type, ['komik', 'comic', 'webtoon', 'manga', 'doujin'], true);
                                     @endphp
                                     <div class="group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40 transition hover:border-rose-700/60">
                                         <div class="relative aspect-[2/3] bg-zinc-950">
@@ -333,8 +334,13 @@
                                                 <h3 class="line-clamp-2 text-xs font-bold leading-snug text-white transition group-hover:text-rose-300 md:text-sm">{{ $fav->title }}</h3>
                                             </a>
                                             <a href="{{ $nsfwUrl }}" class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-zinc-800/80 px-3 py-2 text-xs font-bold text-zinc-300 transition hover:bg-rose-700 hover:text-white">
-                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
-                                                <span>Baca</span>
+                                                @if($nsfwReading)
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                                                    <span>Baca</span>
+                                                @else
+                                                    <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                                    <span>Tonton</span>
+                                                @endif
                                             </a>
                                         </div>
                                     </div>

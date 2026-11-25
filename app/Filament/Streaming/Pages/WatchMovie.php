@@ -219,6 +219,7 @@ class WatchMovie extends Page
                 'title' => $this->media['title'] ?? 'Movie Detail',
                 'thumbnail' => $this->media['poster'] ?? $this->media['thumbnail'] ?? null,
                 'url' => request()->url(),
+                'is_nsfw' => $this->mediaIsAdult($this->media ?? []),
             ]);
             $this->isFavorited = true;
             \Filament\Notifications\Notification::make()
@@ -226,6 +227,34 @@ class WatchMovie extends Page
                 ->success()
                 ->send();
         }
+    }
+
+    /**
+     * Filmbox menandai konten dewasa lewat genre (Adult/Erotic), bukan field
+     * khusus, jadi favorit 18+ harus dikenali dari situ supaya masuk ke
+     * bagian "Konten Dewasa" di Daftar Favorit.
+     */
+    protected function mediaIsAdult(array $media): bool
+    {
+        $genres = $media['genres_list'] ?? [];
+
+        if (empty($genres)) {
+            foreach ((array) ($media['genres'] ?? []) as $genre) {
+                $genres[] = is_array($genre) ? ($genre['name'] ?? '') : $genre;
+            }
+        }
+
+        if (empty($genres)) {
+            $genres = preg_split('/\s*,\s*/', (string) ($media['genre'] ?? '')) ?: [];
+        }
+
+        foreach ($genres as $genre) {
+            if (in_array(strtolower(trim((string) $genre)), ['adult', 'erotic', 'hentai', '18+', 'xxx', 'porn'], true)) {
+                return true;
+            }
+        }
+
+        return (bool) ($media['adult'] ?? false) || (bool) ($media['is_adult'] ?? false);
     }
 
     /**
