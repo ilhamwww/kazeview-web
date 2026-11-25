@@ -302,7 +302,9 @@
         $isSeries = (str_contains($currentUrl, '/series') || str_contains($currentUrl, '/tv-series')) && !$isDracin && !$isDrakor;
         $isMovie = (str_contains($currentUrl, '/movies') || str_contains($currentUrl, '/movie/')) && !$isDracin && !$isCollection && !$isServerLk;
         $isTv = (request()->is('tv') || request()->is('tv/*') || request()->is('live-tv*')) && !str_contains($currentUrl, '/tv-series');
-        $isHome = !$isSeries && !$isMovie && !$isDracin && !$isAnime && !$isKomik && !$isDoujin && !$isCollection && !$isNetwork && !$isIndonesia && !$isDrakor && !$isTv && !$isServerLk && !str_contains($currentUrl, '/dmca') && !str_contains($currentUrl, '/traffic');
+        // Home hanya aktif di beranda, bukan di halaman lain yang tidak punya
+        // entri menu sendiri (favorit, profil, leaderboard, 18+, dll).
+        $isHome = request()->path() === '/';
 
         $activeClass = "flex items-center gap-1.5 text-white bg-red-600/80 border border-red-500/25 px-3 py-1 rounded-full text-xs font-bold tracking-wide transition";
         $inactiveClass = "flex items-center gap-1.5 text-gray-300 hover:text-white text-xs font-semibold tracking-wide transition";
@@ -416,7 +418,7 @@
                 $nsfwNav = [];
                 if (auth()->check() && !empty(auth()->user()->nsfw_enabled)) {
                     $nsfwNav[] = ['Doujin', 'Manhwa & doujin dewasa', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
-                    $nsfwNav[] = ['18+', 'Filmbox konten dewasa', '/18plus', $isAdult18, 'M3 5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25v13.5A2.25 2.25 0 0118.75 21H5.25A2.25 2.25 0 013 18.75V5.25zM3 9h18M9 3v18'];
+                    $nsfwNav[] = ['Collection', 'Filmbox konten dewasa', '/18plus', $isAdult18, 'M3 5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25v13.5A2.25 2.25 0 0118.75 21H5.25A2.25 2.25 0 013 18.75V5.25zM3 9h18M9 3v18'];
                 }
                 $activeExplore = collect($exploreNav)->first(fn ($i) => $i[3]);
             @endphp
@@ -773,7 +775,7 @@
                     $nsfwLinks = [];
                     if (auth()->check() && !empty(auth()->user()->nsfw_enabled)) {
                         $nsfwLinks[] = ['Doujin', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
-                        $nsfwLinks[] = ['18+', '/18plus', $isAdult18, 'M3 5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25v13.5A2.25 2.25 0 0118.75 21H5.25A2.25 2.25 0 013 18.75V5.25zM3 9h18M9 3v18'];
+                        $nsfwLinks[] = ['Collection', '/18plus', $isAdult18, 'M3 5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25v13.5A2.25 2.25 0 0118.75 21H5.25A2.25 2.25 0 013 18.75V5.25zM3 9h18M9 3v18'];
                     }
                     $sheetLinks = array_merge($sheetLinks, [
                         ['Collections', \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming'), $isCollection, 'M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m0 0a2.246 2.246 0 00-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0121 12v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6c0-.98.626-1.813 1.5-2.122'],
