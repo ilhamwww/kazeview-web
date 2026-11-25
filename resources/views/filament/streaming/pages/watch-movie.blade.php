@@ -35,7 +35,7 @@
     @endif
 
     {{-- Top bar (disamakan dengan halaman TV Series) --}}
-    <div class="relative w-full max-w-[1400px] mx-auto px-4 lg:px-8 pt-20 md:pt-24 pb-2">
+    <div class="relative w-full max-w-[1400px] mx-auto px-4 lg:px-8 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:pt-24 pb-2">
         <div class="flex items-center gap-3 h-14 lg:h-12">
             <a href="{{ Movies::getUrl(panel: 'streaming') }}" aria-label="Kembali ke daftar film"
                class="w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10 active:bg-white/10 hover:bg-white/10 transition">
