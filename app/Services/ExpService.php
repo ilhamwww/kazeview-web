@@ -343,6 +343,7 @@ class ExpService
                 ->selectRaw("COUNT(CASE WHEN source_type IN ('anime','bstation') THEN 1 END) as n_anime")
                 ->selectRaw("COUNT(CASE WHEN source_type = 'dracin' THEN 1 END) as n_dracin")
                 ->selectRaw("COUNT(CASE WHEN source_type = 'komik' THEN 1 END) as n_komik")
+                ->selectRaw("SUM(CASE WHEN source_type = 'bonus' THEN exp ELSE 0 END) as exp_bonus")
                 ->selectRaw('SUM(CASE WHEN user_exp_events.is_backfill = false AND user_exp_events.earned_on = ? THEN user_exp_events.exp ELSE 0 END) as exp_today', [Carbon::now(self::TZ)->toDateString()])
                 ->selectRaw('MAX(user_exp_events.updated_at) as last_at')
                 ->get()
@@ -431,6 +432,7 @@ class ExpService
                 ['key' => 'dracin', 'label' => 'Dracin', 'exp' => (int) $r->exp_dracin, 'count' => (int) ($r->n_dracin ?? 0), 'unit' => 'episode'],
                 ['key' => 'komik', 'label' => 'Komik', 'exp' => (int) $r->exp_komik, 'count' => (int) ($r->n_komik ?? 0), 'unit' => 'chapter'],
                 ['key' => 'loyal', 'label' => 'Loyalitas', 'exp' => (int) ($r->exp_loyal ?? 0), 'count' => (int) ($r->exp_loyal ?? 0), 'unit' => 'hari'],
+                ['key' => 'bonus', 'label' => 'Bonus Season', 'exp' => (int) ($r->exp_bonus ?? 0), 'count' => 1, 'unit' => 'penyesuaian'],
             ],
             'today' => (int) ($r->exp_today ?? 0),
             'joined' => $r->created_at ? Carbon::parse($r->created_at)->setTimezone(self::TZ)->locale('id')->translatedFormat('d F Y') : '-',
