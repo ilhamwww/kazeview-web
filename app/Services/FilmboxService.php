@@ -459,6 +459,74 @@ class FilmboxService
         return $out;
     }
 
+    /**
+     * Katalog Filmbox 18+ (/api/filmbox/18plus).
+     *
+     * @return array{hero:array,sections:array,trending:array}
+     */
+    public static function adultHome(): array
+    {
+        $res = self::request('/18plus', [], 900, 40);
+        $data = $res['data'] ?? [];
+
+        $map = function (array $items): array {
+            $out = [];
+
+            foreach ($items as $raw) {
+                $mapped = self::mapItem((array) $raw);
+
+                if ($mapped) {
+                    // CDN aoneroom menolak hotlink dari browser, jadi poster
+                    // selalu lewat proxy gambar milik sendiri.
+                    if (! empty($mapped['thumbnail'])) {
+                        $mapped['thumbnail'] = \App\Services\ImageProxyService::wrap((string) $mapped['thumbnail']);
+                    }
+                    if (! empty($mapped['banner'])) {
+                        $mapped['banner'] = \App\Services\ImageProxyService::wrap((string) $mapped['banner']);
+                    }
+
+                    $out[] = $mapped;
+                }
+            }
+
+            return $out;
+        };
+
+        $sections = [];
+
+        foreach ((array) ($data['content_sections'] ?? []) as $section) {
+            $items = $map((array) ($section['items'] ?? []));
+
+            if (! $items) {
+                continue;
+            }
+
+            $sections[] = [
+                'title' => (string) ($section['section_title'] ?? 'Lainnya'),
+                'items' => $items,
+            ];
+        }
+
+        $trending = [];
+        $tRes = self::request('/18plus/trending', [], 900, 40);
+        foreach ((array) ($tRes['data']['items'] ?? []) as $raw) {
+            $mapped = self::mapItem((array) $raw);
+
+            if ($mapped) {
+                if (! empty($mapped['thumbnail'])) {
+                    $mapped['thumbnail'] = \App\Services\ImageProxyService::wrap((string) $mapped['thumbnail']);
+                }
+                $trending[] = $mapped;
+            }
+        }
+
+        return [
+            'hero' => $map((array) ($data['hero_banners'] ?? [])),
+            'sections' => $sections,
+            'trending' => $trending,
+        ];
+    }
+
     public static function indonesiaCatalog(string $category = 'all', int $page = 1, int $limit = 24, string $search = '', string $genre = ''): array
     {
         $items = self::indonesiaItems();

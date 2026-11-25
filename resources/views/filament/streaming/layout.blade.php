@@ -292,6 +292,7 @@
         $isAnime = str_contains($currentUrl, '/animek') || str_contains($currentUrl, '/anime');
         $isKomik = str_contains($currentUrl, '/komik');
         $isDoujin = str_contains($currentUrl, '/doujin');
+        $isAdult18 = str_contains($currentUrl, '/18plus');
         $isComicReader = ($isKomik || $isDoujin) && str_contains($currentUrl, '/read/');
         $isCollection = str_contains($currentUrl, '/collection');
         $isNetwork = str_contains($currentUrl, '/network');
@@ -415,6 +416,7 @@
                 $nsfwNav = [];
                 if (auth()->check() && !empty(auth()->user()->nsfw_enabled)) {
                     $nsfwNav[] = ['Doujin', 'Manhwa & doujin dewasa', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
+                    $nsfwNav[] = ['18+', 'Filmbox konten dewasa', '/18plus', $isAdult18, 'M3 5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25v13.5A2.25 2.25 0 0118.75 21H5.25A2.25 2.25 0 013 18.75V5.25zM3 9h18M9 3v18'];
                 }
                 $activeExplore = collect($exploreNav)->first(fn ($i) => $i[3]);
             @endphp
@@ -771,6 +773,7 @@
                     $nsfwLinks = [];
                     if (auth()->check() && !empty(auth()->user()->nsfw_enabled)) {
                         $nsfwLinks[] = ['Doujin', '/doujin', $isDoujin, 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 013 2.48z'];
+                        $nsfwLinks[] = ['18+', '/18plus', $isAdult18, 'M3 5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25v13.5A2.25 2.25 0 0118.75 21H5.25A2.25 2.25 0 013 18.75V5.25zM3 9h18M9 3v18'];
                     }
                     $sheetLinks = array_merge($sheetLinks, [
                         ['Collections', \App\Filament\Streaming\Pages\Collections::getUrl(panel: 'streaming'), $isCollection, 'M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m0 0a2.246 2.246 0 00-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0121 12v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6c0-.98.626-1.813 1.5-2.122'],
