@@ -286,7 +286,7 @@ class DoujindesuScraperService
                 }
 
                 $rawCover = $m['cover_url'] ?? '';
-                $coverUrl = !empty($rawCover) ? url('/api/proxy-image?url=' . urlencode($rawCover)) : '';
+                $coverUrl = !empty($rawCover) ? url('/api/proxy-image?url=' . urlencode($rawCover) . '&v=2') : '';
 
                 $items[] = [
                     'id' => $m['id'] ?? '',
@@ -366,8 +366,8 @@ class DoujindesuScraperService
 
             $rawCover = $data['cover_url'] ?? '';
             $rawBanner = $data['banner_url'] ?? ($data['cover_url'] ?? '');
-            $coverUrl = !empty($rawCover) ? url('/api/proxy-image?url=' . urlencode($rawCover)) : '';
-            $bannerUrl = !empty($rawBanner) ? url('/api/proxy-image?url=' . urlencode($rawBanner)) : '';
+            $coverUrl = !empty($rawCover) ? url('/api/proxy-image?url=' . urlencode($rawCover) . '&v=2') : '';
+            $bannerUrl = !empty($rawBanner) ? url('/api/proxy-image?url=' . urlencode($rawBanner) . '&v=2') : '';
 
             return [
                 'id' => $data['id'],

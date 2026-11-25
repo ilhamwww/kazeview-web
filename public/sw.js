@@ -3,7 +3,7 @@
  * Version: 1.1.1
  */
 
-const CACHE_NAME = 'kzstrm-pwa-v1.3.0';
+const CACHE_NAME = 'kzstrm-pwa-v1.3.1';
 const OFFLINE_URL = '/offline.html';
 
 // Core static assets to pre-cache
