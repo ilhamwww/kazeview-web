@@ -37,15 +37,15 @@ class ExpService
     /** EXP kumulatif minimum untuk tiap level. */
     public const LEVELS = [
         1 => 0,
-        2 => 500,
-        3 => 3000,
-        4 => 10000,
-        5 => 20000,
-        6 => 35000,
-        7 => 55000,
-        8 => 80000,
-        9 => 110000,
-        10 => 150000,
+        2 => 300,
+        3 => 900,
+        4 => 1800,
+        5 => 3000,
+        6 => 4800,
+        7 => 7000,
+        8 => 10000,
+        9 => 35000,
+        10 => 100000,
     ];
 
     public const LEADERBOARD_CACHE = 'kz_exp_leaderboard_v3';
