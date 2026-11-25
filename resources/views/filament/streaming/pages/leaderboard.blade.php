@@ -105,6 +105,20 @@
             <p class="mt-4 max-w-xl mx-auto text-sm md:text-base text-amber-100/60 leading-relaxed">
                 Kumpulkan EXP dari menonton Movie, TV Series, Indonesia, Anime, Dracin, dan membaca Komik. Naikkan levelmu dan rebut tempat di podium.
             </p>
+
+            @if($season)
+                <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <span class="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-amber-300">
+                        Season {{ $season->roman }}
+                    </span>
+                    <span class="text-[12px] text-amber-100/60">
+                        Reset berikutnya {{ $season->ends_at->copy()->addSecond()->locale('id')->translatedFormat('d F Y H:i') }} WIB
+                    </span>
+                    @auth
+                        <a href="/leaderboard/history" class="text-[12px] font-bold text-amber-300 underline decoration-amber-500/40 underline-offset-4 hover:text-amber-200">Riwayat Season</a>
+                    @endauth
+                </div>
+            @endif
         </div>
     </section>
 

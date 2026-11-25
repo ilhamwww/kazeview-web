@@ -66,3 +66,6 @@ Artisan::command('kz:warm-animek', function () {
 \Illuminate\Support\Facades\Schedule::command('kz:warm-animek')->everyFifteenMinutes()->withoutOverlapping();
 
 \Illuminate\Support\Facades\Schedule::command('kz:prune-cache')->hourly()->withoutOverlapping();
+
+// Tutup season EXP tiap hari lewat tengah malam WIB.
+\Illuminate\Support\Facades\Schedule::command('exp:season-close')->dailyAt('00:05')->withoutOverlapping();

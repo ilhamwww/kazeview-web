@@ -20,18 +20,18 @@ use Illuminate\Support\Facades\Log;
  */
 class ExpService
 {
-    public const DAILY_CAP = 3000;
+    public const DAILY_CAP = 9000;
     public const TZ = 'Asia/Jakarta';
     public const MOVIE_DONE_PERCENT = 80;
 
     /** EXP per unit menurut tipe konten. */
     public const VALUES = [
-        'movie'    => 50,
-        'series'   => 20,
-        'anime'    => 15,
-        'bstation' => 15,
-        'dracin'   => 8,
-        'komik'    => 5,
+        'movie'    => 150,
+        'series'   => 60,
+        'anime'    => 45,
+        'bstation' => 45,
+        'dracin'   => 24,
+        'komik'    => 15,
     ];
 
     /** EXP kumulatif minimum untuk tiap level. */
@@ -50,6 +50,46 @@ class ExpService
 
     public const LEADERBOARD_CACHE = 'kz_exp_leaderboard_v3';
 
+    /** Season EXP yang sedang berjalan. */
+    public static function currentSeason(): ?\App\Models\ExpSeason
+    {
+        return Cache::remember('kz_exp_current_season', 120, function () {
+            $now = Carbon::now(self::TZ);
+
+            return \App\Models\ExpSeason::whereNull('closed_at')
+                ->where('starts_at', '<=', $now)
+                ->orderByDesc('number')
+                ->first();
+        });
+    }
+
+    public static function currentSeasonId(): ?int
+    {
+        return self::currentSeason()?->id;
+    }
+
+    /** EXP loyalitas hanya dihitung di dalam season berjalan. */
+    public static function seasonLoyaltyExp($createdAt, $seasonStart): int
+    {
+        if (! $createdAt || ! $seasonStart) {
+            return 0;
+        }
+
+        $join = Carbon::parse($createdAt)->setTimezone(self::TZ)->startOfDay();
+        $start = Carbon::parse($seasonStart)->setTimezone(self::TZ)->startOfDay();
+        $today = Carbon::now(self::TZ)->startOfDay();
+
+        $from = $join->gt($start) ? $join : $start;
+
+        if ($from->gt($today)) {
+            return 0;
+        }
+
+        return ((int) $from->diffInDays($today) + 1) * self::LOYALTY_PER_DAY;
+    }
+
+
+
     /** Cache ringkasan EXP per user untuk topbar/navbar (dipanggil di setiap halaman). */
     public static function navSummary(User $user): array
     {
@@ -57,7 +97,7 @@ class ExpService
     }
 
     /** EXP loyalitas: +1 per hari sejak tanggal daftar (termasuk hari daftar), di luar batas harian. */
-    public const LOYALTY_PER_DAY = 1;
+    public const LOYALTY_PER_DAY = 3;
 
     public static function loyaltyExp($createdAt): int
     {
@@ -109,6 +149,7 @@ class ExpService
                     'user_id' => $userId, 'source_type' => $type,
                     'item_id' => $itemId, 'unit_key' => $unitKey,
                     'exp' => $grant, 'is_backfill' => false, 'earned_on' => $today,
+                    'season_id' => self::currentSeasonId(),
                 ]);
 
                 Cache::forget(self::LEADERBOARD_CACHE);
@@ -264,7 +305,9 @@ class ExpService
      */
     public static function leaderboard(int $limit = 20): array
     {
-        return Cache::remember(self::LEADERBOARD_CACHE, 300, function () use ($limit) {
+        $seasonForCache = self::currentSeasonId();
+
+        return Cache::remember(self::LEADERBOARD_CACHE . '_s' . ($seasonForCache ?? 0), 300, function () use ($limit) {
             $lastSeen = DB::table('watch_histories')->groupBy('user_id')->selectRaw('user_id, MAX(updated_at) as t')->pluck('t', 'user_id')->all();
             try {
                 foreach (DB::table('comic_read_histories')->groupBy('user_id')->selectRaw('user_id, MAX(updated_at) as t')->pluck('t', 'user_id') as $uid => $t) {
@@ -276,8 +319,17 @@ class ExpService
             }
 
             // Mulai dari users (left join) supaya user tanpa riwayat tetap dapat EXP loyalitas
+            $season = self::currentSeason();
+            $seasonId = $season?->id;
+
             $totals = DB::table('users')
-                ->leftJoin('user_exp_events', 'users.id', '=', 'user_exp_events.user_id')
+                ->leftJoin('user_exp_events', function ($join) use ($seasonId) {
+                    $join->on('users.id', '=', 'user_exp_events.user_id');
+
+                    if ($seasonId) {
+                        $join->where('user_exp_events.season_id', $seasonId);
+                    }
+                })
                 ->groupBy('users.id', 'users.name', 'users.special_rank', 'users.created_at')
                 ->select('users.id', 'users.name', 'users.special_rank', 'users.created_at')
                 ->selectRaw('COALESCE(SUM(user_exp_events.exp), 0) as total_exp')
@@ -294,10 +346,10 @@ class ExpService
                 ->selectRaw('SUM(CASE WHEN user_exp_events.is_backfill = false AND user_exp_events.earned_on = ? THEN user_exp_events.exp ELSE 0 END) as exp_today', [Carbon::now(self::TZ)->toDateString()])
                 ->selectRaw('MAX(user_exp_events.updated_at) as last_at')
                 ->get()
-                ->map(function ($r) use ($lastSeen) {
+                ->map(function ($r) use ($lastSeen, $season) {
                     // Terakhir aktif = aktivitas nonton/baca asli, bukan waktu ledger (backfill)
                     $r->last_at = $lastSeen[$r->id] ?? null;
-                    $r->exp_loyal = self::loyaltyExp($r->created_at);
+                    $r->exp_loyal = self::seasonLoyaltyExp($r->created_at, $season?->starts_at);
                     $r->total_exp = (int) $r->total_exp + $r->exp_loyal;
                     return $r;
                 })
@@ -324,7 +376,10 @@ class ExpService
     /** Ringkasan EXP satu user (untuk kartu "Level Kamu"). */
     public static function forUser(User $user): array
     {
+        $season = self::currentSeason();
+
         $r = DB::table('user_exp_events')->where('user_id', $user->id)
+            ->when($season, fn ($q) => $q->where('season_id', $season->id))
             ->selectRaw('COALESCE(SUM(exp),0) as total_exp')
             ->first();
         $today = (int) DB::table('user_exp_events')->where('user_id', $user->id)
@@ -332,7 +387,7 @@ class ExpService
             ->whereDate('earned_on', Carbon::now(self::TZ)->toDateString())
             ->sum('exp');
 
-        $loyal = self::loyaltyExp($user->created_at);
+        $loyal = self::seasonLoyaltyExp($user->created_at, $season?->starts_at);
         $info = self::levelInfo((int) $r->total_exp + $loyal);
         return $info + [
             'loyalty' => $loyal,

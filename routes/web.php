@@ -1264,9 +1264,39 @@ Route::get('/leaderboard', function () {
             'levels' => \App\Services\ExpService::LEVELS,
             'values' => \App\Services\ExpService::VALUES,
             'dailyCap' => \App\Services\ExpService::DAILY_CAP,
+            'season' => \App\Services\ExpService::currentSeason(),
         ])->render())
     ])->render());
 })->name('streaming.leaderboard');
+
+// Riwayat season EXP milik user (level tertinggi & poin per season)
+Route::get('/leaderboard/history', function () {
+    abort_unless(auth()->check(), 403);
+
+    $user = auth()->user();
+    $season = \App\Services\ExpService::currentSeason();
+
+    $rows = \App\Models\ExpSeasonStat::with('season')
+        ->where('user_id', $user->id)
+        ->get()
+        ->sortByDesc(fn ($r) => $r->season?->number ?? 0)
+        ->values();
+
+    $bestLevel = $rows->max('level') ?? 0;
+    $bestPoints = $rows->max('points') ?? 0;
+
+    return response(view('filament.streaming.layout', [
+        'title' => 'Riwayat Season - KZSTRM',
+        'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.leaderboard-history', [
+            'rows' => $rows,
+            'season' => $season,
+            'me' => \App\Services\ExpService::forUser($user),
+            'bestLevel' => $bestLevel,
+            'bestPoints' => $bestPoints,
+        ])->render())
+    ])->render());
+})->middleware('auth')->name('streaming.leaderboard.history');
+
 
 // Public DMCA Takedown & Copyright Policy (100% PUBLIC)
 Route::get('/dmca', function () {
