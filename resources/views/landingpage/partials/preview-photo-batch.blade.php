@@ -6,6 +6,7 @@
     @php
         $number = ++$photoOffset;
         $thumbnailUrl = route('photos.thumbnail', ['photo' => $photo->getKey()]);
+        $gridThumbnailUrl = route('photos.thumbnail', ['photo' => $photo->getKey(), 'mode' => 'grid']);
         $displayName = pathinfo($photo->file_name, PATHINFO_FILENAME);
     @endphp
     <button class="photo-card" type="button"
@@ -13,7 +14,7 @@
         data-photo-name="{{ $displayName }}"
         data-photo-number="{{ $number }}"
         aria-label="Buka thumbnail foto {{ $number }}: {{ $displayName }}">
-        <img src="{{ $thumbnailUrl }}"
+        <img src="{{ $gridThumbnailUrl }}"
             alt="{{ $displayName }}"
             loading="lazy"
             decoding="async"

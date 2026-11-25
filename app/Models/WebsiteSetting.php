@@ -23,12 +23,17 @@ class WebsiteSetting extends Model
         'lightbox_watermark_position',
         'lightbox_watermark_size',
         'lightbox_watermark_opacity',
+        'lightbox_watermark_tile_enabled',
+        'lightbox_watermark_tile_opacity',
+        'lightbox_watermark_helmet_shield',
     ];
 
     protected $casts = [
         'links' => 'array',
         'seo_settings' => 'array',
         'lightbox_watermark_enabled' => 'boolean',
+        'lightbox_watermark_tile_enabled' => 'boolean',
+        'lightbox_watermark_helmet_shield' => 'boolean',
     ];
 
     public static function seoDefaults(): array

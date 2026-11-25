@@ -19,6 +19,11 @@ class PhotoMotorSearchIndex extends Model
             'attempts' => 'integer',
             'processing_started_at' => 'datetime',
             'indexed_at' => 'datetime',
+            'quality_rating' => 'integer',
+            'quality_focus' => 'integer',
+            'quality_framing' => 'integer',
+            'quality_subject_cut' => 'boolean',
+            'quality_rated_at' => 'datetime',
         ];
     }
 

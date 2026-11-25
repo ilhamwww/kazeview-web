@@ -24,6 +24,7 @@ use Hardikkhorasiya09\ChangePassword\ChangePasswordPlugin;
 use App\Filament\Pages\Dashboard;
 use Filament\Support\Enums\MaxWidth;
 use App\Models\WebsiteSetting;
+use App\Http\Middleware\RedirectStreamingUsersFromAdmin;
 use Filament\Navigation\NavigationItem;
 
 class AdminPanelProvider extends PanelProvider
@@ -71,11 +72,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                RedirectStreamingUsersFromAdmin::class,
             ])
             ->navigationItems([
                 NavigationItem::make('Server Panel')
                     ->icon('heroicon-o-server-stack')
-                    ->url('https://stats.kazeview.com/', shouldOpenInNewTab: true)
+                    ->url('https://vps.ilhamwahyudin.my.id/', shouldOpenInNewTab: true)
                     ->sort(999)
                     ->visible(
                         fn(): bool => auth()->user()?->hasRole(

@@ -21,6 +21,17 @@ class AiPhotoIndexDispatcher
         return $this->dispatch($content, failedOnly: true);
     }
 
+    /**
+     * Hanya jadwalkan foto yang belum punya index siap pakai.
+     * Foto yang sudah terindeks tidak dijadwalkan ulang walaupun nama model
+     * atau versi prompt berubah — jadi penambahan foto baru bersifat lanjutan,
+     * bukan mengulang dari awal. Untuk scan ulang penuh pakai forceRescanForContent().
+     */
+    public function dispatchPendingForContent(Content $content): int
+    {
+        return $this->dispatch($content, pendingOnly: true);
+    }
+
     public function forceRescanForContent(Content $content): int
     {
         return $this->dispatch($content, force: true);
@@ -30,6 +41,7 @@ class AiPhotoIndexDispatcher
         Content $content,
         bool $force = false,
         bool $failedOnly = false,
+        bool $pendingOnly = false,
     ): int {
         $content->refresh();
 
@@ -56,6 +68,7 @@ class AiPhotoIndexDispatcher
         $modeMessage = match (true) {
             $force => 'Scan ulang seluruh foto sedang dijadwalkan.',
             $failedOnly => 'Foto yang gagal sedang dijadwalkan ulang.',
+            $pendingOnly => 'Foto yang belum terindeks sedang dijadwalkan.',
             default => 'Foto sedang dijadwalkan untuk AI indexing.',
         };
 
@@ -69,10 +82,31 @@ class AiPhotoIndexDispatcher
         $photosQuery = ListDownloaded::query()
             ->whereHas('download', fn ($query) => $query->where('id_content', $content->getKey()));
 
+        if ($force) {
+            // Tandai index lama sebagai sedang diproses ulang supaya progres di
+            // dashboard langsung turun, bukan tertahan di 100% sampai job selesai.
+            PhotoMotorSearchIndex::query()
+                ->where('content_id', $content->getKey())
+                ->whereIn('status', ['indexed', 'failed', 'processing', 'pending'])
+                ->update([
+                    'status' => 'reindexing',
+                    'error_message' => null,
+                ]);
+        }
+
         if ($failedOnly) {
             $photosQuery->whereHas(
                 'motorSearchIndex',
                 fn ($query) => $query->where('status', 'failed'),
+            );
+        }
+
+        if ($pendingOnly) {
+            // Foto yang sudah punya index siap pakai tidak dijadwalkan ulang.
+            // Ini yang membuat penambahan foto baru bersifat lanjutan.
+            $photosQuery->whereDoesntHave(
+                'motorSearchIndex',
+                fn ($query) => $query->where('status', 'indexed')->whereNotNull('embedding'),
             );
         }
 
@@ -121,6 +155,7 @@ class AiPhotoIndexDispatcher
             $message = match (true) {
                 $force => "{$total} foto dijadwalkan untuk scan ulang penuh.",
                 $failedOnly => "{$total} foto gagal dijadwalkan ulang.",
+                $pendingOnly => "{$total} foto baru dijadwalkan. Foto yang sudah terindeks dilewati.",
                 default => "{$total} foto dijadwalkan untuk AI indexing.",
             };
 

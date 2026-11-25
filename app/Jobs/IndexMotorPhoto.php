@@ -144,6 +144,7 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
 
             $descriptor = $ai->describeMotorcycle($temporaryPath, 'image/jpeg');
             $embedding = $ai->embed($ai->retrievalDescriptor($descriptor));
+            $quality = $ai->qualityFromDescriptor($descriptor);
 
             $index->update([
                 'source_hash' => $sourceHash,
@@ -156,6 +157,14 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
                 'status' => 'indexed',
                 'error_message' => null,
                 'indexed_at' => now(),
+                'quality_rating' => $quality['rating'] ?? null,
+                'quality_focus' => $quality['focus'] ?? null,
+                'quality_framing' => $quality['framing'] ?? null,
+                'quality_subject_cut' => $quality['subject_cut'] ?? null,
+                'quality_crop_severity' => $quality['crop_severity'] ?? null,
+                'quality_note' => $quality['note'] ?? null,
+                'quality_model' => $quality !== null ? $ai->visionModel() : null,
+                'quality_rated_at' => $quality !== null ? now() : null,
             ]);
         } catch (Throwable $exception) {
             $index->update([
@@ -221,11 +230,14 @@ class IndexMotorPhoto implements ShouldQueue, ShouldBeUnique
 
         $manager = new ImageManager(new Driver());
         $image = $manager->read($sourcePath);
-        $image->scaleDown(width: 2048, height: 2048);
+
+        // Auto-orient based on EXIF before resizing to ensure upright coordinates
+        $image->orient();
+        $image->scaleDown(width: 1280, height: 1280);
 
         file_put_contents(
             $temporaryPath,
-            (string) $image->encode(new JpegEncoder(quality: 92)),
+            (string) $image->encode(new JpegEncoder(quality: 85)),
         );
 
         return $temporaryPath;

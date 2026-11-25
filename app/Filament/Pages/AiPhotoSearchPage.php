@@ -29,6 +29,53 @@ class AiPhotoSearchPage extends Page implements Tables\Contracts\HasTable
 
     protected static string $view = 'filament.pages.ai-photo-search';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        $service = app(\App\Services\AiWorkerModeService::class);
+        $mode = $service->requestedMode();
+        $running = $service->runningWorkers();
+        $isSunmori = $mode === 'sunmori';
+        $target = $isSunmori ? 'default' : 'sunmori';
+        $targetInfo = \App\Services\AiWorkerModeService::MODES[$target];
+
+        $label = $isSunmori
+            ? "🏍️ Mode Sunmori • {$running} worker"
+            : "🌙 Mode Default • {$running} worker";
+
+        if ($service->isPending()) {
+            $label .= ' (menerapkan…)';
+        }
+
+        return [
+            \Filament\Actions\Action::make('switchWorkerMode')
+                ->label($label)
+                ->icon($isSunmori ? 'heroicon-o-bolt' : 'heroicon-o-moon')
+                ->color($isSunmori ? 'warning' : 'gray')
+                ->requiresConfirmation()
+                ->modalHeading("Ganti ke Mode {$targetInfo['label']}?")
+                ->modalDescription(
+                    $target === 'sunmori'
+                        ? 'Worker AI indexing dinaikkan ke 10 proses. Cocok untuk upload Sunmori hari Minggu. Pakai RAM ±1,4 GB.'
+                        : 'Worker AI indexing diturunkan ke 1 proses. Job yang sedang berjalan dibiarkan selesai dulu (maks. ±3,5 menit).'
+                )
+                ->modalSubmitActionLabel("Ya, ganti ke {$targetInfo['label']}")
+                ->action(function () use ($service, $target, $targetInfo): void {
+                    $service->setMode($target);
+
+                    Notification::make()
+                        ->title("Mode {$targetInfo['label']} dijadwalkan")
+                        ->body("Worker menyesuaikan ke {$targetInfo['workers']} proses dalam beberapa detik.")
+                        ->success()
+                        ->send();
+                }),
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -69,7 +116,7 @@ class AiPhotoSearchPage extends Page implements Tables\Contracts\HasTable
 
                         if ($state) {
                             try {
-                                $total = $dispatcher->dispatchForContent($record);
+                                $total = $dispatcher->dispatchPendingForContent($record);
 
                                 Notification::make()
                                     ->title('AI Photo Search diaktifkan')
@@ -106,17 +153,47 @@ class AiPhotoSearchPage extends Page implements Tables\Contracts\HasTable
 
                 Tables\Columns\TextColumn::make('progress')
                     ->label('Progress')
-                    ->getStateUsing(
-                        fn (Content $record): string =>
-                            "{$record->indexed_photos_count} / {$record->downloaded_photos_count}",
-                    )
-                    ->badge()
-                    ->color(fn (Content $record): string => match (true) {
-                        ! $record->ai_photo_search_enabled => 'gray',
-                        $record->indexed_photos_count > 0
-                            && $record->indexed_photos_count >= $record->downloaded_photos_count => 'success',
-                        $record->failed_photos_count > 0 => 'danger',
-                        default => 'warning',
+                    ->html()
+                    ->getStateUsing(function (Content $record): string {
+                        $downloaded = (int) $record->downloaded_photos_count;
+                        $indexed = (int) $record->indexed_photos_count;
+                        $failed = (int) $record->failed_photos_count;
+                        $isActive = in_array($record->ai_index_status, ['queued', 'indexing', 'reindexing']) && $record->ai_photo_search_enabled;
+
+                        if (! $record->ai_photo_search_enabled) {
+                            return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-400">Nonaktif</span>';
+                        }
+
+                        if ($downloaded === 0) {
+                            return '<span class="text-xs text-zinc-500">0 foto</span>';
+                        }
+
+                        $percent = min(100, (int) round(($indexed / $downloaded) * 100));
+
+                        $barColor = $percent >= 100
+                            ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                            : ($isActive ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse' : 'bg-blue-500');
+
+                        $statusBadge = '';
+                        if ($isActive) {
+                            $statusBadge = '<span class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400"><span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span> ' . $percent . '% <span class="text-[10px] text-amber-300 font-semibold">(⚡ ' . app(\App\Services\AiWorkerModeService::class)->runningWorkers() . ' Worker)</span></span>';
+                        } elseif ($percent >= 100) {
+                            $statusBadge = '<span class="text-xs font-bold text-emerald-400">✓ 100% Selesai</span>';
+                        } else {
+                            $statusBadge = '<span class="text-xs font-bold text-zinc-300">' . $percent . '%</span>';
+                        }
+
+                        return <<<HTML
+<div class="min-w-[170px] max-w-[240px] space-y-1.5 py-1">
+    <div class="flex items-center justify-between text-xs">
+        {$statusBadge}
+        <span class="text-[11px] font-mono text-zinc-400">{$indexed}/{$downloaded}</span>
+    </div>
+    <div class="w-full bg-zinc-800 rounded-full h-2.5 overflow-hidden border border-zinc-700/60 shadow-inner">
+        <div class="{$barColor} h-full rounded-full transition-all duration-300" style="width: {$percent}%"></div>
+    </div>
+</div>
+HTML;
                     }),
 
                 Tables\Columns\TextColumn::make('ai_index_status')
@@ -160,13 +237,13 @@ class AiPhotoSearchPage extends Page implements Tables\Contracts\HasTable
                         Content $record,
                         AiPhotoIndexDispatcher $dispatcher,
                     ): void {
-                        $total = $dispatcher->dispatchForContent($record);
+                        $total = $dispatcher->dispatchPendingForContent($record);
 
                         Notification::make()
                             ->title('Sinkronisasi dijadwalkan')
                             ->body(
                                 $total > 0
-                                    ? "{$total} foto diperiksa oleh queue. Foto yang tidak berubah akan dilewati."
+                                    ? "{$total} foto baru masuk antrean. Foto yang sudah terindeks dilewati."
                                     : ($record->fresh()->ai_index_message ?? 'Tidak ada foto untuk dijadwalkan.'),
                             )
                             ->success()
@@ -229,7 +306,7 @@ class AiPhotoSearchPage extends Page implements Tables\Contracts\HasTable
                             ->send();
                     }),
             ])
-            ->poll('10s')
+            ->poll(fn (): ?string => Content::whereIn('ai_index_status', ['queued', 'indexing', 'reindexing'])->exists() ? '2s' : '10s')
             ->emptyStateHeading('Belum ada Content foto')
             ->emptyStateDescription('Content bertipe FOTO akan muncul di halaman ini.');
     }

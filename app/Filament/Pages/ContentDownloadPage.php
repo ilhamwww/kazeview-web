@@ -9,6 +9,7 @@ use App\Models\ListDownloaded;
 use App\Support\GoogleDriveFolder as GoogleDriveFolderInput;
 use Filament\Actions\Action as HeaderAction;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -52,6 +53,72 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
     protected function getHeaderActions(): array
     {
         return [
+            HeaderAction::make('redownload')
+                ->label('Download Ulang')
+                ->icon('heroicon-o-arrow-path')
+                ->color('primary')
+                ->visible(fn (): bool => trim((string) (Content::query()->find($this->contentId)?->link ?? '')) !== '')
+                ->modalHeading('Download ulang dari link tersimpan')
+                ->modalDescription(function (): string {
+                    $link = trim((string) (Content::query()->find($this->contentId)?->link ?? ''));
+
+                    return "Link tersimpan: {$link}\n\nHanya file yang belum ada di server yang akan diunduh, lalu foto baru otomatis masuk antrean AI indexing. Foto yang sudah terindeks tidak diulang.";
+                })
+                ->modalSubmitActionLabel('Download ulang')
+                ->form([
+                    Toggle::make('force')
+                        ->label('Paksa tanpa kunci')
+                        ->helperText('Aktifkan kalau tombol terasa tidak bereaksi karena job sebelumnya masih menggantung. Unduhan tetap hanya mengambil file baru.')
+                        ->default(false),
+                ])
+                ->action(function (array $data): void {
+                    if (! $this->hasFolderSchema()) {
+                        Notification::make()
+                            ->title('Database belum siap')
+                            ->body('Jalankan migration terbaru terlebih dahulu agar struktur subfolder Google Drive dapat disimpan.')
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
+                    $content = Content::query()->findOrFail($this->contentId);
+                    $link = trim((string) $content->link);
+
+                    if ($link === '' || $this->extractGoogleDriveFolderId($link) === null) {
+                        Notification::make()
+                            ->title('Link tersimpan tidak valid')
+                            ->body('Gunakan tombol Download Data sekali untuk menyimpan URL folder yang benar.')
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
+                    $queued = $content->queueDriveDownload($link, (bool) ($data['force'] ?? false));
+
+                    Notification::make()
+                        ->title(
+                            $queued
+                                ? 'Download ulang masuk antrean'
+                                : 'Download belum dapat dijadwalkan',
+                        )
+                        ->body(
+                            $queued
+                                ? ((bool) ($data['force'] ?? false)
+                                    ? 'Mode paksa: kunci diabaikan. File yang sudah ada tetap dilewati.'
+                                    : 'File yang sudah ada akan dilewati.')
+                                : 'Periksa link dan pastikan migration queue terbaru sudah dijalankan.',
+                        )
+                        ->when(
+                            $queued,
+                            fn (Notification $notification) => $notification->success(),
+                            fn (Notification $notification) => $notification->danger(),
+                        )
+                        ->send();
+                }),
             HeaderAction::make('downloadData')
                 ->label('Download Data')
                 ->icon('heroicon-o-arrow-down-tray')
@@ -188,13 +255,72 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                 DownloadData::query()
                     ->where('id_content', $this->contentId)
             )
+            ->poll(function (): ?string {
+                $c = Content::query()->find($this->contentId);
+                return ($c && in_array($c->ai_index_status, ['queued', 'indexing', 'reindexing'])) ? '2s' : null;
+            })
             ->columns($columns)
             ->actions([
+                Action::make('redownloadFolder')
+                    ->label('Download Ulang')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('primary')
+                    ->button()
+                    ->modalHeading(fn (DownloadData $record): string => "Download ulang folder {$record->folder_name}?")
+                    ->modalDescription('Hanya file yang belum ada di server yang akan diunduh. Setelah selesai, foto baru otomatis masuk antrean AI indexing dan foto yang sudah terindeks dilewati.')
+                    ->modalSubmitActionLabel('Download ulang')
+                    ->form([
+                        Toggle::make('force')
+                            ->label('Paksa tanpa kunci')
+                            ->helperText('Aktifkan kalau tombol terasa tidak bereaksi karena job folder ini masih menggantung.')
+                            ->default(false),
+                    ])
+                    ->action(function (Action $action, array $data, DownloadData $record): void {
+                        $folderId = trim((string) $record->id_folder);
+
+                        if (! preg_match('/^[A-Za-z0-9_-]+$/', $folderId)) {
+                            throw new \RuntimeException('Folder ID tidak valid sehingga download ulang dibatalkan.');
+                        }
+
+                        $content = Content::query()->findOrFail($this->contentId);
+                        $queued = $content->queueDriveDownload($folderId, (bool) ($data['force'] ?? false));
+
+                        Notification::make()
+                            ->title(
+                                $queued
+                                    ? 'Download ulang folder masuk antrean'
+                                    : 'Download belum dapat dijadwalkan',
+                            )
+                            ->body(
+                                $queued
+                                    ? "Folder {$record->folder_name}: file lama dilewati."
+                                        . ((bool) ($data['force'] ?? false) ? ' Mode paksa: kunci diabaikan.' : '')
+                                    : 'Periksa konfigurasi queue Google Drive.',
+                            )
+                            ->when(
+                                $queued,
+                                fn (Notification $notification) => $notification->success(),
+                                fn (Notification $notification) => $notification->danger(),
+                            )
+                            ->send();
+
+                        if ($queued) {
+                            $action->success();
+                        }
+                    }),
+                Action::make('openGallery')
+                    ->label('Buka Galeri Sortir')
+                    ->icon('heroicon-o-photo')
+                    ->color('success')
+                    ->button()
+                    ->url(fn (DownloadData $record): string => url('/admin/download-gallery/' . $record->id)),
                 Action::make('viewFiles')
-                    ->label('View Files')
+                    ->label('Tabel Data')
+                    ->icon('heroicon-o-table-cells')
+                    ->color('gray')
                     ->button()
                     ->modalHeading(fn(DownloadData $record): string => "Files — {$record->folder_name}")
-                    ->modalWidth('5xl')
+                    ->modalWidth('7xl')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close')
                     ->modalContent(fn(DownloadData $record) => view(
@@ -283,5 +409,42 @@ class ContentDownloadPage extends Page implements Tables\Contracts\HasTable
                         'Folder, file storage, dan data download berhasil dihapus',
                     ),
             ]);
+    }
+
+    public function getAiStats(): array
+    {
+        $content = Content::query()->find($this->contentId);
+        if (! $content) {
+            return [];
+        }
+
+        $downloaded = (int) DB::table('list_downloaded')
+            ->join('download_data', 'download_data.id', '=', 'list_downloaded.id_download')
+            ->where('download_data.id_content', $this->contentId)
+            ->count();
+
+        $query = DB::table('photo_motor_search_indexes')
+            ->where('content_id', $this->contentId);
+
+        // Hanya 'indexed' yang dianggap selesai. 'reindexing' berarti foto masih
+        // diproses ulang, jadi tidak boleh menahan bar di 100%.
+        $indexed = (clone $query)->where('status', 'indexed')->count();
+        $processing = (clone $query)->whereIn('status', ['processing', 'pending', 'reindexing'])->count();
+        $failed = (clone $query)->where('status', 'failed')->count();
+
+        $percent = $downloaded > 0 ? min(100, (int) round(($indexed / $downloaded) * 100)) : 0;
+        $isIndexing = in_array($content->ai_index_status, ['queued', 'indexing', 'reindexing']) || ($processing > 0 && $content->ai_photo_search_enabled);
+
+        return [
+            'enabled' => (bool) $content->ai_photo_search_enabled,
+            'status' => $content->ai_index_status,
+            'message' => $content->ai_index_message,
+            'downloaded' => $downloaded,
+            'indexed' => $indexed,
+            'processing' => $processing,
+            'failed' => $failed,
+            'percent' => $percent,
+            'is_indexing' => $isIndexing,
+        ];
     }
 }

@@ -71,6 +71,15 @@
     $watermarkUrl = $watermarkEnabled
         ? asset('storage/' . $watermarkImage)
         : null;
+
+    $whatsAppNumber = preg_replace('/\D+/', '', (string) ($data_web->wa ?? ''));
+    if ($whatsAppNumber !== '' && str_starts_with($whatsAppNumber, '0')) {
+        $whatsAppNumber = '62' . substr($whatsAppNumber, 1);
+    } elseif ($whatsAppNumber !== '' && !str_starts_with($whatsAppNumber, '62')) {
+        $whatsAppNumber = '62' . $whatsAppNumber;
+    }
+    $waText = rawurlencode("Halo KAZEVIEW, saya ingin konfirmasi pembayaran QRIS untuk event: {$eventTitle}");
+    $helpUrl = $whatsAppNumber !== '' ? 'https://wa.me/' . $whatsAppNumber . '?text=' . $waText : '#contact';
 @endphp
 
 @section('preloads')
@@ -79,6 +88,16 @@
 
 @section('styles')
     <style>
+        .payment-modal { z-index: 2000; }
+        .payment-utilities { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin-top:1.5rem; }
+        .qris-button { display:inline-flex; height:46px; padding:0 24px; align-items:center; justify-content:center; gap:10px; cursor:pointer; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.32); border-radius:3px; color:#fff; font:700 .75rem/1 Inter,sans-serif; letter-spacing:.08em; transition:border-color .2s ease,background-color .2s ease; }
+        .qris-button:hover { background:var(--color-accent-soft, rgba(255,42,42,.15)); border-color:var(--color-accent, #ff2a2a); color:#fff; }
+        .qris-button--toolbar { height:40px; padding:0 18px; font-size:.72rem; }
+        .qris-button--lightbox { height:36px; padding:0 14px; font-size:.68rem; border-color:rgba(255,255,255,.35); background:rgba(0,0,0,.5); }
+        .help-link { display:inline-flex; min-height:44px; align-items:center; gap:8px; color:inherit; text-decoration:none; font:700 .75rem/1 Inter,sans-serif; letter-spacing:.08em; transition:color .2s ease; }
+        .help-link:hover { color:var(--color-accent, #ff2a2a); }
+        .whatsapp-icon { display:block; width:18px; height:18px; fill:currentColor; flex:0 0 18px; }
+        .icon-outline { width:18px; height:18px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.6; }
         .gallery-detail { padding: clamp(2rem, 5vw, 5rem) var(--page-gutter, 5vw) 6rem; }
         .gallery-back { display:inline-flex; align-items:center; gap:.6rem; color:inherit; text-decoration:none; font:700 .78rem/1 Inter,sans-serif; letter-spacing:.12em; margin-bottom:2rem; }
         .gallery-back:hover { color:var(--color-accent); }
@@ -117,7 +136,7 @@
         .ai-photo-search__results-heading h3 { margin:0; font:800 clamp(1.5rem,4vw,2.8rem)/1 "Inter Tight",sans-serif; letter-spacing:-.04em; }
         .ai-photo-search__results-heading span { opacity:.55; font:700 .68rem/1 Inter,sans-serif; letter-spacing:.1em; }
         .ai-photo-search__grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:clamp(.5rem,1.2vw,1rem); }
-        .ai-photo-search__match { position:relative; display:block; overflow:hidden; aspect-ratio:4/3; color:#fff; background:#151515; }
+        .ai-photo-search__match { position:relative; display:block; overflow:hidden; aspect-ratio:1/1; color:#fff; background:#151515; }
         .ai-photo-search__match img { width:100%; height:100%; object-fit:cover; transition:transform .45s ease; }
         .ai-photo-search__match:hover img { transform:scale(1.035); }
         .ai-photo-search__match-meta { position:absolute; right:0; bottom:0; left:0; display:flex; justify-content:space-between; gap:.5rem; padding:.7rem; background:linear-gradient(transparent,rgba(0,0,0,.9)); font:700 .62rem/1.3 Inter,sans-serif; letter-spacing:.06em; text-transform:uppercase; }
@@ -136,7 +155,7 @@
         .gallery-toolbar h2 { margin:0; font:800 clamp(1.7rem,4vw,3.2rem)/1 "Inter Tight",sans-serif; letter-spacing:-.04em; }
         .gallery-toolbar p { margin:0; font:700 .75rem/1 Inter,sans-serif; letter-spacing:.12em; opacity:.6; }
         .photo-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:clamp(.5rem,1.2vw,1rem); }
-        .photo-card { position:relative; border:0; padding:0; overflow:hidden; background:#151515; cursor:zoom-in; aspect-ratio:4/3; }
+        .photo-card { position:relative; border:0; padding:0; overflow:hidden; background:#151515; cursor:zoom-in; aspect-ratio:1/1; }
         .photo-card img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .45s ease,opacity .25s; }
         .photo-card:hover img,.photo-card:focus-visible img { transform:scale(1.035); }
         .photo-card__number { position:absolute; right:.65rem; bottom:.65rem; padding:.4rem .55rem; color:#fff; background:rgba(0,0,0,.72); font:700 .65rem/1 Inter,sans-serif; letter-spacing:.08em; }
@@ -157,19 +176,10 @@
         .photo-lightbox__close,.photo-lightbox__nav { border:1px solid rgba(255,255,255,.35); background:rgba(0,0,0,.35); color:#fff; cursor:pointer; }
         .photo-lightbox__close { width:44px;height:44px;font-size:1.5rem; }
         .photo-lightbox__stage { position:relative; min-height:0; display:flex; align-items:center; justify-content:center; padding:0 4rem; }
-        .photo-lightbox__frame { position:relative; display:inline-flex; max-width:100%; max-height:calc(100vh - 150px); align-items:center; justify-content:center; overflow:hidden; }
-        .photo-lightbox__image { display:block; max-width:100%; max-height:calc(100vh - 150px); object-fit:contain; }
-        .photo-lightbox__watermark { position:absolute; z-index:2; width:var(--watermark-size,30%); max-width:90%; max-height:90%; object-fit:contain; pointer-events:none; user-select:none; opacity:var(--watermark-opacity,.65); }
-        .photo-lightbox__watermark--top-left { top:3%; left:3%; }
-        .photo-lightbox__watermark--top-center { top:3%; left:50%; transform:translateX(-50%); }
-        .photo-lightbox__watermark--top-right { top:3%; right:3%; }
-        .photo-lightbox__watermark--center-left { top:50%; left:3%; transform:translateY(-50%); }
-        .photo-lightbox__watermark--center { top:50%; left:50%; transform:translate(-50%,-50%); }
-        .photo-lightbox__watermark--center-right { top:50%; right:3%; transform:translateY(-50%); }
-        .photo-lightbox__watermark--bottom-left { bottom:3%; left:3%; }
-        .photo-lightbox__watermark--bottom-center { bottom:3%; left:50%; transform:translateX(-50%); }
-        .photo-lightbox__watermark--bottom-right { right:3%; bottom:3%; }
-        .photo-lightbox__nav { position:absolute; top:50%; transform:translateY(-50%); width:48px;height:64px;font-size:1.5rem; }
+        .photo-lightbox__frame { position:relative; display:inline-flex; max-width:100%; max-height:calc(100vh - 150px); align-items:center; justify-content:center; overflow:hidden; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+        .photo-lightbox__image { display:block; max-width:100%; max-height:calc(100vh - 150px); object-fit:contain; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; pointer-events:none; }
+        .photo-lightbox__shield { position:absolute; inset:0; z-index:3; background:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+        .photo-lightbox__nav { position:absolute; top:50%; transform:translateY(-50%); width:48px;height:64px;font-size:1.5rem; z-index:4; }
         .photo-lightbox__nav--prev { left:.75rem; } .photo-lightbox__nav--next { right:.75rem; }
         .photo-lightbox__caption { padding:1rem 1.25rem; text-align:center; font:.75rem/1.4 Inter,sans-serif; letter-spacing:.08em; }
         @media(max-width:900px){.photo-grid,.ai-photo-search__grid{grid-template-columns:repeat(3,1fr)}}
@@ -195,6 +205,23 @@
                 @if (filled($content->body))
                     <p class="gallery-description">{!! nl2br(e($content->body)) !!}</p>
                 @endif
+                <div class="payment-utilities">
+                    <button class="qris-button" type="button" data-open-payment aria-haspopup="dialog">
+                        <svg class="icon-outline" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="3" y="3" width="7" height="7" />
+                            <rect x="14" y="3" width="7" height="7" />
+                            <rect x="3" y="14" width="7" height="7" />
+                            <path d="M14 14h3v3h-3zM18 18h3v3h-3zM18 14h3M14 20h2" />
+                        </svg>
+                        PAY / QRIS
+                    </button>
+                    <a class="help-link" href="{{ $helpUrl }}" @if ($whatsAppNumber !== '') target="_blank" rel="noopener noreferrer" @endif>
+                        <svg class="whatsapp-icon" viewBox="0 0 448 512" aria-hidden="true">
+                            <path d="M380.9 97.1c-41.9-42-97.7-65.1-157-65.1-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480 117.7 449.1c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1s56.2 81.2 56.1 130.5c0 101.8-84.9 184.6-186.6 184.6zM325.1 300.5c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8s-14.3 18-17.6 21.8c-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7s-12.5-30.1-17.1-41.2c-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2s-9.7 1.4-14.8 6.9c-5.1 5.6-19.4 19-19.4 46.3s19.9 53.7 22.6 57.4c2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4s4.6-24.1 3.2-26.4c-1.3-2.5-5-3.9-10.5-6.6z" />
+                        </svg>
+                        NEED HELP?
+                    </a>
+                </div>
             </div>
         </section>
 
@@ -286,8 +313,19 @@
             </div>
 
             <div class="gallery-toolbar">
-                <h2 id="photos-heading">EVENT PHOTOS<span class="accent">.</span></h2>
-                <p data-gallery-total>{{ number_format($photos->total()) }} PHOTOS</p>
+                <div>
+                    <h2 id="photos-heading">EVENT PHOTOS<span class="accent">.</span></h2>
+                    <p data-gallery-total>{{ number_format($photos->total()) }} PHOTOS</p>
+                </div>
+                <button class="qris-button qris-button--toolbar" type="button" data-open-payment aria-haspopup="dialog">
+                    <svg class="icon-outline" viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                        <path d="M14 14h3v3h-3zM18 18h3v3h-3zM18 14h3M14 20h2" />
+                    </svg>
+                    PAY / QRIS
+                </button>
             </div>
 
             <div class="photo-grid" data-photo-grid>
@@ -325,24 +363,51 @@
     <div class="photo-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Photo preview" aria-hidden="true">
         <div class="photo-lightbox__top">
             <span data-lightbox-count></span>
-            <button class="photo-lightbox__close" type="button" data-lightbox-close aria-label="Tutup preview">×</button>
+            <div style="display:inline-flex; align-items:center; gap:10px;">
+                <button class="qris-button qris-button--lightbox" type="button" data-open-payment aria-haspopup="dialog">
+                    <svg class="icon-outline" viewBox="0 0 24 24" aria-hidden="true" style="width:14px; height:14px;">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                        <path d="M14 14h3v3h-3zM18 18h3v3h-3zM18 14h3M14 20h2" />
+                    </svg>
+                    PAY / QRIS
+                </button>
+                <button class="photo-lightbox__close" type="button" data-lightbox-close aria-label="Tutup preview">×</button>
+            </div>
         </div>
         <div class="photo-lightbox__stage">
             <button class="photo-lightbox__nav photo-lightbox__nav--prev" type="button" data-lightbox-prev aria-label="Foto sebelumnya">‹</button>
             <div class="photo-lightbox__frame">
-                <img class="photo-lightbox__image" data-lightbox-image src="" alt="">
-                @if ($watermarkEnabled)
-                    <img class="photo-lightbox__watermark photo-lightbox__watermark--{{ $watermarkPosition }}"
-                        src="{{ $watermarkUrl }}"
-                        alt=""
-                        aria-hidden="true"
-                        draggable="false"
-                        style="--watermark-size:{{ $watermarkSize }}%;--watermark-opacity:{{ $watermarkOpacity / 100 }}">
-                @endif
+                <img class="photo-lightbox__image" data-lightbox-image src="" alt="" draggable="false">
+                <div class="photo-lightbox__shield" aria-hidden="true"></div>
             </div>
             <button class="photo-lightbox__nav photo-lightbox__nav--next" type="button" data-lightbox-next aria-label="Foto berikutnya">›</button>
         </div>
         <div class="photo-lightbox__caption" data-lightbox-caption></div>
+    </div>
+
+    <div class="payment-modal" id="payment-modal" role="dialog" aria-modal="true"
+        aria-labelledby="payment-modal-title" aria-hidden="true">
+        <div class="payment-modal__dialog">
+            <button class="payment-modal__close" type="button" data-close-payment aria-label="Close payment modal">×</button>
+            <h2 id="payment-modal-title">PAY / QRIS</h2>
+            <p>Scan kode QRIS di bawah ini untuk pembayaran, lalu kirim konfirmasi dan nomor/nama foto ke WhatsApp KAZEVIEW.</p>
+            @if ($eventPrice && $eventPrice !== 'FREE PREVIEW')
+                <div style="margin: 0 0 18px; padding: 10px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; font-size: 13px; font-weight: 600; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="opacity: 0.7; font-size: 11px; letter-spacing: 0.08em;">HARGA:</span>
+                    <strong style="color: var(--color-accent, #ff2a2a); font-size: 14px;">{{ $eventPrice }}</strong>
+                </div>
+            @endif
+            <img src="{{ asset('QRIS.png') }}" alt="KAZEVIEW QRIS payment code" style="border-radius: 6px;">
+            <a class="payment-modal__help" href="{{ $helpUrl }}" @if ($whatsAppNumber !== '') target="_blank"
+                rel="noopener noreferrer" @endif>
+                <svg class="whatsapp-icon" viewBox="0 0 448 512" aria-hidden="true">
+                    <path d="M380.9 97.1c-41.9-42-97.7-65.1-157-65.1-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480 117.7 449.1c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1s56.2 81.2 56.1 130.5c0 101.8-84.9 184.6-186.6 184.6zM325.1 300.5c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8s-14.3 18-17.6 21.8c-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7s-12.5-30.1-17.1-41.2c-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2s-9.7 1.4-14.8 6.9c-5.1 5.6-19.4 19-19.4 46.3s19.9 53.7 22.6 57.4c2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4s4.6-24.1 3.2-26.4c-1.3-2.5-5-3.9-10.5-6.6z" />
+                </svg>
+                CONFIRM VIA WHATSAPP
+            </a>
+        </div>
     </div>
 @endsection
 
@@ -566,7 +631,7 @@
                         card.setAttribute('aria-label', `Buka ${displayName}`);
 
                         const image = document.createElement('img');
-                        image.src = match.url;
+                        image.src = match.grid_url || match.url;
                         image.alt = displayName;
                         image.loading = 'lazy';
                         image.decoding = 'async';
@@ -1021,6 +1086,11 @@
                 }
             });
 
+            modal.addEventListener('contextmenu', (event) => {
+                if (event.target.closest('.photo-lightbox__frame')) {
+                    event.preventDefault();
+                }
+            });
             close.addEventListener('click', () => setOpen(false));
             modal.querySelector('[data-lightbox-prev]').addEventListener('click', () => show(active - 1));
             modal.querySelector('[data-lightbox-next]').addEventListener('click', () => show(active + 1));
@@ -1036,6 +1106,48 @@
 
             syncFilterLinks(new URL(window.location.href));
             observeInfiniteScroll();
+        })();
+
+        (() => {
+            const paymentModal = document.querySelector('#payment-modal');
+            const closeBtn = paymentModal?.querySelector('[data-close-payment]');
+
+            const setPaymentModal = (open) => {
+                if (!paymentModal) return;
+                paymentModal.classList.toggle('is-open', open);
+                paymentModal.setAttribute('aria-hidden', String(!open));
+                document.body.style.overflow = open ? 'hidden' : '';
+
+                if (open) {
+                    closeBtn?.focus();
+                }
+            };
+
+            document.addEventListener('click', (event) => {
+                const openBtn = event.target.closest('[data-open-payment]');
+                if (openBtn) {
+                    event.preventDefault();
+                    setPaymentModal(true);
+                    return;
+                }
+
+                if (event.target.closest('[data-close-payment]')) {
+                    event.preventDefault();
+                    setPaymentModal(false);
+                    return;
+                }
+
+                if (event.target === paymentModal) {
+                    setPaymentModal(false);
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && paymentModal?.classList.contains('is-open')) {
+                    event.preventDefault();
+                    setPaymentModal(false);
+                }
+            });
         })();
     </script>
 @endsection

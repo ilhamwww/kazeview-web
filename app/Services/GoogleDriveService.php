@@ -97,8 +97,25 @@ class GoogleDriveService
                 ->where('id_download', $download->getKey())
                 ->pluck('id', 'id_file_in_gd');
 
+            // Nama file yang sudah dipakai di download ini (huruf kecil).
+            // Dipakai agar foto dari kartu memori kedua yang nomornya mulai
+            // dari awal tidak menabrak nama foto kartu pertama.
+            $usedFileNames = ListDownloaded::query()
+                ->where('id_download', $download->getKey())
+                ->pluck('file_name')
+                ->reduce(function (array $carry, mixed $name): array {
+                    $key = mb_strtolower(trim((string) $name));
+
+                    if ($key !== '') {
+                        $carry[$key] = true;
+                    }
+
+                    return $carry;
+                }, []);
+
             $downloadedCount = 0;
             $skippedCount = 0;
+            $renamedCount = 0;
 
             foreach ($scan['images'] as $image) {
                 $folderRecord = $image['folder_google_id'] === $folderId
@@ -137,7 +154,11 @@ class GoogleDriveService
                             'mime_type' => $image['mime_type'],
                             'file_size' => $image['size'],
                             'drive_modified_at' => $image['modified_time'],
-                            'file_name' => $image['name'],
+                            // Nama yang sudah ada dipertahankan supaya akhiran
+                            // _1/_2 hasil penamaan unik tidak hilang saat re-download.
+                            'file_name' => filled($existing->file_name)
+                                ? $existing->file_name
+                                : $image['name'],
                         ]);
 
                         $skippedCount++;
@@ -162,12 +183,18 @@ class GoogleDriveService
                     );
                 }
 
+                $uniqueName = $this->reserveFileName($usedFileNames, (string) $image['name']);
+
+                if (mb_strtolower($uniqueName) !== mb_strtolower((string) $image['name'])) {
+                    $renamedCount++;
+                }
+
                 ListDownloaded::query()->updateOrCreate([
                     'id_download' => $download->getKey(),
                     'id_file_in_gd' => $image['id'],
                 ], [
                     'download_folder_id' => $folderRecord?->getKey(),
-                    'file_name' => $image['name'],
+                    'file_name' => $uniqueName,
                     'id_folder' => $folderId,
                     'relative_path' => $relativePath,
                     'mime_type' => $image['mime_type'],
@@ -186,7 +213,8 @@ class GoogleDriveService
                 'message' => "{$scan['root_name']}: {$folderCount} subfolder, "
                     . "{$scan['total_images']} gambar ditemukan. "
                     . "{$downloadedCount} baru, {$skippedCount} dilewati, "
-                    . "{$ignoredCount} file non-gambar diabaikan.",
+                    . "{$ignoredCount} file non-gambar diabaikan."
+                    . ($renamedCount > 0 ? " {$renamedCount} nama diberi akhiran unik." : ''),
                 'scan' => $scan,
             ];
         } catch (\Throwable $exception) {
@@ -417,5 +445,50 @@ class GoogleDriveService
         }
 
         return Str::limit($segment, 100, '');
+    }
+
+    /**
+     * Pastikan nama file unik di dalam satu download.
+     *
+     * Kamera memulai penomoran dari awal di setiap kartu memori, jadi kartu
+     * kedua bisa menghasilkan nama yang sama (mis. DSC00913.JPG). Nama yang
+     * bentrok diberi akhiran _1, _2, dan seterusnya.
+     *
+     * @param  array<string, bool>  $used  nama yang sudah dipakai (huruf kecil), diperbarui di sini
+     */
+    protected function reserveFileName(array &$used, string $name): string
+    {
+        $name = trim($name);
+
+        if ($name === '') {
+            $name = 'foto';
+        }
+
+        $key = mb_strtolower($name);
+
+        if (! isset($used[$key])) {
+            $used[$key] = true;
+
+            return $name;
+        }
+
+        $extension = pathinfo($name, PATHINFO_EXTENSION);
+        $base = $extension !== ''
+            ? mb_substr($name, 0, mb_strlen($name) - mb_strlen($extension) - 1)
+            : $name;
+        $suffix = $extension !== '' ? '.' . $extension : '';
+
+        for ($i = 1; $i <= 9999; $i++) {
+            $candidate = $base . '_' . $i . $suffix;
+            $candidateKey = mb_strtolower($candidate);
+
+            if (! isset($used[$candidateKey])) {
+                $used[$candidateKey] = true;
+
+                return $candidate;
+            }
+        }
+
+        throw new RuntimeException("Tidak dapat membuat nama file unik untuk {$name}.");
     }
 }

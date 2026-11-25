@@ -134,14 +134,45 @@ Forms\Components\FileUpload::make('hero_image')
                                     (bool) $get('lightbox_watermark_enabled'),
                             ),
                         Forms\Components\TextInput::make('lightbox_watermark_opacity')
-                            ->label('Opacity Watermark')
-                            ->helperText('Transparansi watermark (5–100%).')
+                            ->label('Opacity Watermark Utama')
+                            ->helperText('Transparansi watermark utama (5–100%).')
                             ->numeric()
                             ->suffix('%')
                             ->minValue(5)
                             ->maxValue(100)
                             ->default(65)
                             ->required()
+                            ->visible(
+                                fn ($get): bool =>
+                                    (bool) $get('lightbox_watermark_enabled'),
+                            ),
+                        Forms\Components\Toggle::make('lightbox_watermark_tile_enabled')
+                            ->label('Anti-AI Tiled Watermark (Pola Berulang)')
+                            ->helperText('Menyebarkan pola watermark tipis di seluruh foto agar tidak bisa dihapus AI/ChatGPT.')
+                            ->default(true)
+                            ->columnSpanFull()
+                            ->visible(
+                                fn ($get): bool =>
+                                    (bool) $get('lightbox_watermark_enabled'),
+                            ),
+                        Forms\Components\TextInput::make('lightbox_watermark_tile_opacity')
+                            ->label('Opacity Tiled Watermark (Anti-AI)')
+                            ->helperText('Disarankan 15–35% agar foto tetap nyaman dilihat namun AI gagal menghapusnya.')
+                            ->numeric()
+                            ->suffix('%')
+                            ->minValue(5)
+                            ->maxValue(60)
+                            ->default(35)
+                            ->required()
+                            ->visible(
+                                fn ($get): bool =>
+                                    (bool) $get('lightbox_watermark_enabled') && (bool) $get('lightbox_watermark_tile_enabled'),
+                            ),
+                        Forms\Components\Toggle::make('lightbox_watermark_helmet_shield')
+                            ->label('Smart Helmet Shield (Watermark Solid di Helm)')
+                            ->helperText('Otomatis menutupi area helm dengan badge solid KAZE VIEW (100% tidak transparan) agar identitas helm/muka tertutup dan AI gagal menghapusnya.')
+                            ->default(true)
+                            ->columnSpanFull()
                             ->visible(
                                 fn ($get): bool =>
                                     (bool) $get('lightbox_watermark_enabled'),
@@ -282,16 +313,18 @@ Forms\Components\FileUpload::make('hero_image')
             ->statePath('data');
     }
 
-public function save(): void
-{
-    $data = $this->form->getState();
+    public function save(): void
+    {
+        $data = $this->form->getState();
 
-    $this->record->update($data);
+        $this->record->update($data);
 
-    Notification::make()
-        ->title('Website settings berhasil disimpan')
-        ->success()
-        ->send();
-}
+        Cache::forget('site_watermark_config');
+
+        Notification::make()
+            ->title('Website settings berhasil disimpan')
+            ->success()
+            ->send();
+    }
 
 }

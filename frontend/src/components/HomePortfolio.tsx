@@ -121,13 +121,6 @@ export default function HomePortfolio({
                   )}
                 </>
               )}
-
-              <span className="portfolio-card__meta" aria-hidden="true">
-                <span className="portfolio-card__category">{itemCategory}</span>
-                <span className="portfolio-card__title">
-                  {(item.title || "KAZEVIEW").toUpperCase()}
-                </span>
-              </span>
             </a>
           );
         })}

@@ -15,6 +15,12 @@ Route::get(
     PhotoThumbnailController::class,
 )->whereNumber('photo')->name('photos.thumbnail');
 
+// Preview bersih untuk Galeri Sortir admin (super_admin only, dicek di controller)
+Route::get(
+    '/admin-media/photos/{photo}/preview',
+    \App\Http\Controllers\AdminPhotoPreviewController::class,
+)->whereNumber('photo')->name('admin.photos.preview');
+
 Route::controller(HomeController::class)->group(function () {
     Route::get('/', 'index')->name('home.index');
     Route::get('/films', 'films')->name('home.films');

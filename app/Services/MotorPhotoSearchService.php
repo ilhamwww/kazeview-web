@@ -108,6 +108,7 @@ class MotorPhotoSearchService
                     'id' => $photo->getKey(),
                     'name' => $photo->file_name,
                     'url' => route('photos.thumbnail', ['photo' => $photo->getKey()]),
+                    'grid_url' => route('photos.thumbnail', ['photo' => $photo->getKey(), 'mode' => 'grid']),
                     'original_url' => $disk->url($photo->storagePath()),
                     'score' => round($rankingScore, 6),
                     'visual_score' => round($score, 6),
@@ -154,11 +155,11 @@ class MotorPhotoSearchService
 
         $manager = new ImageManager(new Driver());
         $image = $manager->read($sourcePath);
-        $image->scaleDown(width: 2048, height: 2048);
+        $image->scaleDown(width: 1280, height: 1280);
 
         file_put_contents(
             $temporaryPath,
-            (string) $image->encode(new JpegEncoder(quality: 92)),
+            (string) $image->encode(new JpegEncoder(quality: 85)),
         );
 
         return $temporaryPath;
@@ -211,17 +212,41 @@ class MotorPhotoSearchService
             }
         }
 
+        // License plate match booster
+        $queryPlate = $this->token($query['license_plate'] ?? null);
+        $candidatePlate = $this->token($candidate['license_plate'] ?? null);
+
+        if ($queryPlate !== null && $candidatePlate !== null) {
+            $compactQ = preg_replace('/[^a-z0-9]+/', '', $queryPlate) ?? '';
+            $compactC = preg_replace('/[^a-z0-9]+/', '', $candidatePlate) ?? '';
+            if ($compactQ !== '' && $compactQ === $compactC) {
+                $score += 0.90;
+            } elseif (
+                strlen($compactQ) >= 4
+                && strlen($compactC) >= 4
+                && (str_contains($compactQ, $compactC) || str_contains($compactC, $compactQ))
+            ) {
+                $score += 0.45;
+            }
+        }
+
+        // Color compatibility / penalty for distinct contrasting colors
+        $queryColor = $this->token($query['primary_color'] ?? null);
+        $candidateColor = $this->token($candidate['primary_color'] ?? null);
+
+        if ($queryColor !== null && $candidateColor !== null) {
+            if ($queryColor === $candidateColor) {
+                $score += 0.10;
+            } elseif (! $this->areColorsCompatible($queryColor, $candidateColor)) {
+                $score -= 0.15;
+            }
+        }
+
         $score += $this->equalFieldScore(
             $query,
             $candidate,
             'category',
             0.12,
-        );
-        $score += $this->equalFieldScore(
-            $query,
-            $candidate,
-            'primary_color',
-            0.08,
         );
         $score += $this->equalFieldScore(
             $query,
@@ -253,6 +278,11 @@ class MotorPhotoSearchService
             $query['visible_text'] ?? [],
             $candidate['visible_text'] ?? [],
             0.18,
+        );
+        $score += $this->numericOverlapScore(
+            $query['visible_text'] ?? [],
+            $candidate['visible_text'] ?? [],
+            0.25,
         );
         $score += $this->arrayOverlapScore(
             $query['accessories'] ?? [],
@@ -562,5 +592,57 @@ class MotorPhotoSearchService
             fn (string $word): bool => mb_strlen($word) > 1
                 && ! in_array($word, $ignored, true),
         )));
+    }
+
+    private function numericOverlapScore(
+        mixed $left,
+        mixed $right,
+        float $weight = 0.25,
+    ): float {
+        $leftNumbers = $this->extractNumbers($left);
+        $rightNumbers = $this->extractNumbers($right);
+
+        if ($leftNumbers === [] || $rightNumbers === []) {
+            return 0.0;
+        }
+
+        $shared = array_intersect($leftNumbers, $rightNumbers);
+
+        return ! empty($shared) ? $weight : 0.0;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function extractNumbers(mixed $value): array
+    {
+        $text = is_array($value) ? implode(' ', $value) : (string) $value;
+        preg_match_all('/\b\d{2,5}\b/', $text, $matches);
+
+        return array_values(array_unique($matches[0] ?? []));
+    }
+
+    private function areColorsCompatible(string $c1, string $c2): bool
+    {
+        if ($c1 === $c2 || str_contains($c1, $c2) || str_contains($c2, $c1)) {
+            return true;
+        }
+
+        $similarGroups = [
+            ['grey', 'gray', 'silver', 'titanium'],
+            ['black', 'dark grey', 'dark gray'],
+            ['white', 'pearl white', 'cream', 'ivory'],
+            ['gold', 'bronze', 'yellow'],
+            ['orange', 'red-orange'],
+            ['cyan', 'turquoise', 'teal', 'blue'],
+        ];
+
+        foreach ($similarGroups as $group) {
+            if (in_array($c1, $group, true) && in_array($c2, $group, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

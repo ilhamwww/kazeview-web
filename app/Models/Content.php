@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Jobs\DownloadGoogleDriveFolder;
+use App\Jobs\DownloadGoogleDriveFolderNow;
 use App\Support\GoogleDriveFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -80,7 +81,7 @@ class Content extends Model
         return $this->content_media_type === 'VIDEO';
     }
 
-    public function queueDriveDownload(?string $link = null): bool
+    public function queueDriveDownload(?string $link = null, bool $force = false): bool
     {
         if (! $this->isPhotoContent()) {
             return false;
@@ -99,7 +100,11 @@ class Content extends Model
             'drive_download_finished_at' => null,
         ]);
 
-        DownloadGoogleDriveFolder::dispatch(
+        $job = $force
+            ? DownloadGoogleDriveFolderNow::class
+            : DownloadGoogleDriveFolder::class;
+
+        $job::dispatch(
             (int) $this->getKey(),
             $folderId,
         )->afterCommit();
