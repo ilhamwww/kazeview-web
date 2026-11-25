@@ -285,6 +285,23 @@ class ExpService
         ];
     }
 
+    /** King/Queen selalu di level tertinggi, apa pun total EXP-nya. */
+    public static function royalLevel(array $info, ?string $special): array
+    {
+        if (! in_array($special, ['king', 'queen'], true)) {
+            return $info;
+        }
+
+        return array_merge($info, [
+            'level' => 10,
+            'current_min' => self::LEVELS[10],
+            'next_min' => null,
+            'to_next' => 0,
+            'progress' => 100,
+            'is_max' => true,
+        ]);
+    }
+
     public static function badgeUrl(int $level, ?string $special = null): string
     {
         $key = in_array($special, ['king', 'queen'], true) ? $special : (string) max(1, min(10, $level));
@@ -391,7 +408,7 @@ class ExpService
             ->sum('exp');
 
         $loyal = self::seasonLoyaltyExp($user->created_at, $season?->starts_at);
-        $info = self::levelInfo((int) $r->total_exp + $loyal);
+        $info = self::royalLevel(self::levelInfo((int) $r->total_exp + $loyal), $user->special_rank);
         return $info + [
             'loyalty' => $loyal,
             'user_id' => $user->id,
@@ -406,7 +423,7 @@ class ExpService
 
     private static function presentRow(object $r): array
     {
-        $info = self::levelInfo((int) $r->total_exp);
+        $info = self::royalLevel(self::levelInfo((int) $r->total_exp), $r->special_rank ?? null);
         $breakdown = array_filter([
             'Movie' => (int) $r->exp_movie,
             'Series' => (int) $r->exp_series,
