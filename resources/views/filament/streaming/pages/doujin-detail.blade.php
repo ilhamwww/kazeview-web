@@ -64,7 +64,15 @@
         </div>
         <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent"></div>
 
-        <div class="relative w-full max-w-[1800px] mx-auto px-4 sm:px-6 pt-8 pb-10 flex flex-col md:flex-row gap-6 md:gap-8 items-start">
+        <div class="relative w-full max-w-[1800px] mx-auto px-4 sm:px-6 pt-4 md:pt-6">
+            <a href="{{ url('/doujin') }}" aria-label="Kembali ke daftar doujin"
+               class="inline-flex items-center gap-2 rounded-full bg-white/5 px-3.5 py-2 text-xs font-bold text-zinc-200 ring-1 ring-white/10 transition hover:bg-white/10 active:scale-95">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+                <span>Kembali</span>
+            </a>
+        </div>
+
+        <div class="relative w-full max-w-[1800px] mx-auto px-4 sm:px-6 pt-3 pb-10 flex flex-col md:flex-row gap-6 md:gap-8 items-start">
             {{-- Cover Card --}}
             <div class="w-40 sm:w-52 md:w-60 aspect-[3/4] shrink-0 rounded-2xl overflow-hidden bg-zinc-900 border border-white/10 shadow-2xl relative mx-auto md:mx-0">
                 <img src="{{ $detail['cover'] }}" alt="{{ $detail['title'] }}"
