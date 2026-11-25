@@ -667,7 +667,7 @@ Route::post('/api/watch-progress', function (\Illuminate\Http\Request $request) 
         '_token'     => 'nullable|string',
         'progress'   => 'required|numeric|min:0',
         'duration'   => 'required|numeric|min:1',
-        'episode'    => 'nullable|string|max:64',
+        'episode'    => 'nullable|string|max:255',
         'title'      => 'nullable|string|max:500',
         'thumbnail'  => 'nullable|string|max:1000',
         'url'        => 'nullable|string|max:1000',
