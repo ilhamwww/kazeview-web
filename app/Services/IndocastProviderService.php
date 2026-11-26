@@ -156,4 +156,79 @@ class IndocastProviderService
 
         return ['ok' => !empty($items), 'items' => $items];
     }
+
+    /**
+     * Status semua provider Indocast (/api/status).
+     *
+     * Hasilnya disimpan sebentar di cache supaya halaman yang memanggil
+     * berkali-kali tidak menghajar endpoint status terus-menerus.
+     *
+     * @return array{ok:bool, all_online:bool, online:int, maintenance:int, updated_at:?string, providers:array<string,array>}
+     */
+    public static function status(int $ttl = 60): array
+    {
+        $json = self::get('status', $ttl);
+        $data = (array) ($json['data'] ?? []);
+
+        $providers = [];
+
+        foreach ((array) ($data['providers'] ?? []) as $provider) {
+            $id = trim((string) ($provider['id'] ?? ''));
+
+            if ($id === '') {
+                continue;
+            }
+
+            $providers[$id] = [
+                'id' => $id,
+                'name' => (string) ($provider['name'] ?? $id),
+                'logo' => (string) ($provider['logo'] ?? ''),
+                'status' => strtolower((string) ($provider['status'] ?? 'unknown')),
+                'message' => $provider['message'] ?? null,
+                'since' => $provider['since'] ?? null,
+                'until' => $provider['until'] ?? null,
+            ];
+        }
+
+        return [
+            'ok' => $json !== null && $providers !== [],
+            'all_online' => (bool) ($data['all_online'] ?? false),
+            'online' => (int) ($data['online'] ?? 0),
+            'maintenance' => (int) ($data['maintenance'] ?? 0),
+            'updated_at' => $data['updated_at'] ?? null,
+            'providers' => $providers,
+        ];
+    }
+
+    /**
+     * True kalau provider tertentu sedang online menurut endpoint status.
+     * Provider yang tidak dikenal dianggap online supaya tidak memblokir
+     * pemanggilan yang sudah ada.
+     */
+    public static function isOnline(string $provider): bool
+    {
+        $status = self::status();
+        $provider = strtolower(trim($provider));
+
+        if (! isset($status['providers'][$provider])) {
+            return true;
+        }
+
+        return $status['providers'][$provider]['status'] === 'online';
+    }
+
+    /**
+     * Daftar id provider yang sedang maintenance.
+     *
+     * @return array<int,string>
+     */
+    public static function maintenanceProviders(): array
+    {
+        $status = self::status();
+
+        return array_values(array_map(
+            fn (array $provider): string => $provider['id'],
+            array_filter($status['providers'], fn (array $provider): bool => $provider['status'] !== 'online')
+        ));
+    }
 }
