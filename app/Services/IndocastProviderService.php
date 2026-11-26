@@ -231,4 +231,33 @@ class IndocastProviderService
             array_filter($status['providers'], fn (array $provider): bool => $provider['status'] !== 'online')
         ));
     }
+
+    /**
+     * Ringkasan akun API: pemakaian dan sisa kuota harian (/api/user/me).
+     *
+     * @return array{ok:bool, usage:int, limit:int, remaining:int, percent:float, reset_at:?string, reset_in:?int, plan:?string, plan_until:?string}
+     */
+    public static function account(int $ttl = 120): array
+    {
+        $json = self::get('user/me', $ttl);
+        $data = (array) ($json['data'] ?? []);
+
+        $usage = (int) ($data['usage'] ?? 0);
+        $limit = (int) ($data['limit'] ?? 0);
+        $remaining = max(0, $limit - $usage);
+
+        $resetAt = \Illuminate\Support\Carbon::now('UTC')->startOfDay()->addDay();
+
+        return [
+            'ok' => $json !== null && $limit > 0,
+            'usage' => $usage,
+            'limit' => $limit,
+            'remaining' => $remaining,
+            'percent' => $limit > 0 ? round($usage / $limit * 100, 2) : 0.0,
+            'reset_at' => $resetAt->toIso8601String(),
+            'reset_in' => max(0, $resetAt->getTimestamp() - time()),
+            'plan' => $data['role'] ?? null,
+            'plan_until' => $data['subEndsAt'] ?? null,
+        ];
+    }
 }

@@ -1247,6 +1247,7 @@ Route::get('/traffic', function () {
         'title' => 'Statistik Traffic Streaming - KZSTRM',
         'slot' => new \Illuminate\Support\HtmlString(view('filament.streaming.pages.traffic-stats', [
             'stats' => $stats,
+            'quota' => \App\Services\IndocastProviderService::account(),
         ])->render())
     ])->render());
 })->name('streaming.traffic.public');

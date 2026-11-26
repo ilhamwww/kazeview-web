@@ -14,6 +14,15 @@
         'Anime' => 'text-violet-300 bg-violet-500/10 border-violet-500/30',
         default => 'text-zinc-300 bg-zinc-800 border-zinc-700',
     };
+    $q = $quota ?? [];
+    $qOk = !empty($q['ok']);
+    $qRemaining = (int) ($q['remaining'] ?? 0);
+    $qUsage = (int) ($q['usage'] ?? 0);
+    $qLimit = (int) ($q['limit'] ?? 0);
+    $qPercent = (float) ($q['percent'] ?? 0);
+    $qResetIn = (int) ($q['reset_in'] ?? 0);
+    $qResetText = intdiv($qResetIn, 3600) . 'j ' . intdiv($qResetIn % 3600, 60) . 'm';
+    $qBar = $qPercent >= 90 ? 'bg-rose-500' : ($qPercent >= 75 ? 'bg-amber-500' : 'bg-emerald-500');
     $kpis = [
         ['label' => 'Aktif sekarang', 'value' => $s['active_now'] ?? 0, 'hint' => 'Sesi browser 15 menit terakhir', 'accent' => 'text-emerald-400', 'live' => true],
         ['label' => 'Pengunjung 24 jam', 'value' => $s['visitors_24h'] ?? 0, 'hint' => 'Sesi browser unik', 'accent' => 'text-white'],
@@ -175,6 +184,42 @@
                 </div>
             @endforeach
         </section>
+
+        {{-- ================= KUOTA API HARIAN ================= --}}
+        @if($qOk)
+            <section aria-label="Kuota API harian" class="rounded-3xl bg-zinc-900/60 ring-1 ring-white/[0.08] p-5 sm:p-6 md:p-7 relative overflow-hidden">
+                <div class="absolute -left-16 -bottom-16 w-56 h-56 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+                <div class="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-5">
+                    <div class="space-y-1.5 max-w-xl">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] px-2.5 py-1 rounded-full border border-sky-500/30 text-sky-300 bg-sky-500/10">
+                                <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                                Kuota API
+                            </span>
+                            <span class="text-[11px] text-zinc-500">Reset dalam {{ $qResetText }} · 07:00 WIB</span>
+                        </div>
+                        <h2 class="text-lg sm:text-xl font-black tracking-tight">Sisa Kuota API Hari Ini</h2>
+                        <p class="text-xs text-zinc-400">Jatah permintaan data katalog ke server sumber. Kalau habis, katalog berhenti memperbarui sampai kuota direset.</p>
+                    </div>
+                    <div class="md:text-right shrink-0">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tersisa</div>
+                        <div class="text-3xl sm:text-4xl font-black tabular-nums tracking-tight leading-none mt-1 {{ $qPercent >= 90 ? 'text-rose-400' : ($qPercent >= 75 ? 'text-amber-400' : 'text-sky-300') }}">{{ $fmt($qRemaining) }}</div>
+                        <div class="text-[11px] text-zinc-500 mt-1 tabular-nums">dari {{ $fmt($qLimit) }} request</div>
+                    </div>
+                </div>
+                <div class="relative z-10 mt-4">
+                    <div class="h-2.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+                        <div class="h-full rounded-full {{ $qBar }}" style="width: {{ max(0.6, min(100, $qPercent)) }}%"></div>
+                    </div>
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 tabular-nums">
+                        <span>Terpakai {{ $fmt($qUsage) }} request ({{ number_format($qPercent, 1, ',', '.') }}%)</span>
+                        @if(!empty($q['plan']))
+                            <span class="text-zinc-400">{{ $q['plan'] }}@if(!empty($q['plan_until'])) · aktif s/d {{ \Illuminate\Support\Carbon::parse($q['plan_until'])->timezone('Asia/Jakarta')->format('d M Y') }}@endif</span>
+                        @endif
+                    </div>
+                </div>
+            </section>
+        @endif
 
         @if(empty($stats['log_available']))
             <div class="rounded-2xl bg-amber-500/10 ring-1 ring-amber-500/30 px-4 py-3 text-xs text-amber-200">Log server belum bisa dibaca, jadi data halaman dibuka, kategori, perangkat, dan browser belum tersedia.</div>
